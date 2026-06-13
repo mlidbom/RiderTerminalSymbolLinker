@@ -1,0 +1,17 @@
+<idea-plugin>
+    <id>dev.magnus.claudesymbollinker</id>
+    <name>Claude Symbol Linker (spike)</name>
+    <vendor email="magnus.lidbom@gmail.com">Magnus Lidbom</vendor>
+    <description><![CDATA[
+        Spike build: registers a consoleFilterProvider that linkifies identifier-shaped
+        tokens in terminal/console output, to test whether a third-party filter fires
+        in Rider's reworked terminal and whether clicking can drive navigation.
+    ]]></description>
+
+    <depends>com.intellij.modules.platform</depends>
+
+    <extensions defaultExtensionPointName="com.intellij">
+        <consoleFilterProvider implementation="dev.magnus.csl.SymbolLinkFilterProvider"/>
+        <notificationGroup id="ClaudeSymbolLinker" displayType="BALLOON"/>
+    </extensions>
+</idea-plugin>
