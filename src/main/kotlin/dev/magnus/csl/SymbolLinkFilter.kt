@@ -1,12 +1,11 @@
 package dev.magnus.csl
 
 import com.intellij.execution.filters.Filter
+import com.intellij.openapi.diagnostic.Logger
 
 /**
- * Spike heuristic only: linkify PascalCase words and dotted member-access chains
- * (e.g. `IVirtualDesktopNotification`, `Resolver.CurrentDesktop`). This deliberately
- * over-matches — the point is to see whether the produced hyperlinks render and click
- * in the terminal, not to be precise yet.
+ * Spike heuristic only: linkify PascalCase words and dotted member-access chains.
+ * Over-matches on purpose; logs every call so idea.log shows whether the terminal feeds us lines.
  */
 class SymbolLinkFilter : Filter {
 
@@ -21,6 +20,11 @@ class SymbolLinkFilter : Filter {
             val end = lineStart + match.range.last + 1
             items.add(Filter.ResultItem(start, end, SymbolHyperlinkInfo(match.value)))
         }
+        LOG.warn("CSL-SPIKE applyFilter matches=${items.size} len=${line.length} text=${line.take(100).trim()}")
         return if (items.isEmpty()) null else Filter.Result(items)
+    }
+
+    companion object {
+        private val LOG = Logger.getInstance("CSL-SPIKE")
     }
 }

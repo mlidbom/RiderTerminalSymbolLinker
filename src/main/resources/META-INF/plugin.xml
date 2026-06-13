@@ -9,9 +9,11 @@
     ]]></description>
 
     <depends>com.intellij.modules.platform</depends>
+    <depends>com.intellij.modules.lang</depends>
 
-    <extensions defaultExtensionPointName="com.intellij">
+    <extensions defaultExtensionNs="com.intellij">
         <consoleFilterProvider implementation="dev.magnus.csl.SymbolLinkFilterProvider"/>
         <notificationGroup id="ClaudeSymbolLinker" displayType="BALLOON"/>
+        <postStartupActivity implementation="dev.magnus.csl.SymbolLinkerStartup"/>
     </extensions>
 </idea-plugin>
