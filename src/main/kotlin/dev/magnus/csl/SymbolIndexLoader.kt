@@ -12,16 +12,17 @@ import com.intellij.openapi.project.Project
  * MCP on a background thread with a progress bar. Shared by [SymbolIndexStartup] (silent, on solution
  * open) and [RefreshSymbolsAction] (user-triggered, with a completion balloon).
  *
- * Reloading the index updates the underline gate for *future* terminal output. Already-printed lines
- * keep their old highlighting — the reworked terminal exposes no stable API to re-run filters over
- * existing output — and clicks resolve live regardless, so navigation is never stale.
+ * After the index updates we ask [TerminalLinks] to re-highlight existing terminal output, so symbols
+ * printed before they were known (e.g. a class Claude just created and then described) light up too —
+ * not just future output. Clicks resolve live regardless, so navigation is never stale.
  */
 object SymbolIndexLoader {
     fun refresh(project: Project, notifyWhenDone: Boolean) {
         ProgressManager.getInstance().run(
             object : Task.Backgroundable(project, "Loading C# symbols for Claude links", true) {
                 override fun run(indicator: ProgressIndicator) {
-                    val names = ReSharperMcp.enumerateSymbolNames(indicator)
+                    val solutionName = McpSolution.getInstance(project).name()
+                    val names = ReSharperMcp.enumerateSymbolNames(indicator, solutionName)
                     if (names == null) {
                         if (notifyWhenDone) {
                             notify(project, "Couldn't reach the ReSharper MCP — C# symbols not refreshed.", NotificationType.WARNING)
@@ -29,6 +30,7 @@ object SymbolIndexLoader {
                         return
                     }
                     SymbolIndex.getInstance(project).set(names)
+                    TerminalLinks.rehighlightExistingOutput()
                     if (notifyWhenDone) {
                         notify(project, "Claude symbol links refreshed: ${names.size} symbols.", NotificationType.INFORMATION)
                     }

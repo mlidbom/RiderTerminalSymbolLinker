@@ -4,7 +4,7 @@ plugins {
 }
 
 group = "dev.magnus"
-version = "0.5.9-spike"
+version = "0.6.1-spike"
 
 repositories {
     mavenCentral()

@@ -16,6 +16,9 @@ data class SymbolHit(val kind: String, val name: String, val file: String, val l
     val hasSource: Boolean get() = file != NO_SOURCE && line >= 1
 }
 
+/** One loaded solution from `list_solutions`. [name] is the value to pass as `solutionName`. */
+data class SolutionInfo(val name: String, val path: String)
+
 /**
  * Thin client for the ReSharper MCP server (joshua-light/resharper-mcp) which runs in-process in
  * Rider on 127.0.0.1:23741 and is ReSharper-backed, so it resolves and enumerates C# symbols
@@ -36,6 +39,22 @@ object ReSharperMcp {
         """"qualifiedName"\s*:\s*"([^"]*)"\s*,\s*"kind"\s*:\s*"([^"]*)"\s*,\s*"file"\s*:\s*"([^"]*)"\s*,\s*"line"\s*:\s*(\d+)""",
     )
 
+    // one entry of list_solutions: {"name":"Vantage","path":"C:\\…\\Vantage.slnx", …}
+    private val SOLUTION = Regex(""""name"\s*:\s*"([^"]*)"\s*,\s*"path"\s*:\s*"([^"]*)"""")
+
+    // ---- Solution discovery ----------------------------------------------------------------
+
+    /**
+     * Every solution currently loaded in the MCP. Used to map a Rider project to the `solutionName`
+     * the other tools need when more than one solution is open. `null` if the MCP is unreachable.
+     */
+    fun listSolutions(): List<SolutionInfo>? {
+        val text = callTool("list_solutions", "{}", null) ?: return null
+        return SOLUTION.findAll(text)
+            .map { SolutionInfo(it.groupValues[1], it.groupValues[2].replace("\\\\", "\\")) }
+            .toList()
+    }
+
     // ---- Click-time resolution (exact by name) ---------------------------------------------
 
     /**
@@ -44,13 +63,13 @@ object ReSharperMcp {
      * we navigate to its declaring type instead — that source line is where the member is written
      * (the record's primary-constructor parameter). `null` = MCP unreachable; empty = no such symbol.
      */
-    fun goToDefinition(name: String): List<SymbolHit>? {
-        val hits = resolveByName(name) ?: return null
-        return hits.mapNotNull { if (it.hasSource) it else resolveViaContainingType(it) }
+    fun goToDefinition(name: String, solutionName: String?): List<SymbolHit>? {
+        val hits = resolveByName(name, solutionName) ?: return null
+        return hits.mapNotNull { if (it.hasSource) it else resolveViaContainingType(it, solutionName) }
     }
 
-    private fun resolveByName(name: String): List<SymbolHit>? {
-        val text = callTool("go_to_definition", "{\"symbolName\":${jsonString(name)}}") ?: return null
+    private fun resolveByName(name: String, solutionName: String?): List<SymbolHit>? {
+        val text = callTool("go_to_definition", "{\"symbolName\":${jsonString(name)}}", solutionName) ?: return null
         if (text.contains("\"candidates\"")) {
             return CANDIDATE.findAll(text).map { m ->
                 SymbolHit(m.groupValues[2], m.groupValues[1], m.groupValues[3].replace("\\\\", "\\"), m.groupValues[4].toInt())
@@ -80,10 +99,10 @@ object ReSharperMcp {
      * The containing type comes from the member's qualified name (`Ns.Type.Member` -> `Ns.Type`);
      * `null` if we only have a short name or the type itself has no navigable source.
      */
-    private fun resolveViaContainingType(member: SymbolHit): SymbolHit? {
+    private fun resolveViaContainingType(member: SymbolHit, solutionName: String?): SymbolHit? {
         val containingType = member.name.substringBeforeLast('.', "")
         if (containingType.isEmpty()) return null
-        val typeHit = resolveByName(containingType)?.firstOrNull { it.hasSource } ?: return null
+        val typeHit = resolveByName(containingType, solutionName)?.firstOrNull { it.hasSource } ?: return null
         return member.copy(file = typeHit.file, line = typeHit.line)
     }
 
@@ -96,20 +115,20 @@ object ReSharperMcp {
      * `list_symbols_in_file` returns nothing — single qualified calls are the reliable path.)
      * `null` if the MCP is unreachable at the first call.
      */
-    fun enumerateSymbolNames(indicator: ProgressIndicator): Set<String>? {
+    fun enumerateSymbolNames(indicator: ProgressIndicator, solutionName: String?): Set<String>? {
         indicator.text = "Loading C# symbols…"
         val names = Collections.synchronizedSet(HashSet<String>())
         val qualifiedTypes = LinkedHashSet<String>()
         val visitedNs = HashSet<String>()
 
-        val rootText = browseNamespaces(null) ?: return null
+        val rootText = browseNamespaces(null, solutionName) ?: return null
         val pending = ArrayDeque<String>()
         collectBrowse(rootText, pending, visitedNs, names, qualifiedTypes)
         while (pending.isNotEmpty()) {
             indicator.checkCanceled()
             val batch = ArrayList<String>()
             while (pending.isNotEmpty() && batch.size < 50) batch.add(pending.removeFirst())
-            collectBrowse(browseNamespaces(batch) ?: break, pending, visitedNs, names, qualifiedTypes)
+            collectBrowse(browseNamespaces(batch, solutionName) ?: break, pending, visitedNs, names, qualifiedTypes)
         }
 
         val types = qualifiedTypes.toList()
@@ -120,7 +139,7 @@ object ReSharperMcp {
             val futures = types.map { qualifiedName ->
                 pool.submit {
                     if (!indicator.isCanceled) {
-                        getMembersOf(qualifiedName)?.let { parseMembers(it, names) }
+                        getMembersOf(qualifiedName, solutionName)?.let { parseMembers(it, names) }
                         indicator.fraction = done.incrementAndGet().toDouble() / types.size
                     }
                 }
@@ -191,22 +210,24 @@ object ReSharperMcp {
         }
     }
 
-    private fun browseNamespaces(namespaceNames: List<String>?): String? =
+    private fun browseNamespaces(namespaceNames: List<String>?, solutionName: String?): String? =
         if (namespaceNames.isNullOrEmpty()) {
-            callTool("browse_namespace", "{}")
+            callTool("browse_namespace", "{}", solutionName)
         } else {
-            callTool("browse_namespace", "{\"namespaceNames\":[${namespaceNames.joinToString(",") { jsonString(it) }}]}")
+            callTool("browse_namespace", "{\"namespaceNames\":[${namespaceNames.joinToString(",") { jsonString(it) }}]}", solutionName)
         }
 
-    private fun getMembersOf(qualifiedTypeName: String): String? =
-        callTool("get_symbol_info", "{\"symbolName\":${jsonString(qualifiedTypeName)},\"includeMembers\":true}")
+    private fun getMembersOf(qualifiedTypeName: String, solutionName: String?): String? =
+        callTool("get_symbol_info", "{\"symbolName\":${jsonString(qualifiedTypeName)},\"includeMembers\":true}", solutionName)
 
     // ---- transport -------------------------------------------------------------------------
 
-    private fun callTool(tool: String, argsJson: String): String? {
+    /** [solutionName], when set, is merged into [argsJson] so the MCP targets the right open solution. */
+    private fun callTool(tool: String, argsJson: String, solutionName: String?): String? {
+        val args = if (solutionName == null) argsJson else withSolution(argsJson, solutionName)
         val body =
             "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/call\"," +
-                "\"params\":{\"name\":\"$tool\",\"arguments\":$argsJson}}"
+                "\"params\":{\"name\":\"$tool\",\"arguments\":$args}}"
         val response = try {
             HttpRequests.post(URL, "application/json")
                 .accept("application/json")
@@ -258,4 +279,11 @@ object ReSharperMcp {
 
     private fun jsonString(s: String): String =
         "\"" + s.replace("\\", "\\\\").replace("\"", "\\\"") + "\""
+
+    /** Add `"solutionName":…` to an arguments object. [argsJson] is always our own `{…}` literal. */
+    private fun withSolution(argsJson: String, solutionName: String): String {
+        val field = "\"solutionName\":${jsonString(solutionName)}"
+        val trimmed = argsJson.trim()
+        return if (trimmed == "{}") "{$field}" else trimmed.dropLast(1) + ",$field}"
+    }
 }

@@ -24,7 +24,8 @@ class SymbolHyperlinkInfo(private val token: String) : HyperlinkInfo {
 
     override fun navigate(project: Project) {
         ApplicationManager.getApplication().executeOnPooledThread {
-            val hits = ReSharperMcp.goToDefinition(token)
+            val solutionName = McpSolution.getInstance(project).name()
+            val hits = ReSharperMcp.goToDefinition(token, solutionName)
             ApplicationManager.getApplication().invokeLater {
                 when {
                     hits == null -> fallbackToSearchEverywhere(project)
