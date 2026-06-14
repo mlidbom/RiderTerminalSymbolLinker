@@ -50,9 +50,11 @@ class SymbolHyperlinkInfo(private val token: String) : HyperlinkInfo {
     }
 
     private fun showPicker(project: Project, hits: List<SymbolHit>) =
-        LinkPicker.show(project, "Symbols matching \"$token\"", hits, ::pickerLabel) { hit, requestFocus ->
-            openHit(project, hit, requestFocus)
-        }
+        LinkPicker.show(
+            project, "Symbols matching \"$token\"", hits, ::pickerLabel,
+            // Evaluated live (per paint) so a Ctrl-click open inside the picker marks the file at once.
+            isEmphasized = { OpenFiles.normalize(it.file) in OpenFiles.paths(project) },
+        ) { hit, requestFocus -> openHit(project, hit, requestFocus) }
 
     private fun pickerLabel(hit: SymbolHit): String =
         "${hit.kind} ${hit.name}  —  ${hit.file.substringAfterLast('\\')}:${hit.line}"

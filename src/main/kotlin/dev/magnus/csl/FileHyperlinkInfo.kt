@@ -64,9 +64,11 @@ class FileHyperlinkInfo(
     }
 
     private fun showPicker(project: Project, paths: List<String>) =
-        LinkPicker.show(project, "Files named \"$fileName\"", paths, { label(project, it) }) { p, focus ->
-            open(project, p, focus)
-        }
+        LinkPicker.show(
+            project, "Files named \"$fileName\"", paths, { label(project, it) },
+            // Evaluated live (per paint) so a Ctrl-click open inside the picker marks the file at once.
+            isEmphasized = { OpenFiles.normalize(it) in OpenFiles.paths(project) },
+        ) { p, focus -> open(project, p, focus) }
 
     /** Project-relative path when the file is under the project, else the full path. */
     private fun label(project: Project, filePath: String): String {

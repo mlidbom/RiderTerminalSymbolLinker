@@ -21,6 +21,8 @@ All notable changes to this project are documented here. The format follows
 - File disambiguation matches symbols: a partial or absolute path that pins one file opens directly; a
   bare name shared by several files shows a searchable picker (Ctrl-click opens in the background and
   keeps it open).
+- In both the symbol and file disambiguation pickers, entries whose file is already open in the IDE get
+  a tinted background band and an "(open)" tag.
 
 ### Changed
 - The terminal menu action is now **Refresh Terminal Links** and rebuilds both the symbol and file indexes.
