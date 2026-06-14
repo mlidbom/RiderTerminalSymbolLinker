@@ -11,6 +11,11 @@ All notable changes to this project are documented here. The format follows
 ### Changed
 - Improve plugin description
 
+## [0.1.6]
+
+### Changed
+- Remove the word "Rider" from plugin.xml so that Jetbrains will allow publishing this.
+
 ## [0.1.5]
 
 ### Changed

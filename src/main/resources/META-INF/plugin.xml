@@ -1,6 +1,6 @@
 <idea-plugin>
     <id>dev.magnus.riderterminalsymbollinker</id>
-    <name>Rider Terminal Symbol Linker</name>
+    <name>Terminal Symbol Linker</name>
     <vendor email="magnus.lidbom@gmail.com" url="https://github.com/mlidbom/RiderTerminalSymbolLinker">Magnus Lidbom</vendor>
     <description><![CDATA[
         Makes C# symbol names in Rider's terminal output clickable — a click jumps to the symbol's
