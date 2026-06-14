@@ -4,17 +4,10 @@
     <vendor email="magnus.lidbom@gmail.com" url="https://github.com/mlidbom/RiderTerminalSymbolLinker">Magnus Lidbom</vendor>
     <description><![CDATA[
         Makes C# symbol names in Rider's terminal output clickable — a click jumps to the symbol's
-        declaration. Built for following along with Claude Code (and other CLI) output without keeping
-        a second editor open just to read it: plain <code>file:line</code> links already work in
-        Rider's terminal; bare symbol names were the gap.
-        <br/><br/>
-        Only real solution symbols are linkified (resolved via the ReSharper MCP), so prose isn't
-        littered with false links. One match jumps straight there; several show a searchable picker.
-        A <b>Refresh C# Symbols</b> item in the terminal's right-click menu rebuilds the index and
-        re-highlights output already on screen.
+        declaration. Helpful for working with Claude Code and other agents that run in the terminal.
         <br/><br/>
         <b>Requires</b> the ReSharper MCP plugin (<code>com.j-light.resharper-mcp</code>) running in
-        Rider — that's what resolves and enumerates C# symbols.
+        Rider.
     ]]></description>
 
     <!-- Gates the plugin to Rider only: this module provides the ReSharper backend the plugin relies on.

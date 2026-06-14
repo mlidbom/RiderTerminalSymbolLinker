@@ -6,6 +6,11 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.1.6]
+
+### Changed
+- Improve plugin description
+
 ## [0.1.5]
 
 ### Changed
