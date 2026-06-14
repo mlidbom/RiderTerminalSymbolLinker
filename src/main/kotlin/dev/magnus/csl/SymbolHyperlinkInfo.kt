@@ -14,27 +14,22 @@ import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.ui.SimpleListCellRenderer
 
 /**
- * On click, resolve [token] against the ReSharper MCP (reliable, ReSharper-backed):
- *  - exactly one match  -> jump straight to its file:line
- *  - several matches     -> small picker of locations
- *  - none                -> brief "no symbol" notice
- *  - MCP unreachable      -> fall back to Search Everywhere (so a click is never a dead end)
+ * On click, resolve [token] to its declaration(s) via the ReSharper MCP (exact by name):
+ *  - one declaration  -> jump straight to its file:line
+ *  - several          -> small picker of qualified locations
+ *  - none             -> brief "no symbol" notice
+ *  - MCP unreachable   -> fall back to Search Everywhere (so a click is never a dead end)
  */
 class SymbolHyperlinkInfo(private val token: String) : HyperlinkInfo {
 
     override fun navigate(project: Project) {
         ApplicationManager.getApplication().executeOnPooledThread {
-            val hits = ReSharperMcp.searchSymbol(token)
-            val matches = when {
-                hits == null -> null
-                token.contains('.') -> hits // dot-qualified: trust the MCP's ContainingType.Member matching
-                else -> hits.filter { it.name == token } // bare name: exact matches only
-            }
+            val hits = ReSharperMcp.goToDefinition(token)
             ApplicationManager.getApplication().invokeLater {
                 when {
-                    matches == null -> fallbackToSearchEverywhere(project)
-                    matches.size == 1 -> openHit(project, matches.first())
-                    matches.size > 1 -> showPicker(project, matches)
+                    hits == null -> fallbackToSearchEverywhere(project)
+                    hits.size == 1 -> openHit(project, hits.first())
+                    hits.size > 1 -> showPicker(project, hits)
                     else -> notifyNoSymbol(project)
                 }
             }
