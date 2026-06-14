@@ -49,15 +49,17 @@ class SymbolHyperlinkInfo(private val token: String) : HyperlinkInfo {
         JBPopupFactory.getInstance()
             .createPopupChooserBuilder(hits)
             .setTitle("Symbols matching \"$token\"")
-            .setRenderer(
-                SimpleListCellRenderer.create("") { hit ->
-                    "${hit.kind} ${hit.name}  —  ${hit.file.substringAfterLast('\\')}:${hit.line}"
-                },
-            )
+            .setRenderer(SimpleListCellRenderer.create("") { hit -> pickerLabel(hit) })
             .setItemChosenCallback { openHit(project, it) }
+            // Always-visible search field on top, like Go to Symbol; filters on the visible row text.
+            .setNamerForFiltering { pickerLabel(it) }
+            .setFilterAlwaysVisible(true)
             .createPopup()
             .showCenteredInCurrentWindow(project)
     }
+
+    private fun pickerLabel(hit: SymbolHit): String =
+        "${hit.kind} ${hit.name}  —  ${hit.file.substringAfterLast('\\')}:${hit.line}"
 
     private fun fallbackToSearchEverywhere(project: Project) {
         val dataContext = SimpleDataContext.getProjectContext(project)
