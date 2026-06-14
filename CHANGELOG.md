@@ -6,6 +6,14 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.1.1]
+
+### Fixed
+- Large solutions no longer break the index. On restart the startup build could run before ReSharper
+  finished loading the solution, get an empty result, and overwrite both the in-memory index and the
+  disk cache with nothing. An empty enumeration is now treated as "not ready" (never cached or shown),
+  and the startup build retries until ReSharper can answer.
+
 ## [0.1.0]
 
 First public release.
@@ -23,5 +31,6 @@ First public release.
   in the background.
 - Multi-solution support: each call targets the correct open solution.
 
-[Unreleased]: https://github.com/mlidbom/RiderTerminalSymbolLinker/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/mlidbom/RiderTerminalSymbolLinker/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/mlidbom/RiderTerminalSymbolLinker/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/mlidbom/RiderTerminalSymbolLinker/releases/tag/v0.1.0

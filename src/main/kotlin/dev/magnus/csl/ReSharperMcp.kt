@@ -113,7 +113,12 @@ object ReSharperMcp {
      * Sequential by design: the ReSharper backend serializes analysis, so fanning these calls out
      * across threads measured ~1.2x at best — not worth the nondeterminism. Its duration is hidden
      * from the user by the disk cache (see [SymbolIndexCache]), which serves the index while this
-     * runs in the background. `null` if the MCP is unreachable at the first call.
+     * runs in the background.
+     *
+     * `null` means "no usable index right now" — the MCP was unreachable, or it returned nothing
+     * because ReSharper hasn't finished loading the solution yet (common at startup for a large
+     * solution). A real .NET solution always has types, so an empty result is treated as not-ready,
+     * not as success — callers must not cache or display it (see [SymbolIndexLoader]'s retry).
      */
     fun enumerateSymbolNames(indicator: ProgressIndicator, solutionName: String?): Set<String>? {
         indicator.text = "Loading C# symbols…"
@@ -139,7 +144,7 @@ object ReSharperMcp {
             indicator.fraction = (i + 1).toDouble() / types.size
         }
         LOG.info("CSL symbol index: ${names.size} names (${types.size} types)")
-        return names
+        return if (names.isEmpty()) null else names
     }
 
     private fun collectBrowse(
