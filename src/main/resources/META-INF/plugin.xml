@@ -24,6 +24,9 @@
     <depends>com.intellij.modules.lang</depends>
     <!-- Needed so the Terminal.ReworkedTerminalContextMenu group exists when our action registers. -->
     <depends>org.jetbrains.plugins.terminal</depends>
+    <!-- The ReSharper MCP that resolves and enumerates C# symbols. Hard dependency: without it this
+         plugin can't function, so the Marketplace prompts users to install it alongside this one. -->
+    <depends>com.j-light.resharper-mcp</depends>
 
     <extensions defaultExtensionNs="com.intellij">
         <consoleFilterProvider implementation="dev.magnus.csl.SymbolLinkFilterProvider"/>

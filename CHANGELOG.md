@@ -6,6 +6,14 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.1.5]
+
+### Changed
+- The plugin now declares a hard dependency on the **MCP Server for Code Intelligence** plugin
+  (`com.j-light.resharper-mcp`) — the ReSharper MCP it uses to resolve C# symbols. The Marketplace
+  now prompts you to install it alongside this plugin, instead of the plugin installing and silently
+  doing nothing without it.
+
 ## [0.1.4]
 
 ### Fixed
@@ -52,7 +60,8 @@ First public release.
   in the background.
 - Multi-solution support: each call targets the correct open solution.
 
-[Unreleased]: https://github.com/mlidbom/RiderTerminalSymbolLinker/compare/v0.1.4...HEAD
+[Unreleased]: https://github.com/mlidbom/RiderTerminalSymbolLinker/compare/v0.1.5...HEAD
+[0.1.5]: https://github.com/mlidbom/RiderTerminalSymbolLinker/compare/v0.1.4...v0.1.5
 [0.1.4]: https://github.com/mlidbom/RiderTerminalSymbolLinker/compare/v0.1.3...v0.1.4
 [0.1.3]: https://github.com/mlidbom/RiderTerminalSymbolLinker/compare/v0.1.2...v0.1.3
 [0.1.2]: https://github.com/mlidbom/RiderTerminalSymbolLinker/compare/v0.1.1...v0.1.2

@@ -28,6 +28,9 @@ dependencies {
         }
         // Provides the Terminal.ReworkedTerminalContextMenu group our refresh action attaches to.
         bundledPlugin("org.jetbrains.plugins.terminal")
+        // The ReSharper MCP we declare a hard <depends> on in plugin.xml. Pulled from the Marketplace
+        // so the sandbox/verifier can resolve the dependency; it is NOT bundled into our distribution.
+        plugin("com.j-light.resharper-mcp", "0.9.1")
     }
 }
 
