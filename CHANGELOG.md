@@ -6,6 +6,14 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.1.4]
+
+### Fixed
+- The plugin is now correctly marked **Rider-only**. It previously declared only platform-level
+  dependencies, so the Marketplace would have offered it to every IntelliJ-based IDE (IntelliJ IDEA,
+  PyCharm, …) where it can't work — it needs Rider's ReSharper backend. Added a dependency on
+  `com.intellij.modules.rider` so it only appears for Rider.
+
 ## [0.1.3]
 
 ### Changed
@@ -44,7 +52,8 @@ First public release.
   in the background.
 - Multi-solution support: each call targets the correct open solution.
 
-[Unreleased]: https://github.com/mlidbom/RiderTerminalSymbolLinker/compare/v0.1.3...HEAD
+[Unreleased]: https://github.com/mlidbom/RiderTerminalSymbolLinker/compare/v0.1.4...HEAD
+[0.1.4]: https://github.com/mlidbom/RiderTerminalSymbolLinker/compare/v0.1.3...v0.1.4
 [0.1.3]: https://github.com/mlidbom/RiderTerminalSymbolLinker/compare/v0.1.2...v0.1.3
 [0.1.2]: https://github.com/mlidbom/RiderTerminalSymbolLinker/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/mlidbom/RiderTerminalSymbolLinker/compare/v0.1.0...v0.1.1

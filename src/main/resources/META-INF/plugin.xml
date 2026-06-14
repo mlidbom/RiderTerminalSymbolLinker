@@ -17,6 +17,9 @@
         Rider — that's what resolves and enumerates C# symbols.
     ]]></description>
 
+    <!-- Gates the plugin to Rider only: this module provides the ReSharper backend the plugin relies on.
+         Without it the Marketplace would offer the plugin to every IntelliJ-based IDE, where it can't work. -->
+    <depends>com.intellij.modules.rider</depends>
     <depends>com.intellij.modules.platform</depends>
     <depends>com.intellij.modules.lang</depends>
     <!-- Needed so the Terminal.ReworkedTerminalContextMenu group exists when our action registers. -->
