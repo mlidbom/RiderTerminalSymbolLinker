@@ -4,7 +4,7 @@ plugins {
 }
 
 group = "dev.magnus"
-version = "0.5.8-spike"
+version = "0.5.9-spike"
 
 repositories {
     mavenCentral()
@@ -17,6 +17,8 @@ dependencies {
     intellijPlatform {
         // Build against the locally installed Rider (no multi-GB platform download).
         local("C:/Users/magnu/AppData/Local/Programs/Rider")
+        // Provides the Terminal.ReworkedTerminalContextMenu group our refresh action attaches to.
+        bundledPlugin("org.jetbrains.plugins.terminal")
     }
 }
 

@@ -10,10 +10,21 @@
 
     <depends>com.intellij.modules.platform</depends>
     <depends>com.intellij.modules.lang</depends>
+    <!-- Needed so the Terminal.ReworkedTerminalContextMenu group exists when our action registers. -->
+    <depends>org.jetbrains.plugins.terminal</depends>
 
     <extensions defaultExtensionNs="com.intellij">
         <consoleFilterProvider implementation="dev.magnus.csl.SymbolLinkFilterProvider"/>
         <notificationGroup id="ClaudeSymbolLinker" displayType="BALLOON"/>
         <postStartupActivity implementation="dev.magnus.csl.SymbolIndexStartup"/>
     </extensions>
+
+    <actions>
+        <action id="ClaudeSymbolLinker.RefreshSymbols"
+                class="dev.magnus.csl.RefreshSymbolsAction"
+                text="Refresh C# Symbols for Claude Links"
+                description="Reload the C# symbol index so newly added or renamed symbols become clickable in later terminal output.">
+            <add-to-group group-id="Terminal.ReworkedTerminalContextMenu" anchor="last"/>
+        </action>
+    </actions>
 </idea-plugin>
