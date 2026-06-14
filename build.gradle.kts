@@ -1,6 +1,9 @@
+import org.jetbrains.changelog.Changelog
+
 plugins {
     kotlin("jvm") version "2.4.0"
     id("org.jetbrains.intellij.platform") version "2.16.0"
+    id("org.jetbrains.changelog") version "2.5.0"
 }
 
 group = "dev.magnus"
@@ -37,6 +40,18 @@ intellijPlatform {
             sinceBuild = "261"
             untilBuild = "262.*"
         }
+        // Per-version "What's new" on the Marketplace listing, rendered from this version's CHANGELOG.md
+        // section (falls back to Unreleased if the version has no section yet).
+        changeNotes = provider {
+            with(changelog) {
+                renderItem(
+                    (getOrNull(project.version.toString()) ?: getUnreleased())
+                        .withHeader(false)
+                        .withEmptySections(false),
+                    Changelog.OutputType.HTML,
+                )
+            }
+        }
     }
 
     // signPlugin/publishPlugin read these from the environment; buildPlugin alone needs none. CI
@@ -49,6 +64,12 @@ intellijPlatform {
     publishing {
         token = providers.environmentVariable("PUBLISH_TOKEN")
     }
+}
+
+// Single source of truth for change notes (Keep a Changelog format): feeds both the Marketplace
+// changeNotes above and the GitHub release body (CI runs `getChangelog` — see release.yml).
+changelog {
+    repositoryUrl = "https://github.com/mlidbom/RiderTerminalSymbolLinker"
 }
 
 kotlin {

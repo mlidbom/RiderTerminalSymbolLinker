@@ -35,9 +35,13 @@ jobs:
           PRIVATE_KEY_PASSWORD: ${{ secrets.PRIVATE_KEY_PASSWORD }}
         run: ./gradlew signPlugin -PpluginVersion=${{ steps.ver.outputs.version }} --console=plain --stacktrace
 
+      - name: Extract release notes from CHANGELOG
+        run: ./gradlew getChangelog --no-header --no-summary -q --console=plain -PpluginVersion=${{ steps.ver.outputs.version }} > RELEASE_NOTES.md
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
+          body_path: RELEASE_NOTES.md
           files: build/distributions/*-signed.zip
           generate_release_notes: true
           fail_on_unmatched_files: true
