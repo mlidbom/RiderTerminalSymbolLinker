@@ -39,8 +39,8 @@ intellijPlatform {
         }
     }
 
-    // Inert unless the corresponding env vars are set — only signPlugin/publishPlugin read them, so
-    // buildPlugin and the GitHub-release flow work without any secrets. See README to enable Marketplace.
+    // signPlugin/publishPlugin read these from the environment; buildPlugin alone needs none. CI
+    // supplies the signing vars on release; publishPlugin additionally needs PUBLISH_TOKEN. See README.
     signing {
         certificateChain = providers.environmentVariable("CERTIFICATE_CHAIN")
         privateKey = providers.environmentVariable("PRIVATE_KEY")

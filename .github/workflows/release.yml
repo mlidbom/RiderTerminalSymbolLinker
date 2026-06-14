@@ -28,13 +28,17 @@ jobs:
         id: ver
         run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
 
-      - name: Build plugin
-        run: ./gradlew buildPlugin -PpluginVersion=${{ steps.ver.outputs.version }} --console=plain --stacktrace
+      - name: Build & sign plugin
+        env:
+          CERTIFICATE_CHAIN: ${{ secrets.CERTIFICATE_CHAIN }}
+          PRIVATE_KEY: ${{ secrets.PRIVATE_KEY }}
+          PRIVATE_KEY_PASSWORD: ${{ secrets.PRIVATE_KEY_PASSWORD }}
+        run: ./gradlew signPlugin -PpluginVersion=${{ steps.ver.outputs.version }} --console=plain --stacktrace
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          files: build/distributions/*.zip
+          files: build/distributions/*-signed.zip
           generate_release_notes: true
           fail_on_unmatched_files: true
 

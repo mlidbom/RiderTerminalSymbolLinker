@@ -6,6 +6,11 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.1.2]
+
+### Added
+- Plugin icon, shown in the IDE plugin list and on the JetBrains Marketplace.
+
 ## [0.1.1]
 
 ### Fixed
@@ -31,6 +36,7 @@ First public release.
   in the background.
 - Multi-solution support: each call targets the correct open solution.
 
-[Unreleased]: https://github.com/mlidbom/RiderTerminalSymbolLinker/compare/v0.1.1...HEAD
+[Unreleased]: https://github.com/mlidbom/RiderTerminalSymbolLinker/compare/v0.1.2...HEAD
+[0.1.2]: https://github.com/mlidbom/RiderTerminalSymbolLinker/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/mlidbom/RiderTerminalSymbolLinker/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/mlidbom/RiderTerminalSymbolLinker/releases/tag/v0.1.0
