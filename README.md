@@ -40,8 +40,8 @@ false links.
 
 ## How it works
 
-- A `consoleFilterProvider` underlines PascalCase identifiers in terminal output, but only those a
-  `SymbolIndex` knows are real symbols.
+- A `consoleFilterProvider` underlines identifier tokens in terminal output, but only those a
+  `SymbolIndex` knows are real symbols — the index is the sole gate; nothing is linked by shape.
 - The index is enumerated once from the ReSharper MCP (namespaces → types → members), cached to disk
   per solution, and rebuilt in the background on open or on demand.
 - On click, the symbol is resolved live via the MCP's `go_to_definition`, so navigation is always

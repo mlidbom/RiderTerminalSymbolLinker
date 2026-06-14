@@ -6,6 +6,14 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.1.3]
+
+### Changed
+- Dropped the PascalCase-only restriction on linkification. Any identifier that names a real solution
+  symbol is now clickable — including underscore-prefixed fields (`_cache`), `ALL_CAPS` constants and
+  camelCase members. The symbol index is the sole authority on what links; nothing is underlined by
+  identifier shape. (A 3-character minimum still applies as a noise guard.)
+
 ## [0.1.2]
 
 ### Added
@@ -36,7 +44,8 @@ First public release.
   in the background.
 - Multi-solution support: each call targets the correct open solution.
 
-[Unreleased]: https://github.com/mlidbom/RiderTerminalSymbolLinker/compare/v0.1.2...HEAD
+[Unreleased]: https://github.com/mlidbom/RiderTerminalSymbolLinker/compare/v0.1.3...HEAD
+[0.1.3]: https://github.com/mlidbom/RiderTerminalSymbolLinker/compare/v0.1.2...v0.1.3
 [0.1.2]: https://github.com/mlidbom/RiderTerminalSymbolLinker/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/mlidbom/RiderTerminalSymbolLinker/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/mlidbom/RiderTerminalSymbolLinker/releases/tag/v0.1.0
