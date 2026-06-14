@@ -3,11 +3,10 @@
     <name>Terminal Symbol Linker</name>
     <vendor email="magnus.lidbom@gmail.com" url="https://github.com/mlidbom/RiderTerminalSymbolLinker">Magnus Lidbom</vendor>
     <description><![CDATA[
-        Makes C# symbol names and file references in Rider's terminal output clickable — a click jumps
-        to the symbol's declaration, or opens the file (a <code>:line</code> or <code>:start-end</code>
-        suffix navigates to that line or selects that range). Unlike Rider's built-in path detection, the
-        links are underlined and visible from the start, and file references resolve even as bare names
-        or partial paths. Helpful for working with Claude Code and other agents that run in the terminal.
+        Makes .NET symbol names and full or partial file paths in Rider's terminal output clickable — a
+        click jumps to the symbol's declaration, or opens the file. Helpful for working with
+        <a href="https://www.anthropic.com/claude-code">Claude Code</a> and other agents that run in
+        the terminal.
         <br/><br/>
         <b>Requires</b> the ReSharper MCP plugin (<code>com.j-light.resharper-mcp</code>) running in
         Rider.

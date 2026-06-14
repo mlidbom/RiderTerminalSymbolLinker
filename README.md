@@ -1,13 +1,8 @@
 # Rider Terminal Symbol Linker
 
-A JetBrains **Rider** plugin that makes C# **symbol** names in the terminal clickable — click a type
-or member name in CLI output and Rider jumps to its declaration. Built for following along with
-[Claude Code](https://www.anthropic.com/claude-code) and other CLI tools without keeping a second
-editor open just to read their output.
-
-Plain `file:line` links already work in Rider's terminal; bare *symbol names* were the gap. This
-fills it, and only linkifies names that are **real solution symbols**, so prose isn't littered with
-false links.
+Makes .NET symbol names and full or partial file paths in Rider's terminal output clickable — a
+click jumps to the symbol's declaration, or opens the file. Helpful for working with
+[Claude Code](https://www.anthropic.com/claude-code) and other agents that run in the terminal.
 
 [![Build](https://github.com/mlidbom/RiderTerminalSymbolLinker/actions/workflows/build.yml/badge.svg)](https://github.com/mlidbom/RiderTerminalSymbolLinker/actions/workflows/build.yml)
 
@@ -22,13 +17,20 @@ false links.
 
 ## Features
 
-- **Click to navigate.** One declaration → jump straight there. Several → a searchable picker
-  (type to filter, like *Go to Symbol*). None → a brief notice. MCP unreachable → falls back to
-  Search Everywhere, so a click is never a dead end.
-- **Refresh C# Symbol Links** in the terminal's right-click menu — rebuilds the symbol index *and*
-  re-highlights output already on screen, so a class you just created lights up retroactively.
-- **Instant on open.** A per-solution disk cache makes links work immediately on solution open; a
-  fresh index is rebuilt in the background.
+- **Click a symbol to navigate.** One declaration → jump straight there. Several → a searchable
+  picker (type to filter, like *Go to Symbol*). None → a brief notice. MCP unreachable → falls back
+  to Search Everywhere, so a click is never a dead end.
+- **Click a file reference to open it.** Bare names (`App.axaml.cs`), partial paths
+  (`Shell/AppShell.cs`), absolute paths, either slash direction, even references touching punctuation
+  (`Update(C:\…\AppShell.cs)`) — anything whose whole path resolves to a real solution file. A `:line`
+  or `:start-end` suffix navigates to that line or **selects** that range; several files of one name
+  open the same searchable picker. These show as links from the start, where Rider's own path
+  detection reveals them only on Ctrl-hover and misses most of the above.
+- **Refresh Terminal Links** in the terminal's right-click menu — rebuilds the symbol *and* file
+  indexes *and* re-highlights output already on screen, so a symbol or file you just created lights
+  up retroactively.
+- **Instant symbols on open.** A per-solution disk cache makes symbol links work immediately on
+  solution open; a fresh index is rebuilt in the background.
 
 ## Requirements
 
@@ -36,8 +38,9 @@ false links.
   terminal engine).
 - The **ReSharper MCP** plugin — [`joshua-light/resharper-mcp`](https://github.com/joshua-light/resharper-mcp),
   listed in Rider as `com.j-light.resharper-mcp` — installed and running. This is what resolves and
-  enumerates C# symbols (Rider's own `GotoSymbolModel` does not see them reliably). Without it the
-  plugin loads but does nothing.
+  enumerates C# **symbols** (Rider's own `GotoSymbolModel` does not see them reliably), and the plugin
+  declares a hard dependency on it. **File** links don't use the MCP, so they keep working even when
+  the MCP server isn't running — only symbol links go quiet.
 
 ## Install
 
