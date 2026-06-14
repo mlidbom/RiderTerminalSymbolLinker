@@ -14,5 +14,6 @@
     <extensions defaultExtensionNs="com.intellij">
         <consoleFilterProvider implementation="dev.magnus.csl.SymbolLinkFilterProvider"/>
         <notificationGroup id="ClaudeSymbolLinker" displayType="BALLOON"/>
+        <postStartupActivity implementation="dev.magnus.csl.SymbolIndexStartup"/>
     </extensions>
 </idea-plugin>
