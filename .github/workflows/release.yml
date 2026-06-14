@@ -36,7 +36,7 @@ jobs:
         run: ./gradlew signPlugin -PpluginVersion=${{ steps.ver.outputs.version }} --console=plain --stacktrace
 
       - name: Extract release notes from CHANGELOG
-        run: ./gradlew getChangelog --no-header --no-summary -q --console=plain -PpluginVersion=${{ steps.ver.outputs.version }} > RELEASE_NOTES.md
+        run: ./gradlew getChangelog --no-header --no-summary -q --console=plain --project-version=${{ steps.ver.outputs.version }} > RELEASE_NOTES.md
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
