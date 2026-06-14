@@ -1,11 +1,20 @@
 <idea-plugin>
-    <id>dev.magnus.claudesymbollinker</id>
-    <name>Claude Symbol Linker (spike)</name>
-    <vendor email="magnus.lidbom@gmail.com">Magnus Lidbom</vendor>
+    <id>dev.magnus.riderterminalsymbollinker</id>
+    <name>Rider Terminal Symbol Linker</name>
+    <vendor email="magnus.lidbom@gmail.com" url="https://github.com/mlidbom/RiderTerminalSymbolLinker">Magnus Lidbom</vendor>
     <description><![CDATA[
-        Spike build: registers a consoleFilterProvider that linkifies identifier-shaped
-        tokens in terminal/console output, to test whether a third-party filter fires
-        in Rider's reworked terminal and whether clicking can drive navigation.
+        Makes C# symbol names in Rider's terminal output clickable — a click jumps to the symbol's
+        declaration. Built for following along with Claude Code (and other CLI) output without keeping
+        a second editor open just to read it: plain <code>file:line</code> links already work in
+        Rider's terminal; bare symbol names were the gap.
+        <br/><br/>
+        Only real solution symbols are linkified (resolved via the ReSharper MCP), so prose isn't
+        littered with false links. One match jumps straight there; several show a searchable picker.
+        A <b>Refresh C# Symbols</b> item in the terminal's right-click menu rebuilds the index and
+        re-highlights output already on screen.
+        <br/><br/>
+        <b>Requires</b> the ReSharper MCP plugin (<code>com.j-light.resharper-mcp</code>) running in
+        Rider — that's what resolves and enumerates C# symbols.
     ]]></description>
 
     <depends>com.intellij.modules.platform</depends>
@@ -15,14 +24,14 @@
 
     <extensions defaultExtensionNs="com.intellij">
         <consoleFilterProvider implementation="dev.magnus.csl.SymbolLinkFilterProvider"/>
-        <notificationGroup id="ClaudeSymbolLinker" displayType="BALLOON"/>
+        <notificationGroup id="RiderTerminalSymbolLinker" displayType="BALLOON"/>
         <postStartupActivity implementation="dev.magnus.csl.SymbolIndexStartup"/>
     </extensions>
 
     <actions>
-        <action id="ClaudeSymbolLinker.RefreshSymbols"
+        <action id="RiderTerminalSymbolLinker.RefreshSymbols"
                 class="dev.magnus.csl.RefreshSymbolsAction"
-                text="Refresh C# Symbols for Claude Links"
+                text="Refresh C# Symbol Links"
                 description="Reload the C# symbol index so newly added or renamed symbols become clickable in later terminal output.">
             <add-to-group group-id="Terminal.ReworkedTerminalContextMenu" anchor="last"/>
         </action>

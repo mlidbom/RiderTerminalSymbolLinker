@@ -32,7 +32,7 @@ object SymbolIndexLoader {
 
     fun refresh(project: Project, notifyWhenDone: Boolean) {
         ProgressManager.getInstance().run(
-            object : Task.Backgroundable(project, "Loading C# symbols for Claude links", true) {
+            object : Task.Backgroundable(project, "Loading C# symbols for terminal links", true) {
                 override fun run(indicator: ProgressIndicator) {
                     val solutionName = McpSolution.getInstance(project).name()
                     val names = ReSharperMcp.enumerateSymbolNames(indicator, solutionName)
@@ -46,7 +46,7 @@ object SymbolIndexLoader {
                     SymbolIndexCache.save(project, names)
                     TerminalLinks.rehighlightExistingOutput()
                     if (notifyWhenDone) {
-                        notify(project, "Claude symbol links refreshed: ${names.size} symbols.", NotificationType.INFORMATION)
+                        notify(project, "Symbol links refreshed: ${names.size} symbols.", NotificationType.INFORMATION)
                     }
                 }
             },
@@ -55,7 +55,7 @@ object SymbolIndexLoader {
 
     private fun notify(project: Project, message: String, type: NotificationType) {
         NotificationGroupManager.getInstance()
-            .getNotificationGroup("ClaudeSymbolLinker")
+            .getNotificationGroup("RiderTerminalSymbolLinker")
             .createNotification(message, type)
             .notify(project)
     }

@@ -1,1 +1,1 @@
-rootProject.name = "ClaudeSymbolLinker"
+rootProject.name = "RiderTerminalSymbolLinker"

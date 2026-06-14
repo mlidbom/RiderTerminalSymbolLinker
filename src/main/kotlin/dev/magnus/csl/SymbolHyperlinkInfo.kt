@@ -64,7 +64,7 @@ class SymbolHyperlinkInfo(private val token: String) : HyperlinkInfo {
 
     private fun fallbackToSearchEverywhere(project: Project) {
         val dataContext = SimpleDataContext.getProjectContext(project)
-        val event = AnActionEvent.createFromDataContext("ClaudeSymbolLinker", null, dataContext)
+        val event = AnActionEvent.createFromDataContext("RiderTerminalSymbolLinker", null, dataContext)
         val searchEverywhere = SearchEverywhereManager.getInstance(project)
         try {
             searchEverywhere.show("SymbolSearchEverywhereContributor", token, event)
@@ -75,7 +75,7 @@ class SymbolHyperlinkInfo(private val token: String) : HyperlinkInfo {
 
     private fun notifyNoSymbol(project: Project) {
         NotificationGroupManager.getInstance()
-            .getNotificationGroup("ClaudeSymbolLinker")
+            .getNotificationGroup("RiderTerminalSymbolLinker")
             .createNotification("No symbol \"$token\" found", NotificationType.INFORMATION)
             .notify(project)
     }
