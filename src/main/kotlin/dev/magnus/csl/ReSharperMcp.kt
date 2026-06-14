@@ -7,8 +7,14 @@ import java.util.Collections
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicInteger
 
+/** ReSharper reports compiler-synthesized members (e.g. positional-record properties) with this file. */
+private const val NO_SOURCE = "[no source]"
+
 /** One symbol location from the ReSharper MCP. [name] is a short or qualified name for display. */
-data class SymbolHit(val kind: String, val name: String, val file: String, val line: Int)
+data class SymbolHit(val kind: String, val name: String, val file: String, val line: Int) {
+    /** Whether this hit points at a navigable source line. Synthesized members report [NO_SOURCE]:0. */
+    val hasSource: Boolean get() = file != NO_SOURCE && line >= 1
+}
 
 /**
  * Thin client for the ReSharper MCP server (joshua-light/resharper-mcp) which runs in-process in
@@ -34,9 +40,16 @@ object ReSharperMcp {
 
     /**
      * Declarations of the symbol exactly named [name]. One hit -> jump; several -> picker.
-     * `null` = MCP unreachable; empty = no such symbol.
+     * A compiler-synthesized member (e.g. a positional-record property) has no source of its own, so
+     * we navigate to its declaring type instead — that source line is where the member is written
+     * (the record's primary-constructor parameter). `null` = MCP unreachable; empty = no such symbol.
      */
     fun goToDefinition(name: String): List<SymbolHit>? {
+        val hits = resolveByName(name) ?: return null
+        return hits.mapNotNull { if (it.hasSource) it else resolveViaContainingType(it) }
+    }
+
+    private fun resolveByName(name: String): List<SymbolHit>? {
         val text = callTool("go_to_definition", "{\"symbolName\":${jsonString(name)}}") ?: return null
         if (text.contains("\"candidates\"")) {
             return CANDIDATE.findAll(text).map { m ->
@@ -60,6 +73,18 @@ object ReSharperMcp {
             )
         }
         return hits
+    }
+
+    /**
+     * A synthesized [member] (no source of its own) resolves to its declaring type's source line.
+     * The containing type comes from the member's qualified name (`Ns.Type.Member` -> `Ns.Type`);
+     * `null` if we only have a short name or the type itself has no navigable source.
+     */
+    private fun resolveViaContainingType(member: SymbolHit): SymbolHit? {
+        val containingType = member.name.substringBeforeLast('.', "")
+        if (containingType.isEmpty()) return null
+        val typeHit = resolveByName(containingType)?.firstOrNull { it.hasSource } ?: return null
+        return member.copy(file = typeHit.file, line = typeHit.line)
     }
 
     // ---- Startup enumeration ---------------------------------------------------------------
