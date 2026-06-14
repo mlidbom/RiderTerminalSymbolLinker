@@ -48,7 +48,21 @@ false links.
 
 ## Build from source
 
-The build needs a **JDK 21** (point `JAVA_HOME` at one, or use the Gradle launcher's JDK).
+The build needs a **JDK 21** for its Gradle toolchain. If your machine only has a newer JDK/JBR (a
+Rider install ships JBR 25, which the toolchain won't use), keep a JDK 21 under `.tooling\jdk` (a
+gitignored, machine-local folder) and build through the wrapper, which points `JAVA_HOME` at it **for
+that one process only** — nothing global is changed:
+
+```powershell
+# Builds the plugin (buildPlugin); zip lands in build\distributions\:
+.\build.ps1
+
+# Any arguments forward straight to Gradle:
+.\build.ps1 clean buildPlugin --console=plain
+```
+
+If you already have a JDK 21 on `JAVA_HOME` (or on the Gradle launcher), you can skip the wrapper and
+call Gradle directly:
 
 ```bash
 # Build against an installed Rider (fast — no platform download):

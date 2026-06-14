@@ -6,5 +6,5 @@ import com.intellij.openapi.project.Project
 
 class SymbolLinkFilterProvider : ConsoleFilterProvider {
     override fun getDefaultFilters(project: Project): Array<Filter> =
-        arrayOf(SymbolLinkFilter(project))
+        arrayOf(SymbolLinkFilter(project), FileLinkFilter(project))
 }

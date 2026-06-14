@@ -6,6 +6,25 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.2.0]
+
+### Added
+- **Clickable file references** in terminal output, alongside the existing symbol links. A path links when
+  its whole path-shaped portion is a real file in the open solution — including bare names (`App.axaml.cs`),
+  partial paths (`Shell\AppShell.cs`), absolute paths, either slash direction, and references touching
+  surrounding punctuation (`Update(C:\…\AppShell.cs)`) that Rider's native path detection misses. A path
+  with a segment that doesn't exist (`nonexisting/Vantage/Shell/AppShell.cs`) does **not** link, even when
+  a file of that name exists elsewhere. Unlike Rider's native links, these are visible from the start, not
+  only on Ctrl-hover.
+- A `:line`, `:start-end` or `:line:col` suffix navigates to that line; a `:start-end` range **selects**
+  those lines in the opened editor.
+- File disambiguation matches symbols: a partial or absolute path that pins one file opens directly; a
+  bare name shared by several files shows a searchable picker (Ctrl-click opens in the background and
+  keeps it open).
+
+### Changed
+- The terminal menu action is now **Refresh Terminal Links** and rebuilds both the symbol and file indexes.
+
 ## [0.1.7]
 
 ### Changed
@@ -70,7 +89,8 @@ First public release.
   in the background.
 - Multi-solution support: each call targets the correct open solution.
 
-[Unreleased]: https://github.com/mlidbom/RiderTerminalSymbolLinker/compare/v0.1.5...HEAD
+[Unreleased]: https://github.com/mlidbom/RiderTerminalSymbolLinker/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/mlidbom/RiderTerminalSymbolLinker/compare/v0.1.7...v0.2.0
 [0.1.5]: https://github.com/mlidbom/RiderTerminalSymbolLinker/compare/v0.1.4...v0.1.5
 [0.1.4]: https://github.com/mlidbom/RiderTerminalSymbolLinker/compare/v0.1.3...v0.1.4
 [0.1.3]: https://github.com/mlidbom/RiderTerminalSymbolLinker/compare/v0.1.2...v0.1.3

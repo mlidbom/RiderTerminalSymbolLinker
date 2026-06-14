@@ -3,8 +3,11 @@
     <name>Terminal Symbol Linker</name>
     <vendor email="magnus.lidbom@gmail.com" url="https://github.com/mlidbom/RiderTerminalSymbolLinker">Magnus Lidbom</vendor>
     <description><![CDATA[
-        Makes C# symbol names in Rider's terminal output clickable — a click jumps to the symbol's
-        declaration. Helpful for working with Claude Code and other agents that run in the terminal.
+        Makes C# symbol names and file references in Rider's terminal output clickable — a click jumps
+        to the symbol's declaration, or opens the file (a <code>:line</code> or <code>:start-end</code>
+        suffix navigates to that line or selects that range). Unlike Rider's built-in path detection, the
+        links are underlined and visible from the start, and file references resolve even as bare names
+        or partial paths. Helpful for working with Claude Code and other agents that run in the terminal.
         <br/><br/>
         <b>Requires</b> the ReSharper MCP plugin (<code>com.j-light.resharper-mcp</code>) running in
         Rider.
@@ -25,13 +28,14 @@
         <consoleFilterProvider implementation="dev.magnus.csl.SymbolLinkFilterProvider"/>
         <notificationGroup id="RiderTerminalSymbolLinker" displayType="BALLOON"/>
         <postStartupActivity implementation="dev.magnus.csl.SymbolIndexStartup"/>
+        <postStartupActivity implementation="dev.magnus.csl.SolutionFileIndexStartup"/>
     </extensions>
 
     <actions>
         <action id="RiderTerminalSymbolLinker.RefreshSymbols"
                 class="dev.magnus.csl.RefreshSymbolsAction"
-                text="Refresh C# Symbol Links"
-                description="Reload the C# symbol index so newly added or renamed symbols become clickable in later terminal output.">
+                text="Refresh Terminal Links"
+                description="Reload the C# symbol and solution-file indexes so newly added or renamed symbols and files become clickable in later terminal output.">
             <add-to-group group-id="Terminal.ReworkedTerminalContextMenu" anchor="last"/>
         </action>
     </actions>
