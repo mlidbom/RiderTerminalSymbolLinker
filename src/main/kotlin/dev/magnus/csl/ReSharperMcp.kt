@@ -3,9 +3,6 @@ package dev.magnus.csl
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.progress.ProgressIndicator
 import com.intellij.util.io.HttpRequests
-import java.util.Collections
-import java.util.concurrent.Executors
-import java.util.concurrent.atomic.AtomicInteger
 
 /** ReSharper reports compiler-synthesized members (e.g. positional-record properties) with this file. */
 private const val NO_SOURCE = "[no source]"
@@ -28,7 +25,6 @@ data class SolutionInfo(val name: String, val path: String)
 object ReSharperMcp {
     private const val URL = "http://127.0.0.1:23741/"
     private const val SEP = " — " // separates "<kind> <name> : <type>" from "<file>:<line>:<col>"
-    private const val MEMBER_FETCH_THREADS = 6
     private val LOG = Logger.getInstance("CSL")
 
     // "<file>:<line>:<col>" (drive colon stays inside the greedy file group)
@@ -113,11 +109,15 @@ object ReSharperMcp {
      * members from one `get_symbol_info` per type, keyed by the namespace-qualified name so the
      * result is unambiguous. (The batch form of `get_symbol_info` errors with "Universal", and
      * `list_symbols_in_file` returns nothing — single qualified calls are the reliable path.)
-     * `null` if the MCP is unreachable at the first call.
+     *
+     * Sequential by design: the ReSharper backend serializes analysis, so fanning these calls out
+     * across threads measured ~1.2x at best — not worth the nondeterminism. Its duration is hidden
+     * from the user by the disk cache (see [SymbolIndexCache]), which serves the index while this
+     * runs in the background. `null` if the MCP is unreachable at the first call.
      */
     fun enumerateSymbolNames(indicator: ProgressIndicator, solutionName: String?): Set<String>? {
         indicator.text = "Loading C# symbols…"
-        val names = Collections.synchronizedSet(HashSet<String>())
+        val names = HashSet<String>()
         val qualifiedTypes = LinkedHashSet<String>()
         val visitedNs = HashSet<String>()
 
@@ -133,30 +133,13 @@ object ReSharperMcp {
 
         val types = qualifiedTypes.toList()
         indicator.text = "Loading members of ${types.size} types…"
-        val done = AtomicInteger(0)
-        val pool = Executors.newFixedThreadPool(MEMBER_FETCH_THREADS)
-        try {
-            val futures = types.map { qualifiedName ->
-                pool.submit {
-                    if (!indicator.isCanceled) {
-                        getMembersOf(qualifiedName, solutionName)?.let { parseMembers(it, names) }
-                        indicator.fraction = done.incrementAndGet().toDouble() / types.size
-                    }
-                }
-            }
-            for (future in futures) {
-                indicator.checkCanceled()
-                try {
-                    future.get()
-                } catch (e: Exception) {
-                    // tolerate a single type's failure; keep the rest
-                }
-            }
-        } finally {
-            pool.shutdownNow()
+        for ((i, qualifiedName) in types.withIndex()) {
+            indicator.checkCanceled()
+            getMembersOf(qualifiedName, solutionName)?.let { parseMembers(it, names) }
+            indicator.fraction = (i + 1).toDouble() / types.size
         }
         LOG.info("CSL symbol index: ${names.size} names (${types.size} types)")
-        return HashSet(names)
+        return names
     }
 
     private fun collectBrowse(

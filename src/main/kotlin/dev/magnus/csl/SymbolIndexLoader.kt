@@ -9,14 +9,27 @@ import com.intellij.openapi.project.Project
 
 /**
  * Builds (or rebuilds) a project's [SymbolIndex] by enumerating solution symbols from the ReSharper
- * MCP on a background thread with a progress bar. Shared by [SymbolIndexStartup] (silent, on solution
- * open) and [RefreshSymbolsAction] (user-triggered, with a completion balloon).
+ * MCP on a background thread with a progress bar. Shared by [SymbolIndexStartup] (via [loadAndRefresh],
+ * on solution open) and [RefreshSymbolsAction] (user-triggered, with a completion balloon).
  *
- * After the index updates we ask [TerminalLinks] to re-highlight existing terminal output, so symbols
- * printed before they were known (e.g. a class Claude just created and then described) light up too —
- * not just future output. Clicks resolve live regardless, so navigation is never stale.
+ * Each fresh build is written to the [SymbolIndexCache] and replaces the in-memory index. After the
+ * index updates we ask [TerminalLinks] to re-highlight existing terminal output, so symbols printed
+ * before they were known (e.g. a class Claude just created and then described) light up too — not just
+ * future output. Clicks resolve live regardless, so navigation is never stale.
  */
 object SymbolIndexLoader {
+    /**
+     * Startup path: serve the cached index immediately (so links work without waiting on the ~15s
+     * enumeration), then rebuild fresh in the background to pick up any changes since it was written.
+     */
+    fun loadAndRefresh(project: Project) {
+        SymbolIndexCache.load(project)?.let { cached ->
+            SymbolIndex.getInstance(project).set(cached)
+            TerminalLinks.rehighlightExistingOutput()
+        }
+        refresh(project, notifyWhenDone = false)
+    }
+
     fun refresh(project: Project, notifyWhenDone: Boolean) {
         ProgressManager.getInstance().run(
             object : Task.Backgroundable(project, "Loading C# symbols for Claude links", true) {
@@ -30,6 +43,7 @@ object SymbolIndexLoader {
                         return
                     }
                     SymbolIndex.getInstance(project).set(names)
+                    SymbolIndexCache.save(project, names)
                     TerminalLinks.rehighlightExistingOutput()
                     if (notifyWhenDone) {
                         notify(project, "Claude symbol links refreshed: ${names.size} symbols.", NotificationType.INFORMATION)
