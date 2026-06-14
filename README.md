@@ -11,6 +11,15 @@ false links.
 
 [![Build](https://github.com/mlidbom/RiderTerminalSymbolLinker/actions/workflows/build.yml/badge.svg)](https://github.com/mlidbom/RiderTerminalSymbolLinker/actions/workflows/build.yml)
 
+## Screenshots
+
+<p align="center">
+  <a href="screenshots/Click-link.png"><img src="screenshots/Click-link.png" width="48%" alt="Click a symbol name in terminal output to jump to its declaration"></a>
+  <a href="screenshots/Disambiguate-link.png"><img src="screenshots/Disambiguate-link.png" width="48%" alt="Several matches open a searchable picker to disambiguate"></a>
+</p>
+
+<p align="center"><em>Click a symbol to navigate (left); several declarations open a searchable picker (right). Click an image for full size.</em></p>
+
 ## Features
 
 - **Click to navigate.** One declaration → jump straight there. Several → a searchable picker
