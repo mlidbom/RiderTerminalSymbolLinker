@@ -7,8 +7,8 @@ import com.intellij.openapi.project.Project
 /**
  * Project-scoped set of all C# symbol short names in the solution, built once at startup from the
  * ReSharper MCP (see [SymbolIndexStartup]). Used as the underline gate: a token is only linkified
- * if it names a real symbol. Until [isReady] (still loading, or MCP down) the filter falls back to
- * shape-only underlining so links still work.
+ * if it names a real symbol. Until [isReady] (still loading, or MCP down) the filter underlines
+ * nothing — we don't touch the terminal before the index exists.
  */
 @Service(Service.Level.PROJECT)
 class SymbolIndex {
