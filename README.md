@@ -70,32 +70,4 @@ add this line to `~/.gradle/gradle.properties`:
 localIdePath=C:/Users/you/AppData/Local/Programs/Rider
 ```
 
-## Releases & CI
-
-- **`build.yml`** builds the plugin on every push and PR to `main` (downloading the pinned stable
-  Rider) and uploads the zip as a build artifact.
-- **`release.yml`** runs when you push a tag `v*`. It builds and **signs** with the version from the
-  tag and creates a GitHub Release with the signed zip attached:
-
-  ```bash
-  git tag v0.1.2 && git push origin v0.1.2
-  ```
-
-### Optional: JetBrains Marketplace
-
-Signing is already configured (repo secrets `CERTIFICATE_CHAIN`, `PRIVATE_KEY`, `PRIVATE_KEY_PASSWORD`;
-see the [signing guide](https://plugins.jetbrains.com/docs/intellij/plugin-signing.html)). The remaining
-step is automated Marketplace publishing, which is wired but disabled by default. To enable it:
-
-1. Add repo secret `PUBLISH_TOKEN` (a Marketplace permanent token, from your
-   [author tokens](https://plugins.jetbrains.com/author/me/tokens)).
-2. Uncomment the *Publish to JetBrains Marketplace* step in
-   [`.github/workflows/release.yml`](.github/workflows/release.yml).
-
-The Gradle config already reads `PUBLISH_TOKEN` from the environment. Note: the **first** version of a
-new plugin must be uploaded manually through the Marketplace UI — `publishPlugin` only updates an
-existing plugin.
-
-## License
-
 [MIT](LICENSE) © Magnus Lidbom
