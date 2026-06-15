@@ -5,9 +5,9 @@ import com.intellij.openapi.project.Project
 
 /**
  * Linkifies identifier-shaped tokens in console output, but only those that name a real C# symbol in
- * the [SymbolIndex]. The index is the sole authority on what links — we never gate by identifier shape
- * (no PascalCase rule), so underscore-prefixed fields, ALL_CAPS constants and camelCase members all
- * resolve too. Until the index is loaded the filter does nothing. Resolution on click is exact (see
+ * the [SymbolIndex] — the index, not the shape, is the authority (see [SymbolReferences]). A lone token
+ * links if it's a known short name; a dotted `Type.Member` access links as one combined symbol if that
+ * pair exists. Until the index is loaded the filter does nothing. Resolution on click is exact (see
  * [SymbolHyperlinkInfo]).
  *
  * Tokens that fall inside a file path or URL are skipped: Rider's terminal already turns those into
@@ -15,9 +15,6 @@ import com.intellij.openapi.project.Project
  * replace a working file link with a symbol link. See [filePathRanges].
  */
 class SymbolLinkFilter(private val project: Project) : Filter {
-
-    // Any C# identifier (3+ chars as a noise guard); the SymbolIndex, not the shape, decides what links.
-    private val identifierPattern = Regex("""[A-Za-z_][A-Za-z0-9_]{2,}""")
 
     // A non-whitespace run containing a directory separator — a relative/absolute path or a URL.
     private val pathWithSeparator = Regex("""[\w.:~\-]*[/\\][\w.:/\\~\-]*""")
@@ -35,17 +32,16 @@ class SymbolLinkFilter(private val project: Project) : Filter {
         if (!index.isReady) return null
         val lineStart = entireLength - line.length
         val pathRanges = filePathRanges(line)
-        val items = ArrayList<Filter.ResultItem>()
-        for (match in identifierPattern.findAll(line)) {
-            val name = match.value
-            if (!index.contains(name)) continue
-            if (pathRanges.any { match.range overlaps it }) continue
-            items.add(
-                Filter.ResultItem(
-                    lineStart + match.range.first,
-                    lineStart + match.range.last + 1,
-                    SymbolHyperlinkInfo(name),
-                ),
+        val items = SymbolReferences.find(
+            line,
+            isExcluded = { span -> pathRanges.any { span overlaps it } },
+            isKnown = { index.contains(it) },
+            isCombined = { index.containsCombined(it) },
+        ).map { ref ->
+            Filter.ResultItem(
+                lineStart + ref.range.first,
+                lineStart + ref.range.last + 1,
+                SymbolHyperlinkInfo(ref.name),
             )
         }
         return if (items.isEmpty()) null else Filter.Result(items)

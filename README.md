@@ -20,6 +20,10 @@ click jumps to the symbol's declaration, or opens the file. Helpful for working 
 - **Click a symbol to navigate.** One declaration → jump straight there. Several → a searchable
   picker (type to filter, like *Go to Symbol*). None → a brief notice. MCP unreachable → falls back
   to Search Everywhere, so a click is never a dead end.
+- **Qualified names link as one symbol.** A dotted `Type.Member` reference like
+  `ApplicationWindow.ForceToFront` links as a single span — not two adjacent tokens — when that
+  member-of-type pair actually exists, and the click resolves the exact member instead of every
+  method that shares the name.
 - **Click a file reference to open it.** Bare names (`App.axaml.cs`), partial paths
   (`Shell/AppShell.cs`), absolute paths, either slash direction, even references touching punctuation
   (`Update(C:\…\AppShell.cs)`) — anything whose whole path resolves to a real solution file. A `:line`

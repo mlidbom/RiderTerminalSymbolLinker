@@ -105,10 +105,13 @@ object ReSharperMcp {
     // ---- Startup enumeration ---------------------------------------------------------------
 
     /**
-     * Every solution symbol short name (types + members). Types come from walking namespaces;
-     * members from one `get_symbol_info` per type, keyed by the namespace-qualified name so the
-     * result is unambiguous. (The batch form of `get_symbol_info` errors with "Universal", and
-     * `list_symbols_in_file` returns nothing — single qualified calls are the reliable path.)
+     * Every solution symbol short name (types + members) plus every `SimpleType.Member` combined
+     * identifier (see [SymbolNames]). Types come from walking namespaces; members from one
+     * `get_symbol_info` per type, keyed by the namespace-qualified name so the result is unambiguous.
+     * (The batch form of `get_symbol_info` errors with "Universal", and `list_symbols_in_file` returns
+     * nothing — single qualified calls are the reliable path.) Each type's members are recorded both as
+     * short names and, paired with the type's simple name, as combined identifiers — so a dotted access
+     * printed in the terminal links as one symbol only when that member-of-type pair actually exists.
      *
      * Sequential by design: the ReSharper backend serializes analysis, so fanning these calls out
      * across threads measured ~1.2x at best — not worth the nondeterminism. Its duration is hidden
@@ -120,7 +123,7 @@ object ReSharperMcp {
      * solution). A real .NET solution always has types, so an empty result is treated as not-ready,
      * not as success — callers must not cache or display it (see [SymbolIndexLoader]'s retry).
      */
-    fun enumerateSymbolNames(indicator: ProgressIndicator, solutionName: String?): Set<String>? {
+    fun enumerateSymbolNames(indicator: ProgressIndicator, solutionName: String?): SymbolNames? {
         indicator.text = "Loading C# symbols…"
         val names = HashSet<String>()
         val qualifiedTypes = LinkedHashSet<String>()
@@ -137,14 +140,16 @@ object ReSharperMcp {
         }
 
         val types = qualifiedTypes.toList()
+        val combined = HashSet<String>()
         indicator.text = "Loading members of ${types.size} types…"
         for ((i, qualifiedName) in types.withIndex()) {
             indicator.checkCanceled()
-            getMembersOf(qualifiedName, solutionName)?.let { parseMembers(it, names) }
+            val simpleType = qualifiedName.substringAfterLast('.')
+            getMembersOf(qualifiedName, solutionName)?.let { parseMembers(it, simpleType, names, combined) }
             indicator.fraction = (i + 1).toDouble() / types.size
         }
-        LOG.info("CSL symbol index: ${names.size} names (${types.size} types)")
-        return if (names.isEmpty()) null else names
+        LOG.info("CSL symbol index: ${names.size} names, ${combined.size} combined (${types.size} types)")
+        return if (names.isEmpty()) null else SymbolNames(names, combined)
     }
 
     private fun collectBrowse(
@@ -181,7 +186,8 @@ object ReSharperMcp {
         }
     }
 
-    private fun parseMembers(text: String, out: MutableSet<String>) {
+    /** Each member is recorded as a short name in [names] and, paired with [simpleType], in [combined]. */
+    private fun parseMembers(text: String, simpleType: String, names: MutableSet<String>, combined: MutableSet<String>) {
         var inMembers = false
         for (raw in text.lineSequence()) {
             val t = raw.trim()
@@ -192,7 +198,10 @@ object ReSharperMcp {
                     val beforeParen = t.substringBefore("(")
                     val beforeColon = if (beforeParen.contains(" : ")) beforeParen.substringBefore(" : ") else beforeParen
                     val name = beforeColon.trim().substringAfterLast(' ')
-                    if (name.isNotEmpty()) out.add(name)
+                    if (name.isNotEmpty()) {
+                        names.add(name)
+                        combined.add("$simpleType.$name")
+                    }
                 }
             }
         }

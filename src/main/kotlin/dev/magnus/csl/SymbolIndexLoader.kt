@@ -43,18 +43,18 @@ object SymbolIndexLoader {
         ProgressManager.getInstance().run(
             object : Task.Backgroundable(project, "Loading C# symbols for terminal links", true) {
                 override fun run(indicator: ProgressIndicator) {
-                    val names = enumerate(project, indicator, waitForReady)
-                    if (names == null) {
+                    val symbols = enumerate(project, indicator, waitForReady)
+                    if (symbols == null) {
                         if (notifyWhenDone) {
                             notify(project, "Couldn't load C# symbols — the ReSharper MCP is unreachable or still loading the solution. Try again shortly.", NotificationType.WARNING)
                         }
                         return
                     }
-                    SymbolIndex.getInstance(project).set(names)
-                    SymbolIndexCache.save(project, names)
+                    SymbolIndex.getInstance(project).set(symbols)
+                    SymbolIndexCache.save(project, symbols)
                     TerminalLinks.rehighlightExistingOutput()
                     if (notifyWhenDone) {
-                        notify(project, "Symbol links refreshed: ${names.size} symbols.", NotificationType.INFORMATION)
+                        notify(project, "Symbol links refreshed: ${symbols.short.size} symbols.", NotificationType.INFORMATION)
                     }
                 }
             },
@@ -67,13 +67,13 @@ object SymbolIndexLoader {
      * is what we retry through; requiring a resolved `solutionName` first avoids enumerating the wrong
      * open solution while `list_solutions` is still warming up.
      */
-    private fun enumerate(project: Project, indicator: ProgressIndicator, waitForReady: Boolean): Set<String>? {
+    private fun enumerate(project: Project, indicator: ProgressIndicator, waitForReady: Boolean): SymbolNames? {
         var attempt = 0
         while (true) {
             indicator.checkCanceled()
             val solutionName = McpSolution.getInstance(project).name()
-            val names = solutionName?.let { ReSharperMcp.enumerateSymbolNames(indicator, it) }
-            if (names != null) return names
+            val symbols = solutionName?.let { ReSharperMcp.enumerateSymbolNames(indicator, it) }
+            if (symbols != null) return symbols
             if (!waitForReady || ++attempt >= MAX_STARTUP_ATTEMPTS) return null
             indicator.text = "Waiting for ReSharper to finish loading the solution…"
             repeat((RETRY_INTERVAL_MS / 250).toInt()) {

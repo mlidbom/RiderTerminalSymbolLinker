@@ -6,6 +6,18 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.2.1]
+
+### Added
+- **Qualified `Type.Member` references link as a single symbol.** A dotted access like
+  `ApplicationWindow.ForceToFront` now underlines as one link spanning the whole qualified name —
+  instead of two adjacent links — whenever that member-of-type pair actually exists in the solution.
+  The click resolves the exact member, so it lands precisely rather than offering every method that
+  shares the name. A fully-qualified `Foo.Bar.ApplicationWindow.ForceToFront` links its real
+  `ApplicationWindow.ForceToFront` tail; a dotted pair that isn't a real member of that type (e.g.
+  `Logger.Info` where `Info` belongs to some other type) still links each known segment on its own,
+  exactly as before.
+
 ## [0.2.0]
 
 ### Added
@@ -91,7 +103,8 @@ First public release.
   in the background.
 - Multi-solution support: each call targets the correct open solution.
 
-[Unreleased]: https://github.com/mlidbom/RiderTerminalSymbolLinker/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/mlidbom/RiderTerminalSymbolLinker/compare/v0.2.1...HEAD
+[0.2.1]: https://github.com/mlidbom/RiderTerminalSymbolLinker/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/mlidbom/RiderTerminalSymbolLinker/compare/v0.1.7...v0.2.0
 [0.1.5]: https://github.com/mlidbom/RiderTerminalSymbolLinker/compare/v0.1.4...v0.1.5
 [0.1.4]: https://github.com/mlidbom/RiderTerminalSymbolLinker/compare/v0.1.3...v0.1.4

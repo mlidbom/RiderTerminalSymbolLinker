@@ -27,7 +27,7 @@ class SymbolHyperlinkInfo(private val token: String) : HyperlinkInfo {
     override fun navigate(project: Project) {
         ApplicationManager.getApplication().executeOnPooledThread {
             val solutionName = McpSolution.getInstance(project).name()
-            val hits = ReSharperMcp.goToDefinition(token, solutionName)
+            val hits = resolve(solutionName)
             ApplicationManager.getApplication().invokeLater {
                 when {
                     hits == null -> fallbackToSearchEverywhere(project)
@@ -37,6 +37,20 @@ class SymbolHyperlinkInfo(private val token: String) : HyperlinkInfo {
                 }
             }
         }
+    }
+
+    /**
+     * Resolve [token] by name. For a combined `Type.Member` token, try the qualified name first; if the
+     * backend can't resolve that form (empty, not unreachable) fall back to the bare member name — the
+     * same hits a click on the member alone would have produced, just now under one combined link.
+     * `null` (MCP unreachable) is propagated unchanged so the caller can fall back to Search Everywhere.
+     */
+    private fun resolve(solutionName: String?): List<SymbolHit>? {
+        val hits = ReSharperMcp.goToDefinition(token, solutionName)
+        if (hits != null && hits.isEmpty() && '.' in token) {
+            return ReSharperMcp.goToDefinition(token.substringAfterLast('.'), solutionName)
+        }
+        return hits
     }
 
     /** [requestFocus] false opens the editor in the background, leaving focus where it is (the picker). */
