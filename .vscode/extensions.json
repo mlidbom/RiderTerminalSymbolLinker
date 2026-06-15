@@ -1,0 +1,7 @@
+{
+  // Kotlin syntax highlighting via a pure TextMate grammar — no JDK / language server needed,
+  // so .kt files get coloring regardless of the Java tooling state.
+  "recommendations": [
+    "mathiasfrohlich.kotlin"
+  ]
+}
