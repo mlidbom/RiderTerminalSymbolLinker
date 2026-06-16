@@ -7,10 +7,7 @@ All notable changes to this project are documented here. The format follows
 ## [0.2.3]
 
 ### Changed
-- **Renamed to ".NET Terminal Symbol Linker."** The plugin's Marketplace and in-IDE name now states its
-  .NET scope outright, so a future JVM-oriented variant can stand alongside it without the two being
-  confused. It's the same plugin with the same id — existing installs update in place and nothing about
-  its behavior changes.
+- **Renamed to ".NET Terminal Symbol Linker."** for clarity and to avoid confusion with potential future forks for JVM, python etc.
 
 ## [0.2.2]
 
