@@ -4,6 +4,7 @@ import com.intellij.execution.filters.HyperlinkInfo
 import com.intellij.ide.actions.searcheverywhere.SearchEverywhereManager
 import com.intellij.notification.NotificationGroupManager
 import com.intellij.notification.NotificationType
+import com.intellij.openapi.actionSystem.ActionUiKind
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.impl.SimpleDataContext
 import com.intellij.openapi.application.ApplicationManager
@@ -75,7 +76,7 @@ class SymbolHyperlinkInfo(private val token: String) : HyperlinkInfo {
 
     private fun fallbackToSearchEverywhere(project: Project) {
         val dataContext = SimpleDataContext.getProjectContext(project)
-        val event = AnActionEvent.createFromDataContext("RiderTerminalSymbolLinker", null, dataContext)
+        val event = AnActionEvent.createEvent(dataContext, null, "RiderTerminalSymbolLinker", ActionUiKind.NONE, null)
         val searchEverywhere = SearchEverywhereManager.getInstance(project)
         try {
             searchEverywhere.show("SymbolSearchEverywhereContributor", token, event)
