@@ -1,10 +1,21 @@
 name: Release
 
-# Push a tag like v0.1.0 to cut a release:
-#   git tag v0.1.0 && git push origin v0.1.0
+# Two ways in:
+#   * Push a tag like v0.1.0 -> full release: build, sign, GitHub Release, publish to the Marketplace.
+#       git tag v0.1.0 && git push origin v0.1.0
+#   * Run manually (Actions -> Release -> Run workflow) with a `tag` input -> publish-only: builds that
+#     tag and pushes it to the Marketplace, no GitHub Release. Used to backfill versions that were tagged
+#     before Marketplace auto-publish existed. Always runs THIS (main) workflow definition, checking out
+#     the tag's code — so old tags get the current, publish-enabled pipeline.
 on:
   push:
     tags: [ 'v*' ]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing tag to (re)publish to the Marketplace, e.g. v0.2.0"
+        required: true
+        type: string
 
 permissions:
   contents: write   # needed to create the GitHub Release
@@ -14,6 +25,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+        with:
+          # Tag push -> the pushed tag. Manual dispatch -> the tag from the input.
+          ref: ${{ inputs.tag || github.ref }}
 
       - name: Set up JDK 21
         uses: actions/setup-java@v5
@@ -24,9 +38,11 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v6
 
-      - name: Version from tag
+      - name: Resolve version
         id: ver
-        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+        run: |
+          REF="${{ inputs.tag || github.ref_name }}"
+          echo "version=${REF#v}" >> "$GITHUB_OUTPUT"
 
       - name: Build & sign plugin
         env:
@@ -35,10 +51,13 @@ jobs:
           PRIVATE_KEY_PASSWORD: ${{ secrets.PRIVATE_KEY_PASSWORD }}
         run: ./gradlew signPlugin -PpluginVersion=${{ steps.ver.outputs.version }} --console=plain --stacktrace
 
+      # GitHub Release only for real tag pushes. A manual backfill of an old tag already has its Release.
       - name: Extract release notes from CHANGELOG
+        if: github.event_name == 'push'
         run: ./gradlew getChangelog --no-header --no-summary -q --console=plain --project-version=${{ steps.ver.outputs.version }} > RELEASE_NOTES.md
 
       - name: Create GitHub Release
+        if: github.event_name == 'push'
         uses: softprops/action-gh-release@v2
         with:
           body_path: RELEASE_NOTES.md
@@ -46,14 +65,19 @@ jobs:
           generate_release_notes: true
           fail_on_unmatched_files: true
 
-      # --- Optional: publish to the JetBrains Marketplace ---------------------------------------
-      # Enable by adding repo secrets PUBLISH_TOKEN (Marketplace token) and, for signing,
-      # CERTIFICATE_CHAIN / PRIVATE_KEY / PRIVATE_KEY_PASSWORD. Then uncomment:
-      #
-      # - name: Publish to JetBrains Marketplace
-      #   env:
-      #     PUBLISH_TOKEN: ${{ secrets.PUBLISH_TOKEN }}
-      #     CERTIFICATE_CHAIN: ${{ secrets.CERTIFICATE_CHAIN }}
-      #     PRIVATE_KEY: ${{ secrets.PRIVATE_KEY }}
-      #     PRIVATE_KEY_PASSWORD: ${{ secrets.PRIVATE_KEY_PASSWORD }}
-      #   run: ./gradlew publishPlugin -PpluginVersion=${{ steps.ver.outputs.version }} --console=plain --stacktrace
+      # publishPlugin fails if the version already exists on the Marketplace, so skip it when it does —
+      # keeps re-runs and overlapping backfills idempotent. 32281 is this plugin's permanent Marketplace id.
+      - name: Publish to JetBrains Marketplace
+        env:
+          PUBLISH_TOKEN: ${{ secrets.PUBLISH_TOKEN }}
+          CERTIFICATE_CHAIN: ${{ secrets.CERTIFICATE_CHAIN }}
+          PRIVATE_KEY: ${{ secrets.PRIVATE_KEY }}
+          PRIVATE_KEY_PASSWORD: ${{ secrets.PRIVATE_KEY_PASSWORD }}
+        run: |
+          V="${{ steps.ver.outputs.version }}"
+          if curl -fsSL "https://plugins.jetbrains.com/api/plugins/32281/updates" \
+               | grep -Eq "\"version\"[[:space:]]*:[[:space:]]*\"$V\""; then
+            echo "Version $V is already on the Marketplace — skipping publish."
+            exit 0
+          fi
+          ./gradlew publishPlugin -PpluginVersion="$V" --console=plain --stacktrace
