@@ -51,6 +51,37 @@ class FileReferencesTest {
     }
 
     @Test
+    fun `GitHub line anchor as Rider's add-to-chat emits`() {
+        // The exact shape Rider injects into the chat prompt: a leading @ and a #L<start>-<end> anchor.
+        val ref = single("@Vantage\\Shell\\AppShell.cs#L136-138")
+        assertEquals("Vantage\\Shell\\AppShell.cs", ref.path)
+        assertEquals("AppShell.cs", ref.fileName)
+        assertEquals(136, ref.startLine)
+        assertEquals(138, ref.endLine)
+        assertNull(ref.column)
+        assertEquals(1, ref.range.first) // the leading @ is a boundary, excluded from the link
+        assertEquals("@Vantage\\Shell\\AppShell.cs#L136-138".length - 1, ref.range.last) // anchor included
+    }
+
+    @Test
+    fun `GitHub anchor single line and double-L range forms`() {
+        val singleLine = single("App.axaml.cs#L63")
+        assertEquals(63, singleLine.startLine)
+        assertNull(singleLine.endLine)
+        assertNull(singleLine.column)
+
+        val doubleL = single("App.axaml.cs#L63-L71")
+        assertEquals(63, doubleL.startLine)
+        assertEquals(71, doubleL.endLine)
+    }
+
+    @Test
+    fun `a bare # before a path is still a boundary, not a line anchor`() {
+        // Only a #L<digit> anchor directly after a path is absorbed; a leading # remains a boundary.
+        assertEquals("Vantage/Shell/AppShell.cs", single("#Vantage/Shell/AppShell.cs").path)
+    }
+
+    @Test
     fun `trailing sentence punctuation is not part of the link`() {
         val ref = single("see App.axaml.cs:63.")
         assertEquals("App.axaml.cs", ref.path)

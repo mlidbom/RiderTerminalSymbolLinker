@@ -6,6 +6,15 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+- **GitHub-style `#L` line anchors on file references now link.** A file reference written with a
+  `#L<line>` or `#L<start>-<end>` anchor — the form Rider's *add file to chat* injects, e.g.
+  `@Vantage\Domain\Desktops\Desktop.cs#L136-138` — now underlines across the whole path **and** anchor,
+  and the click navigates to that line (a `#L<start>-<end>` range **selects** those lines in the opened
+  editor), matching the existing `:line` / `:start-end` colon suffix. A leading `@` stays outside the
+  link, and a bare `#` not followed by `L<digit>` is still a span boundary, so `#Vantage/…` keeps linking
+  just its path portion as before.
+
 ## [0.2.1]
 
 ### Added
