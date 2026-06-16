@@ -51,7 +51,7 @@ click jumps to the symbol's declaration, or opens the file. Helpful for working 
 1. Download the latest `RiderTerminalSymbolLinker-<version>.zip` from
    [Releases](https://github.com/mlidbom/RiderTerminalSymbolLinker/releases).
 2. Rider → **Settings → Plugins → ⚙ → Install Plugin from Disk…** → pick the zip.
-3. **Restart** Rider (the `consoleFilterProvider` extension is non-dynamic).
+3. **Restart** Rider.
 
 ## Build from source
 
