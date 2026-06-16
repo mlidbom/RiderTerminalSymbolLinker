@@ -1,4 +1,4 @@
-# Rider Terminal Symbol Linker
+# .NET Terminal Symbol Linker
 
 Makes .NET symbol names and full or partial file paths in Rider's terminal output clickable — a
 click jumps to the symbol's declaration, or opens the file. Helpful for working with
@@ -17,9 +17,7 @@ click jumps to the symbol's declaration, or opens the file. Helpful for working 
 
 ## Features
 
-- **Click a symbol to navigate.** One declaration → jump straight there. Several → a searchable
-  picker (type to filter, like *Go to Symbol*). None → a brief notice. MCP unreachable → falls back
-  to Search Everywhere, so a click is never a dead end.
+- **Click a symbol to navigate to the correct file and line.** If there is more than one match, you get a list to chose from.
 - **Qualified names link as one symbol.** A dotted `Type.Member` reference like
   `ApplicationWindow.ForceToFront` links as a single span — not two adjacent tokens — when that
   member-of-type pair actually exists, and the click resolves the exact member instead of every
