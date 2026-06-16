@@ -4,6 +4,9 @@ Makes .NET symbol names and full or partial file paths in Rider's terminal outpu
 click jumps to the symbol's declaration, or opens the file. Helpful for working with
 [Claude Code](https://www.anthropic.com/claude-code) and other agents that run in the terminal.
 
+[![Install from JetBrains Marketplace](https://img.shields.io/badge/JetBrains%20Marketplace-Install-blue?logo=jetbrains)](https://plugins.jetbrains.com/plugin/32281)
+[![Version](https://img.shields.io/jetbrains/plugin/v/32281?label=version)](https://plugins.jetbrains.com/plugin/32281)
+[![Downloads](https://img.shields.io/jetbrains/plugin/d/32281?label=downloads)](https://plugins.jetbrains.com/plugin/32281)
 [![Build](https://github.com/mlidbom/RiderTerminalSymbolLinker/actions/workflows/build.yml/badge.svg)](https://github.com/mlidbom/RiderTerminalSymbolLinker/actions/workflows/build.yml)
 
 ## Screenshots
@@ -45,6 +48,18 @@ click jumps to the symbol's declaration, or opens the file. Helpful for working 
   the MCP server isn't running — only symbol links go quiet.
 
 ## Install
+
+### From the JetBrains Marketplace
+
+[![Install from JetBrains Marketplace](https://img.shields.io/badge/JetBrains%20Marketplace-Install-blue?logo=jetbrains)](https://plugins.jetbrains.com/plugin/32281)
+
+In Rider: **Settings → Plugins → Marketplace**, search for **.NET Terminal Symbol Linker**, and click
+**Install** — or open the [Marketplace page](https://plugins.jetbrains.com/plugin/32281) directly. Rider
+prompts you to also install the required ReSharper MCP plugin alongside it. **Restart** Rider when done.
+
+### From a downloaded zip
+
+For a pre-release build, or to install without the Marketplace:
 
 1. Download the latest `RiderTerminalSymbolLinker-<version>.zip` from
    [Releases](https://github.com/mlidbom/RiderTerminalSymbolLinker/releases).
