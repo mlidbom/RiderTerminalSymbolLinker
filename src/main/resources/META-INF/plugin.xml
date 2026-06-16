@@ -26,6 +26,9 @@
     <extensions defaultExtensionNs="com.intellij">
         <consoleFilterProvider implementation="dev.magnus.csl.SymbolLinkFilterProvider"/>
         <notificationGroup id="RiderTerminalSymbolLinker" displayType="BALLOON"/>
+        <!-- Sticky so the first-run "symbols are loading" notice stays visible until the build finishes,
+             instead of fading like the status-bar progress. It is expired programmatically when done. -->
+        <notificationGroup id="RiderTerminalSymbolLinker.Startup" displayType="STICKY_BALLOON"/>
         <postStartupActivity implementation="dev.magnus.csl.SymbolIndexStartup"/>
         <postStartupActivity implementation="dev.magnus.csl.SolutionFileIndexStartup"/>
     </extensions>

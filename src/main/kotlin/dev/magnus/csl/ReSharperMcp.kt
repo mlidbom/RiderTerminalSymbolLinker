@@ -124,7 +124,7 @@ object ReSharperMcp {
      * not as success — callers must not cache or display it (see [SymbolIndexLoader]'s retry).
      */
     fun enumerateSymbolNames(indicator: ProgressIndicator, solutionName: String?): SymbolNames? {
-        indicator.text = "Loading C# symbols…"
+        indicator.text = "Terminal Symbol Linker:Loading types…"
         val names = HashSet<String>()
         val qualifiedTypes = LinkedHashSet<String>()
         val visitedNs = HashSet<String>()
@@ -141,7 +141,7 @@ object ReSharperMcp {
 
         val types = qualifiedTypes.toList()
         val combined = HashSet<String>()
-        indicator.text = "Loading members of ${types.size} types…"
+        indicator.text = "Terminal Symbol Linker:Loading members…"
         for ((i, qualifiedName) in types.withIndex()) {
             indicator.checkCanceled()
             val simpleType = qualifiedName.substringAfterLast('.')

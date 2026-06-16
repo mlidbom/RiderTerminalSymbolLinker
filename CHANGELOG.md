@@ -4,6 +4,23 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project aims to follow
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.4]
+
+### Added
+- **A visible first-run notice while the symbol index builds.** The first time you open a solution with no
+  cached symbols, terminal links can't work until the symbol index finishes building — which, for a large
+  solution, can take a few minutes of waiting on ReSharper. Previously the only sign of this was an easily
+  missed status-bar progress bar with generic text, so the terminal just looked like the plugin did nothing.
+  Now a sticky notification appears up front explaining that the .NET symbol index is loading and that symbol
+  names won't be clickable until it finishes. It clears itself the moment the build completes — replaced by a
+  brief "terminal links are active — N symbols indexed" confirmation, or a warning if the index couldn't be
+  loaded. Opening a solution whose symbols are already cached stays silent, since links work immediately.
+
+### Changed
+- **The background symbol-loading progress now names the plugin.** The status-bar task and its text identify
+  it as loading .NET symbols for terminal links — including while it waits for ReSharper to finish loading a
+  large solution — instead of generic wording that gave no hint which plugin it belonged to.
+
 ## [0.2.3]
 
 ### Changed
@@ -117,7 +134,8 @@ First public release.
   in the background.
 - Multi-solution support: each call targets the correct open solution.
 
-[0.2.3]: https://github.com/mlidbom/RiderTerminalSymbolLinker/compare/v0.2.2...HEAD
+[0.2.4]: https://github.com/mlidbom/RiderTerminalSymbolLinker/compare/v0.2.3...HEAD
+[0.2.3]: https://github.com/mlidbom/RiderTerminalSymbolLinker/compare/v0.2.2...v0.2.3
 [0.2.2]: https://github.com/mlidbom/RiderTerminalSymbolLinker/compare/v0.2.1...v0.2.2
 [0.2.1]: https://github.com/mlidbom/RiderTerminalSymbolLinker/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/mlidbom/RiderTerminalSymbolLinker/compare/v0.1.7...v0.2.0

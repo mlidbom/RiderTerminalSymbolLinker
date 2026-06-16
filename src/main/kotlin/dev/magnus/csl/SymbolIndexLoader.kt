@@ -1,5 +1,6 @@
 package dev.magnus.csl
 
+import com.intellij.notification.Notification
 import com.intellij.notification.NotificationGroupManager
 import com.intellij.notification.NotificationType
 import com.intellij.openapi.progress.ProgressIndicator
@@ -17,44 +18,62 @@ import com.intellij.openapi.project.Project
  * known light up too. A failed/empty build (MCP unreachable, or ReSharper still loading the solution)
  * is left strictly alone — it never overwrites a good index or cache with nothing. Clicks resolve live
  * regardless, so navigation is never stale.
+ *
+ * Notifications are governed by [Announce]: the first run with no cache ([Announce.COLD_START]) shows a
+ * sticky "symbols are loading — links won't work yet" balloon up front, because that is the one case
+ * where the user is staring at a terminal whose links silently do nothing. A warm start stays silent
+ * (links already work from the cache); a manual refresh reports its result.
  */
 object SymbolIndexLoader {
     private const val RETRY_INTERVAL_MS = 8_000L
     private const val MAX_STARTUP_ATTEMPTS = 40 // ~5 min of waiting for a large solution to warm up
 
+    /** Which balloons a [build] emits — see the class doc. */
+    private enum class Announce { SILENT, REFRESH_RESULT, COLD_START }
+
     /**
      * Startup path: serve the cached index immediately (so links work without waiting on enumeration),
      * then build fresh in the background — retrying until ReSharper can answer, because a large
-     * solution often isn't loaded yet when this runs.
+     * solution often isn't loaded yet when this runs. With no cache, links can't work until the build
+     * finishes, so we announce that visibly ([Announce.COLD_START]); with a cache we refresh silently.
      */
     fun loadAndRefresh(project: Project) {
-        SymbolIndexCache.load(project)?.let { cached ->
+        val cached = SymbolIndexCache.load(project)
+        if (cached != null) {
             SymbolIndex.getInstance(project).set(cached)
             TerminalLinks.rehighlightExistingOutput()
         }
-        build(project, notifyWhenDone = false, waitForReady = true)
+        val announce = if (cached != null) Announce.SILENT else Announce.COLD_START
+        build(project, announce, waitForReady = true)
     }
 
     fun refresh(project: Project, notifyWhenDone: Boolean) {
-        build(project, notifyWhenDone, waitForReady = false)
+        build(project, if (notifyWhenDone) Announce.REFRESH_RESULT else Announce.SILENT, waitForReady = false)
     }
 
-    private fun build(project: Project, notifyWhenDone: Boolean, waitForReady: Boolean) {
+    private fun build(project: Project, announce: Announce, waitForReady: Boolean) {
         ProgressManager.getInstance().run(
-            object : Task.Backgroundable(project, "Loading C# symbols for terminal links", true) {
+            object : Task.Backgroundable(project, "Loading .NET symbols for terminal links", true) {
                 override fun run(indicator: ProgressIndicator) {
+                    indicator.text = "Indexing .NET symbols — terminal links activate when this finishes"
+                    val loadingNotice = if (announce == Announce.COLD_START) showLoadingNotice(project) else null
                     val symbols = enumerate(project, indicator, waitForReady)
+                    loadingNotice?.expire()
                     if (symbols == null) {
-                        if (notifyWhenDone) {
-                            notify(project, "Couldn't load C# symbols — the ReSharper MCP is unreachable or still loading the solution. Try again shortly.", NotificationType.WARNING)
+                        when (announce) {
+                            Announce.COLD_START -> notify(project, "Couldn't load .NET symbols for terminal links — the ReSharper MCP is unreachable or still loading the solution. Terminal links stay inactive; use “Refresh Terminal Links” in the terminal menu to retry.", NotificationType.WARNING)
+                            Announce.REFRESH_RESULT -> notify(project, "Couldn't refresh .NET symbol links — the ReSharper MCP is unreachable or still loading the solution. Try again shortly.", NotificationType.WARNING)
+                            Announce.SILENT -> {}
                         }
                         return
                     }
                     SymbolIndex.getInstance(project).set(symbols)
                     SymbolIndexCache.save(project, symbols)
                     TerminalLinks.rehighlightExistingOutput()
-                    if (notifyWhenDone) {
-                        notify(project, "Symbol links refreshed: ${symbols.short.size} symbols.", NotificationType.INFORMATION)
+                    when (announce) {
+                        Announce.COLD_START -> notify(project, "Terminal links are active — ${symbols.short.size} .NET symbols indexed. Symbol names in terminal output are now clickable.", NotificationType.INFORMATION)
+                        Announce.REFRESH_RESULT -> notify(project, "Symbol links refreshed: ${symbols.short.size} symbols.", NotificationType.INFORMATION)
+                        Announce.SILENT -> {}
                     }
                 }
             },
@@ -75,13 +94,27 @@ object SymbolIndexLoader {
             val symbols = solutionName?.let { ReSharperMcp.enumerateSymbolNames(indicator, it) }
             if (symbols != null) return symbols
             if (!waitForReady || ++attempt >= MAX_STARTUP_ATTEMPTS) return null
-            indicator.text = "Waiting for ReSharper to finish loading the solution…"
+            indicator.text = "Waiting for ReSharper to finish loading the solution… (terminal links activate once it does)"
             repeat((RETRY_INTERVAL_MS / 250).toInt()) {
                 indicator.checkCanceled()
                 Thread.sleep(250)
             }
         }
     }
+
+    /**
+     * The sticky first-run notice, returned so the caller can [Notification.expire] it the moment the
+     * build resolves (success or failure) — the user never has to dismiss it by hand.
+     */
+    private fun showLoadingNotice(project: Project): Notification =
+        NotificationGroupManager.getInstance()
+            .getNotificationGroup("RiderTerminalSymbolLinker.Startup")
+            .createNotification(
+                ".NET terminal symbol links are loading",
+                "Building the symbol index for this solution. Symbol names in terminal output won't be clickable until this finishes — the first time can take a few minutes for a large solution.",
+                NotificationType.INFORMATION,
+            )
+            .also { it.notify(project) }
 
     private fun notify(project: Project, message: String, type: NotificationType) {
         NotificationGroupManager.getInstance()
