@@ -6,7 +6,6 @@ click jumps to the symbol's declaration, or opens the file. Helpful for working 
 
 [![Install from JetBrains Marketplace](https://img.shields.io/badge/JetBrains%20Marketplace-Install-blue?logo=jetbrains)](https://plugins.jetbrains.com/plugin/32281)
 [![Version](https://img.shields.io/jetbrains/plugin/v/32281?label=version)](https://plugins.jetbrains.com/plugin/32281)
-[![Downloads](https://img.shields.io/jetbrains/plugin/d/32281?label=downloads)](https://plugins.jetbrains.com/plugin/32281)
 [![Build](https://github.com/mlidbom/RiderTerminalSymbolLinker/actions/workflows/build.yml/badge.svg)](https://github.com/mlidbom/RiderTerminalSymbolLinker/actions/workflows/build.yml)
 
 ## Screenshots
