@@ -12,26 +12,15 @@ import com.intellij.openapi.project.Project
  *
  * Tokens that fall inside a file path or URL are skipped: Rider's terminal already turns those into
  * native links, so re-linkifying a path segment (e.g. "SymbolIndex" in ".../csl/SymbolIndex.kt") would
- * replace a working file link with a symbol link. See [filePathRanges].
+ * replace a working file link with a symbol link. See [PathSpans].
  */
 class SymbolLinkFilter(private val project: Project) : Filter {
-
-    // A non-whitespace run containing a directory separator — a relative/absolute path or a URL.
-    private val pathWithSeparator = Regex("""[\w.:~\-]*[/\\][\w.:/\\~\-]*""")
-
-    // A bare "<name>.<ext>" file reference (no directory), optionally trailed by ":line[:col]". The
-    // extension is whitelisted so qualified C# names like "Logger.Info" are not mistaken for files.
-    private val fileNameWithExtension = Regex(
-        """[\w.\-]+\.(?:cs|csproj|sln|slnx|kt|kts|java|xml|json|ya?ml|txt|md|props|targets|config|""" +
-            """resx|razor|cshtml|js|ts|tsx|jsx|html?|css|py|go|rs|rb|sql|sh|ps1|gradle|properties|toml|ini)""" +
-            """(?::\d+(?::\d+)?)?""",
-    )
 
     override fun applyFilter(line: String, entireLength: Int): Filter.Result? {
         val index = SymbolIndex.getInstance(project)
         if (!index.isReady) return null
         val lineStart = entireLength - line.length
-        val pathRanges = filePathRanges(line)
+        val pathRanges = PathSpans.find(line)
         val items = SymbolReferences.find(
             line,
             isExcluded = { span -> pathRanges.any { span overlaps it } },
@@ -46,10 +35,6 @@ class SymbolLinkFilter(private val project: Project) : Filter {
         }
         return if (items.isEmpty()) null else Filter.Result(items)
     }
-
-    /** Spans of [line] that Rider already linkifies as file references, which we must not overwrite. */
-    private fun filePathRanges(line: String): List<IntRange> =
-        (pathWithSeparator.findAll(line) + fileNameWithExtension.findAll(line)).map { it.range }.toList()
 
     /** Inclusive-range intersection: do these two ranges share at least one offset? */
     private infix fun IntRange.overlaps(other: IntRange): Boolean =

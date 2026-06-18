@@ -4,6 +4,18 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project aims to follow
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.5]
+
+### Fixed
+- **Symbols joined by slashes now link.** A run of symbol names written with separators between them — e.g.
+  `IsSupported/CanName/CanSetPerDesktopWallpaper`, as often appears in notes, doc comments and commit
+  messages — was mistaken in its entirety for a file path and skipped, so none of the names became links.
+  The path-detection that guards against overwriting real file links now requires an actual path signal (a
+  file extension, an absolute/relative path anchor like a drive letter or leading slash, or a URL scheme); a
+  bare list of identifiers separated by `/` or `\` is no longer treated as a path, so each known symbol in it
+  links again. Genuine paths (`src/main/Program.cs`, `C:\Dev\Vantage`, `https://…`) are still left to Rider's
+  native file links exactly as before.
+
 ## [0.2.4]
 
 ### Added
@@ -134,7 +146,8 @@ First public release.
   in the background.
 - Multi-solution support: each call targets the correct open solution.
 
-[0.2.4]: https://github.com/mlidbom/RiderTerminalSymbolLinker/compare/v0.2.3...HEAD
+[0.2.5]: https://github.com/mlidbom/RiderTerminalSymbolLinker/compare/v0.2.4...HEAD
+[0.2.4]: https://github.com/mlidbom/RiderTerminalSymbolLinker/compare/v0.2.3...v0.2.4
 [0.2.3]: https://github.com/mlidbom/RiderTerminalSymbolLinker/compare/v0.2.2...v0.2.3
 [0.2.2]: https://github.com/mlidbom/RiderTerminalSymbolLinker/compare/v0.2.1...v0.2.2
 [0.2.1]: https://github.com/mlidbom/RiderTerminalSymbolLinker/compare/v0.2.0...v0.2.1
