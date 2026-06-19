@@ -8,6 +8,8 @@ click jumps to the symbol's declaration, or opens the file. Helpful for working 
 [![Version](https://img.shields.io/jetbrains/plugin/v/32281?label=version)](https://plugins.jetbrains.com/plugin/32281)
 [![Build](https://github.com/mlidbom/RiderTerminalSymbolLinker/actions/workflows/build.yml/badge.svg)](https://github.com/mlidbom/RiderTerminalSymbolLinker/actions/workflows/build.yml)
 
+[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/mlidbom)
+
 ## Screenshots
 
 <p align="center">
