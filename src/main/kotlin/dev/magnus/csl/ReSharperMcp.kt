@@ -13,8 +13,18 @@ data class SymbolHit(val kind: String, val name: String, val file: String, val l
     val hasSource: Boolean get() = file != NO_SOURCE && line >= 1
 }
 
-/** One loaded solution from `list_solutions`. [name] is the value to pass as `solutionName`. */
-data class SolutionInfo(val name: String, val path: String)
+/**
+ * One loaded solution from `list_solutions`. The value to pass back as `solutionName` is [routingKey], not
+ * [name]: the server keys `solutionName` on a match that includes the bare name, so when several loaded
+ * solutions share a [name] it resolves to whichever same-named solution it picks first. Two git worktrees of
+ * the same repo are exactly this case — both name their solution e.g. "Vantage" — and only the server's
+ * `uniquePathSegment` ("Vantage-wt-1" vs "Vantage") routes to the intended one. [uniquePathSegment] is `null`
+ * on older MCP servers that don't emit the field, in which case [routingKey] falls back to the [name].
+ */
+data class SolutionInfo(val name: String, val path: String, val uniquePathSegment: String? = null) {
+    /** The `solutionName` value that routes to exactly this solution, even when [name] collides. */
+    val routingKey: String get() = uniquePathSegment ?: name
+}
 
 /**
  * Thin client for the ReSharper MCP server (joshua-light/resharper-mcp) which runs in-process in
@@ -35,8 +45,12 @@ object ReSharperMcp {
         """"qualifiedName"\s*:\s*"([^"]*)"\s*,\s*"kind"\s*:\s*"([^"]*)"\s*,\s*"file"\s*:\s*"([^"]*)"\s*,\s*"line"\s*:\s*(\d+)""",
     )
 
-    // one entry of list_solutions: {"name":"Vantage","path":"C:\\…\\Vantage.slnx", …}
-    private val SOLUTION = Regex(""""name"\s*:\s*"([^"]*)"\s*,\s*"path"\s*:\s*"([^"]*)"""")
+    // one entry of list_solutions: {"name":"Vantage","path":"C:\\…\\Vantage.slnx","toolCount":21,"uniquePathSegment":"Vantage"}
+    // The optional trailing group captures uniquePathSegment (it follows path within the same {…}, past
+    // toolCount); [^}]*? keeps it inside the one object, and the group is absent on servers that omit it.
+    private val SOLUTION = Regex(
+        """"name"\s*:\s*"([^"]*)"\s*,\s*"path"\s*:\s*"([^"]*)"(?:[^}]*?"uniquePathSegment"\s*:\s*"([^"]*)")?""",
+    )
 
     // ---- Solution discovery ----------------------------------------------------------------
 
@@ -44,12 +58,13 @@ object ReSharperMcp {
      * Every solution currently loaded in the MCP. Used to map a Rider project to the `solutionName`
      * the other tools need when more than one solution is open. `null` if the MCP is unreachable.
      */
-    fun listSolutions(): List<SolutionInfo>? {
-        val text = callTool("list_solutions", "{}", null) ?: return null
-        return SOLUTION.findAll(text)
-            .map { SolutionInfo(it.groupValues[1], it.groupValues[2].replace("\\\\", "\\")) }
+    fun listSolutions(): List<SolutionInfo>? = callTool("list_solutions", "{}", null)?.let(::parseSolutions)
+
+    /** Parse the `list_solutions` text payload into [SolutionInfo]s. Separated from transport to be testable. */
+    internal fun parseSolutions(text: String): List<SolutionInfo> =
+        SOLUTION.findAll(text)
+            .map { SolutionInfo(it.groupValues[1], it.groupValues[2].replace("\\\\", "\\"), it.groupValues[3].ifEmpty { null }) }
             .toList()
-    }
 
     // ---- Click-time resolution (exact by name) ---------------------------------------------
 
