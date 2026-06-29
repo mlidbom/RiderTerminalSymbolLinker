@@ -54,4 +54,53 @@ class ReSharperMcpTest {
         assertNull(solutions[0].uniquePathSegment)
         assertEquals("Vantage", solutions[0].routingKey)
     }
+
+    // A C# extension-block member resolves to two declarations at one source line — the `$extension`-grouped
+    // qualified name and the flattened one. The picker must show one row, not two, keeping the $extension form.
+    private val extensionGrouped = SymbolHit("method", "RECTEX.\$extension.ToScreenRect", """C:\Dev\Deskmancer\RECTEX.cs""", 11)
+    private val extensionFlattened = SymbolHit("method", "RECTEX.ToScreenRect", """C:\Dev\Deskmancer\RECTEX.cs""", 11)
+
+    @Test
+    fun `extension-block duplicate collapses to the $extension form`() {
+        val collapsed = ReSharperMcp.collapseExtensionBlockDuplicates(listOf(extensionGrouped, extensionFlattened))
+
+        assertEquals(listOf(extensionGrouped), collapsed)
+    }
+
+    @Test
+    fun `collapse keeps a lone $extension hit even when its flattened twin is absent`() {
+        val collapsed = ReSharperMcp.collapseExtensionBlockDuplicates(listOf(extensionGrouped))
+
+        assertEquals(listOf(extensionGrouped), collapsed)
+    }
+
+    @Test
+    fun `collapse leaves genuinely distinct same-name hits alone`() {
+        // Two real extensions of the same name on different types: both must survive, each keeping its path.
+        val sizeExtension = SymbolHit("method", "SIZEEX.\$extension.ToScreenRect", """C:\Dev\Deskmancer\SIZEEX.cs""", 9)
+        val hits = listOf(extensionGrouped, sizeExtension)
+
+        assertEquals(hits, ReSharperMcp.collapseExtensionBlockDuplicates(hits))
+    }
+
+    @Test
+    fun `parseMembers skips the synthetic $extension grouping but keeps the block's real methods`() {
+        val getSymbolInfo = """
+            static abstract class RECTEX
+            namespace: Deskmancer.Geometry.VanaraEX.PInvokeEX
+            baseTypes: object
+
+            members:
+              static class ${'$'}extension(this:RECT)
+              static method ToScreenRect(this:RECT) : ScreenRect
+              static method From(source:ScreenRect) : RECT
+        """.trimIndent()
+        val names = HashSet<String>()
+        val combined = HashSet<String>()
+
+        ReSharperMcp.parseMembers(getSymbolInfo, "RECTEX", names, combined)
+
+        assertEquals(setOf("ToScreenRect", "From"), names)
+        assertEquals(setOf("RECTEX.ToScreenRect", "RECTEX.From"), combined)
+    }
 }

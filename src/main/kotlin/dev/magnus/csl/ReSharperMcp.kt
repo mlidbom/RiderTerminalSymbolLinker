@@ -7,6 +7,9 @@ import com.intellij.util.io.HttpRequests
 /** ReSharper reports compiler-synthesized members (e.g. positional-record properties) with this file. */
 private const val NO_SOURCE = "[no source]"
 
+/** The synthetic grouping segment ReSharper inserts in the qualified name of a C# extension-block member. */
+private const val EXTENSION_BLOCK_SEGMENT = ".\$extension"
+
 /** One symbol location from the ReSharper MCP. [name] is a short or qualified name for display. */
 data class SymbolHit(val kind: String, val name: String, val file: String, val line: Int) {
     /** Whether this hit points at a navigable source line. Synthesized members report [NO_SOURCE]:0. */
@@ -76,7 +79,24 @@ object ReSharperMcp {
      */
     fun goToDefinition(name: String, solutionName: String?): List<SymbolHit>? {
         val hits = resolveByName(name, solutionName) ?: return null
-        return hits.mapNotNull { if (it.hasSource) it else resolveViaContainingType(it, solutionName) }
+        val resolved = hits.mapNotNull { if (it.hasSource) it else resolveViaContainingType(it, solutionName) }
+        return collapseExtensionBlockDuplicates(resolved)
+    }
+
+    /**
+     * ReSharper resolves a C# extension-block member to two declarations at the same source line: the
+     * `$extension`-grouped qualified name (`…RECTEX.$extension.ToScreenRect`) and the flattened one
+     * (`…RECTEX.ToScreenRect`). They are the same target, so the picker would otherwise show two identical
+     * rows. Collapse each such pair, keeping the `$extension` form — its path tells the reader it's an
+     * extension member, and a lone extension method then jumps straight to source instead of opening a
+     * two-row picker. (A name that is an extension on several types still shows a picker, with every row
+     * carrying its distinguishing `$extension`-qualified path.)
+     */
+    internal fun collapseExtensionBlockDuplicates(hits: List<SymbolHit>): List<SymbolHit> {
+        val flattenedTwins = hits
+            .filter { EXTENSION_BLOCK_SEGMENT in it.name }
+            .mapTo(HashSet()) { it.copy(name = it.name.replace(EXTENSION_BLOCK_SEGMENT, "")) }
+        return if (flattenedTwins.isEmpty()) hits else hits.filterNot { it in flattenedTwins }
     }
 
     private fun resolveByName(name: String, solutionName: String?): List<SymbolHit>? {
@@ -202,7 +222,7 @@ object ReSharperMcp {
     }
 
     /** Each member is recorded as a short name in [names] and, paired with [simpleType], in [combined]. */
-    private fun parseMembers(text: String, simpleType: String, names: MutableSet<String>, combined: MutableSet<String>) {
+    internal fun parseMembers(text: String, simpleType: String, names: MutableSet<String>, combined: MutableSet<String>) {
         var inMembers = false
         for (raw in text.lineSequence()) {
             val t = raw.trim()
@@ -213,7 +233,10 @@ object ReSharperMcp {
                     val beforeParen = t.substringBefore("(")
                     val beforeColon = if (beforeParen.contains(" : ")) beforeParen.substringBefore(" : ") else beforeParen
                     val name = beforeColon.trim().substringAfterLast(' ')
-                    if (name.isNotEmpty()) {
+                    // ReSharper lists a C# extension block as a synthetic `$extension` member; skip it (and any
+                    // other `$`-prefixed synthetic name) — it's not a real identifier and can never appear as a
+                    // token in terminal output. The block's actual methods are listed flattened alongside it.
+                    if (name.isNotEmpty() && !name.startsWith('$')) {
                         names.add(name)
                         combined.add("$simpleType.$name")
                     }

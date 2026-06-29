@@ -4,6 +4,17 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project aims to follow
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.7]
+
+### Fixed
+- **Extension methods no longer link to a duplicated picker.** Clicking a C# extension method (the C# 14
+  `extension(...)` block form) used to open a disambiguation picker with two identical-looking rows that both
+  navigated to the very same line — ReSharper reports such a member twice, once under a synthetic `$extension`
+  grouping and once flattened. The two are now collapsed into one, so a lone extension method jumps straight to
+  its source with no picker at all. When the same name is an extension on several types, the picker still
+  appears — and each row now carries its `$extension`-qualified path, which doubles as a clear marker that the
+  target is an extension member. The synthetic `$extension` entry is also no longer indexed as a phantom symbol.
+
 ## [0.2.6]
 
 ### Fixed
@@ -152,7 +163,8 @@ First public release.
   in the background.
 - Multi-solution support: each call targets the correct open solution.
 
-[0.2.6]: https://github.com/mlidbom/RiderTerminalSymbolLinker/compare/v0.2.5...HEAD
+[0.2.7]: https://github.com/mlidbom/RiderTerminalSymbolLinker/compare/v0.2.6...HEAD
+[0.2.6]: https://github.com/mlidbom/RiderTerminalSymbolLinker/compare/v0.2.5...v0.2.6
 [0.2.5]: https://github.com/mlidbom/RiderTerminalSymbolLinker/compare/v0.2.4...v0.2.5
 [0.2.4]: https://github.com/mlidbom/RiderTerminalSymbolLinker/compare/v0.2.3...v0.2.4
 [0.2.3]: https://github.com/mlidbom/RiderTerminalSymbolLinker/compare/v0.2.2...v0.2.3
