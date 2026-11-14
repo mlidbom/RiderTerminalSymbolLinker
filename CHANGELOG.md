@@ -4,6 +4,14 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project aims to follow
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.8]
+
+### Fixed
+- **Works in Rider 2026.3, and no longer switches off on Rider updates.** After updating Rider to 2026.3 the
+  plugin was disabled as incompatible, so no symbols or files in the terminal were linked. It now runs on
+  Rider 2026.1 and every later version, so a Rider update no longer disables it until a new plugin version
+  is released.
+
 ## [0.2.7]
 
 ### Fixed
@@ -163,7 +171,8 @@ First public release.
   in the background.
 - Multi-solution support: each call targets the correct open solution.
 
-[0.2.7]: https://github.com/mlidbom/RiderTerminalSymbolLinker/compare/v0.2.6...HEAD
+[0.2.8]: https://github.com/mlidbom/RiderTerminalSymbolLinker/compare/v0.2.7...HEAD
+[0.2.7]: https://github.com/mlidbom/RiderTerminalSymbolLinker/compare/v0.2.6...v0.2.7
 [0.2.6]: https://github.com/mlidbom/RiderTerminalSymbolLinker/compare/v0.2.5...v0.2.6
 [0.2.5]: https://github.com/mlidbom/RiderTerminalSymbolLinker/compare/v0.2.4...v0.2.5
 [0.2.4]: https://github.com/mlidbom/RiderTerminalSymbolLinker/compare/v0.2.3...v0.2.4
