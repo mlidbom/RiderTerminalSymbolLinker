@@ -30,13 +30,18 @@ data class SolutionInfo(val name: String, val path: String, val uniquePathSegmen
 }
 
 /**
- * Thin client for the ReSharper MCP server (joshua-light/resharper-mcp) which runs in-process in
- * Rider on 127.0.0.1:23741 and is ReSharper-backed, so it resolves and enumerates C# symbols
- * reliably — unlike the platform's GotoSymbolModel, which doesn't see them. Plain JSON-RPC over
- * HTTP; tool results are human-readable text (or a small JSON blob for ambiguity) that we parse.
+ * Thin client for the .NET Analysis&Refactoring MCP server (mlidbom/dotnet-analysis-and-refactoring-mcp-for-rider,
+ * a fork of joshua-light/resharper-mcp) which runs in-process in Rider on 127.0.0.1:23751 and is
+ * ReSharper-backed, so it resolves and enumerates C# symbols reliably — unlike the platform's
+ * GotoSymbolModel, which doesn't see them. Plain JSON-RPC over HTTP; tool results are human-readable
+ * text (or a small JSON blob for ambiguity) that we parse.
  */
 object ReSharperMcp {
-    private const val URL = "http://127.0.0.1:23741/"
+    private const val DEFAULT_PORT = 23751
+
+    // The server binds the port this variable names, when set. Rider's ReSharper backend is started by this
+    // frontend process and inherits its environment, so reading it here finds the port the server bound.
+    private val URL = "http://127.0.0.1:${System.getenv("DOTNET_ANALYSIS_AND_REFACTORING_MCP_PORT")?.toIntOrNull() ?: DEFAULT_PORT}/"
     private const val SEP = " — " // separates "<kind> <name> : <type>" from "<file>:<line>:<col>"
     private val LOG = Logger.getInstance("CSL")
 
@@ -271,7 +276,7 @@ object ReSharperMcp {
                     request.readString()
                 }
         } catch (e: Throwable) {
-            LOG.warn("ReSharper MCP unreachable ($tool): ${e.message}")
+            LOG.warn(".NET Analysis&Refactoring MCP unreachable at $URL ($tool): ${e.message}")
             return null
         }
         return extractText(response)

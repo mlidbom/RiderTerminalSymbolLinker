@@ -42,8 +42,10 @@ click jumps to the symbol's declaration, or opens the file. Helpful for working 
 
 - **Rider 2026.1+** (built and tested against 2026.2; the reworked terminal must be the active
   terminal engine).
-- The **ReSharper MCP** plugin — [`joshua-light/resharper-mcp`](https://github.com/joshua-light/resharper-mcp),
-  listed in Rider as `com.j-light.resharper-mcp` — installed and running. This is what resolves and
+- The **.NET Analysis&Refactoring MCP** plugin —
+  [`mlidbom/dotnet-analysis-and-refactoring-mcp-for-rider`](https://github.com/mlidbom/dotnet-analysis-and-refactoring-mcp-for-rider),
+  a fork of [`joshua-light/resharper-mcp`](https://github.com/joshua-light/resharper-mcp), listed in Rider
+  as `dev.magnus.dotnet-analysis-and-refactoring-mcp` — installed and running. This is what resolves and
   enumerates C# **symbols** (Rider's own `GotoSymbolModel` does not see them reliably), and the plugin
   declares a hard dependency on it. **File** links don't use the MCP, so they keep working even when
   the MCP server isn't running — only symbol links go quiet.
@@ -56,7 +58,8 @@ click jumps to the symbol's declaration, or opens the file. Helpful for working 
 
 In Rider: **Settings → Plugins → Marketplace**, search for **.NET Terminal Symbol Linker**, and click
 **Install** — or open the [Marketplace page](https://plugins.jetbrains.com/plugin/32281) directly. Rider
-prompts you to also install the required ReSharper MCP plugin alongside it. **Restart** Rider when done.
+prompts you to also install the required .NET Analysis&Refactoring MCP plugin alongside it. **Restart** Rider
+when done.
 
 ### From a downloaded zip
 

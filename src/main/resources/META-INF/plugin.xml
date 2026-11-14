@@ -8,8 +8,8 @@
         <a href="https://www.anthropic.com/claude-code">Claude Code</a> and other agents that run in
         the terminal.
         <br/><br/>
-        <b>Requires</b> the ReSharper MCP plugin (<code>com.j-light.resharper-mcp</code>) running in
-        Rider.
+        <b>Requires</b> the .NET Analysis&amp;Refactoring MCP plugin
+        (<code>dev.magnus.dotnet-analysis-and-refactoring-mcp</code>) running in Rider.
     ]]></description>
 
     <!-- Gates the plugin to Rider only: this module provides the ReSharper backend the plugin relies on.
@@ -19,9 +19,10 @@
     <depends>com.intellij.modules.lang</depends>
     <!-- Needed so the Terminal.ReworkedTerminalContextMenu group exists when our action registers. -->
     <depends>org.jetbrains.plugins.terminal</depends>
-    <!-- The ReSharper MCP that resolves and enumerates C# symbols. Hard dependency: without it this
-         plugin can't function, so the Marketplace prompts users to install it alongside this one. -->
-    <depends>com.j-light.resharper-mcp</depends>
+    <!-- The ReSharper-backed MCP that resolves and enumerates C# symbols: .NET Analysis&Refactoring MCP,
+         a fork of joshua-light/resharper-mcp. Hard dependency: without it this plugin can't function, so
+         the Marketplace prompts users to install it alongside this one. -->
+    <depends>dev.magnus.dotnet-analysis-and-refactoring-mcp</depends>
 
     <extensions defaultExtensionNs="com.intellij">
         <consoleFilterProvider implementation="dev.magnus.csl.SymbolLinkFilterProvider"/>

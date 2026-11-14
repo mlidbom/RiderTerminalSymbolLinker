@@ -28,9 +28,10 @@ dependencies {
         }
         // Provides the Terminal.ReworkedTerminalContextMenu group our refresh action attaches to.
         bundledPlugin("org.jetbrains.plugins.terminal")
-        // The ReSharper MCP we declare a hard <depends> on in plugin.xml. Pulled from the Marketplace
-        // so the sandbox/verifier can resolve the dependency; it is NOT bundled into our distribution.
-        plugin("com.j-light.resharper-mcp", "0.9.1")
+        // The .NET Analysis&Refactoring MCP, which plugin.xml has a hard <depends> on, is not a build
+        // dependency: no code here references it (we talk to it over HTTP), and it isn't on the Marketplace
+        // to be pulled from yet. Once it is, adding plugin("dev.magnus.dotnet-analysis-and-refactoring-mcp",
+        // "<version>") here lets a runIde sandbox load this plugin.
     }
 
     // Plain JUnit 5 for the pure unit tests (FileReferences / SolutionFileIndex). They touch no platform

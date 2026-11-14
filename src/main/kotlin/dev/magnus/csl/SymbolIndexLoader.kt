@@ -61,8 +61,8 @@ object SymbolIndexLoader {
                     loadingNotice?.expire()
                     if (symbols == null) {
                         when (announce) {
-                            Announce.COLD_START -> notify(project, "Couldn't load .NET symbols for terminal links — the ReSharper MCP is unreachable or still loading the solution. Terminal links stay inactive; use “Refresh Terminal Links” in the terminal menu to retry.", NotificationType.WARNING)
-                            Announce.REFRESH_RESULT -> notify(project, "Couldn't refresh .NET symbol links — the ReSharper MCP is unreachable or still loading the solution. Try again shortly.", NotificationType.WARNING)
+                            Announce.COLD_START -> notify(project, "Couldn't load .NET symbols for terminal links — the .NET Analysis&Refactoring MCP is unreachable or still loading the solution. Terminal links stay inactive; use “Refresh Terminal Links” in the terminal menu to retry.", NotificationType.WARNING)
+                            Announce.REFRESH_RESULT -> notify(project, "Couldn't refresh .NET symbol links — the .NET Analysis&Refactoring MCP is unreachable or still loading the solution. Try again shortly.", NotificationType.WARNING)
                             Announce.SILENT -> {}
                         }
                         return
