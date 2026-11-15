@@ -33,6 +33,11 @@ jobs:
       - name: Build plugin
         run: ./gradlew test buildPlugin --console=plain --stacktrace
 
+      # The Marketplace's own check, failing on any finding (build.gradle.kts says why), against the pinned Rider
+      # and the latest release.
+      - name: Verify plugin
+        run: ./gradlew verifyPlugin --console=plain --stacktrace
+
       - name: Upload plugin zip
         uses: actions/upload-artifact@v7
         with:

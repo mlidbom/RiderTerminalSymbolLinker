@@ -1,4 +1,6 @@
 import org.jetbrains.changelog.Changelog
+import org.jetbrains.intellij.platform.gradle.IntelliJPlatformType
+import org.jetbrains.intellij.platform.gradle.tasks.VerifyPluginTask
 
 plugins {
     kotlin("jvm") version "2.4.0"
@@ -79,6 +81,24 @@ intellijPlatform {
     }
     publishing {
         token = providers.environmentVariable("PUBLISH_TOKEN")
+    }
+
+    // The Marketplace runs the Plugin Verifier on every upload, and this plugin's updates have been approved at once
+    // since its reports had no findings (Magnus, 2026-11-14). So verifyPlugin fails on any finding: locally against
+    // the installed Rider, in CI against the pinned Rider (the oldest the plugin is built for) and the latest release.
+    // Not the recommended() set, which may be a Rider for every version since sinceBuild: more than a runner's disk
+    // holds. The .NET Analysis&Refactoring MCP's build has the same gate; keep the two release setups alike.
+    pluginVerification {
+        ides {
+            val localIdePath = providers.gradleProperty("localIdePath").orNull
+            if (!localIdePath.isNullOrBlank()) {
+                local(file(localIdePath))
+            } else {
+                create(IntelliJPlatformType.Rider, providers.gradleProperty("platformVersion").get())
+                latest()
+            }
+        }
+        failureLevel = VerifyPluginTask.FailureLevel.ALL
     }
 }
 
