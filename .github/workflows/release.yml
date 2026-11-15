@@ -44,6 +44,10 @@ jobs:
           REF="${{ inputs.tag || github.ref_name }}"
           echo "version=${REF#v}" >> "$GITHUB_OUTPUT"
 
+      # Before anything is released: a version the verifier finds anything in is not one to upload.
+      - name: Verify plugin
+        run: ./gradlew verifyPlugin -PpluginVersion=${{ steps.ver.outputs.version }} --console=plain --stacktrace
+
       - name: Build & sign plugin
         env:
           CERTIFICATE_CHAIN: ${{ secrets.CERTIFICATE_CHAIN }}
