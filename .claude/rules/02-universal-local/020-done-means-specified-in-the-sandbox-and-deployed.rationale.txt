@@ -1,0 +1,15 @@
+# Why done means specified in the sandbox and deployed
+
+It replaced the rule "Build the plugin and report its location when done", which made Magnus's installing a zip, with
+Install Plugin from Disk and a Rider restart, the last step of every fix: until 2026-11-17 that was the only way the
+plugin was seen working. The sandbox Rider and its specifications check it without him, and his Rider reloads a
+deployed build without a restart.
+
+Magnus, 2026-11-17, on the old rule: "That rule is probably obsolete. From what you are saying it sounds like you can
+just deploy the new version to me and rider will not even need to restart?" He then set `-Didea.auto.reload.plugins=true`
+in his Rider's VM options and said yes to this rule.
+
+Untested when the rule was written: that his everyday Rider reloads a deployed build when he switches to its window. In
+the sandbox, the reload was triggered by asking Rider to look at its plugins folder, through the plugin's observation
+channel, which his Rider doesn't run. If deploys don't reload there, look at whether switching windows makes Rider
+look at the plugins folder, before changing the rule.

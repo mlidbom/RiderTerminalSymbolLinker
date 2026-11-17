@@ -18,6 +18,8 @@ under "The tools you develop with are yours, as a product". Today they are:
   does;
 - the specifications that check that in the sandbox, `dotnet test tests/RiderTerminalSymbolLinker.Specifications`, in
   seconds once the sandbox runs;
+- `everyday deploy`, the same tool's command that puts the working tree's build in Magnus's Rider, which reloads it
+  without a restart;
 - the CI workflows under `.github/workflows/`;
 - the unit tests under `src/test/`.
 

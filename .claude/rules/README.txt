@@ -3,7 +3,7 @@
 Project rules, read by both humans and the agent.
 
 - `01-universal-shared` — always-on shared standards (a directory symlink into the `.claude-shared/` catalog)
-- `02-universal-local/` — always-on rules of this plugin: who owns what, building it, the changelog
+- `02-universal-local/` — always-on rules of this plugin: who owns what, when a change is done, the changelog
 - `path-scoped/` — rules that load only when touching matching files; `01-shared/` holds links into the catalog
 
 **Start here:** [`path-scoped/01-shared/rules-folder.md`](path-scoped/01-shared/rules-folder.md) — how the
