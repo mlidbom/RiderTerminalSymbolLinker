@@ -13,3 +13,7 @@ out/
 # Kotlin compiler daemon working dir
 .kotlin/
 
+
+# The C# development tools' and the fixture solution's build output
+bin/
+obj/
