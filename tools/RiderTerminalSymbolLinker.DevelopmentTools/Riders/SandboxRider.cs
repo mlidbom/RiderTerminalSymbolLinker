@@ -253,14 +253,17 @@ public sealed class SandboxRider
    {
       var running = RunningProcess();
       if(running is null) return;
+      // Only its frames: closing a dialog cancels it. While background tasks run, Rider asks to confirm the exit, and
+      // closing that question cancelled the exit, every time it was asked again. Left alone, the question goes, and Rider
+      // exits, as soon as the tasks end.
       WaitUntil(() =>
                 {
                    if(running.HasExited) return true;
-                   foreach(var window in FramesOf(running)) window.AskToClose();
+                   foreach(var frame in FramesOf(running).Where(it => !it.IsOwnedByAnotherWindow)) frame.AskToClose();
                    return running.WaitForExit(TimeSpan.FromSeconds(5));
                 },
                 HowLongStoppingMayTake,
-                "the sandbox Rider to exit");
+                "the sandbox Rider to exit (its 'Confirm Exit' dialog, if any, waits for background tasks to end)");
       File.Delete(ProcessFile);
    }
 

@@ -4,7 +4,7 @@ using VirtualDesktop = WindowsDesktop.VirtualDesktop;
 
 namespace RiderTerminalSymbolLinker.DevelopmentTools.Screen;
 
-/// <summary>A window on the desktop that no other window owns, such as a Rider frame or a dialog of its own.</summary>
+/// <summary>A window on the desktop, not inside another: a Rider frame, or one of its dialogs, which the frame owns.</summary>
 sealed class TopLevelWindow
 {
    readonly HWND _handle;
@@ -38,6 +38,9 @@ sealed class TopLevelWindow
    public string Title { get; }
 
    public int ProcessId { get; }
+
+   /// <summary>Whether another window owns this one, as a Rider frame owns its dialogs.</summary>
+   public bool IsOwnedByAnotherWindow => !GetWindow(_handle, GetWindowCmd.GW_OWNER).IsNull;
 
    /// <summary>The monitor that holds most of this window.</summary>
    public Monitor Monitor => Monitor.Holding(_handle);
