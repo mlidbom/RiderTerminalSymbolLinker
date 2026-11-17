@@ -103,4 +103,27 @@ class ReSharperMcpTest {
         assertEquals(setOf("ToScreenRect", "From"), names)
         assertEquals(setOf("RECTEX.ToScreenRect", "RECTEX.From"), combined)
     }
+
+    @Test
+    fun `parseMembers skips an extension block's header line and keeps the members under it, properties included`() {
+        // As the .NET Analysis&Refactoring MCP's tools list a C# 14 extension block since 2026-11-17.
+        val getSymbolInfo = """
+            static class ShapeExtensions
+            namespace: Shapes
+            baseTypes: object
+
+            members:
+              public static method TotalArea(shapes:IEnumerable<IShape>) : double
+              extension(circle:Circle)
+                public property Diameter : double
+                public method Grown(by:double) : Circle
+        """.trimIndent()
+        val names = HashSet<String>()
+        val combined = HashSet<String>()
+
+        ReSharperMcp.parseMembers(getSymbolInfo, "ShapeExtensions", names, combined)
+
+        assertEquals(setOf("TotalArea", "Diameter", "Grown"), names)
+        assertEquals(setOf("ShapeExtensions.TotalArea", "ShapeExtensions.Diameter", "ShapeExtensions.Grown"), combined)
+    }
 }

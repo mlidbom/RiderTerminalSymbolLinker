@@ -46,10 +46,12 @@ The tools the plugin uses, and their traps:
 - **`go_to_definition`** resolves a click exactly: one location as text, or a JSON list of candidates when ambiguous.
 - **`search_symbol`** matches substrings and stops at 50 results, so short common names drown: not for exact
   resolution.
-- **C# 14 extension blocks:** ReSharper lists a block as a synthetic `$extension` member and its methods again,
-  flattened, beside it; the plugin collapses the pair. Its properties are listed flattened only as their accessors, such
-  as `get_Diameter`, so they don't link yet: a bug in the MCP's `get_symbol_info`, which Magnus decided to wait for
-  (2026-11-17). See the `bug:` comment in `ReSharperMcp.parseMembers`.
+- **C# 14 extension blocks:** `get_symbol_info` lists a block in one of two ways. The MCP's tools since 2026-11-17
+  list it as C# declares it, a header line `extension(circle:Circle)` with its members under it. Earlier ones, the
+  Marketplace's 0.14.0 among them, list it as a synthetic `$extension` member, with its methods flattened beside it and
+  its properties only as their accessors, such as `get_Diameter`, which don't link. `ReSharperMcp.parseMembers` reads
+  both. `go_to_definition` still names a block's member in both ways, `$extension` and flattened, at one line; the
+  plugin collapses the pair.
 
 **Enumeration is sequential by design:** the ReSharper backend serializes analysis, so calls from six threads measured
 about 1.2 times faster at best.

@@ -4,6 +4,17 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project aims to follow
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.11]
+
+### Fixed
+- **The progress bar shows how far loading .NET symbols has come.** While the plugin loads the members of the
+  solution's types, its progress bar in the status bar now fills up, instead of running with no end in sight.
+  Before, Rider also logged a warning with a stack trace about the bar each time a solution opened.
+- **Ready for the .NET Analysis&Refactoring MCP's next way of listing C# 14 extension blocks.** Its next version
+  lists a block as `extension(...)` with the block's members under it. The plugin reads those members, so a property
+  declared in an extension block, such as `Diameter`, links too, and the word "extension" itself doesn't link. With
+  the MCP's current version, 0.14.0, such properties still don't link.
+
 ## [0.2.10]
 
 ### Changed
@@ -189,7 +200,8 @@ First public release.
   in the background.
 - Multi-solution support: each call targets the correct open solution.
 
-[0.2.10]: https://github.com/mlidbom/RiderTerminalSymbolLinker/compare/v0.2.9...HEAD
+[0.2.11]: https://github.com/mlidbom/RiderTerminalSymbolLinker/compare/v0.2.10...HEAD
+[0.2.10]: https://github.com/mlidbom/RiderTerminalSymbolLinker/compare/v0.2.9...v0.2.10
 [0.2.9]: https://github.com/mlidbom/RiderTerminalSymbolLinker/compare/v0.2.8...v0.2.9
 [0.2.8]: https://github.com/mlidbom/RiderTerminalSymbolLinker/compare/v0.2.7...v0.2.8
 [0.2.7]: https://github.com/mlidbom/RiderTerminalSymbolLinker/compare/v0.2.6...v0.2.7

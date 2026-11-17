@@ -10,6 +10,9 @@ private const val NO_SOURCE = "[no source]"
 /** The synthetic grouping segment ReSharper inserts in the qualified name of a C# extension-block member. */
 private const val EXTENSION_BLOCK_SEGMENT = ".\$extension"
 
+/** How `get_symbol_info` starts the line that opens a C# 14 extension block among a type's members: `extension(circle:Circle)`. */
+private const val EXTENSION_BLOCK_HEADER = "extension("
+
 /** One symbol location from the ReSharper MCP. [name] is a short or qualified name for display. */
 data class SymbolHit(val kind: String, val name: String, val file: String, val line: Int) {
     /** Whether this hit points at a navigable source line. Synthesized members report [NO_SOURCE]:0. */
@@ -164,6 +167,7 @@ object ReSharperMcp {
      * not as success — callers must not cache or display it (see [SymbolIndexLoader]'s retry).
      */
     fun enumerateSymbolNames(indicator: ProgressIndicator, solutionName: String?): SymbolNames? {
+        indicator.isIndeterminate = true // How many types there are is known only once they're all found.
         indicator.text = "Terminal Symbol Linker:Loading types…"
         val names = HashSet<String>()
         val qualifiedTypes = LinkedHashSet<String>()
@@ -182,6 +186,8 @@ object ReSharperMcp {
         val types = qualifiedTypes.toList()
         val combined = HashSet<String>()
         indicator.text = "Terminal Symbol Linker:Loading members…"
+        indicator.isIndeterminate = false
+        indicator.fraction = 0.0
         for ((i, qualifiedName) in types.withIndex()) {
             indicator.checkCanceled()
             val simpleType = qualifiedName.substringAfterLast('.')
@@ -226,7 +232,15 @@ object ReSharperMcp {
         }
     }
 
-    /** Each member is recorded as a short name in [names] and, paired with [simpleType], in [combined]. */
+    /**
+     * Each member is recorded as a short name in [names] and, paired with [simpleType], in [combined].
+     *
+     * A C# 14 extension block is listed in one of two ways. The .NET Analysis&Refactoring MCP's tools since
+     * 2026-11-17 list it as C# declares it: a header line, `extension(circle:Circle)`, with the block's members
+     * indented under it. Earlier ones, the Marketplace's 0.14.0 among them, list it as a synthetic `$extension` member,
+     * with its methods flattened beside it and its properties only as their accessors, such as `get_Diameter`, so that
+     * such a property doesn't link there. Neither the header nor `$extension` is a member.
+     */
     internal fun parseMembers(text: String, simpleType: String, names: MutableSet<String>, combined: MutableSet<String>) {
         var inMembers = false
         for (raw in text.lineSequence()) {
@@ -234,18 +248,11 @@ object ReSharperMcp {
             when {
                 t == "members:" -> inMembers = true
                 t.isEmpty() || t.startsWith("===") -> inMembers = false
+                inMembers && t.startsWith(EXTENSION_BLOCK_HEADER) -> {}
                 inMembers -> {
                     val beforeParen = t.substringBefore("(")
                     val beforeColon = if (beforeParen.contains(" : ")) beforeParen.substringBefore(" : ") else beforeParen
                     val name = beforeColon.trim().substringAfterLast(' ')
-                    // ReSharper lists a C# extension block as a synthetic `$extension` member; skip it (and any
-                    // other `$`-prefixed synthetic name) — it's not a real identifier and can never appear as a
-                    // token in terminal output. The block's actual methods are listed flattened alongside it.
-                    //bug: an extension block's properties are listed flattened only as their accessors, such as
-                    //   get_Diameter, so a property such as Diameter never links. The `$extension` member's own
-                    //   get_symbol_info lists them as properties. Found in the sandbox's fixture solution, 2026-11-17.
-                    //   Magnus, 2026-11-17: wait for the .NET Analysis&Refactoring MCP's fix of get_symbol_info, on
-                    //   its backlog, rather than read the `$extension` member here.
                     if (name.isNotEmpty() && !name.startsWith('$')) {
                         names.add(name)
                         combined.add("$simpleType.$name")
