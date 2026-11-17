@@ -54,8 +54,11 @@ outside the sandbox. The `sandbox state|links|click|picker` commands call it.
 ## The specifications
 
 `dotnet test tests/RiderTerminalSymbolLinker.Specifications` checks what the plugin links and what a click does, in the
-sandbox, against the fixture solution. A running sandbox gets the working tree's build reloaded, so a run takes seconds.
-Every click starts with no editor open. They don't yet cover the terminal itself: whether it applies the filters, and
+sandbox, against the fixture solution. A run starts a stopped sandbox, in about half a minute, and stops it again at its
+end: the sandbox holds about 4.6 GB of Magnus's memory, and he wants it off when it isn't in use (2026-11-17). A
+sandbox that `sandbox start` started is left running, and gets the working tree's build reloaded, so a run takes
+seconds: start it so for a stretch of work, and `sandbox stop` it when the work is done. Every click starts with no
+editor open. They don't yet cover the terminal itself: whether it applies the filters, and
 re-highlights old output.
 
 ## Deploying to Magnus's Rider
