@@ -12,6 +12,9 @@ static class Program
                           sandbox start [<solution>]  Starts the sandbox Rider with a fresh copy of the fixture solution, or
                                                       the solution given, and waits until the MCP server on port 23861
                                                       answers with it indexed. Installs the plugin first if it never was.
+                          sandbox reload RiderTerminalSymbolLinker|ClaudeSessions
+                                                      Has the running sandbox reload the plugin as it is, as it does a new
+                                                      build, and waits until it has.
                           sandbox install [--mcp marketplace]
                                                       Builds the working tree's plugin and puts it in the sandbox's plugins
                                                       folder, which a running sandbox reloads it from in a second. With it
@@ -62,6 +65,9 @@ static class Program
       {
          case ["sandbox", "start"]:
             sandbox.Start();
+            break;
+         case ["sandbox", "reload", var plugin]:
+            sandbox.ReloadThePlugin(OurPlugin.All.Single(it => string.Equals(it.Name, plugin, StringComparison.OrdinalIgnoreCase)));
             break;
          case ["sandbox", "start", var solution]:
             sandbox.Start(Path.GetFullPath(solution));
