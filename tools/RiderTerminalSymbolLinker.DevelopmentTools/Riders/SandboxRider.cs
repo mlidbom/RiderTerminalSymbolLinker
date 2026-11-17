@@ -81,14 +81,16 @@ public sealed class SandboxRider
    /// <remarks>
    ///   The MCP comes in two parts. Its plugin is held open by a running Rider, which can't reload it, so a running
    ///   sandbox is stopped first when the plugin is to change, and started again afterwards. Its
-   ///   <see cref="McpToolsBuilds"/> it swaps to at its next call.
+   ///   <see cref="McpToolsBuilds"/> it swaps to at its next call.<br/>
+   ///   A running sandbox is restarted too when the fixture solution changed since it copied it, so that it opens a
+   ///   fresh copy.
    /// </remarks>
    public string Install(McpBuild mcp = McpBuild.Everyday)
    {
       _plugins.Fill();
       var mcpPlugin = TheMcpPlugin(mcp);
-      var restartingForTheMcpPlugin = IsRunning && !FolderMirror.HoldTheSame(mcpPlugin, McpPluginFolder);
-      if(restartingForTheMcpPlugin) Stop();
+      var whyItRestarts = IsRunning ? WhyTheRunningSandboxMustRestart(mcpPlugin) : null;
+      if(whyItRestarts is not null) Stop();
 
       var mcpToolsChanged = mcp == McpBuild.Everyday ? _mcpTools.TakeTheBuildsOf(_everyday.McpToolsBuilds) : _mcpTools.Clear();
       var mirror = new FolderMirror(Path.Combine(_root, "replaced-plugin-files"));
@@ -106,11 +108,17 @@ public sealed class SandboxRider
       }
 
       mirror.Mirror(mcpPlugin, McpPluginFolder);
-      if(!restartingForTheMcpPlugin) return $"Put the build in the sandbox, with the {mcp} build of the MCP: the sandbox Rider loads them when it starts.";
+      if(whyItRestarts is null) return $"Put the build in the sandbox, with the {mcp} build of the MCP: the sandbox Rider loads them when it starts.";
 
       Start();
-      return $"Put the build in the sandbox with the {mcp} build of the MCP, and restarted it: a running Rider can't reload the MCP's plugin.";
+      return $"Put the build in the sandbox with the {mcp} build of the MCP, and restarted it: {whyItRestarts}.";
    }
+
+   /// <summary>Why the running sandbox can't take this install without a restart, or null when it can.</summary>
+   string? WhyTheRunningSandboxMustRestart(string mcpPlugin) =>
+      !FolderMirror.HoldTheSame(mcpPlugin, McpPluginFolder) ? "a running Rider can't reload the MCP's plugin"
+    : File.Exists(FixtureCopiedFromFile) && File.ReadAllText(FixtureCopiedFromFile) != TheFixtureSolutionsFingerprint() ? "the fixture solution changed, and a fresh copy of it opens when the sandbox starts"
+    : null;
 
    /// <summary>Where the <paramref name="build"/> of the .NET Analysis&amp;Refactoring MCP's plugin is.</summary>
    string TheMcpPlugin(McpBuild build)
@@ -218,12 +226,18 @@ public sealed class SandboxRider
       SandboxWindowPlacement.Apply(FramesOf(running));
    }
 
+   /// <summary>
+   ///   Where the copy of the fixture solution records <see cref="TheFixtureSolutionsFingerprint"/> as it was copied.
+   /// </summary>
+   string FixtureCopiedFromFile => Path.Combine(_root, "fixture-solution-copied-from.txt");
+
    /// <summary>The copy replaces the last one, so no run sees what an earlier one changed.</summary>
    void CopyTheFixtureSolution()
    {
       var copy = Path.GetDirectoryName(FixtureSolution)!;
       if(Directory.Exists(copy)) Directory.Delete(copy, recursive: true);
       CopyFolder(RepositoryRoot.FixtureSolutionFolder, copy);
+      File.WriteAllText(FixtureCopiedFromFile, TheFixtureSolutionsFingerprint());
 
       static void CopyFolder(string source, string destination)
       {
@@ -233,6 +247,18 @@ public sealed class SandboxRider
             CopyFolder(folder, Path.Combine(destination, Path.GetFileName(folder)));
       }
    }
+
+   /// <summary>
+   ///   Each file of the fixture solution in the repository, with its size and time, apart from what builds put in
+   ///   <c>bin</c> and <c>obj</c>: it changes when the fixture does.
+   /// </summary>
+   static string TheFixtureSolutionsFingerprint() =>
+      string.Join(Environment.NewLine,
+                  Directory.GetFiles(RepositoryRoot.FixtureSolutionFolder, "*", SearchOption.AllDirectories)
+                           .Select(it => Path.GetRelativePath(RepositoryRoot.FixtureSolutionFolder, it))
+                           .Where(it => !it.Split(Path.DirectorySeparatorChar).Any(segment => segment is "bin" or "obj"))
+                           .Order(StringComparer.OrdinalIgnoreCase)
+                           .Select(it => $"{it} {new FileInfo(Path.Combine(RepositoryRoot.FixtureSolutionFolder, it)).Length} {File.GetLastWriteTimeUtc(Path.Combine(RepositoryRoot.FixtureSolutionFolder, it)).Ticks}"));
 
    /// <remarks>
    ///   Through the shell, so Rider gets none of this process's handles. Started directly, it inherited the console
