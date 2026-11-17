@@ -36,7 +36,7 @@ dependencies {
         bundledPlugin("org.jetbrains.plugins.terminal")
         // The .NET Analysis&Refactoring MCP we declare a hard <depends> on in plugin.xml. Pulled from the
         // Marketplace so the sandbox/verifier can resolve the dependency; it is NOT bundled into our distribution.
-        plugin("dev.magnus.dotnet-analysis-and-refactoring-mcp", "0.14.0")
+        plugin("dev.magnus.dotnet-analysis-and-refactoring-mcp", "0.15.0")
     }
 
     // Plain JUnit Jupiter for the pure unit tests (FileReferences / SolutionFileIndex). They touch no platform
