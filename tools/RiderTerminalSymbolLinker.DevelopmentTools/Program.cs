@@ -1,3 +1,4 @@
+using RiderTerminalSymbolLinker.DevelopmentTools.Plugin;
 using RiderTerminalSymbolLinker.DevelopmentTools.Riders;
 
 namespace RiderTerminalSymbolLinker.DevelopmentTools;
@@ -22,7 +23,7 @@ static class Program
                           sandbox place               Puts the sandbox's windows in their place again
                           sandbox status              Whether it runs, where its windows are, what the MCP server answers
 
-                        What the plugin does in the sandbox, through its development observation channel on port 23871:
+                        What the symbol linker does in the sandbox, through its development observation channel on port 23871:
 
                           sandbox state               Each open project's symbol and file indexes: ready, and their sizes
                           sandbox links <line>        The links the plugin makes in a line of terminal output
@@ -32,11 +33,25 @@ static class Program
                           sandbox picker choose <row> Chooses a row of the picker the last click showed, as Enter does
                           sandbox picker close        Closes that picker
 
-                        Magnus's Riders:
+                        What Claude Sessions does in the sandbox, through its development observation channel on port 23872:
 
-                          everyday deploy             Builds the working tree's plugin and puts it in the everyday plugins
-                                                      folder; each everyday Rider reloads it, without a restart, when he
-                                                      next switches to its window
+                          sandbox sessions state      Each open project's Claude Sessions view: its tabs, the process and the
+                                                      Claude Code session each runs, and the sessions it has saved
+                          sandbox sessions open       Gives the view its content, as showing the tool window does
+                          sandbox sessions new        Starts a new session in a tab, as the New Claude Session action does
+                          sandbox sessions screen <tab>
+                                                      The text tab <tab>'s terminal shows, counting from 0
+                          sandbox sessions type <tab> <text>
+                                                      Types the text into tab <tab>'s terminal, counting from 0, and Enter
+                          sandbox sessions close <tab>
+                                                      Closes tab <tab> by ending its process, as Claude Code's exit does
+
+                        Magnus's IDEs:
+
+                          everyday deploy             Builds the working tree's plugins and puts each in the plugins folder
+                                                      of every installed IDE it runs in: the symbol linker in Rider, Claude
+                                                      Sessions in Rider, IntelliJ IDEA and PyCharm. Says for each whether it
+                                                      reloads it when he next switches to its window, or needs a restart
                         """;
 
    static int Main(string[] arguments)
@@ -67,22 +82,40 @@ static class Program
             foreach(var line in sandbox.Status()) Console.WriteLine(line);
             break;
          case ["sandbox", "state"]:
-            Console.WriteLine(ObservationChannel.Indent(sandbox.Observation.State()));
+            Console.WriteLine(ObservationChannel.Indent(sandbox.SymbolLinkerObservation.State()));
             break;
          case ["sandbox", "links", var line]:
-            Console.WriteLine(ObservationChannel.Indent(sandbox.Observation.Links(line)));
+            Console.WriteLine(ObservationChannel.Indent(sandbox.SymbolLinkerObservation.Links(line)));
             break;
          case ["sandbox", "click", var line, var link]:
-            Console.WriteLine(ObservationChannel.Indent(sandbox.Observation.Click(line, link)));
+            Console.WriteLine(ObservationChannel.Indent(sandbox.SymbolLinkerObservation.Click(line, link)));
             break;
          case ["sandbox", "picker", "choose", var row]:
-            Console.WriteLine(ObservationChannel.Indent(sandbox.Observation.ChoosePickerRow(int.Parse(row))));
+            Console.WriteLine(ObservationChannel.Indent(sandbox.SymbolLinkerObservation.ChoosePickerRow(int.Parse(row))));
             break;
          case ["sandbox", "picker", "close"]:
-            Console.WriteLine(ObservationChannel.Indent(sandbox.Observation.ClosePicker()));
+            Console.WriteLine(ObservationChannel.Indent(sandbox.SymbolLinkerObservation.ClosePicker()));
+            break;
+         case ["sandbox", "sessions", "state"]:
+            Console.WriteLine(ObservationChannel.Indent(sandbox.ClaudeSessionsObservation.State()));
+            break;
+         case ["sandbox", "sessions", "open"]:
+            Console.WriteLine(ObservationChannel.Indent(sandbox.ClaudeSessionsObservation.OpenTheView()));
+            break;
+         case ["sandbox", "sessions", "new"]:
+            Console.WriteLine(ObservationChannel.Indent(sandbox.ClaudeSessionsObservation.StartANewSession()));
+            break;
+         case ["sandbox", "sessions", "screen", var tab]:
+            foreach(var line in sandbox.ClaudeSessionsObservation.Screen(int.Parse(tab))["lines"]!.AsArray()) Console.WriteLine(line!.GetValue<string>());
+            break;
+         case ["sandbox", "sessions", "type", var tab, var text]:
+            Console.WriteLine(ObservationChannel.Indent(sandbox.ClaudeSessionsObservation.Type(int.Parse(tab), text)));
+            break;
+         case ["sandbox", "sessions", "close", var tab]:
+            Console.WriteLine(ObservationChannel.Indent(sandbox.ClaudeSessionsObservation.Close(int.Parse(tab))));
             break;
          case ["everyday", "deploy"]:
-            Console.WriteLine(new EverydayRider(RiderInstallation.OfThisUser()).Deploy());
+            foreach(var line in EverydayIdes.Deploy(new GradleSandbox(RiderInstallation.OfThisUser()))) Console.WriteLine(line);
             break;
          default:
             Console.Error.WriteLine(Usage);

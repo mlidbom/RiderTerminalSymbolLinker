@@ -6,17 +6,19 @@ using RiderTerminalSymbolLinker.DevelopmentTools.Screen;
 namespace RiderTerminalSymbolLinker.DevelopmentTools.Riders;
 
 /// <summary>
-///   A second Rider, with settings, caches, plugins and logs of its own, that runs this working tree's build of the
-///   plugin, and the .NET Analysis&amp;Refactoring MCP's server on a port of its own, <see cref="McpPort"/>, from the
-///   <see cref="McpBuild"/> it's given. Claude starts it, verifies the plugin in it and stops it, without touching
-///   the Riders Magnus works in.
+///   A second Rider, with settings, caches, plugins and logs of its own, that runs this working tree's builds of
+///   <see cref="OurPlugin.All"/>, and the .NET Analysis&amp;Refactoring MCP's server on a port of its own,
+///   <see cref="McpPort"/>, from the <see cref="McpBuild"/> it's given. Claude starts it, verifies the plugins in it and
+///   stops it, without touching the Riders Magnus works in.
 /// </summary>
 /// <remarks>
 ///   Its folders are under <c>%LOCALAPPDATA%\RiderTerminalSymbolLinkerSandbox</c>, outside the repository, so the IDE
 ///   that has the repository open doesn't watch its caches change. Rider's launcher reads the folders from the
 ///   properties file that the <c>RIDER_PROPERTIES</c> environment variable names.<br/>
 ///   The properties file also sets <c>idea.auto.reload.plugins</c>, so that a running sandbox reloads the plugin when
-///   <see cref="Install"/> puts a new build in its plugins folder, without a restart.
+///   <see cref="Install"/> puts a new build in its plugins folder, without a restart.<br/>
+///   Claude Sessions runs in any JetBrains IDE, and is verified in this Rider too: what it uses is the platform's and
+///   the terminal's, which every IDE has alike.
 /// </remarks>
 public sealed class SandboxRider
 {
@@ -27,14 +29,23 @@ public sealed class SandboxRider
    public const int McpPort = 23861;
 
    /// <summary>
-   ///   The port the plugin's development observation channel listens on in this sandbox, and nowhere else. Not
+   ///   The port the symbol linker's development observation channel listens on in this sandbox, and nowhere else. Not
    ///   <see cref="McpPort"/> + 1: Rider's lightweight backend process loads the MCP plugin too, and its server takes
    ///   the next free port.
    /// </summary>
-   public const int ObservationPort = 23871;
+   public const int SymbolLinkerObservationPort = 23871;
 
-   /// <summary>The plugin's development observation channel in this sandbox.</summary>
-   public ObservationChannel Observation { get; } = new(ObservationPort);
+   /// <summary>The port Claude Sessions' development observation channel listens on in this sandbox, and nowhere else.</summary>
+   public const int ClaudeSessionsObservationPort = 23872;
+
+   /// <summary>The symbol linker's development observation channel in this sandbox.</summary>
+   public SymbolLinkerObservationChannel SymbolLinkerObservation { get; } = new(SymbolLinkerObservationPort);
+
+   /// <summary>Claude Sessions' development observation channel in this sandbox.</summary>
+   public ClaudeSessionsObservationChannel ClaudeSessionsObservation { get; } = new(ClaudeSessionsObservationPort);
+
+   ObservationChannel ObservationOf(OurPlugin plugin) =>
+      plugin == OurPlugin.SymbolLinker ? SymbolLinkerObservation : ClaudeSessionsObservation;
 
    static readonly TimeSpan HowLongStartingMayTake = TimeSpan.FromMinutes(5);
    static readonly TimeSpan HowLongStoppingMayTake = TimeSpan.FromMinutes(2);
@@ -60,6 +71,18 @@ public sealed class SandboxRider
       _mcpTools = new McpToolsBuilds(Path.Combine(_root, "mcp-tools"));
    }
 
+   /// <summary>
+   ///   Claude Code's folder in the sandbox, which <c>CLAUDE_CONFIG_DIR</c> names there: where the fake Claude Code
+   ///   records the sessions it runs, as Claude Code does in the user's.
+   /// </summary>
+   public string ClaudeCodeFolder => Path.Combine(_root, "claude-code");
+
+   /// <summary>
+   ///   The folder of the fake Claude Code, <c>tools/FakeClaudeCode</c>'s <c>claude.exe</c>, which is first on the
+   ///   sandbox's <c>PATH</c>, so that Claude Sessions runs it there in place of Claude Code. The tools build it.
+   /// </summary>
+   static string FakeClaudeCodeFolder => Path.Combine(RepositoryRoot.Folder, "tools", "FakeClaudeCode", "bin", "claude");
+
    /// <summary>Where solutions to open in the sandbox go. The sandbox trusts everything under it.</summary>
    public string SolutionsFolder => Path.Combine(_root, "solutions");
 
@@ -69,14 +92,14 @@ public sealed class SandboxRider
    string ProcessFile => Path.Combine(_root, "running-process.txt");
    string PluginsFolder => Path.Combine(_root, "plugins");
    string McpPluginFolder => Path.Combine(PluginsFolder, GradleSandbox.McpPluginFolderName);
-   bool HasBothPlugins => Directory.Exists(Path.Combine(PluginsFolder, GradleSandbox.PluginFolderName)) && Directory.Exists(McpPluginFolder);
+   bool HasEveryPlugin => OurPlugin.All.All(it => Directory.Exists(Path.Combine(PluginsFolder, it.Name))) && Directory.Exists(McpPluginFolder);
 
    public bool IsRunning => RunningProcess() is not null;
 
    /// <summary>
-   ///   Builds this working tree's plugin with Gradle and puts it in the sandbox's plugins folder, with the
+   ///   Builds this working tree's plugins with Gradle and puts them in the sandbox's plugins folder, with the
    ///   <paramref name="mcp"/> build of the .NET Analysis&amp;Refactoring MCP. A running sandbox is then made to reload
-   ///   our plugin, and this returns once the new build answers. Returns what it did.
+   ///   those of our plugins that changed, and this returns once their new builds answer. Returns what it did.
    /// </summary>
    /// <remarks>
    ///   The MCP comes in two parts. Its plugin is held open by a running Rider, which can't reload it, so a running
@@ -93,27 +116,39 @@ public sealed class SandboxRider
       if(whyItRestarts is not null) Stop();
 
       var mcpToolsChanged = mcp == McpBuild.Everyday ? _mcpTools.TakeTheBuildsOf(_everyday.McpToolsBuilds) : _mcpTools.Clear();
-      var pluginFolder = Path.Combine(PluginsFolder, GradleSandbox.PluginFolderName);
-      var registeredBefore = PluginRegistrations.InPluginFolder(pluginFolder);
+      var startedBefore = OurPlugin.All.ToDictionary(it => it, it => IsRunning ? ObservationOf(it).StartedAt() : null);
       var mirror = new FolderMirror(Path.Combine(_root, "replaced-plugin-files"));
-      var pluginChanged = mirror.Mirror(_plugins.Plugin, pluginFolder);
+      var changed = new List<OurPlugin>();
+      var registrationsChanged = false;
+      foreach(var plugin in OurPlugin.All)
+      {
+         var pluginFolder = Path.Combine(PluginsFolder, plugin.Name);
+         var registeredBefore = PluginRegistrations.InPluginFolder(pluginFolder);
+         if(mirror.Mirror(_plugins.BuildOf(plugin), pluginFolder)) changed.Add(plugin);
+         registrationsChanged |= PluginRegistrations.InPluginFolder(pluginFolder) != registeredBefore;
+      }
+
       if(IsRunning)
       {
          var mcpTools = mcpToolsChanged ? $"Its MCP swapped to the {mcp} tools build {WaitUntilTheMcpServesItsNewestToolsBuild()}. " : "";
-         if(!pluginChanged) return mcpTools + "The sandbox has this build of the plugin already.";
-         if(!mirror.AddedOrRemovedAFile && PluginRegistrations.InPluginFolder(pluginFolder) == registeredBefore)
-            return mcpTools + $"Put the new build in the running sandbox Rider, which reloaded it in {Observation.ReloadThePlugin(TimeSpan.FromMinutes(1)).TotalSeconds:0.0}s.";
+         if(changed.Count == 0) return mcpTools + "The sandbox has these builds of the plugins already.";
+         if(!mirror.AddedOrRemovedAFile && !registrationsChanged)
+         {
+            ObservationOf(changed[0]).RefreshThePluginsFolder();
+            var reloads = changed.Select(it => $"{it} in {ObservationOf(it).WaitUntilReloaded(startedBefore[it], TimeSpan.FromMinutes(1)).TotalSeconds:0.0}s");
+            return mcpTools + $"Put the new builds in the running sandbox Rider, which reloaded {string.Join(" and ", reloads)}.";
+         }
 
          Stop();
          Start();
-         return mcpTools + "Put the new build in the sandbox and restarted it: the build adds or removes a file of the plugin's, or changes what its plugin.xml registers, which a reload doesn't take.";
+         return mcpTools + $"Put the new builds of {string.Join(" and ", changed)} in the sandbox and restarted it: a build adds or removes a file of a plugin's, or changes what its plugin.xml registers, which a reload doesn't take.";
       }
 
       mirror.Mirror(mcpPlugin, McpPluginFolder);
-      if(whyItRestarts is null) return $"Put the build in the sandbox, with the {mcp} build of the MCP: the sandbox Rider loads them when it starts.";
+      if(whyItRestarts is null) return $"Put the builds in the sandbox, with the {mcp} build of the MCP: the sandbox Rider loads them when it starts.";
 
       Start();
-      return $"Put the build in the sandbox with the {mcp} build of the MCP, and restarted it: {whyItRestarts}.";
+      return $"Put the builds in the sandbox with the {mcp} build of the MCP, and restarted it: {whyItRestarts}.";
    }
 
    /// <summary>Why the running sandbox can't take this install without a restart, or null when it can.</summary>
@@ -163,7 +198,7 @@ public sealed class SandboxRider
    {
       if(RunningProcess() is null)
       {
-         if(!HasBothPlugins) Install();
+         if(!HasEveryPlugin) Install();
          if(solution is null)
          {
             CopyTheFixtureSolution();
@@ -186,6 +221,19 @@ public sealed class SandboxRider
 
       WaitUntil(() => TheMcpServerHasIndexed(solution), HowLongStartingMayTake, $"the MCP server on port {McpPort} to answer with {solution} loaded and indexed");
       PlaceWindows(); // The solution's own window has replaced Rider Home by now.
+   }
+
+   /// <summary>
+   ///   Has the running sandbox reload <paramref name="plugin"/> as it is, as it does a new build, and returns once the
+   ///   reloaded plugin answers.
+   /// </summary>
+   public void ReloadThePlugin(OurPlugin plugin)
+   {
+      var observation = ObservationOf(plugin);
+      var startedBefore = observation.StartedAt();
+      foreach(var jar in Directory.GetFiles(Path.Combine(PluginsFolder, plugin.Name, "lib"), "*.jar")) File.SetLastWriteTimeUtc(jar, DateTime.UtcNow);
+      observation.RefreshThePluginsFolder();
+      observation.WaitUntilReloaded(startedBefore, TimeSpan.FromMinutes(1));
    }
 
    /// <summary>Closes the sandbox's windows until it exits, as a human closing them would.</summary>
@@ -270,12 +318,30 @@ public sealed class SandboxRider
    /// </remarks>
    Process Launch(string solution)
    {
+      LeaveOutTheClaudeCodeSessionThisRunsIn();
+      Environment.SetEnvironmentVariable("CLAUDE_CONFIG_DIR", ClaudeCodeFolder);
+      Environment.SetEnvironmentVariable("PATH", FakeClaudeCodeFolder + Path.PathSeparator + Environment.GetEnvironmentVariable("PATH"));
       Environment.SetEnvironmentVariable("RIDER_PROPERTIES", Path.Combine(_root, "idea.properties"));
       Environment.SetEnvironmentVariable("DOTNET_ANALYSIS_AND_REFACTORING_MCP_PORT", McpPort.ToString());
       Environment.SetEnvironmentVariable("DOTNET_ANALYSIS_AND_REFACTORING_MCP_TOOLS", _mcpTools.Folder);
       var startInformation = new ProcessStartInfo(_rider.Launcher) { UseShellExecute = true };
       startInformation.ArgumentList.Add(solution);
       return Process.Start(startInformation) ?? throw new InvalidOperationException($"Could not start {_rider.Launcher}.");
+   }
+
+   /// <summary>
+   ///   Removes from this process's environment, which the sandbox inherits, the variables that the Claude Code session
+   ///   these tools run in sets for its child processes: a Claude Code that Claude Sessions starts in the sandbox would
+   ///   otherwise take itself for a child of that session, and neither record its session nor save its transcript. Those
+   ///   set for the user or the machine stay, as an IDE started from the desktop has them.
+   /// </summary>
+   static void LeaveOutTheClaudeCodeSessionThisRunsIn()
+   {
+      foreach(var name in Environment.GetEnvironmentVariables().Keys.Cast<string>())
+         if(name.StartsWith("CLAUDE", StringComparison.OrdinalIgnoreCase)
+         && Environment.GetEnvironmentVariable(name, EnvironmentVariableTarget.User) is null
+         && Environment.GetEnvironmentVariable(name, EnvironmentVariableTarget.Machine) is null)
+            Environment.SetEnvironmentVariable(name, null);
    }
 
    void WriteTheFoldersFile()
@@ -289,7 +355,8 @@ public sealed class SandboxRider
                             $"idea.plugins.path={Forward(PluginsFolder)}",
                             $"idea.log.path={Forward(_root)}/log",
                             "idea.auto.reload.plugins=true",
-                            $"dev.magnus.csl.observation.port={ObservationPort}"
+                            $"dev.magnus.csl.observation.port={SymbolLinkerObservationPort}",
+                            $"dev.magnus.claudesessions.observation.port={ClaudeSessionsObservationPort}"
                          ]);
    }
 

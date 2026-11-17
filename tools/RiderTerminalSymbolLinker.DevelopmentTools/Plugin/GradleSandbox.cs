@@ -4,22 +4,20 @@ using RiderTerminalSymbolLinker.DevelopmentTools.Riders;
 namespace RiderTerminalSymbolLinker.DevelopmentTools.Plugin;
 
 /// <summary>
-///   The plugins folder that the Gradle build's <c>prepareSandbox</c> task fills: this working tree's build of the
-///   plugin, and the .NET Analysis&amp;Refactoring MCP it depends on, as the Marketplace has it. The
-///   <see cref="SandboxRider"/> installs our plugin from here, and the MCP's when it's to run the
+///   The plugins folders that the Gradle build's <c>prepareSandbox</c> task fills, one for each of
+///   <see cref="OurPlugin.All"/>: this working tree's build of the plugin, and the plugins it depends on, as the
+///   Marketplace has them, such as the .NET Analysis&amp;Refactoring MCP the symbol linker depends on. The
+///   <see cref="SandboxRider"/> installs our plugins from here, and the MCP's when it's to run the
 ///   <see cref="McpBuild.Marketplace"/> build.
 /// </summary>
 /// <remarks>
-///   The Gradle build names the folder after the Rider it builds against, the installed one, as <c>localIdePath</c> in
-///   the user's Gradle properties says.<br/>
+///   The Gradle build names each folder after its project, and the Rider it builds against, the installed one, as
+///   <c>localIdePath</c> in the user's Gradle properties says.<br/>
 ///   The sandbox Rider doesn't load its plugins from here: a running Rider holds the MCP plugin's DLL open, and
 ///   <c>prepareSandbox</c> copies every file again, so Gradle couldn't build while it runs.
 /// </remarks>
 sealed class GradleSandbox
 {
-   /// <summary>The name of the plugin's folder in a plugins folder.</summary>
-   public const string PluginFolderName = "RiderTerminalSymbolLinker";
-
    /// <summary>The name of the .NET Analysis&amp;Refactoring MCP's folder in a plugins folder.</summary>
    public const string McpPluginFolderName = "DotNetAnalysisAndRefactoringMcp";
 
@@ -27,16 +25,16 @@ sealed class GradleSandbox
 
    public GradleSandbox(RiderInstallation rider) => _rider = rider;
 
-   public string PluginsFolder =>
-      Path.Combine(RepositoryRoot.Folder, ".intellijPlatform", "sandbox", PluginFolderName, $"RD-{_rider.Version}", "plugins");
+   string PluginsFolderOf(OurPlugin plugin) =>
+      Path.Combine(RepositoryRoot.Folder, ".intellijPlatform", "sandbox", plugin.Name, $"RD-{_rider.Version}", "plugins");
 
-   /// <summary>This working tree's build of the plugin, once <see cref="Fill"/> has run.</summary>
-   public string Plugin => Path.Combine(PluginsFolder, PluginFolderName);
+   /// <summary>This working tree's build of <paramref name="plugin"/>, once <see cref="Fill"/> has run.</summary>
+   public string BuildOf(OurPlugin plugin) => Path.Combine(PluginsFolderOf(plugin), plugin.Name);
 
-   /// <summary>The .NET Analysis&amp;Refactoring MCP's plugin, as the Marketplace has the version the build depends on.</summary>
-   public string McpPlugin => Path.Combine(PluginsFolder, McpPluginFolderName);
+   /// <summary>The .NET Analysis&amp;Refactoring MCP's plugin, as the Marketplace has the version the symbol linker depends on.</summary>
+   public string McpPlugin => Path.Combine(PluginsFolderOf(OurPlugin.SymbolLinker), McpPluginFolderName);
 
-   /// <summary>Builds this working tree's plugin into the folder, with Gradle's <c>prepareSandbox</c>.</summary>
+   /// <summary>Builds this working tree's plugins into their folders, with Gradle's <c>prepareSandbox</c>, which every project has.</summary>
    public void Fill() =>
       ExternalCommand.Run(Path.Combine(RepositoryRoot.Folder, "gradlew.bat"),
                           ["prepareSandbox", "--console=plain", "--quiet"],

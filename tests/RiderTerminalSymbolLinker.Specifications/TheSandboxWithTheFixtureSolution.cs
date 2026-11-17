@@ -57,19 +57,19 @@ public sealed class TheSandboxWithTheFixtureSolution : IDisposable
    /// </summary>
    public ClickOutcome Click(string line, string link)
    {
-      _sandbox.Observation.CloseEveryEditor();
-      return ClickOutcome.From(_sandbox.Observation.Click(line, link), FixtureFolder);
+      _sandbox.SymbolLinkerObservation.CloseEveryEditor();
+      return ClickOutcome.From(_sandbox.SymbolLinkerObservation.Click(line, link), FixtureFolder);
    }
 
    /// <summary>Chooses a row of the picker the last click showed, as Enter does.</summary>
-   public ClickOutcome ChoosePickerRow(int row) => ClickOutcome.From(_sandbox.Observation.ChoosePickerRow(row), FixtureFolder);
+   public ClickOutcome ChoosePickerRow(int row) => ClickOutcome.From(_sandbox.SymbolLinkerObservation.ChoosePickerRow(row), FixtureFolder);
 
    /// <summary>Closes the picker the last click showed.</summary>
-   public void ClosePicker() => _sandbox.Observation.ClosePicker();
+   public void ClosePicker() => _sandbox.SymbolLinkerObservation.ClosePicker();
 
    /// <summary>The texts of the links the plugin makes in <paramref name="line"/>, each with its kind: symbol or file.</summary>
    public IReadOnlyList<(string Text, string Kind)> LinksIn(string line) =>
-      [.. _sandbox.Observation.Links(line)["links"]!.AsArray().Select(it => (it!["text"]!.GetValue<string>(), it["kind"]!.GetValue<string>()))];
+      [.. _sandbox.SymbolLinkerObservation.Links(line)["links"]!.AsArray().Select(it => (it!["text"]!.GetValue<string>(), it["kind"]!.GetValue<string>()))];
 
    string FixtureFolder => Path.GetDirectoryName(_sandbox.FixtureSolution)!;
 
@@ -77,7 +77,7 @@ public sealed class TheSandboxWithTheFixtureSolution : IDisposable
    {
       var deadline = DateTime.UtcNow + HowLongIndexingMayTake;
       JsonNode state;
-      while(!BothIndexesAreReady(state = _sandbox.Observation.State()))
+      while(!BothIndexesAreReady(state = _sandbox.SymbolLinkerObservation.State()))
       {
          if(DateTime.UtcNow > deadline) throw new TimeoutException($"The plugin's indexes of the fixture solution weren't ready after {HowLongIndexingMayTake}: {state}");
          Thread.Sleep(500);
