@@ -9,6 +9,9 @@
 - **Pushing a `v<version>` tag releases it:** `.github/workflows/release.yml` runs the Marketplace's Plugin Verifier,
   builds and signs, creates the GitHub Release, and uploads to the Marketplace. A version the Marketplace has already is
   skipped, so a rerun is safe.
+- **Check it against the Marketplace's build of the MCP first,** the one its users get with it:
+  `$env:SANDBOX_MCP_BUILD = 'marketplace'; dotnet test tests/RiderTerminalSymbolLinker.Specifications`. Without the
+  variable the specifications run against the MCP build Magnus's Riders run, which may be ahead of the Marketplace's.
 - **The verifier fails on any finding,** in CI and before a release: updates whose report had none have been approved
   at once (Magnus, 2026-11-14). It checks the pinned Rider and the latest release; locally, `verifyPlugin` checks the
   installed Rider.

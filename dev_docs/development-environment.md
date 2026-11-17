@@ -37,8 +37,13 @@ the fixture solution. Its window goes on IDEA's virtual desktop, on the other mo
   `install` asks it to look through the observation channel. It reloads a plugin only when one of its files' content
   changes, never when a file is created or deleted (`DynamicPluginVfsListener`, Rider 2026.3), so the plugin's jar is
   named without the version (`composedJar` in `build.gradle.kts`): a version bump would otherwise rename it, and take a
-  restart. A reload takes about a second; the indexes come back, since
-  the startup activities run again.
+  restart. A reload takes about a second; the indexes come back, since the startup activities run again.
+- **A reload reuses the plugin's descriptor as Rider first loaded it:** the plugin.xml, and the jar paths, it read at
+  startup. So a changed plugin.xml, such as an extension added or removed, takes effect only at a restart, and a
+  renamed jar breaks the reload: Magnus's Rider, started with 0.2.10's `RiderTerminalSymbolLinker-0.2.10.jar`, reloaded
+  "0.2.10" from that missing jar at the first deploy of the unversioned one, and every extension failed with
+  `ClassNotFoundException` until he restarted (2026-11-17). The descriptor still said 0.2.10, though the new jar's
+  plugin.xml said 0.2.11.
 - **Ports:** the MCP server listens on 23861 there. Rider 2026.3's second backend process,
   `Rider.LightweightBackend.exe`, loads that plugin too, and its server takes the next free port, empty: not intended,
   and on the MCP plugin's backlog. So the observation channel is on 23871, well away.

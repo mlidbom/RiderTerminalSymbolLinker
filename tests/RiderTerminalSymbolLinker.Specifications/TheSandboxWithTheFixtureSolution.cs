@@ -26,10 +26,25 @@ public sealed class TheSandboxWithTheFixtureSolution : IDisposable
    public TheSandboxWithTheFixtureSolution()
    {
       _theRunStartedTheSandbox = !_sandbox.IsRunning;
-      _sandbox.Install();
-      if(!_sandbox.IsRunning) _sandbox.Start();
-      WaitUntilThePluginHasIndexedTheSolution();
+      try
+      {
+         _sandbox.Install(TheMcpBuildToRun());
+         if(!_sandbox.IsRunning) _sandbox.Start();
+         WaitUntilThePluginHasIndexedTheSolution();
+      }
+      catch // xUnit doesn't dispose a fixture whose constructor failed, so the sandbox is stopped here, and the failure reported.
+      {
+         Dispose();
+         throw;
+      }
    }
+
+   /// <summary>
+   ///   The MCP build the run checks the plugin against: the one Magnus's Riders run, unless the environment variable
+   ///   <c>SANDBOX_MCP_BUILD</c> names another <see cref="McpBuild"/>, such as <c>Marketplace</c> before a release.
+   /// </summary>
+   static McpBuild TheMcpBuildToRun() =>
+      Environment.GetEnvironmentVariable("SANDBOX_MCP_BUILD") is {} build ? Enum.Parse<McpBuild>(build, ignoreCase: true) : McpBuild.Everyday;
 
    public void Dispose()
    {
