@@ -16,6 +16,8 @@ under "The tools you develop with are yours, as a product". Today they are:
   its commands: a Rider of its own that runs this working tree's build on `tests/FixtureSolution`, reloads a new build
   in a second, and tells through the plugin's development observation channel what the plugin links and what a click
   does;
+- the specifications that check that in the sandbox, `dotnet test tests/RiderTerminalSymbolLinker.Specifications`, in
+  seconds once the sandbox runs;
 - the CI workflows under `.github/workflows/`;
 - the unit tests under `src/test/`.
 
