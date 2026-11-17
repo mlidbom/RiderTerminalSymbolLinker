@@ -1,7 +1,7 @@
 # Record every change in the changelog
 
 Whenever you add a feature, fix a bug, or make any user-facing or otherwise notable change, add an entry
-to [CHANGELOG.md](../../CHANGELOG.md) as part of the same change — not as a follow-up. **A change isn't
+to [CHANGELOG.md](../../../CHANGELOG.md) as part of the same change — not as a follow-up. **A change isn't
 done until it's in the changelog.**
 
 ## Which version section to add it to
@@ -16,7 +16,7 @@ whether the changelog's current (top) version has already been released as a git
      there.
    - Add its compare link at the bottom of the file. The in-progress (top) version compares against
      `HEAD` until it's tagged at release: `[0.2.2]: …/compare/v0.2.1...HEAD`.
-   - Bump `pluginVersion` in [gradle.properties](../../gradle.properties) to the new version, so the built
+   - Bump `pluginVersion` in [gradle.properties](../../../gradle.properties) to the new version, so the built
      plugin carries that version from then on.
 
 ## Format

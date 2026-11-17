@@ -1,0 +1,9 @@
+# Shell scripts keep LF line endings on Windows checkouts: the session-start hook breaks under bash with CRLF.
+*.sh text eol=lf
+
+# Symlinks into the .claude-shared catalog. Directory links need the symlink=dir hint so Git for Windows
+# creates them correctly regardless of checkout order.
+.claude/rules/01-universal-shared symlink=dir
+.claude/skills/shared-jetbrains-inspect symlink=dir
+.claude/skills/shared-refactor-to-code-standards symlink=dir
+.claude/skills/shared-team-review-and-fix-code-standard-issues symlink=dir
