@@ -16,6 +16,16 @@ static class Program
                           sandbox stop                Closes the sandbox Rider
                           sandbox place               Puts the sandbox's windows in their place again
                           sandbox status              Whether it runs, where its windows are, what the MCP server answers
+
+                        What the plugin does in the sandbox, through its development observation channel on port 23871:
+
+                          sandbox state               Each open project's symbol and file indexes: ready, and their sizes
+                          sandbox links <line>        The links the plugin makes in a line of terminal output
+                          sandbox click <line> <link> Clicks the link with the text <link> in the line, and tells what it
+                                                      did: opened a file and where the editor is, showed a picker and its
+                                                      rows, found nothing, or fell back to Search Everywhere
+                          sandbox picker choose <row> Chooses a row of the picker the last click showed, as Enter does
+                          sandbox picker close        Closes that picker
                         """;
 
    static int Main(string[] arguments)
@@ -31,10 +41,7 @@ static class Program
             sandbox.Start(Path.GetFullPath(solution));
             break;
          case ["sandbox", "install"]:
-            sandbox.Install();
-            Console.WriteLine(sandbox.IsRunning
-                                 ? "Built the plugin into Gradle's sandbox: the running sandbox Rider reloads it by itself."
-                                 : "Built the plugin into Gradle's sandbox: the sandbox Rider loads it when it starts.");
+            Console.WriteLine(sandbox.Install());
             break;
          case ["sandbox", "stop"]:
             sandbox.Stop();
@@ -44,6 +51,21 @@ static class Program
             break;
          case ["sandbox", "status"]:
             foreach(var line in sandbox.Status()) Console.WriteLine(line);
+            break;
+         case ["sandbox", "state"]:
+            Console.WriteLine(ObservationChannel.Indent(sandbox.Observation.State()));
+            break;
+         case ["sandbox", "links", var line]:
+            Console.WriteLine(ObservationChannel.Indent(sandbox.Observation.Links(line)));
+            break;
+         case ["sandbox", "click", var line, var link]:
+            Console.WriteLine(ObservationChannel.Indent(sandbox.Observation.Click(line, link)));
+            break;
+         case ["sandbox", "picker", "choose", var row]:
+            Console.WriteLine(ObservationChannel.Indent(sandbox.Observation.ChoosePickerRow(int.Parse(row))));
+            break;
+         case ["sandbox", "picker", "close"]:
+            Console.WriteLine(ObservationChannel.Indent(sandbox.Observation.ClosePicker()));
             break;
          default:
             Console.Error.WriteLine(Usage);

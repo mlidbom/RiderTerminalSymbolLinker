@@ -6,17 +6,16 @@ using RiderTerminalSymbolLinker.DevelopmentTools.Screen;
 namespace RiderTerminalSymbolLinker.DevelopmentTools.Riders;
 
 /// <summary>
-///   A second Rider, with settings, caches and logs of its own, that loads this working tree's build of the plugin from
-///   the <see cref="GradleSandbox"/>, and runs the .NET Analysis&amp;Refactoring MCP's server on a port of its own,
-///   <see cref="McpPort"/>. Claude starts it, verifies the plugin in it and stops it, without touching the Riders
-///   Magnus works in.
+///   A second Rider, with settings, caches, plugins and logs of its own, that runs this working tree's build of the
+///   plugin, and the .NET Analysis&amp;Refactoring MCP's server on a port of its own, <see cref="McpPort"/>. Claude
+///   starts it, verifies the plugin in it and stops it, without touching the Riders Magnus works in.
 /// </summary>
 /// <remarks>
 ///   Its folders are under <c>%LOCALAPPDATA%\RiderTerminalSymbolLinkerSandbox</c>, outside the repository, so the IDE
 ///   that has the repository open doesn't watch its caches change. Rider's launcher reads the folders from the
 ///   properties file that the <c>RIDER_PROPERTIES</c> environment variable names.<br/>
 ///   The properties file also sets <c>idea.auto.reload.plugins</c>, so that a running sandbox reloads the plugin when
-///   <see cref="Install"/> rebuilds it, without a restart.
+///   <see cref="Install"/> puts a new build in its plugins folder, without a restart.
 /// </remarks>
 sealed class SandboxRider
 {
@@ -25,6 +24,16 @@ sealed class SandboxRider
    ///   Everyday Riders use 23751, and that plugin's own sandbox 23841.
    /// </summary>
    public const int McpPort = 23861;
+
+   /// <summary>
+   ///   The port the plugin's development observation channel listens on in this sandbox, and nowhere else. Not
+   ///   <see cref="McpPort"/> + 1: Rider's lightweight backend process loads the MCP plugin too, and its server takes
+   ///   the next free port.
+   /// </summary>
+   public const int ObservationPort = 23871;
+
+   /// <summary>The plugin's development observation channel in this sandbox.</summary>
+   public ObservationChannel Observation { get; } = new(ObservationPort);
 
    static readonly TimeSpan HowLongStartingMayTake = TimeSpan.FromMinutes(5);
    static readonly TimeSpan HowLongStoppingMayTake = TimeSpan.FromMinutes(2);
@@ -48,14 +57,33 @@ sealed class SandboxRider
    public string FixtureSolution => Path.Combine(SolutionsFolder, "FixtureSolution", "FixtureSolution.slnx");
 
    string ProcessFile => Path.Combine(_root, "running-process.txt");
+   string PluginsFolder => Path.Combine(_root, "plugins");
+   bool HasBothPlugins => Directory.Exists(Path.Combine(PluginsFolder, GradleSandbox.PluginFolderName))
+                       && Directory.Exists(Path.Combine(PluginsFolder, GradleSandbox.McpPluginFolderName));
+
+   /// <summary>The tools builds the MCP plugin ships with, which it serves here as a Marketplace install does.</summary>
+   string McpToolsFolder => Path.Combine(PluginsFolder, GradleSandbox.McpPluginFolderName, "tools");
 
    public bool IsRunning => RunningProcess() is not null;
 
    /// <summary>
-   ///   Builds this working tree's plugin into the <see cref="GradleSandbox"/>. A running sandbox reloads it from there
-   ///   by itself; one that isn't loads it when it starts.
+   ///   Builds this working tree's plugin with Gradle and puts it in the sandbox's plugins folder. A running sandbox is
+   ///   then made to reload it, and this returns once the new build answers. The MCP plugin, which a running sandbox
+   ///   holds open, is put there only while the sandbox isn't running. Returns what it did.
    /// </summary>
-   public void Install() => _plugins.Fill();
+   public string Install()
+   {
+      _plugins.Fill();
+      var mirror = new FolderMirror(Path.Combine(_root, "replaced-plugin-files"));
+      var pluginChanged = mirror.Mirror(_plugins.Plugin, Path.Combine(PluginsFolder, GradleSandbox.PluginFolderName));
+      if(IsRunning)
+         return pluginChanged
+                   ? $"Put the new build in the running sandbox Rider, which reloaded it in {Observation.ReloadThePlugin(TimeSpan.FromMinutes(1)).TotalSeconds:0.0}s."
+                   : "The sandbox has this build already.";
+
+      mirror.Mirror(_plugins.McpPlugin, Path.Combine(PluginsFolder, GradleSandbox.McpPluginFolderName));
+      return "Put the build in the sandbox: the sandbox Rider loads it when it starts.";
+   }
 
    /// <summary>
    ///   Starts the sandbox unless it's running, and places its windows. It opens <paramref name="solution"/>, or a fresh
@@ -66,7 +94,7 @@ sealed class SandboxRider
    {
       if(RunningProcess() is null)
       {
-         if(!_plugins.HasBothPlugins) Install();
+         if(!HasBothPlugins) Install();
          if(solution is null)
          {
             CopyTheFixtureSolution();
@@ -157,7 +185,7 @@ sealed class SandboxRider
    {
       Environment.SetEnvironmentVariable("RIDER_PROPERTIES", Path.Combine(_root, "idea.properties"));
       Environment.SetEnvironmentVariable("DOTNET_ANALYSIS_AND_REFACTORING_MCP_PORT", McpPort.ToString());
-      Environment.SetEnvironmentVariable("DOTNET_ANALYSIS_AND_REFACTORING_MCP_TOOLS", _plugins.McpToolsFolder);
+      Environment.SetEnvironmentVariable("DOTNET_ANALYSIS_AND_REFACTORING_MCP_TOOLS", McpToolsFolder);
       var startInformation = new ProcessStartInfo(_rider.Launcher) { UseShellExecute = true };
       startInformation.ArgumentList.Add(solution);
       return Process.Start(startInformation) ?? throw new InvalidOperationException($"Could not start {_rider.Launcher}.");
@@ -171,9 +199,10 @@ sealed class SandboxRider
                          [
                             $"idea.config.path={Forward(_root)}/config",
                             $"idea.system.path={Forward(_root)}/system",
-                            $"idea.plugins.path={Forward(_plugins.PluginsFolder)}",
+                            $"idea.plugins.path={Forward(PluginsFolder)}",
                             $"idea.log.path={Forward(_root)}/log",
-                            "idea.auto.reload.plugins=true"
+                            "idea.auto.reload.plugins=true",
+                            $"dev.magnus.csl.observation.port={ObservationPort}"
                          ]);
    }
 
