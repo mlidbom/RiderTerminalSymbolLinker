@@ -121,5 +121,9 @@ changelog {
 }
 
 kotlin {
+    // 21, not the 25 that Rider runs on: plugins compile to the platform's bytecode level, which is Java 21. JetBrains,
+    // for 2026.1: "we still use JDK 21 level for compilation, at runtime we run on 25 already"
+    // (platform.jetbrains.com/t/compile-with-java-25-or-21-for-2026-1/4029). 21 bytecode runs on JBR 25; 25 bytecode
+    // fails with UnsupportedClassVersionError on a Rider whose JBR is older. Move only when the platform's level does.
     jvmToolchain(21)
 }

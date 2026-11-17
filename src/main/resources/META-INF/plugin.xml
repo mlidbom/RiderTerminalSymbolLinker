@@ -24,6 +24,9 @@
          the Marketplace prompts users to install it alongside this one. -->
     <depends>dev.magnus.dotnet-analysis-and-refactoring-mcp</depends>
 
+    <!-- defaultExtensionNs, never defaultExtensionPointName: that attribute binds every extension below to an empty
+         namespace, silently. The plugin loads and shows as enabled, and none of its extensions run; the only trace is
+         an info line in idea.log: "extension point '.consoleFilterProvider' which was not found". -->
     <extensions defaultExtensionNs="com.intellij">
         <consoleFilterProvider implementation="dev.magnus.csl.SymbolLinkFilterProvider"/>
         <notificationGroup id="RiderTerminalSymbolLinker" displayType="BALLOON"/>
