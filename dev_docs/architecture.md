@@ -26,7 +26,7 @@ Both link nothing until their index is ready.
 **C# symbols come from the .NET Analysis&Refactoring MCP**, the plugin it depends on: Magnus's fork of Joshua Light's
 ReSharper MCP, in `C:\Dev\resharper-mcp`, whose session is extend-mcp. Its server runs inside Rider's ReSharper
 backend, on port 23751 or the port `DOTNET_ANALYSIS_AND_REFACTORING_MCP_PORT` sets, and answers plain JSON-RPC over HTTP
-(`POST /`, method `tools/call`, arguments under `params.arguments`). `ReSharperMcp` is the client. Until 0.2.8 it was
+(`POST /`, method `tools/call`, arguments under `params.arguments`). `DotNetAnalysisAndRefactoringMcp` is the client. Until 0.2.8 it was
 the upstream ReSharper MCP (`com.j-light.resharper-mcp`, port 23741).
 
 **Not Rider's `GotoSymbolModel2`:** the platform's own symbol search doesn't see C# symbols; it answers empty at once.

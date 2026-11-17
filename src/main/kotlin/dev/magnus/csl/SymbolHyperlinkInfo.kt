@@ -13,7 +13,7 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.LocalFileSystem
 
 /**
- * On click, resolve [token] to its declaration(s) via the ReSharper MCP (exact by name):
+ * On click, resolve [token] to its declaration(s) via the .NET Analysis&Refactoring MCP (exact by name):
  *  - one declaration  -> jump straight to its file:line
  *  - several          -> small picker of qualified locations
  *  - none             -> brief "no symbol" notice
@@ -47,9 +47,9 @@ class SymbolHyperlinkInfo(private val token: String) : HyperlinkInfo {
      * `null` (MCP unreachable) is propagated unchanged so the caller can fall back to Search Everywhere.
      */
     private fun resolve(solutionName: String?): List<SymbolHit>? {
-        val hits = ReSharperMcp.goToDefinition(token, solutionName)
+        val hits = DotNetAnalysisAndRefactoringMcp.goToDefinition(token, solutionName)
         if (hits != null && hits.isEmpty() && '.' in token) {
-            return ReSharperMcp.goToDefinition(token.substringAfterLast('.'), solutionName)
+            return DotNetAnalysisAndRefactoringMcp.goToDefinition(token.substringAfterLast('.'), solutionName)
         }
         return hits
     }

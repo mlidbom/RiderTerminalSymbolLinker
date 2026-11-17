@@ -36,7 +36,7 @@ data class SolutionInfo(val name: String, val path: String, val uniquePathSegmen
  * McpJsonContract.kt. An MCP too old to have that form ignores the argument and answers text, which this reads as
  * no answer, and logs.
  */
-object ReSharperMcp {
+object DotNetAnalysisAndRefactoringMcp {
     private const val DEFAULT_PORT = 23751
 
     // The server binds the port this variable names, when set. Rider's ReSharper backend is started by this

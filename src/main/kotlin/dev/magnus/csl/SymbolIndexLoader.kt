@@ -91,7 +91,7 @@ object SymbolIndexLoader {
         while (true) {
             indicator.checkCanceled()
             val solutionName = McpSolution.getInstance(project).name()
-            val symbols = solutionName?.let { ReSharperMcp.enumerateSymbolNames(indicator, it) }
+            val symbols = solutionName?.let { DotNetAnalysisAndRefactoringMcp.enumerateSymbolNames(indicator, it) }
             if (symbols != null) return symbols
             if (!waitForReady || ++attempt >= MAX_STARTUP_ATTEMPTS) return null
             indicator.text = "Waiting for ReSharper to finish loading the solution… (terminal links activate once it does)"

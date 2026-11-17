@@ -10,11 +10,11 @@ import org.junit.jupiter.api.Test
  * collision: two git worktrees of one repo load two solutions that share a name and differ only by
  * `uniquePathSegment`, which [SolutionInfo.routingKey] must surface, so that a call routes to the intended worktree.
  */
-class ReSharperMcpTest {
+class DotNetAnalysisAndRefactoringMcpTest {
 
     @Test
     fun `two same-named worktree solutions are kept distinct by their unique path segment`() {
-        val solutions = ReSharperMcp.solutionsIn(
+        val solutions = DotNetAnalysisAndRefactoringMcp.solutionsIn(
             json(
                 """
                 {
@@ -36,7 +36,7 @@ class ReSharperMcpTest {
 
     @Test
     fun `routing key falls back to the name when the server leaves out uniquePathSegment`() {
-        val solutions = ReSharperMcp.solutionsIn(
+        val solutions = DotNetAnalysisAndRefactoringMcp.solutionsIn(
             json("""{ "solutionCount": 1, "solutions": [{ "name": "Vantage", "path": "C:\\Dev\\Vantage\\Vantage.slnx", "toolCount": 21 }] }"""),
         )
 
@@ -46,7 +46,7 @@ class ReSharperMcpTest {
 
     @Test
     fun `every declaration with source is a hit, and a compiled one is left out`() {
-        val hits = ReSharperMcp.declarationsIn(
+        val hits = DotNetAnalysisAndRefactoringMcp.declarationsIn(
             json(
                 """
                 {

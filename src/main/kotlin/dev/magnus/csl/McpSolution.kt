@@ -6,7 +6,7 @@ import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.project.Project
 
 /**
- * Resolves and caches the ReSharper-MCP `solutionName` for this Rider project. With several solutions
+ * Resolves and caches the .NET Analysis&Refactoring MCP's `solutionName` for this Rider project. With several solutions
  * open in one Rider process the MCP serves them all from one server, so every call must say which
  * solution it means — omitting it errors or silently answers from the wrong one.
  *
@@ -31,7 +31,7 @@ class McpSolution(private val project: Project) {
     }
 
     private fun resolve(): String? {
-        val solutions = ReSharperMcp.listSolutions()?.takeIf { it.isNotEmpty() } ?: return null
+        val solutions = DotNetAnalysisAndRefactoringMcp.listSolutions()?.takeIf { it.isNotEmpty() } ?: return null
         val base = project.basePath?.let(::normalize)
         if (base != null) {
             solutions.firstOrNull { normalize(it.path).substringBeforeLast('/') == base }?.let { return it.routingKey }
