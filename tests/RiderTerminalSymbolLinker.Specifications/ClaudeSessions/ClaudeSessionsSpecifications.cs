@@ -217,12 +217,13 @@ public class When_the_plugin_reloads(When_the_plugin_reloads.Story story) : ICla
             view.Say(tab, $"a line of session {tab}'s conversation");
          }
 
+         view.DeleteTheSessionRecordOfTheClaudeCodeIn(1); // As if the reload couldn't read it.
          view.ExitClaudeCode(2);
-         view.Select(0); // Not the second, the last tab taken back, which is left selected whatever was.
+         view.Select(0); // Not the last tab taken back, which the terminal's attachTab left selected whatever was.
          Before = view.Tabs;
          ShownBefore = view.IsShown;
          view.ReloadThePlugin();
-         view.WaitUntil(() => view.Tabs.Count == 3 && view.Tabs[2].ClaudeCode is not null, "the three tabs to be back in the view, each running Claude Code");
+         view.WaitUntil(() => view.Tabs.Count == 3, "the three tabs to be back in the view");
          After = view.Tabs;
          TerminalToolWindowProcessesAfter = view.TerminalToolWindowProcesses;
          SelectedAfter = view.SelectedTab;
@@ -231,10 +232,13 @@ public class When_the_plugin_reloads(When_the_plugin_reloads.Story story) : ICla
       }
    }
 
-   [XF] public void the_tabs_that_ran_claude_code_keep_their_processes() => story.After.Take(2).Must().Satisfy(it => it.SequenceEqual(story.Before.Take(2)));
+   [XF] public void every_tab_comes_back_as_it_was_with_its_processes_and_session() => story.After.Must().Satisfy(it => it.SequenceEqual(story.Before));
 
-   [XF] public void a_tab_whose_claude_code_had_exited_comes_back_running_its_session_as_after_a_restart() =>
-      story.After[2].Must().Satisfy(it => it.SessionId == story.Before[2].SessionId && it.ClaudeCode is not null);
+   [XF] public void that_includes_a_tab_whose_claude_codes_record_of_its_session_it_could_not_read() =>
+      story.After[1].Must().Satisfy(it => it.ShellProcessId == story.Before[1].ShellProcessId && it.SessionId == story.Before[1].SessionId);
+
+   [XF] public void and_a_tab_whose_claude_code_had_exited_on_its_shell() =>
+      story.After[2].Must().Satisfy(it => it.ShellProcessId == story.Before[2].ShellProcessId && it.ClaudeCode is null);
 
    [XF] public void the_tab_that_was_selected_is_selected_again() => story.SelectedAfter.Must().Be(0);
 

@@ -54,18 +54,22 @@ processes below the tab's process, its shell, which `TerminalView.startupOptions
 ## Surviving a reload of the plugin
 
 Unloading the plugin, as for an update, removes its tool window, and with it the terminals of its tabs, which would end
-every session mid-turn. So `ParkTheTabsWhileThePluginReloads` moves the tabs that run Claude Code to the terminal's own
-Terminal tool window first (`TabsParkedInTheTerminal`: the terminal's public `detachTab`, then the content manager's
-`addContent`), and the reloaded plugin takes back each tab in or below whose process Claude Code runs a saved session. Uninstalled, the sessions
-run on in the Terminal tool window.
+every session mid-turn. So `ParkTheTabsWhileThePluginReloads` moves every tab to the terminal's own Terminal tool window
+first (`TabsParkedInTheTerminal`: the terminal's public `detachTab`, then the content manager's `addContent`), and the
+reloaded plugin takes them all back, as they were, in their order. Uninstalled, the sessions run on in the Terminal tool
+window.
 
-A tab whose Claude Code has exited goes with the tool window, and the reloaded plugin resumes its session in a new tab,
-as after a restart: nothing in it tells it apart from a tab of the user's own.
-
-A reference to the parked tabs can't be handed from the old plugin to the new: `Key.findKeyByName`, the one way to find
-a value by name across class loaders, is deprecated. Finding them by the session their Claude Code runs needs no
-handover, and took back the tabs of the first version, whose own process was Claude Code, when the second reloaded over
-it (tried in the sandbox, 2026-11-17).
+- **A parked tab is marked by a client property of its component,** `dev.magnus.claudesessions.parkedTab`, holding the
+  session it ran last. A property named by a string reaches the reloaded plugin, whose classes are new: a `Key` doesn't,
+  and `Key.findKeyByName`, the one way to find one by name across class loaders, is deprecated.
+- **The mark, not Claude Code's record, tells a tab apart.** Until 2026-11-17 the reloaded plugin took back the tabs
+  whose Claude Code's record named a saved session, and parked only tabs in which Claude Code ran. One session of
+  Magnus's, resident-server, wasn't taken back at any of four reloads, though four others in the same Rider were; its
+  tab was resumed anew, or lost. Why its record didn't match was never found: the reload log below is there for the next
+  time. A tab whose Claude Code had exited went with the tool window too.
+- **Tabs parked by an earlier build carry no mark,** and are still taken back by the session their Claude Code runs.
+- **Each park and take-back is logged** to the IDE's `idea.log` by `TabsParkedInTheTerminal`: each tab's name, process
+  and session.
 
 ## The local API: showing a session's tab for another tool
 

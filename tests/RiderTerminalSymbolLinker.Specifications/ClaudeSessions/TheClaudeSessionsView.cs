@@ -116,6 +116,16 @@ public sealed class TheClaudeSessionsView
       WaitUntil(() => Screen(tab).Contains($"> {line}"), $"the tab to show \"{line}\"");
    }
 
+   /// <summary>
+   ///   Deletes the record in which the tab's Claude Code names its session, <c>sessions/&lt;its process id&gt;.json</c>,
+   ///   and returns once the view no longer finds the Claude Code by it: as if the view couldn't read the record.
+   /// </summary>
+   public void DeleteTheSessionRecordOfTheClaudeCodeIn(int tab)
+   {
+      File.Delete(Path.Combine(_sandbox.ClaudeCodeFolder, "sessions", $"{Tabs[tab].ClaudeCode!.ProcessId}.json"));
+      WaitUntil(() => Tabs[tab].ClaudeCode is null, "the view to no longer find the tab's Claude Code");
+   }
+
    /// <summary>Types <c>/exit</c> into the tab's Claude Code, and returns once it has exited.</summary>
    public void ExitClaudeCode(int tab)
    {

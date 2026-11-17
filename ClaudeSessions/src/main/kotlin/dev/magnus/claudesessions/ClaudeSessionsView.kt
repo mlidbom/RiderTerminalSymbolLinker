@@ -40,9 +40,10 @@ class ClaudeSessionsView(val project: Project) {
 
     /**
      * Takes [toolWindow] as the view, as [ClaudeSessionsToolWindowFactory] gives it its content, and has the
-     * [ClaudeSessionKeeper] start keeping its sessions. The saved sessions come back in it in their order: those
-     * [TabsParkedInTheTerminal] while the plugin reloaded in the tabs that ran them all along, and the others resumed,
-     * unless they can't be: archived or deleted since they ran. The tab that was selected is selected again.
+     * [ClaudeSessionKeeper] start keeping its sessions. The tabs [TabsParkedInTheTerminal] while the plugin reloaded come
+     * back as they were, in their order, and then the saved sessions none of them ran, resumed, unless they can't be:
+     * archived or deleted since they ran. After a restart, that's all of them. The tab that was selected is selected
+     * again.
      */
     fun open(toolWindow: ToolWindow) {
         this.toolWindow = toolWindow
@@ -53,23 +54,21 @@ class ClaudeSessionsView(val project: Project) {
         })
         val saved = SavedClaudeSessions(project).read()
         val parked = TabsParkedInTheTerminal(project).takeBack(saved.sessions)
-        val tabs = saved.sessions.mapNotNull { session ->
-            val parkedTab = parked[session.id]
-            if (parkedTab != null) adopt(parkedTab, session) else if (session.canBeResumed) resume(session) else null
-        }
+        val takenBack = parked.map { adopt(it.terminal, it.session) }
+        val sessionsTakenBack = parked.mapNotNull { it.session?.id }.toSet()
+        val tabs = takenBack + saved.sessions.filter { it.id !in sessionsTakenBack && it.canBeResumed }.map(::resume)
         tabs.firstOrNull { it.session?.id == saved.selected }?.let { toolWindow.contentManager.setSelectedContent(it.content, false) }
         ClaudeSessionKeeper.getInstance(project).startKeeping()
     }
 
     /**
-     * Moves the tabs that run Claude Code to the Terminal tool window, where their sessions run on while the plugin
-     * reloads, and has the [ClaudeSessionKeeper] save their sessions first, for the reloaded plugin to take them back by,
-     * and stop, so that it doesn't save the view as it empties. A tab whose Claude Code has exited goes with the tool
-     * window, and the reloaded plugin resumes its session, as it would after a restart.
+     * Moves the tabs to the Terminal tool window, where their sessions run on while the plugin reloads, and has the
+     * [ClaudeSessionKeeper] save their sessions first, and the selected tab, and stop, so that it doesn't save the view
+     * as it empties.
      */
     fun parkTheTabs() {
         ClaudeSessionKeeper.getInstance(project).saveOneLastTimeAndStop()
-        TabsParkedInTheTerminal(project).park(tabs.filter { it.claudeCode != null })
+        TabsParkedInTheTerminal(project).park(tabs)
     }
 
     /** Opens a tab that starts a new session in the project's folder, and shows it. */
@@ -99,10 +98,10 @@ class ClaudeSessionsView(val project: Project) {
     }
 
     /**
-     * Adds [terminal], which runs [session], as a tab. It adds the terminal's content itself, as
+     * Adds [terminal], which ran [session] last, if it ran one, as a tab. It adds the terminal's content itself, as
      * [TabsParkedInTheTerminal] does, and says why.
      */
-    private fun adopt(terminal: TerminalToolWindowTab, session: ClaudeSession): ClaudeSessionTab {
+    private fun adopt(terminal: TerminalToolWindowTab, session: ClaudeSession?): ClaudeSessionTab {
         val tab = ClaudeSessionTab(terminal, session)
         tabsByContent[tab.content] = tab
         toolWindow!!.contentManager.addContent(terminal.content)
