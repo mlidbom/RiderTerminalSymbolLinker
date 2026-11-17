@@ -29,6 +29,9 @@ public sealed class TheClaudeSessionsView
    /// <summary>The folder of the project open in the sandbox, the fixture solution's.</summary>
    public string ProjectFolder => Path.GetFullPath(Project()["basePath"]!.GetValue<string>());
 
+   /// <summary>Whether the IDE shows the view's tool window: starting a session shows it.</summary>
+   public bool IsShown => Project()["view"]!["toolWindowVisible"]!.GetValue<bool>();
+
    /// <summary>The view's tabs, in their order.</summary>
    public IReadOnlyList<SessionTab> Tabs =>
    [

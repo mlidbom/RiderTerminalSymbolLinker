@@ -76,5 +76,9 @@ it (tried in the sandbox, 2026-11-17).
 - **Closing a tab whose process runs asks the user to confirm,** both by its close button and by the API's `closeTab`,
   and so does exiting the IDE (`TerminalProcessesClosingNotifier`). The confirmation follows the IDE's "Process tabs:
   when closing with an active process" setting. Magnus's IDEs ask, as they do for `claude` in an ordinary terminal tab.
+- **`doNotActivateOnStart` on the tool window hides it at every start,** even when it was open as the IDE closed: the
+  platform sets it invisible as it reads the saved layout (`WindowInfoImpl.normalizeAfterRead`, 2026.3). Magnus's
+  IntelliJ IDEA did so with the first version. The sandbox Rider showed it all the same, so its specification of the
+  view shown again after a restart passed with the attribute too.
 - **Kotlin's compatibility bridges** made each class implementing a platform interface override its default methods,
   deprecated ones included, which the verifier reports: `jvmDefault = NO_COMPATIBILITY` in the build.

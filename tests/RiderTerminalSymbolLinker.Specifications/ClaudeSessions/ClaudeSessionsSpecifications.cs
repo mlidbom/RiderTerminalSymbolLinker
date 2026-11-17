@@ -111,6 +111,8 @@ public class When_the_IDE_restarts(When_the_IDE_restarts.Story story) : IClassFi
       public readonly IReadOnlyList<SessionTab> Before;
       public readonly IReadOnlyList<SessionTab> After;
       public readonly IReadOnlyList<string> SecondTabsScreen;
+      public readonly bool ShownBefore;
+      public readonly bool ShownAfter;
 
       public Story()
       {
@@ -124,9 +126,11 @@ public class When_the_IDE_restarts(When_the_IDE_restarts.Story story) : IClassFi
          view.ExitClaudeCode(0);
          view.WaitUntil(() => view.SavedSessions.Count == 3, "the three sessions to be saved");
          Before = view.Tabs;
+         ShownBefore = view.IsShown;
          view.DeleteTheTranscriptOf(Before[2].SessionId!);
          view.RestartTheIde(tabsToComeBack: 2);
          After = view.Tabs;
+         ShownAfter = view.IsShown;
          view.WaitUntil(() => view.Screen(1).Any(it => it.StartsWith("> ")), "the second tab to show its conversation");
          SecondTabsScreen = view.Screen(1);
       }
@@ -145,6 +149,8 @@ public class When_the_IDE_restarts(When_the_IDE_restarts.Story story) : IClassFi
 
    [XF] public void a_resumed_session_has_its_conversation() =>
       story.SecondTabsScreen.Must().Contain("> a line of session 1's conversation");
+
+   [XF] public void the_view_is_shown_again_as_it_was_when_the_IDE_closed() => (story.ShownBefore, story.ShownAfter).Must().Be((true, true));
 }
 
 public class When_the_plugin_reloads(When_the_plugin_reloads.Story story) : IClassFixture<When_the_plugin_reloads.Story>
