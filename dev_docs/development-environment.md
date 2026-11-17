@@ -98,9 +98,10 @@ re-highlights old output.
 
 `everyday deploy` puts each plugin's working-tree build in the plugins folder of every installed IDE it runs in, such as
 `%APPDATA%\JetBrains\Rider2026.3\plugins`, moving the mapped jar aside: the symbol linker in Rider, Claude Sessions in
-Rider, IntelliJ IDEA and PyCharm. His Rider runs with `-Didea.auto.reload.plugins=true` (since 2026-11-17), so it reloads
-a plugin without a restart when it next looks at its plugins folder, expected when he switches to its window. The
-deploy says for each IDE whether it does, or needs a restart: a plugin new to an IDE always does.
+Rider, IntelliJ IDEA and PyCharm. All three run with `-Didea.auto.reload.plugins=true`, in the `.vmoptions` in each
+one's folder under `%APPDATA%\JetBrains` (Rider since 2026-11-17, IDEA and PyCharm from their restart after that), so
+each reloads a plugin without a restart when it next looks at its plugins folder, expected when he switches to its
+window. The deploy says for each IDE whether it does, or needs a restart: a plugin new to an IDE always does.
 
 **Install Plugin from Disk always restarts Rider** when an earlier version is installed, whatever the plugin is: read
 from the bytecode of `PluginInstaller.installFromDisk` in Rider 2026.3. Auto-reload and Marketplace updates are the
