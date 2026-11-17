@@ -27,7 +27,10 @@ virtual desktop, on the other monitor.
 - **Reloading without a restart:** the sandbox runs with `idea.auto.reload.plugins`. Windows won't overwrite a jar a
   running Rider maps into memory, but lets it be moved, so the old jar is moved aside first and deleted by a later
   install. Rider notices changed plugin files only when it looks at its plugins folder, which nothing watches, so
-  `install` asks it to look through the observation channel. A reload takes about a second; the indexes come back, since
+  `install` asks it to look through the observation channel. It reloads a plugin only when one of its files' content
+  changes, never when a file is created or deleted (`DynamicPluginVfsListener`, Rider 2026.3), so the plugin's jar is
+  named without the version (`composedJar` in `build.gradle.kts`): a version bump would otherwise rename it, and take a
+  restart. A reload takes about a second; the indexes come back, since
   the startup activities run again.
 - **Ports:** the MCP server listens on 23861 there. Rider 2026.3's second backend process,
   `Rider.LightweightBackend.exe`, loads that plugin too, and its server takes the next free port, empty: not intended,

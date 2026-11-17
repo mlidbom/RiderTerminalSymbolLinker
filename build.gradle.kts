@@ -50,6 +50,14 @@ tasks.test {
     useJUnitPlatform()
 }
 
+// The plugin's jar is named without the version, so that each new build replaces the same file in a plugins folder. A
+// Rider started with idea.auto.reload.plugins reloads a plugin only when one of its files' content changes, never when
+// a file is created or deleted (DynamicPluginVfsListener, Rider 2026.3), so a jar renamed by a version bump would need a
+// restart. composedJar makes the jar the plugin ships; its zip keeps the version in its name.
+tasks.named<org.gradle.jvm.tasks.Jar>("composedJar") {
+    archiveFileName = "RiderTerminalSymbolLinker.jar"
+}
+
 // CI downloads Gradle on every run, and a failed download is tried three more times before the build fails. Set here
 // because `gradlew wrapper` writes gradle-wrapper.properties from this task's settings, whose default is no retries.
 tasks.wrapper {
