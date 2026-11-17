@@ -30,13 +30,22 @@ class ClaudeSessionsView(val project: Project) {
     /** Whether the tool window has opened: [tabs] are only there once it has. */
     val isOpen: Boolean get() = toolWindow != null
 
-    /** The tabs, in the order the tool window shows them. */
+    /**
+     * The tabs, in the order the tool window shows them: every terminal tab in it. Those the view didn't open itself are
+     * its tabs as much, however they came in: such a tab ran resident-server, a session of Magnus's, and the view, which
+     * knew only the tabs it opened, neither saved it nor kept it through a reload (2026-11-17). How that tab came into the
+     * tool window wasn't found: the terminal's own New Tab action is disabled outside the Terminal tool window.
+     */
     val tabs: List<ClaudeSessionTab>
-        get() = toolWindow?.contentManager?.contents?.mapNotNull(tabsByContent::get).orEmpty()
+        get() = toolWindow?.contentManager?.contents?.mapNotNull(::tabOf).orEmpty()
 
-    /** The tab the tool window shows, of those it has. */
+    /** The tab the tool window shows. */
     val selectedTab: ClaudeSessionTab?
-        get() = toolWindow?.contentManager?.selectedContent?.let(tabsByContent::get)
+        get() = toolWindow?.contentManager?.selectedContent?.let(::tabOf)
+
+    /** The tab whose content [content] is, if it's a terminal's: one the view opened, or else one it takes on now. */
+    private fun tabOf(content: Content): ClaudeSessionTab? =
+        tabsByContent[content] ?: content.getUserData(TerminalToolWindowTab.KEY)?.let { terminal -> tabsByContent.getOrPut(content) { ClaudeSessionTab(terminal, resuming = null) } }
 
     /**
      * Takes [toolWindow] as the view, as [ClaudeSessionsToolWindowFactory] gives it its content, and has the

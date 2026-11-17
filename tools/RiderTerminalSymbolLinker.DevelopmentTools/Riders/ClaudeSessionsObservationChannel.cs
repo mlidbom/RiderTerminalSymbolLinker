@@ -22,6 +22,9 @@ public sealed class ClaudeSessionsObservationChannel(int port) : ObservationChan
    public JsonNode Screen(int tab, string? project = null) => Get("tabs/screen", project, $"tab={tab}");
 
    /// <summary>Types <paramref name="text"/> into the terminal of tab <paramref name="tab"/>, and Enter.</summary>
+   /// <summary>Opens a plain terminal tab in the view's tool window, not through the view, and answers with its place among the view's tabs.</summary>
+   public JsonNode OpenAPlainTerminalTab(string? project = null) => Post("tabs/new-plain", project, new { });
+
    public JsonNode Select(int tab, string? project = null) => Post("tabs/select", project, new { }, $"tab={tab}");
 
    /// <summary>Types <paramref name="text"/> into the tab's terminal, and Enter.</summary>

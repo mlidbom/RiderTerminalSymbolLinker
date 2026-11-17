@@ -38,6 +38,8 @@ import java.util.concurrent.Executors
  *    [SavedClaudeSessions], and whether the [ClaudeSessionKeeper] keeps them.
  *  - `POST /view/open?project=` — has the IDE give the view its content, as showing the tool window would.
  *  - `POST /sessions/new?project=` — starts a new session in a tab, as the New Claude Session action does.
+ *  - `POST /tabs/new-plain?project=` — opens a plain terminal tab in the view's tool window, not through the view, as
+ *    a tab can come into it that the view didn't open, and answers with its place among the view's tabs.
  *  - `POST /tabs/select?project=&tab=` — selects the tab, and shows the tool window, as a click on the tab does.
  *  - `GET /tabs/screen?project=&tab=` — the text the tab's terminal shows, from the top of its screen.
  *  - `POST /tabs/type?project=&tab=` with `{"text": …}` — types the text into the tab's terminal, and Enter.
@@ -69,6 +71,7 @@ class ObservationChannel : Disposable {
             createContext("/tabs/type") { exchange ->
                 answer(exchange) { type(projectOf(exchange), query(exchange, "tab")!!.toInt(), request<TextRequest>(exchange).text) }
             }
+            createContext("/tabs/new-plain") { exchange -> answer(exchange) { openAPlainTerminalTab(projectOf(exchange)) } }
             createContext("/tabs/select") { exchange -> answer(exchange) { select(projectOf(exchange), query(exchange, "tab")!!.toInt()) } }
             createContext("/tabs/screen") { exchange -> answer(exchange) { screen(projectOf(exchange), query(exchange, "tab")!!.toInt()) } }
             createContext("/tabs/close-all") { exchange -> answer(exchange) { closeEveryTab(projectOf(exchange)) } }
@@ -131,6 +134,15 @@ class ObservationChannel : Disposable {
         val view = ClaudeSessionsView.getInstance(project)
         val tab = view.startNewSession()
         mapOf("tab" to view.tabs.indexOf(tab))
+    }
+
+    private fun openAPlainTerminalTab(project: Project): Map<String, Any?> = onTheEdt {
+        val toolWindow = ClaudeSessionsView.toolWindowOf(project)!!
+        val terminal = TerminalToolWindowTabsManager.getInstance(project).createTabBuilder()
+            .contentManager(toolWindow.contentManager)
+            .requestFocus(false)
+            .createTab()
+        mapOf("tab" to ClaudeSessionsView.getInstance(project).tabs.indexOfFirst { it.terminal == terminal })
     }
 
     private fun select(project: Project, tab: Int): Map<String, Any?> = onTheEdt {

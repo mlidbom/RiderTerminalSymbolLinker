@@ -57,6 +57,38 @@ public class When_the_user_clears_the_session_in_a_tab(When_the_user_clears_the_
    [XF] public void the_new_session_is_saved_in_place_of_the_old() => story.Saved.Must().Satisfy(it => it.SequenceEqual([story.After.SessionId]));
 }
 
+/// <summary>A terminal tab that the view didn't open comes into its tool window, and Claude Code is started in it by hand.</summary>
+public class When_a_tab_the_view_did_not_open_is_in_its_tool_window(When_a_tab_the_view_did_not_open_is_in_its_tool_window.Story story)
+   : IClassFixture<When_a_tab_the_view_did_not_open_is_in_its_tool_window.Story>
+{
+   public sealed class Story
+   {
+      public readonly int PlainTab;
+      public readonly IReadOnlyList<SessionTab> Before;
+      public readonly IReadOnlyList<string> SavedBefore;
+      public readonly IReadOnlyList<SessionTab> After;
+
+      public Story()
+      {
+         var view = new TheClaudeSessionsView();
+         view.StartANewSession();
+         PlainTab = view.OpenAPlainTerminalTab();
+         view.Type(PlainTab, "claude");
+         view.WaitUntil(() => view.Tabs[PlainTab].SessionId is not null, "the view to find the session Claude Code runs in the plain tab");
+         view.WaitUntil(() => view.SavedSessions.Count == 2, "both sessions to be saved");
+         SavedBefore = view.SavedSessions;
+         Before = view.Tabs;
+         view.ReloadThePlugin();
+         view.WaitUntil(() => view.Tabs.Count == 2, "both tabs to be back in the view");
+         After = view.Tabs;
+      }
+   }
+
+   [XF] public void the_view_takes_it_as_one_of_its_tabs() => story.PlainTab.Must().Be(1);
+   [XF] public void its_session_is_saved() => story.SavedBefore.Must().Contain(story.Before[1].SessionId!);
+   [XF] public void it_comes_back_after_a_reload_of_the_plugin_as_it_was() => story.After.Must().Satisfy(it => it.SequenceEqual(story.Before));
+}
+
 public class When_claude_code_exits_in_a_tab(When_claude_code_exits_in_a_tab.Story story) : IClassFixture<When_claude_code_exits_in_a_tab.Story>
 {
    public sealed class Story

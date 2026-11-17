@@ -103,6 +103,12 @@ public sealed class TheClaudeSessionsView
       return Tabs[tab];
    }
 
+   /// <summary>
+   ///   Opens a plain terminal tab in the view's tool window, not through the view: a tab can come into it that the view
+   ///   didn't open. Returns its place among the view's tabs.
+   /// </summary>
+   public int OpenAPlainTerminalTab() => Channel.OpenAPlainTerminalTab()["tab"]!.GetValue<int>();
+
    /// <summary>Types <paramref name="text"/> into the tab's terminal, and Enter.</summary>
    public void Type(int tab, string text) => Channel.Type(tab, text);
 
