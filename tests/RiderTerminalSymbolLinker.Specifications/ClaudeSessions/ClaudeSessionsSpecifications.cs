@@ -1,3 +1,4 @@
+using System.Text.Json.Nodes;
 using Compze.Must;
 using Compze.xUnitBDD;
 using Xunit;
@@ -102,6 +103,44 @@ public class When_a_session_is_reloaded_in_its_tab(When_a_session_is_reloaded_in
    [XF] public void the_tab_runs_the_session_again() => story.After.SessionId.Must().Be(story.Before.SessionId);
    [XF] public void in_a_new_claude_code() => story.After.ClaudeCode!.ProcessId.Must().Satisfy(it => it != story.Before.ClaudeCode!.ProcessId);
    [XF] public void below_the_same_shell() => story.After.ClaudeCode!.ParentProcessId.Must().Be(story.Before.ShellProcessId);
+}
+
+/// <summary>A tool asks the IDE's local API to show a session's tab, as one does whose notification about the session the user clicked.</summary>
+public class When_a_tool_asks_to_show_a_session(When_a_tool_asks_to_show_a_session.Story story) : IClassFixture<When_a_tool_asks_to_show_a_session.Story>
+{
+   public sealed class Story
+   {
+      public readonly int SandboxProcess;
+      public readonly JsonNode Announcement;
+      public readonly (int Status, int? Selected) BySession;
+      public readonly (int Status, int? Selected) ByProcessAfterClear;
+      public readonly (int Status, int? Selected) Unknown;
+
+      public Story()
+      {
+         var view = new TheClaudeSessionsView();
+         var tabs = Enumerable.Range(0, 3).Select(_ => view.StartANewSession()).ToList();
+         SandboxProcess = view.SandboxProcessId;
+         Announcement = view.LocalApiAnnouncement!;
+
+         view.Select(0);
+         BySession = (view.AskTheLocalApiToShow(tabs[2].SessionId, claudeCodeProcess: null), view.SelectedTab);
+
+         view.Select(0);
+         view.Type(1, "/clear");
+         view.WaitUntil(() => view.Tabs[1].SessionId != tabs[1].SessionId, "the second tab to run a new session");
+         ByProcessAfterClear = (view.AskTheLocalApiToShow(tabs[1].SessionId, tabs[1].ClaudeCode!.ProcessId), view.SelectedTab);
+
+         Unknown = (view.AskTheLocalApiToShow(Guid.NewGuid().ToString(), claudeCodeProcess: null), view.SelectedTab);
+      }
+   }
+
+   [XF] public void the_IDE_announces_its_local_api_in_a_file_named_after_its_process() =>
+      (story.Announcement["protocol"]!.GetValue<int>(), story.Announcement["processId"]!.GetValue<long>()).Must().Be((1, (long)story.SandboxProcess));
+
+   [XF] public void it_selects_the_tab_that_runs_the_session() => story.BySession.Must().Be((200, (int?)2));
+   [XF] public void it_finds_the_tab_by_its_claude_code_after_clear_gave_it_a_new_session() => story.ByProcessAfterClear.Must().Be((200, (int?)1));
+   [XF] public void it_answers_404_for_a_session_none_of_its_tabs_runs_and_leaves_the_selection() => story.Unknown.Must().Be((404, (int?)1));
 }
 
 public class When_the_IDE_restarts(When_the_IDE_restarts.Story story) : IClassFixture<When_the_IDE_restarts.Story>

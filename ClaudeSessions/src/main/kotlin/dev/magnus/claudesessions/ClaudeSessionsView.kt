@@ -1,10 +1,12 @@
 package dev.magnus.claudesessions
 
+import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.wm.ToolWindow
 import com.intellij.openapi.wm.ToolWindowManager
+import com.intellij.openapi.wm.WindowManager
 import com.intellij.terminal.frontend.toolwindow.TerminalToolWindowTab
 import com.intellij.terminal.frontend.toolwindow.TerminalToolWindowTabsManager
 import com.intellij.ui.content.ContentManagerEvent
@@ -77,6 +79,17 @@ class ClaudeSessionsView(val project: Project) {
     /** Opens a tab that resumes [session] in its folder. */
     fun resume(session: ClaudeSession): ClaudeSessionTab =
         openTab(ClaudeCodeCommand.resuming(session), session.workingDirectory, resuming = session)
+
+    /**
+     * Brings [tab] forward, as for a notification about its session that the user clicked: the tab shown, as [show]
+     * does, and the project's window in front of the IDE's others, when the IDE is the active application, as it is once
+     * the tool the user clicked has brought it forward. Windows lets no inactive application bring its window forward:
+     * it would only flash the window's taskbar button.
+     */
+    fun bringForward(tab: ClaudeSessionTab) {
+        if (ApplicationManager.getApplication().isActive) WindowManager.getInstance().getFrame(project)?.toFront()
+        show(tab)
+    }
 
     /** Shows [tab] in the tool window, and the tool window. */
     fun show(tab: ClaudeSessionTab) {

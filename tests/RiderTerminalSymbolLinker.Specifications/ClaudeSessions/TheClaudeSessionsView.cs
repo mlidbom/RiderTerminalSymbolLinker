@@ -39,6 +39,35 @@ public sealed class TheClaudeSessionsView
       WaitUntil(() => SelectedTab == tab, $"tab {tab} to be selected");
    }
 
+   /// <summary>The process the sandbox Rider runs as.</summary>
+   public int SandboxProcessId => _sandbox.ProcessId;
+
+   /// <summary>
+   ///   The file in which the sandbox Rider's Claude Sessions announces its local API to other tools on the machine:
+   ///   <c>%LOCALAPPDATA%\ClaudeSessions\ides\&lt;its process id&gt;.json</c>, or null while there is none.
+   /// </summary>
+   public JsonNode? LocalApiAnnouncement
+   {
+      get
+      {
+         var file = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "ClaudeSessions", "ides", $"{_sandbox.ProcessId}.json");
+         return File.Exists(file) ? JsonNode.Parse(File.ReadAllText(file)) : null;
+      }
+   }
+
+   /// <summary>
+   ///   Asks Claude Sessions' local API to show the tab that runs <paramref name="session"/>, or in which Claude Code runs
+   ///   as <paramref name="claudeCodeProcess"/>, as a tool whose notification about the session the user clicked does,
+   ///   and returns the answer's status code.
+   /// </summary>
+   public int AskTheLocalApiToShow(string? session, long? claudeCodeProcess)
+   {
+      var port = LocalApiAnnouncement!["port"]!.GetValue<int>();
+      var query = string.Join("&", new[] { session is null ? null : $"session={session}", claudeCodeProcess is null ? null : $"process={claudeCodeProcess}" }.OfType<string>());
+      using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(5) };
+      return (int)client.PostAsync($"http://127.0.0.1:{port}/sessions/show?{query}", null).Result.StatusCode;
+   }
+
    /// <summary>Whether the IDE shows the Terminal tool window, where the view's tabs wait while the plugin reloads.</summary>
    public bool TheTerminalToolWindowIsShown => Project()["terminalToolWindow"]!["visible"]?.GetValue<bool>() ?? false;
 

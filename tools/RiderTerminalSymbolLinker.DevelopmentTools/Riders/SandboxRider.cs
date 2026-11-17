@@ -100,6 +100,9 @@ public sealed class SandboxRider
 
    public bool IsRunning => RunningProcess() is not null;
 
+   /// <summary>The process the running sandbox Rider runs as.</summary>
+   public int ProcessId => (RunningProcess() ?? throw new InvalidOperationException("The sandbox Rider isn't running.")).Id;
+
    /// <summary>
    ///   Builds this working tree's plugins with Gradle and puts them in the sandbox's plugins folder, with the
    ///   <paramref name="mcp"/> build of the .NET Analysis&amp;Refactoring MCP. A running sandbox is then made to reload

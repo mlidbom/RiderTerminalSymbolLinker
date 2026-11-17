@@ -67,6 +67,30 @@ a value by name across class loaders, is deprecated. Finding them by the session
 handover, and took back the tabs of the first version, whose own process was Claude Code, when the second reloaded over
 it (tried in the sandbox, 2026-11-17).
 
+## The local API: showing a session's tab for another tool
+
+Clicking the notifications of Magnus's session tooling (tooling-owner's, in `~/.claude`) brings forward the IDE window
+of the session, and then asks Claude Sessions in that IDE to show the session's tab. The contract, agreed with
+tooling-owner on 2026-11-17 (protocol 1):
+
+- **`LocalApi`,** an application service that the first project's `ClaudeSessionsStartup` starts, listens on a free
+  port of the loopback address. **`LocalApiAnnouncement`** names it in
+  `%LOCALAPPDATA%\ClaudeSessions\ides\<the IDE's process id>.json`, `{"protocol": 1, "processId": …, "port": …}`,
+  and deletes the file as the API stops. The tooling knows the IDE's process: the one that owns the window it brought
+  forward.
+- **`POST /sessions/show?session=<id>&process=<Claude Code's process id>`** selects the tab in which that Claude Code
+  runs, or else the one that runs the session or ran it last, shows the tool window, and brings the project's window in
+  front of the IDE's others when the IDE is the active application: 200 `{"shown": true}`, or 404 `{"shown": false}`.
+  `process` finds a tab after `/clear` gave it a new session, as the notification names the old one; `session` finds a
+  tab whose Claude Code was resumed in a new process.
+- **The tooling** brings the window forward itself, since Windows lets the process the user clicked do that, and not
+  the IDE. It asks the window's own IDE first, then every other announced one, a second each, and logs the answer to
+  `~/.claude/notifying-magnus.log`.
+- **No authentication,** as showing a tab is harmless. tooling-owner's condition: a request that changes something,
+  such as resuming a session or typing into one, takes a token in the announcement, required with each request.
+- **A file left by a crash** costs a click up to the tooling's one-second timeout: on Windows, a connection to a loopback
+  port nothing listens on takes about two seconds to be refused.
+
 ## The terminal API, and its traps
 
 - **The reworked terminal's API is experimental** as a whole since 2025.3 (the SDK's "Embedded Terminal" page), so

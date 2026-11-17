@@ -16,6 +16,9 @@ All notable changes to Claude Sessions are documented here. The format follows
   closed is resumed in its own tab, in its own folder, in the same order. That includes a session switched to with
   `/resume` or started with `/clear` in a tab, and one whose Claude Code had exited in a tab left open. A session
   archived or deleted since, whose transcript Claude Code no longer has, isn't.
+- **Other tools on the machine can show a session's tab.** Each IDE announces a local API in
+  `%LOCALAPPDATA%\ClaudeSessions\ides\<its process id>.json`. A tool whose notification about a Claude Code session
+  you click can ask it to show the session's tab: it selects the tab, and shows the tool window.
 - **Sessions run on through an update of the plugin.** While the plugin reloads, its tabs that run Claude Code wait in
   the Terminal tool window, and come back when it has, with the same tab selected, and the tool window shown as it was.
   Should the plugin be uninstalled, they run on there. A tab whose Claude Code had exited comes back running its
