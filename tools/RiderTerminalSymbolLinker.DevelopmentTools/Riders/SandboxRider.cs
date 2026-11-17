@@ -93,18 +93,20 @@ public sealed class SandboxRider
       if(whyItRestarts is not null) Stop();
 
       var mcpToolsChanged = mcp == McpBuild.Everyday ? _mcpTools.TakeTheBuildsOf(_everyday.McpToolsBuilds) : _mcpTools.Clear();
+      var pluginFolder = Path.Combine(PluginsFolder, GradleSandbox.PluginFolderName);
+      var registeredBefore = PluginRegistrations.InPluginFolder(pluginFolder);
       var mirror = new FolderMirror(Path.Combine(_root, "replaced-plugin-files"));
-      var pluginChanged = mirror.Mirror(_plugins.Plugin, Path.Combine(PluginsFolder, GradleSandbox.PluginFolderName));
+      var pluginChanged = mirror.Mirror(_plugins.Plugin, pluginFolder);
       if(IsRunning)
       {
          var mcpTools = mcpToolsChanged ? $"Its MCP swapped to the {mcp} tools build {WaitUntilTheMcpServesItsNewestToolsBuild()}. " : "";
          if(!pluginChanged) return mcpTools + "The sandbox has this build of the plugin already.";
-         if(!mirror.AddedOrRemovedAFile)
+         if(!mirror.AddedOrRemovedAFile && PluginRegistrations.InPluginFolder(pluginFolder) == registeredBefore)
             return mcpTools + $"Put the new build in the running sandbox Rider, which reloaded it in {Observation.ReloadThePlugin(TimeSpan.FromMinutes(1)).TotalSeconds:0.0}s.";
 
          Stop();
          Start();
-         return mcpTools + "Put the new build in the sandbox and restarted it: the build adds or removes a file of the plugin's, which Rider can't reload.";
+         return mcpTools + "Put the new build in the sandbox and restarted it: the build adds or removes a file of the plugin's, or changes what its plugin.xml registers, which a reload doesn't take.";
       }
 
       mirror.Mirror(mcpPlugin, McpPluginFolder);

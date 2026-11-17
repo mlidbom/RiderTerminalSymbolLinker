@@ -43,12 +43,14 @@ public sealed class EverydayRider
    {
       _plugins.Fill();
       var setAside = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "RiderTerminalSymbolLinkerDevelopment", "replaced-everyday-plugin-files");
+      var pluginFolder = Path.Combine(_pluginsFolder, GradleSandbox.PluginFolderName);
+      var registeredBefore = PluginRegistrations.InPluginFolder(pluginFolder);
       var mirror = new FolderMirror(setAside);
-      var changed = mirror.Mirror(_plugins.Plugin, Path.Combine(_pluginsFolder, GradleSandbox.PluginFolderName));
+      var changed = mirror.Mirror(_plugins.Plugin, pluginFolder);
       return !changed
                 ? "The everyday Riders have this build already."
-                : mirror.AddedOrRemovedAFile
-                   ? "Deployed the build to the everyday Riders, adding or removing a file of the plugin's, which Rider can't reload: each loads it when Magnus restarts it."
+                : mirror.AddedOrRemovedAFile || PluginRegistrations.InPluginFolder(pluginFolder) != registeredBefore
+                   ? "Deployed the build to the everyday Riders. It adds or removes a file of the plugin's, or changes what its plugin.xml registers, which a reload doesn't take: Magnus must restart each. A reload, which each does when he switches to it, would run the new classes with the old registrations."
                    : "Deployed the build to the everyday Riders: each reloads it, without a restart, when Magnus next switches to its window.";
    }
 }

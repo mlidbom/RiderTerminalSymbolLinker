@@ -43,7 +43,9 @@ the fixture solution. Its window goes on IDEA's virtual desktop, on the other mo
   renamed jar breaks the reload: Magnus's Rider, started with 0.2.10's `RiderTerminalSymbolLinker-0.2.10.jar`, reloaded
   "0.2.10" from that missing jar at the first deploy of the unversioned one, and every extension failed with
   `ClassNotFoundException` until he restarted (2026-11-17). The descriptor still said 0.2.10, though the new jar's
-  plugin.xml said 0.2.11.
+  plugin.xml said 0.2.11. So `sandbox install` restarts the sandbox, and `everyday deploy` says Magnus must restart,
+  when a build changes what its plugin.xml registers (`PluginRegistrations`: all of it but the version, change notes
+  and description, which the changelog edits).
 - **Ports:** the MCP server listens on 23861 there. Rider 2026.3's second backend process,
   `Rider.LightweightBackend.exe`, loads that plugin too, and its server takes the next free port, empty: not intended,
   and on the MCP plugin's backlog. So the observation channel is on 23871, well away.
