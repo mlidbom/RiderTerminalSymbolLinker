@@ -39,11 +39,16 @@ dependencies {
         plugin("dev.magnus.dotnet-analysis-and-refactoring-mcp", "0.14.0")
     }
 
-    // Plain JUnit 5 for the pure unit tests (FileReferences / SolutionFileIndex). They touch no platform
+    // Plain JUnit Jupiter for the pure unit tests (FileReferences / SolutionFileIndex). They touch no platform
     // types, so they need no IntelliJ test fixture — just the JUnit engine.
     testImplementation(platform("org.junit:junit-bom:6.1.3"))
     testImplementation("org.junit.jupiter:junit-jupiter")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+    // The IntelliJ Platform Gradle Plugin puts every bundled plugin of the IDE on the test classpath (since 2.20.0). One
+    // of the downloaded Rider's brings IntelliJ's JUnit5TestSessionListener, which JUnit loads for every test run, and
+    // which needs JUnit 4's junit.framework.TestCase: without it, CI's test task fails before running a test. The
+    // plugin's FAQ gives this dependency as the workaround for IJPL-159134; it can go once that is fixed.
+    testRuntimeOnly("junit:junit:4.13.2")
 }
 
 tasks.test {
