@@ -58,9 +58,10 @@ platform's and the terminal's, alike in every IDE.
   Code session sets variables for its children, `CLAUDE_CODE_CHILD_SESSION` and its session id among them. A Claude Code
   started in the sandbox then took itself for a child session, and neither recorded its session nor saved its
   transcript. So the sandbox starts without the `CLAUDE*` variables that aren't set for the user or the machine.
-- **A fake Claude Code:** `tools/FakeClaudeCode`, built with the tools as `claude.exe`, is first on the sandbox's
-  `PATH`, with a `CLAUDE_CONFIG_DIR` of its own, `claude-code` in the sandbox's folder. It records its session as Claude
-  Code does, and understands `--resume`, `/clear` and `/exit`. So Claude Sessions' specifications run in seconds, cost
+- **A fake Claude Code:** `tools/FakeClaudeCode`, built with the tools as `claude.exe`, is copied into the sandbox's
+  folder as it starts, and first on its `PATH`: run from the build, it was held open by the sandbox's tabs, and the
+  tools couldn't build while the sandbox ran. It has a `CLAUDE_CONFIG_DIR` of its own, `claude-code` in the sandbox's
+  folder, records its session as Claude Code does, and understands `--resume`, `/clear` and `/exit`. So Claude Sessions' specifications run in seconds, cost
   nothing, and leave nothing in Magnus's `~/.claude`.
 - **Nothing waits for a human:** the sandbox exits without confirming, and terminates terminal processes as it exits
   without asking (`processCloseConfirmation`): the terminal's dialog about Claude Sessions' running tabs blocked its

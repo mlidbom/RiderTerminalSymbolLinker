@@ -77,11 +77,15 @@ public sealed class SandboxRider
    /// </summary>
    public string ClaudeCodeFolder => Path.Combine(_root, "claude-code");
 
+   /// <summary>Where the tools build the fake Claude Code, <c>tools/FakeClaudeCode</c>'s <c>claude.exe</c>.</summary>
+   static string FakeClaudeCodeBuild => Path.Combine(RepositoryRoot.Folder, "tools", "FakeClaudeCode", "bin", "claude");
+
    /// <summary>
-   ///   The folder of the fake Claude Code, <c>tools/FakeClaudeCode</c>'s <c>claude.exe</c>, which is first on the
-   ///   sandbox's <c>PATH</c>, so that Claude Sessions runs it there in place of Claude Code. The tools build it.
+   ///   The sandbox's copy of the <see cref="FakeClaudeCodeBuild"/>, first on its <c>PATH</c>, so that Claude Sessions
+   ///   runs it there in place of Claude Code. A copy, taken as the sandbox starts: the build's own <c>claude.exe</c>,
+   ///   held open by the sandbox's tabs, kept the tools from building while the sandbox ran.
    /// </summary>
-   static string FakeClaudeCodeFolder => Path.Combine(RepositoryRoot.Folder, "tools", "FakeClaudeCode", "bin", "claude");
+   string FakeClaudeCodeFolder => Path.Combine(_root, "fake-claude-code");
 
    /// <summary>Where solutions to open in the sandbox go. The sandbox trusts everything under it.</summary>
    public string SolutionsFolder => Path.Combine(_root, "solutions");
@@ -207,6 +211,7 @@ public sealed class SandboxRider
 
          new SandboxRiderSettings(Path.Combine(_root, "config")).Write(SolutionsFolder);
          WriteTheFoldersFile();
+         TakeTheFakeClaudeCodeBuild();
          var process = Launch(solution);
          File.WriteAllText(ProcessFile, $"{process.Id};{process.StartTime.Ticks}");
       } else if(solution is not null)
@@ -234,6 +239,13 @@ public sealed class SandboxRider
       foreach(var jar in Directory.GetFiles(Path.Combine(PluginsFolder, plugin.Name, "lib"), "*.jar")) File.SetLastWriteTimeUtc(jar, DateTime.UtcNow);
       observation.RefreshThePluginsFolder();
       observation.WaitUntilReloaded(startedBefore, TimeSpan.FromMinutes(1));
+   }
+
+   void TakeTheFakeClaudeCodeBuild()
+   {
+      if(Directory.Exists(FakeClaudeCodeFolder)) Directory.Delete(FakeClaudeCodeFolder, recursive: true);
+      Directory.CreateDirectory(FakeClaudeCodeFolder);
+      foreach(var file in Directory.GetFiles(FakeClaudeCodeBuild)) File.Copy(file, Path.Combine(FakeClaudeCodeFolder, Path.GetFileName(file)));
    }
 
    /// <summary>Closes the sandbox's windows until it exits, as a human closing them would.</summary>
