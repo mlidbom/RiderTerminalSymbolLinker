@@ -28,7 +28,8 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v6
 
-      # No localIdePath -> the build downloads the pinned stable Rider (gradle.properties).
+      # No localIdePath -> the build downloads the pinned stable Rider (gradle.properties), which both plugins build against.
+      # Each task runs in both projects, the symbol linker and ClaudeSessions.
       # `test` runs the unit tests (FileReferences / SolutionFileIndex); buildPlugin does not depend on it.
       # Every deprecation Gradle finds is printed, not just counted: this path downloads a Rider, which a local build
       # doesn't, so some are seen only here.
@@ -45,4 +46,11 @@ jobs:
         with:
           name: RiderTerminalSymbolLinker
           path: build/distributions/*.zip
+          if-no-files-found: error
+
+      - name: Upload Claude Sessions zip
+        uses: actions/upload-artifact@v7
+        with:
+          name: ClaudeSessions
+          path: ClaudeSessions/build/distributions/*.zip
           if-no-files-found: error

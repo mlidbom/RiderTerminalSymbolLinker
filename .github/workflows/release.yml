@@ -7,6 +7,8 @@ name: Release
 #     tag and pushes it to the Marketplace, no GitHub Release. Used to backfill versions that were tagged
 #     before Marketplace auto-publish existed. Always runs THIS (main) workflow definition, checking out
 #     the tag's code — so old tags get the current, publish-enabled pipeline.
+# It releases the symbol linker alone: each Gradle task is the root project's, `:task`. A bare task name runs in every
+# project, ClaudeSessions included, which has no release of its own yet.
 on:
   push:
     tags: [ 'v*' ]
@@ -46,19 +48,19 @@ jobs:
 
       # Before anything is released: a version the verifier finds anything in is not one to upload.
       - name: Verify plugin
-        run: ./gradlew verifyPlugin -PpluginVersion=${{ steps.ver.outputs.version }} --console=plain --stacktrace
+        run: ./gradlew :verifyPlugin -PpluginVersion=${{ steps.ver.outputs.version }} --console=plain --stacktrace
 
       - name: Build & sign plugin
         env:
           CERTIFICATE_CHAIN: ${{ secrets.CERTIFICATE_CHAIN }}
           PRIVATE_KEY: ${{ secrets.PRIVATE_KEY }}
           PRIVATE_KEY_PASSWORD: ${{ secrets.PRIVATE_KEY_PASSWORD }}
-        run: ./gradlew signPlugin -PpluginVersion=${{ steps.ver.outputs.version }} --console=plain --stacktrace
+        run: ./gradlew :signPlugin -PpluginVersion=${{ steps.ver.outputs.version }} --console=plain --stacktrace
 
       # GitHub Release only for real tag pushes. A manual backfill of an old tag already has its Release.
       - name: Extract release notes from CHANGELOG
         if: github.event_name == 'push'
-        run: ./gradlew getChangelog --no-header --no-summary -q --console=plain --project-version=${{ steps.ver.outputs.version }} > RELEASE_NOTES.md
+        run: ./gradlew :getChangelog --no-header --no-summary -q --console=plain --project-version=${{ steps.ver.outputs.version }} > RELEASE_NOTES.md
 
       - name: Create GitHub Release
         if: github.event_name == 'push'
@@ -84,4 +86,4 @@ jobs:
             echo "Version $V is already on the Marketplace — skipping publish."
             exit 0
           fi
-          ./gradlew publishPlugin -PpluginVersion="$V" --console=plain --stacktrace
+          ./gradlew :publishPlugin -PpluginVersion="$V" --console=plain --stacktrace
