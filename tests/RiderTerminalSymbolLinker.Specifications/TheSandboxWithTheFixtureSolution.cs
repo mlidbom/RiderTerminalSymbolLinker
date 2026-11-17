@@ -9,9 +9,9 @@ namespace RiderTerminalSymbolLinker.Specifications;
 ///   through its development observation channel.
 /// </summary>
 /// <remarks>
-///   Set up once for the whole run. A running sandbox gets the build put in and reloads it, in seconds; otherwise the
-///   sandbox starts, with a fresh copy of the fixture solution, which takes a minute at most. It is left running
-///   afterwards, so its state can be looked at, and the next run is fast.
+///   Set up once for the whole run. The working tree's build is put in the sandbox first: a running sandbox reloads it,
+///   in seconds; otherwise the sandbox starts with it, with a fresh copy of the fixture solution, which takes a minute at
+///   most. It is left running afterwards, so its state can be looked at, and the next run is fast.
 /// </remarks>
 public sealed class TheSandboxWithTheFixtureSolution
 {
@@ -21,8 +21,8 @@ public sealed class TheSandboxWithTheFixtureSolution
 
    public TheSandboxWithTheFixtureSolution()
    {
-      if(_sandbox.IsRunning) _sandbox.Install();
-      else _sandbox.Start();
+      _sandbox.Install();
+      if(!_sandbox.IsRunning) _sandbox.Start();
       WaitUntilThePluginHasIndexedTheSolution();
    }
 
