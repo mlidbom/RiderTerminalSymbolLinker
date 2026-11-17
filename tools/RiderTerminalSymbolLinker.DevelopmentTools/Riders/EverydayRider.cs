@@ -30,9 +30,12 @@ public sealed class EverydayRider
    {
       _plugins.Fill();
       var setAside = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "RiderTerminalSymbolLinkerDevelopment", "replaced-everyday-plugin-files");
-      var changed = new FolderMirror(setAside).Mirror(_plugins.Plugin, Path.Combine(_pluginsFolder, GradleSandbox.PluginFolderName));
-      return changed
-                ? "Deployed the build to the everyday Riders: each reloads it, without a restart, when Magnus next switches to its window."
-                : "The everyday Riders have this build already.";
+      var mirror = new FolderMirror(setAside);
+      var changed = mirror.Mirror(_plugins.Plugin, Path.Combine(_pluginsFolder, GradleSandbox.PluginFolderName));
+      return !changed
+                ? "The everyday Riders have this build already."
+                : mirror.AddedOrRemovedAFile
+                   ? "Deployed the build to the everyday Riders, adding or removing a file of the plugin's, which Rider can't reload: each loads it when Magnus restarts it."
+                   : "Deployed the build to the everyday Riders: each reloads it, without a restart, when Magnus next switches to its window.";
    }
 }

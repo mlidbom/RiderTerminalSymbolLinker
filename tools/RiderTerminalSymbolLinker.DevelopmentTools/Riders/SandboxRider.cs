@@ -77,9 +77,15 @@ public sealed class SandboxRider
       var mirror = new FolderMirror(Path.Combine(_root, "replaced-plugin-files"));
       var pluginChanged = mirror.Mirror(_plugins.Plugin, Path.Combine(PluginsFolder, GradleSandbox.PluginFolderName));
       if(IsRunning)
-         return pluginChanged
-                   ? $"Put the new build in the running sandbox Rider, which reloaded it in {Observation.ReloadThePlugin(TimeSpan.FromMinutes(1)).TotalSeconds:0.0}s."
-                   : "The sandbox has this build already.";
+      {
+         if(!pluginChanged) return "The sandbox has this build already.";
+         if(!mirror.AddedOrRemovedAFile)
+            return $"Put the new build in the running sandbox Rider, which reloaded it in {Observation.ReloadThePlugin(TimeSpan.FromMinutes(1)).TotalSeconds:0.0}s.";
+
+         Stop();
+         Start();
+         return "Put the new build in the sandbox and restarted it: the build adds or removes a file of the plugin's, which Rider can't reload.";
+      }
 
       mirror.Mirror(_plugins.McpPlugin, Path.Combine(PluginsFolder, GradleSandbox.McpPluginFolderName));
       return "Put the build in the sandbox: the sandbox Rider loads it when it starts.";

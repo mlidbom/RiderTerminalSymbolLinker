@@ -14,6 +14,12 @@ sealed class FolderMirror
    public FolderMirror(string setAsideFolder) => _setAsideFolder = setAsideFolder;
 
    /// <summary>
+   ///   Whether a mirror added a file the destination didn't have, or removed one, rather than only replacing files.
+   ///   A Rider reloads a plugin only when a file's content changes, so after such a mirror it needs a restart.
+   /// </summary>
+   public bool AddedOrRemovedAFile { get; private set; }
+
+   /// <summary>
    ///   Copies each file of <paramref name="source"/> that <paramref name="destination"/> lacks or has with another size
    ///   or time, and removes what <paramref name="destination"/> has that <paramref name="source"/> doesn't. Returns
    ///   whether it changed anything.
@@ -34,6 +40,7 @@ sealed class FolderMirror
          var copy = Path.Combine(destination, Path.GetFileName(file));
          if(IsTheSame(file, copy)) continue;
          if(File.Exists(copy)) SetAside(copy);
+         else AddedOrRemovedAFile = true;
          File.Copy(file, copy);
          File.SetLastWriteTimeUtc(copy, File.GetLastWriteTimeUtc(file));
          changed = true;
@@ -45,13 +52,13 @@ sealed class FolderMirror
       foreach(var extraFile in Directory.GetFiles(destination).Where(it => !File.Exists(Path.Combine(source, Path.GetFileName(it)))))
       {
          SetAside(extraFile);
-         changed = true;
+         changed = AddedOrRemovedAFile = true;
       }
 
       foreach(var extraFolder in Directory.GetDirectories(destination).Where(it => !Directory.Exists(Path.Combine(source, Path.GetFileName(it)))))
       {
          Directory.Move(extraFolder, Path.Combine(_setAsideFolder, $"{Guid.NewGuid():N}-{Path.GetFileName(extraFolder)}"));
-         changed = true;
+         changed = AddedOrRemovedAFile = true;
       }
 
       return changed;
