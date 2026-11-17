@@ -33,28 +33,30 @@ the upstream ReSharper MCP (`com.j-light.resharper-mcp`, port 23741).
 That caused the early intermittent failures. **Nor JetBrains' built-in MCP server:** its `search_symbol` is file-level
 and fuzzy, and its syntax tree tool covers only Java and Kotlin.
 
-The tools the plugin uses, and their traps:
+**The plugin reads the tools' JSON form alone,** which the argument `"format": "json"` asks for, since 0.2.11 and the
+MCP's 0.15.0: a contract, where the text form is written for people and changes freely. `McpJsonContract.kt` mirrors
+what the plugin reads of it; the MCP's specifications of the form are in its repository, under
+`tests/DotNetAnalysisAndRefactoringMcp.Specifications/JsonForm`, and its CLAUDE.md lists what the plugin relies on, so
+that extend-mcp tells this project before changing it. An older MCP ignores the argument and answers text, which the
+plugin takes as no answer, and logs. A solution still loading answers an error.
+
+The tools the plugin uses:
 
 - **`list_solutions`** maps the Rider project to its solution (`McpSolution`). Every other call passes that solution's
   `uniquePathSegment` as `solutionName`, because two open solutions can share a name, as two worktrees of one repository
   do.
-- **`browse_namespace`**, from the root and then batched by namespace, lists every type.
-- **`get_symbol_info` with `includeMembers`**, called once per type by its namespace-qualified name, lists the members.
-  Its batch form (`symbols: [...]`) with `includeMembers` fails with `Cannot get runtime features with Universal`
-  and drops the whole batch, so it is called singly. `list_symbols_in_file` answers empty, which is why members are
-  read per type.
-- **`go_to_definition`** resolves a click exactly: one location as text, or a JSON list of candidates when ambiguous.
+- **`browse_namespace`** finds every namespace, 50 to a call, and then lists each namespace's types with their
+  members, one namespace to a call, nested types included. `SymbolNamesGatherer` turns them into the index. A C# 14
+  extension block is a member of its own kind, whose members count as the declaring class's.
+- **`go_to_definition`** resolves a click exactly: every declaration of the name, with its file, line and column. One
+  opens, several show the picker. A member with no source of its own, such as a positional record's property, is where
+  it's written, and a compiled symbol has no file, so the plugin leaves it out.
 - **`search_symbol`** matches substrings and stops at 50 results, so short common names drown: not for exact
   resolution.
-- **C# 14 extension blocks:** `get_symbol_info` lists a block in one of two ways. The MCP's tools since 2026-11-17
-  list it as C# declares it, a header line `extension(circle:Circle)` with its members under it. Earlier ones, the
-  Marketplace's 0.14.0 among them, list it as a synthetic `$extension` member, with its methods flattened beside it and
-  its properties only as their accessors, such as `get_Diameter`, which don't link. `ReSharperMcp.parseMembers` reads
-  both. `go_to_definition` still names a block's member in both ways, `$extension` and flattened, at one line; the
-  plugin collapses the pair.
 
 **Enumeration is sequential by design:** the ReSharper backend serializes analysis, so calls from six threads measured
-about 1.2 times faster at best.
+about 1.2 times faster at best. One namespace to a call keeps each call short, so other clients' calls don't wait long
+behind the plugin's.
 
 ## Keeping the links current
 

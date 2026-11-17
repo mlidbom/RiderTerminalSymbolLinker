@@ -265,6 +265,7 @@ private object SelectedEditor {
             description = mapOf(
                 "file" to FileDocumentManager.getInstance().getFile(document)?.path,
                 "caretLine" to editor.caretModel.logicalPosition.line + 1,
+                "caretColumn" to editor.caretModel.logicalPosition.column + 1,
                 "selectedLines" to if (selection.hasSelection()) {
                     listOf(document.getLineNumber(selection.selectionStart) + 1, document.getLineNumber(selection.selectionEnd) + 1)
                 } else {

@@ -6,14 +6,19 @@ All notable changes to this project are documented here. The format follows
 
 ## [0.2.11]
 
+### Changed
+- **Requires the .NET Analysis&Refactoring MCP 0.15.0 or later.** The plugin now reads that MCP's answers in their
+  JSON form, which its earlier versions don't have: with them, no symbols link. The Marketplace updates it with this
+  plugin.
+- **A click on a symbol puts the caret on its name,** not at the start of its line.
+
 ### Fixed
-- **The progress bar shows how far loading .NET symbols has come.** While the plugin loads the members of the
-  solution's types, its progress bar in the status bar now fills up, instead of running with no end in sight.
+- **Properties declared in C# 14 extension blocks link,** such as `Diameter` in `extension(Circle circle)`. Before,
+  only the block's methods did.
+- **Members of nested types link.** Before, a nested type's name linked, but not its members' names.
+- **The progress bar shows how far loading .NET symbols has come.** While the plugin loads the types and members of
+  the solution's namespaces, its progress bar in the status bar now fills up, instead of running with no end in sight.
   Before, Rider also logged a warning with a stack trace about the bar each time a solution opened.
-- **Ready for the .NET Analysis&Refactoring MCP's next way of listing C# 14 extension blocks.** Its next version
-  lists a block as `extension(...)` with the block's members under it. The plugin reads those members, so a property
-  declared in an extension block, such as `Diameter`, links too, and the word "extension" itself doesn't link. With
-  the MCP's current version, 0.14.0, such properties still don't link.
 
 ## [0.2.10]
 

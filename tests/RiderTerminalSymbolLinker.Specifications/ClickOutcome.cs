@@ -12,6 +12,7 @@ namespace RiderTerminalSymbolLinker.Specifications;
 /// </param>
 /// <param name="OpenedFile">The file the selected editor shows after the click, for <c>opened</c>.</param>
 /// <param name="CaretLine">The line the selected editor's caret is on after the click, 1-based, for <c>opened</c>.</param>
+/// <param name="CaretColumn">The column the selected editor's caret is in after the click, 1-based, for <c>opened</c>.</param>
 /// <param name="SelectedLines">The first and last lines the selected editor's selection covers, if it has one.</param>
 /// <param name="PickerTitle">The picker's title, for <c>picker</c>.</param>
 /// <param name="PickerRows">The picker's rows, for <c>picker</c>.</param>
@@ -19,6 +20,7 @@ public sealed record ClickOutcome(
    string Outcome,
    string? OpenedFile,
    int? CaretLine,
+   int? CaretColumn,
    IReadOnlyList<int>? SelectedLines,
    string? PickerTitle,
    IReadOnlyList<string>? PickerRows)
@@ -30,6 +32,7 @@ public sealed record ClickOutcome(
          answer["outcome"]?.GetValue<string>() ?? throw new InvalidOperationException($"The observation channel answered without an outcome: {answer}"),
          editor?["file"]?.GetValue<string>() is {} file ? Path.GetRelativePath(fixtureFolder, file).Replace('\\', '/') : null,
          editor?["caretLine"]?.GetValue<int>(),
+         editor?["caretColumn"]?.GetValue<int>(),
          editor?["selectedLines"]?.AsArray().Select(it => it!.GetValue<int>()).ToList(),
          answer["title"]?.GetValue<string>(),
          answer["rows"]?.AsArray().Select(it => it!.GetValue<string>()).ToList());

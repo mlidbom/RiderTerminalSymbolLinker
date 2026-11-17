@@ -15,6 +15,7 @@ public class When_clicking_a_link(TheSandboxWithTheFixtureSolution sandbox)
 
       [XF] public void it_opens_the_types_file() => _outcome.OpenedFile.Must().Be("Geometry/Shapes/Circle.cs");
       [XF] public void the_caret_is_on_the_members_declaration() => _outcome.CaretLine.Must().Be(8);
+      [XF] public void the_caret_is_at_the_start_of_the_members_name() => _outcome.CaretColumn.Must().Be(17);
    }
 
    public class to_a_property_declared_in_a_csharp_14_extension_block(TheSandboxWithTheFixtureSolution sandbox) : When_clicking_a_link(sandbox)
@@ -23,6 +24,7 @@ public class When_clicking_a_link(TheSandboxWithTheFixtureSolution sandbox)
 
       [XF] public void it_opens_the_file_that_declares_the_block() => _outcome.OpenedFile.Must().Be("Geometry/Shapes/CircleExtensions.cs");
       [XF] public void the_caret_is_on_the_propertys_declaration() => _outcome.CaretLine.Must().Be(10);
+      [XF] public void the_caret_is_at_the_start_of_the_propertys_name() => _outcome.CaretColumn.Must().Be(19);
    }
 
    public class to_a_partial_path_with_a_line(TheSandboxWithTheFixtureSolution sandbox) : When_clicking_a_link(sandbox)
@@ -61,6 +63,7 @@ public class When_clicking_a_link(TheSandboxWithTheFixtureSolution sandbox)
 
          [XF] public void it_opens_the_file_of_the_type_in_the_second_row() => _chosen.OpenedFile.Must().Be("Geometry/Shapes/Bounds.cs");
          [XF] public void the_caret_is_on_its_declaration() => _chosen.CaretLine.Must().Be(4);
+         [XF] public void the_caret_is_at_the_start_of_the_types_name() => _chosen.CaretColumn.Must().Be(15);
 
          public override void Dispose() {} // Choosing a row closed the picker.
       }

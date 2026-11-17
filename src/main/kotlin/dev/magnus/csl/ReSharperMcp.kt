@@ -1,23 +1,18 @@
 package dev.magnus.csl
 
+import com.google.gson.Gson
+import com.google.gson.JsonArray
+import com.google.gson.JsonObject
+import com.google.gson.JsonParser
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.progress.ProgressIndicator
 import com.intellij.util.io.HttpRequests
 
-/** ReSharper reports compiler-synthesized members (e.g. positional-record properties) with this file. */
-private const val NO_SOURCE = "[no source]"
-
-/** The synthetic grouping segment ReSharper inserts in the qualified name of a C# extension-block member. */
-private const val EXTENSION_BLOCK_SEGMENT = ".\$extension"
-
-/** How `get_symbol_info` starts the line that opens a C# 14 extension block among a type's members: `extension(circle:Circle)`. */
-private const val EXTENSION_BLOCK_HEADER = "extension("
-
-/** One symbol location from the ReSharper MCP. [name] is a short or qualified name for display. */
-data class SymbolHit(val kind: String, val name: String, val file: String, val line: Int) {
-    /** Whether this hit points at a navigable source line. Synthesized members report [NO_SOURCE]:0. */
-    val hasSource: Boolean get() = file != NO_SOURCE && line >= 1
-}
+/**
+ * A declaration a link can open: [qualifiedName] as C# writes it, in [file] at [line] and [column], both 1-based.
+ * [kind] is the C# keyword for what it declares, such as `class` or `method`.
+ */
+data class SymbolHit(val kind: String, val qualifiedName: String, val file: String, val line: Int, val column: Int)
 
 /**
  * One loaded solution from `list_solutions`. The value to pass back as `solutionName` is [routingKey], not
@@ -25,7 +20,7 @@ data class SymbolHit(val kind: String, val name: String, val file: String, val l
  * solutions share a [name] it resolves to whichever same-named solution it picks first. Two git worktrees of
  * the same repo are exactly this case — both name their solution e.g. "Vantage" — and only the server's
  * `uniquePathSegment` ("Vantage-wt-1" vs "Vantage") routes to the intended one. [uniquePathSegment] is `null`
- * on older MCP servers that don't emit the field, in which case [routingKey] falls back to the [name].
+ * when the server leaves it out, and [routingKey] then falls back to the [name].
  */
 data class SolutionInfo(val name: String, val path: String, val uniquePathSegment: String? = null) {
     /** The `solutionName` value that routes to exactly this solution, even when [name] collides. */
@@ -33,11 +28,13 @@ data class SolutionInfo(val name: String, val path: String, val uniquePathSegmen
 }
 
 /**
- * Thin client for the .NET Analysis&Refactoring MCP server (mlidbom/dotnet-analysis-and-refactoring-mcp-for-rider,
- * a fork of joshua-light/resharper-mcp) which runs in-process in Rider on 127.0.0.1:23751 and is
- * ReSharper-backed, so it resolves and enumerates C# symbols reliably — unlike the platform's
- * GotoSymbolModel, which doesn't see them. Plain JSON-RPC over HTTP; tool results are human-readable
- * text (or a small JSON blob for ambiguity) that we parse.
+ * Client for the .NET Analysis&Refactoring MCP, the plugin this one depends on, whose server runs inside Rider's
+ * ReSharper backend on 127.0.0.1, port 23751 by default. It resolves and enumerates C# symbols through ReSharper,
+ * unlike the platform's GotoSymbolModel, which doesn't see them. Plain JSON-RPC over HTTP.
+ *
+ * It reads the tools' answers in their JSON form alone, which the argument `"format": "json"` asks for: the types in
+ * McpJsonContract.kt. An MCP too old to have that form ignores the argument and answers text, which this reads as
+ * no answer, and logs.
  */
 object ReSharperMcp {
     private const val DEFAULT_PORT = 23751
@@ -45,23 +42,14 @@ object ReSharperMcp {
     // The server binds the port this variable names, when set. Rider's ReSharper backend is started by this
     // frontend process and inherits its environment, so reading it here finds the port the server bound.
     private val URL = "http://127.0.0.1:${System.getenv("DOTNET_ANALYSIS_AND_REFACTORING_MCP_PORT")?.toIntOrNull() ?: DEFAULT_PORT}/"
-    private const val SEP = " — " // separates "<kind> <name> : <type>" from "<file>:<line>:<col>"
     private val LOG = Logger.getInstance("CSL")
+    private val gson = Gson()
 
-    // "<file>:<line>:<col>" (drive colon stays inside the greedy file group)
-    private val LOCATION = Regex("""^(.*):(\d+):(\d+)$""")
+    /** How many namespaces one call lists while the namespaces are found, before their types are read. */
+    private const val NAMESPACES_PER_CALL = 50
 
-    // one entry of go_to_definition's ambiguity payload: {"qualifiedName":..,"kind":..,"file":..,"line":N}
-    private val CANDIDATE = Regex(
-        """"qualifiedName"\s*:\s*"([^"]*)"\s*,\s*"kind"\s*:\s*"([^"]*)"\s*,\s*"file"\s*:\s*"([^"]*)"\s*,\s*"line"\s*:\s*(\d+)""",
-    )
-
-    // one entry of list_solutions: {"name":"Vantage","path":"C:\\…\\Vantage.slnx","toolCount":21,"uniquePathSegment":"Vantage"}
-    // The optional trailing group captures uniquePathSegment (it follows path within the same {…}, past
-    // toolCount); [^}]*? keeps it inside the one object, and the group is absent on servers that omit it.
-    private val SOLUTION = Regex(
-        """"name"\s*:\s*"([^"]*)"\s*,\s*"path"\s*:\s*"([^"]*)"(?:[^}]*?"uniquePathSegment"\s*:\s*"([^"]*)")?""",
-    )
+    /** The global namespace, as `browse_namespace` names it. */
+    private const val GLOBAL_NAMESPACE = ""
 
     // ---- Solution discovery ----------------------------------------------------------------
 
@@ -69,273 +57,132 @@ object ReSharperMcp {
      * Every solution currently loaded in the MCP. Used to map a Rider project to the `solutionName`
      * the other tools need when more than one solution is open. `null` if the MCP is unreachable.
      */
-    fun listSolutions(): List<SolutionInfo>? = callTool("list_solutions", "{}", null)?.let(::parseSolutions)
+    fun listSolutions(): List<SolutionInfo>? = callTool("list_solutions", JsonObject(), null)?.let(::solutionsIn)
 
-    /** Parse the `list_solutions` text payload into [SolutionInfo]s. Separated from transport to be testable. */
-    internal fun parseSolutions(text: String): List<SolutionInfo> =
-        SOLUTION.findAll(text)
-            .map { SolutionInfo(it.groupValues[1], it.groupValues[2].replace("\\\\", "\\"), it.groupValues[3].ifEmpty { null }) }
-            .toList()
+    internal fun solutionsIn(answer: JsonObject): List<SolutionInfo> = gson.fromJson(answer, SolutionsAnswer::class.java).solutions
 
     // ---- Click-time resolution (exact by name) ---------------------------------------------
 
     /**
-     * Declarations of the symbol exactly named [name]. One hit -> jump; several -> picker.
-     * A compiler-synthesized member (e.g. a positional-record property) has no source of its own, so
-     * we navigate to its declaring type instead — that source line is where the member is written
-     * (the record's primary-constructor parameter). `null` = MCP unreachable; empty = no such symbol.
+     * The declarations of the symbol named [name], a bare name or the end of a qualified one, such as `Circle.Area`.
+     * One opens at once, several show a picker. Compiled symbols are left out: they have no source to open.
+     * `null` = the MCP is unreachable or couldn't answer; empty = no such symbol.
      */
-    fun goToDefinition(name: String, solutionName: String?): List<SymbolHit>? {
-        val hits = resolveByName(name, solutionName) ?: return null
-        val resolved = hits.mapNotNull { if (it.hasSource) it else resolveViaContainingType(it, solutionName) }
-        return collapseExtensionBlockDuplicates(resolved)
-    }
+    fun goToDefinition(name: String, solutionName: String?): List<SymbolHit>? =
+        callTool("go_to_definition", inJsonForm().apply { addProperty("symbolName", name) }, solutionName)?.let(::declarationsIn)
 
-    /**
-     * ReSharper resolves a C# extension-block member to two declarations at the same source line: the
-     * `$extension`-grouped qualified name (`…RECTEX.$extension.ToScreenRect`) and the flattened one
-     * (`…RECTEX.ToScreenRect`). They are the same target, so the picker would otherwise show two identical
-     * rows. Collapse each such pair, keeping the `$extension` form — its path tells the reader it's an
-     * extension member, and a lone extension method then jumps straight to source instead of opening a
-     * two-row picker. (A name that is an extension on several types still shows a picker, with every row
-     * carrying its distinguishing `$extension`-qualified path.)
-     */
-    internal fun collapseExtensionBlockDuplicates(hits: List<SymbolHit>): List<SymbolHit> {
-        val flattenedTwins = hits
-            .filter { EXTENSION_BLOCK_SEGMENT in it.name }
-            .mapTo(HashSet()) { it.copy(name = it.name.replace(EXTENSION_BLOCK_SEGMENT, "")) }
-        return if (flattenedTwins.isEmpty()) hits else hits.filterNot { it in flattenedTwins }
-    }
-
-    private fun resolveByName(name: String, solutionName: String?): List<SymbolHit>? {
-        val text = callTool("go_to_definition", "{\"symbolName\":${jsonString(name)}}", solutionName) ?: return null
-        if (text.contains("\"candidates\"")) {
-            return CANDIDATE.findAll(text).map { m ->
-                SymbolHit(m.groupValues[2], m.groupValues[1], m.groupValues[3].replace("\\\\", "\\"), m.groupValues[4].toInt())
-            }.toList()
+    internal fun declarationsIn(answer: JsonObject): List<SymbolHit> =
+        gson.fromJson(answer, DeclarationsAnswer::class.java).declarations.mapNotNull { declaration ->
+            declaration.file?.let { SymbolHit(declaration.kind, declaration.qualifiedName, it, declaration.line!!, declaration.column!!) }
         }
-        val hits = ArrayList<SymbolHit>()
-        for (line in text.lineSequence()) {
-            val sep = line.indexOf(SEP)
-            if (sep < 0) continue
-            val left = line.substring(0, sep).trim()
-            val loc = LOCATION.find(line.substring(sep + SEP.length).trim()) ?: continue
-            val head = left.substringBefore(" : ")
-            hits.add(
-                SymbolHit(
-                    head.substringBeforeLast(' ', ""),
-                    head.substringAfterLast(' '),
-                    loc.groupValues[1],
-                    loc.groupValues[2].toInt(),
-                ),
-            )
-        }
-        return hits
-    }
-
-    /**
-     * A synthesized [member] (no source of its own) resolves to its declaring type's source line.
-     * The containing type comes from the member's qualified name (`Ns.Type.Member` -> `Ns.Type`);
-     * `null` if we only have a short name or the type itself has no navigable source.
-     */
-    private fun resolveViaContainingType(member: SymbolHit, solutionName: String?): SymbolHit? {
-        val containingType = member.name.substringBeforeLast('.', "")
-        if (containingType.isEmpty()) return null
-        val typeHit = resolveByName(containingType, solutionName)?.firstOrNull { it.hasSource } ?: return null
-        return member.copy(file = typeHit.file, line = typeHit.line)
-    }
 
     // ---- Startup enumeration ---------------------------------------------------------------
 
     /**
-     * Every solution symbol short name (types + members) plus every `SimpleType.Member` combined
-     * identifier (see [SymbolNames]). Types come from walking namespaces; members from one
-     * `get_symbol_info` per type, keyed by the namespace-qualified name so the result is unambiguous.
-     * (The batch form of `get_symbol_info` errors with "Universal", and `list_symbols_in_file` returns
-     * nothing — single qualified calls are the reliable path.) Each type's members are recorded both as
-     * short names and, paired with the type's simple name, as combined identifiers — so a dotted access
-     * printed in the terminal links as one symbol only when that member-of-type pair actually exists.
+     * The names of every type in the solution and of their members, nested types included, as [SymbolNamesGatherer]
+     * gathers them. First the namespaces are found, a batch of them per call; then each namespace's types are listed
+     * with their members, one namespace per call, which the progress bar counts.
      *
-     * Sequential by design: the ReSharper backend serializes analysis, so fanning these calls out
-     * across threads measured ~1.2x at best — not worth the nondeterminism. Its duration is hidden
-     * from the user by the disk cache (see [SymbolIndexCache]), which serves the index while this
-     * runs in the background.
+     * Sequential by design: the ReSharper backend serializes analysis, so fanning calls out across threads measured
+     * ~1.2x at best — not worth the nondeterminism — and one namespace per call keeps each call short, so that other
+     * clients' calls don't wait long behind ours. Its duration is hidden from the user by the disk cache
+     * (see [SymbolIndexCache]), which serves the index while this runs in the background.
      *
-     * `null` means "no usable index right now" — the MCP was unreachable, or it returned nothing
-     * because ReSharper hasn't finished loading the solution yet (common at startup for a large
-     * solution). A real .NET solution always has types, so an empty result is treated as not-ready,
-     * not as success — callers must not cache or display it (see [SymbolIndexLoader]'s retry).
+     * `null` means "no usable index right now": the MCP was unreachable, or answered an error, as it does while the
+     * solution is still loading. Callers must not cache or display it (see [SymbolIndexLoader]'s retry).
      */
-    fun enumerateSymbolNames(indicator: ProgressIndicator, solutionName: String?): SymbolNames? {
-        indicator.isIndeterminate = true // How many types there are is known only once they're all found.
-        indicator.text = "Terminal Symbol Linker:Loading types…"
-        val names = HashSet<String>()
-        val qualifiedTypes = LinkedHashSet<String>()
-        val visitedNs = HashSet<String>()
+    fun enumerateSymbolNames(indicator: ProgressIndicator, solutionName: String): SymbolNames? {
+        val started = System.nanoTime()
+        indicator.isIndeterminate = true // How many namespaces there are is known only once they're all found.
+        indicator.text = "Terminal Symbol Linker:Finding namespaces…"
+        val namespaces = allNamespaces(indicator, solutionName) ?: return null
 
-        val rootText = browseNamespaces(null, solutionName) ?: return null
-        val pending = ArrayDeque<String>()
-        collectBrowse(rootText, pending, visitedNs, names, qualifiedTypes)
-        while (pending.isNotEmpty()) {
-            indicator.checkCanceled()
-            val batch = ArrayList<String>()
-            while (pending.isNotEmpty() && batch.size < 50) batch.add(pending.removeFirst())
-            collectBrowse(browseNamespaces(batch, solutionName) ?: break, pending, visitedNs, names, qualifiedTypes)
-        }
-
-        val types = qualifiedTypes.toList()
-        val combined = HashSet<String>()
-        indicator.text = "Terminal Symbol Linker:Loading members…"
+        indicator.text = "Terminal Symbol Linker:Loading types and members…"
         indicator.isIndeterminate = false
         indicator.fraction = 0.0
-        for ((i, qualifiedName) in types.withIndex()) {
+        val gatherer = SymbolNamesGatherer()
+        for ((index, namespace) in namespaces.withIndex()) {
             indicator.checkCanceled()
-            val simpleType = qualifiedName.substringAfterLast('.')
-            getMembersOf(qualifiedName, solutionName)?.let { parseMembers(it, simpleType, names, combined) }
-            indicator.fraction = (i + 1).toDouble() / types.size
+            val listing = browse(listOf(namespace), includeMembers = true, solutionName)?.single() ?: return null
+            listing.error?.let { LOG.info("CSL: namespace '$namespace' not listed: $it") }
+            listing.types.forEach(gatherer::add)
+            indicator.fraction = (index + 1).toDouble() / namespaces.size
         }
-        LOG.info("CSL symbol index: ${names.size} names, ${combined.size} combined (${types.size} types)")
-        return if (names.isEmpty()) null else SymbolNames(names, combined)
+        val symbols = gatherer.gathered()
+        LOG.info("CSL symbol index: ${symbols.short.size} names, ${symbols.combined.size} combined, from ${namespaces.size} namespaces in ${(System.nanoTime() - started) / 1_000_000} ms")
+        return symbols
     }
 
-    private fun collectBrowse(
-        text: String,
-        pending: ArrayDeque<String>,
-        visitedNs: MutableSet<String>,
-        names: MutableSet<String>,
-        qualifiedTypes: MutableSet<String>,
-    ) {
-        var mode = 0 // 1 = child namespaces, 2 = types
-        var namespace = ""
-        for (raw in text.lineSequence()) {
-            val t = raw.trim()
-            when {
-                t.startsWith("namespace:") -> {
-                    namespace = t.substringAfter("namespace:").trim().let { if (it == "(root)") "" else it }
-                    mode = 0
-                }
-                t == "child namespaces:" -> mode = 1
-                t == "types:" -> mode = 2
-                t.isEmpty() || t.startsWith("===") -> mode = 0
-                mode == 1 -> {
-                    val ns = t.substringBefore(" (").trim()
-                    if (ns.isNotEmpty() && visitedNs.add(ns)) pending.add(ns)
-                }
-                mode == 2 -> {
-                    val short = t.substringBefore(SEP).substringAfterLast(' ').trim()
-                    if (short.isNotEmpty()) {
-                        names.add(short)
-                        qualifiedTypes.add(if (namespace.isEmpty()) short else "$namespace.$short")
-                    }
-                }
-            }
+    /** The qualified names of every namespace in the solution, the global one first. */
+    private fun allNamespaces(indicator: ProgressIndicator, solutionName: String): List<String>? {
+        val found = ArrayList<String>()
+        val pending = ArrayDeque(listOf(GLOBAL_NAMESPACE))
+        while (pending.isNotEmpty()) {
+            indicator.checkCanceled()
+            val batch = List(minOf(NAMESPACES_PER_CALL, pending.size)) { pending.removeFirst() }
+            found += batch
+            val listings = browse(batch, includeMembers = false, solutionName) ?: return null
+            listings.forEach { pending += it.childNamespaces }
         }
+        return found
     }
 
-    /**
-     * Each member is recorded as a short name in [names] and, paired with [simpleType], in [combined].
-     *
-     * A C# 14 extension block is listed in one of two ways. The .NET Analysis&Refactoring MCP's tools since
-     * 2026-11-17 list it as C# declares it: a header line, `extension(circle:Circle)`, with the block's members
-     * indented under it. Earlier ones, the Marketplace's 0.14.0 among them, list it as a synthetic `$extension` member,
-     * with its methods flattened beside it and its properties only as their accessors, such as `get_Diameter`, so that
-     * such a property doesn't link there. Neither the header nor `$extension` is a member.
-     */
-    internal fun parseMembers(text: String, simpleType: String, names: MutableSet<String>, combined: MutableSet<String>) {
-        var inMembers = false
-        for (raw in text.lineSequence()) {
-            val t = raw.trim()
-            when {
-                t == "members:" -> inMembers = true
-                t.isEmpty() || t.startsWith("===") -> inMembers = false
-                inMembers && t.startsWith(EXTENSION_BLOCK_HEADER) -> {}
-                inMembers -> {
-                    val beforeParen = t.substringBefore("(")
-                    val beforeColon = if (beforeParen.contains(" : ")) beforeParen.substringBefore(" : ") else beforeParen
-                    val name = beforeColon.trim().substringAfterLast(' ')
-                    if (name.isNotEmpty() && !name.startsWith('$')) {
-                        names.add(name)
-                        combined.add("$simpleType.$name")
-                    }
-                }
-            }
+    private fun browse(namespaces: List<String>, includeMembers: Boolean, solutionName: String): List<NamespaceListing>? {
+        val arguments = inJsonForm().apply {
+            add("namespaceNames", JsonArray().apply { namespaces.forEach(::add) })
+            addProperty("includeMembers", includeMembers)
         }
+        return callTool("browse_namespace", arguments, solutionName)?.let { gson.fromJson(it, NamespacesAnswer::class.java).namespaces }
     }
-
-    private fun browseNamespaces(namespaceNames: List<String>?, solutionName: String?): String? =
-        if (namespaceNames.isNullOrEmpty()) {
-            callTool("browse_namespace", "{}", solutionName)
-        } else {
-            callTool("browse_namespace", "{\"namespaceNames\":[${namespaceNames.joinToString(",") { jsonString(it) }}]}", solutionName)
-        }
-
-    private fun getMembersOf(qualifiedTypeName: String, solutionName: String?): String? =
-        callTool("get_symbol_info", "{\"symbolName\":${jsonString(qualifiedTypeName)},\"includeMembers\":true}", solutionName)
 
     // ---- transport -------------------------------------------------------------------------
 
-    /** [solutionName], when set, is merged into [argsJson] so the MCP targets the right open solution. */
-    private fun callTool(tool: String, argsJson: String, solutionName: String?): String? {
-        val args = if (solutionName == null) argsJson else withSolution(argsJson, solutionName)
-        val body =
-            "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/call\"," +
-                "\"params\":{\"name\":\"$tool\",\"arguments\":$args}}"
+    /** Arguments that ask a tool for its JSON form. */
+    private fun inJsonForm(): JsonObject = JsonObject().apply { addProperty("format", "json") }
+
+    /**
+     * Calls [tool] with [arguments], and [solutionName] when set, so the MCP targets the right open solution. Returns
+     * the JSON object the tool answers, or `null` when the MCP is unreachable, answers an error, or answers text.
+     */
+    private fun callTool(tool: String, arguments: JsonObject, solutionName: String?): JsonObject? {
+        solutionName?.let { arguments.addProperty("solutionName", it) }
+        val request = JsonObject().apply {
+            addProperty("jsonrpc", "2.0")
+            addProperty("id", 1)
+            addProperty("method", "tools/call")
+            add("params", JsonObject().apply {
+                addProperty("name", tool)
+                add("arguments", arguments)
+            })
+        }
         val response = try {
             HttpRequests.post(URL, "application/json")
                 .accept("application/json")
-                .connect { request ->
-                    request.write(body)
-                    request.readString()
-                }
+                .connect { it.write(request.toString()); it.readString() }
         } catch (e: Throwable) {
             LOG.warn(".NET Analysis&Refactoring MCP unreachable at $URL ($tool): ${e.message}")
             return null
         }
-        return extractText(response)
+        return toolAnswerIn(tool, response)
     }
 
-    /** Pull the concatenated result.content[].text out of the JSON-RPC envelope without a JSON lib. */
-    private fun extractText(response: String): String {
-        val out = StringBuilder()
-        val key = "\"text\":\""
-        var idx = response.indexOf(key)
-        while (idx >= 0) {
-            var i = idx + key.length
-            while (i < response.length) {
-                val c = response[i]
-                if (c == '\\' && i + 1 < response.length) {
-                    when (response[i + 1]) {
-                        'n' -> out.append('\n')
-                        'r' -> out.append('\r')
-                        't' -> out.append('\t')
-                        '"' -> out.append('"')
-                        '\\' -> out.append('\\')
-                        '/' -> out.append('/')
-                        'u' -> if (i + 5 < response.length) {
-                            out.append(response.substring(i + 2, i + 6).toInt(16).toChar()); i += 4
-                        }
-                        else -> out.append(response[i + 1])
-                    }
-                    i += 2
-                } else if (c == '"') {
-                    break
-                } else {
-                    out.append(c); i++
-                }
-            }
-            out.append('\n')
-            idx = response.indexOf(key, i)
+    /** The JSON object in a JSON-RPC [response]'s `result.content[0].text`: the tool's answer. */
+    private fun toolAnswerIn(tool: String, response: String): JsonObject? {
+        val envelope = JsonParser.parseString(response).asJsonObject
+        envelope.getAsJsonObject("error")?.let {
+            LOG.warn(".NET Analysis&Refactoring MCP refused $tool: $it")
+            return null
         }
-        return out.toString()
-    }
-
-    private fun jsonString(s: String): String =
-        "\"" + s.replace("\\", "\\\\").replace("\"", "\\\"") + "\""
-
-    /** Add `"solutionName":…` to an arguments object. [argsJson] is always our own `{…}` literal. */
-    private fun withSolution(argsJson: String, solutionName: String): String {
-        val field = "\"solutionName\":${jsonString(solutionName)}"
-        val trimmed = argsJson.trim()
-        return if (trimmed == "{}") "{$field}" else trimmed.dropLast(1) + ",$field}"
+        val text = envelope.getAsJsonObject("result").getAsJsonArray("content")[0].asJsonObject["text"].asString
+        if (!text.trimStart().startsWith("{")) {
+            LOG.warn(".NET Analysis&Refactoring MCP answered $tool with text, not JSON: it's older than the version this plugin requires.")
+            return null
+        }
+        val answer = JsonParser.parseString(text).asJsonObject
+        answer["error"]?.let {
+            LOG.info(".NET Analysis&Refactoring MCP couldn't answer $tool: ${it.asString}")
+            return null
+        }
+        return answer
     }
 }

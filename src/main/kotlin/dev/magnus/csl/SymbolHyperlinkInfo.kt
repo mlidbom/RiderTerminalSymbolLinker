@@ -58,7 +58,7 @@ class SymbolHyperlinkInfo(private val token: String) : HyperlinkInfo {
     private fun openHit(project: Project, hit: SymbolHit, requestFocus: Boolean = true) {
         val file = LocalFileSystem.getInstance().findFileByPath(hit.file.replace('\\', '/'))
         if (file != null) {
-            OpenFileDescriptor(project, file, (hit.line - 1).coerceAtLeast(0), 0).navigate(requestFocus)
+            OpenFileDescriptor(project, file, hit.line - 1, hit.column - 1).navigate(requestFocus)
             LinkClickOutcomes.report(LinkClickOutcome.Opened(hit.file, hit.line))
         } else {
             notifyNoSymbol(project)
@@ -73,7 +73,7 @@ class SymbolHyperlinkInfo(private val token: String) : HyperlinkInfo {
         ) { hit, requestFocus -> openHit(project, hit, requestFocus) }
 
     private fun pickerLabel(hit: SymbolHit): String =
-        "${hit.kind} ${hit.name}  —  ${hit.file.substringAfterLast('\\')}:${hit.line}"
+        "${hit.kind} ${hit.qualifiedName}  —  ${hit.file.substringAfterLast('\\')}:${hit.line}"
 
     private fun fallbackToSearchEverywhere(project: Project) {
         val dataContext = SimpleDataContext.getProjectContext(project)
