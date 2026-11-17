@@ -13,7 +13,7 @@ import kotlinx.coroutines.withContext
  */
 class ClaudeSessionsStartup : ProjectActivity {
     override suspend fun execute(project: Project) {
-        if (SavedClaudeSessions(project).read().isEmpty()) return
+        if (SavedClaudeSessions(project).read().sessions.isEmpty()) return
         withContext(Dispatchers.EDT) {
             ClaudeSessionsView.toolWindowOf(project)?.contentManager // The IDE gives a tool window its content as it's asked for.
         }

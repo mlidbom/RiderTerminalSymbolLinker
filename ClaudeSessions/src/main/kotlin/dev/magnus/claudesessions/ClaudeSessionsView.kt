@@ -32,11 +32,15 @@ class ClaudeSessionsView(val project: Project) {
     val tabs: List<ClaudeSessionTab>
         get() = toolWindow?.contentManager?.contents?.mapNotNull(tabsByContent::get).orEmpty()
 
+    /** The tab the tool window shows, of those it has. */
+    val selectedTab: ClaudeSessionTab?
+        get() = toolWindow?.contentManager?.selectedContent?.let(tabsByContent::get)
+
     /**
      * Takes [toolWindow] as the view, as [ClaudeSessionsToolWindowFactory] gives it its content, and has the
      * [ClaudeSessionKeeper] start keeping its sessions. The saved sessions come back in it in their order: those
      * [TabsParkedInTheTerminal] while the plugin reloaded in the tabs that ran them all along, and the others resumed,
-     * unless they can't be: archived or deleted since they ran.
+     * unless they can't be: archived or deleted since they ran. The tab that was selected is selected again.
      */
     fun open(toolWindow: ToolWindow) {
         this.toolWindow = toolWindow
@@ -46,11 +50,12 @@ class ClaudeSessionsView(val project: Project) {
             }
         })
         val saved = SavedClaudeSessions(project).read()
-        val parked = TabsParkedInTheTerminal(project).takeBack(saved)
-        for (session in saved) {
+        val parked = TabsParkedInTheTerminal(project).takeBack(saved.sessions)
+        val tabs = saved.sessions.mapNotNull { session ->
             val parkedTab = parked[session.id]
-            if (parkedTab != null) adopt(parkedTab, session) else if (session.canBeResumed) resume(session)
+            if (parkedTab != null) adopt(parkedTab, session) else if (session.canBeResumed) resume(session) else null
         }
+        tabs.firstOrNull { it.session?.id == saved.selected }?.let { toolWindow.contentManager.setSelectedContent(it.content, false) }
         ClaudeSessionKeeper.getInstance(project).startKeeping()
     }
 
@@ -80,11 +85,15 @@ class ClaudeSessionsView(val project: Project) {
         toolWindow.activate(null)
     }
 
-    /** Adds [terminal], which runs [session], as a tab. */
-    private fun adopt(terminal: TerminalToolWindowTab, session: ClaudeSession) {
+    /**
+     * Adds [terminal], which runs [session], as a tab. It adds the terminal's content itself, as
+     * [TabsParkedInTheTerminal] does, and says why.
+     */
+    private fun adopt(terminal: TerminalToolWindowTab, session: ClaudeSession): ClaudeSessionTab {
         val tab = ClaudeSessionTab(terminal, session)
         tabsByContent[tab.content] = tab
-        TerminalToolWindowTabsManager.getInstance(project).attachTab(terminal, toolWindow!!.contentManager)
+        toolWindow!!.contentManager.addContent(terminal.content)
+        return tab
     }
 
     /**

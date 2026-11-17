@@ -38,6 +38,7 @@ import java.util.concurrent.Executors
  *    [SavedClaudeSessions], and whether the [ClaudeSessionKeeper] keeps them.
  *  - `POST /view/open?project=` — has the IDE give the view its content, as showing the tool window would.
  *  - `POST /sessions/new?project=` — starts a new session in a tab, as the New Claude Session action does.
+ *  - `POST /tabs/select?project=&tab=` — selects the tab, and shows the tool window, as a click on the tab does.
  *  - `GET /tabs/screen?project=&tab=` — the text the tab's terminal shows, from the top of its screen.
  *  - `POST /tabs/type?project=&tab=` with `{"text": …}` — types the text into the tab's terminal, and Enter.
  *  - `POST /tabs/close?project=&tab=` — closes the tab by ending its processes, as its shell's exit does: closing it
@@ -68,6 +69,7 @@ class ObservationChannel : Disposable {
             createContext("/tabs/type") { exchange ->
                 answer(exchange) { type(projectOf(exchange), query(exchange, "tab")!!.toInt(), request<TextRequest>(exchange).text) }
             }
+            createContext("/tabs/select") { exchange -> answer(exchange) { select(projectOf(exchange), query(exchange, "tab")!!.toInt()) } }
             createContext("/tabs/screen") { exchange -> answer(exchange) { screen(projectOf(exchange), query(exchange, "tab")!!.toInt()) } }
             createContext("/tabs/close-all") { exchange -> answer(exchange) { closeEveryTab(projectOf(exchange)) } }
             createContext("/tabs/close") { exchange -> answer(exchange) { close(projectOf(exchange), query(exchange, "tab")!!.toInt()) } }
@@ -90,7 +92,7 @@ class ObservationChannel : Disposable {
                 "view" to describe(ClaudeSessionsView.getInstance(project)),
                 "keeping" to ClaudeSessionKeeper.getInstance(project).isKeeping,
                 "terminalToolWindow" to describeTheTerminalToolWindow(project),
-                "saved" to mapOf("file" to saved.location.toString(), "sessions" to saved.read().map(::describe)),
+                "saved" to mapOf("file" to saved.location.toString(), "sessions" to saved.read().sessions.map(::describe), "selected" to saved.read().selected?.value),
             )
         },
     )
@@ -106,6 +108,7 @@ class ObservationChannel : Disposable {
         "open" to view.isOpen,
         "toolWindowVisible" to ClaudeSessionsView.toolWindowOf(view.project)?.isVisible,
         "tabs" to view.tabs.map { tab -> describe(tab) },
+        "selectedTab" to view.selectedTab?.let(view.tabs::indexOf),
     )
 
     private fun describe(tab: ClaudeSessionTab): Map<String, Any?> = mapOf(
@@ -128,6 +131,12 @@ class ObservationChannel : Disposable {
         val view = ClaudeSessionsView.getInstance(project)
         val tab = view.startNewSession()
         mapOf("tab" to view.tabs.indexOf(tab))
+    }
+
+    private fun select(project: Project, tab: Int): Map<String, Any?> = onTheEdt {
+        val view = ClaudeSessionsView.getInstance(project)
+        view.show(view.tabs[tab])
+        mapOf("selected" to tab)
     }
 
     private fun type(project: Project, tab: Int, text: String): Map<String, Any?> = onTheEdt {

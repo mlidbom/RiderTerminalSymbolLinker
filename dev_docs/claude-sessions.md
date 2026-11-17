@@ -39,8 +39,9 @@ processes below the tab's process, its shell, which `TerminalView.startupOptions
 
 ## Saving and resuming
 
-- **`ClaudeSessionKeeper`** saves the sessions the tabs run, in tab order, every two seconds, and once more as the
-  project closes or the plugin unloads (`SavedClaudeSessions`, a file per project in the IDE's system folder). It starts
+- **`ClaudeSessionKeeper`** saves the sessions the tabs run, in tab order, and the selected tab's session
+  (`ClaudeSessionsInTheView`), every two seconds, and once more as the project closes or the plugin unloads
+  (`SavedClaudeSessions`, a file per project in the IDE's system folder). The view selects that tab again as it opens. It starts
   only once the view has resumed the saved sessions, so that it never saves a view they aren't in yet.
 - **A tab whose Claude Code has exited keeps its session,** and the keeper saves it, so it's resumed at the next start.
   That way a stop of every session before an IDE restart, which the session tooling plans, ends with them resumed.
@@ -54,8 +55,8 @@ processes below the tab's process, its shell, which `TerminalView.startupOptions
 
 Unloading the plugin, as for an update, removes its tool window, and with it the terminals of its tabs, which would end
 every session mid-turn. So `ParkTheTabsWhileThePluginReloads` moves the tabs that run Claude Code to the terminal's own
-Terminal tool window first (`TabsParkedInTheTerminal`, with the terminal's public `detachTab` and `attachTab`), and the
-reloaded plugin takes back each tab in or below whose process Claude Code runs a saved session. Uninstalled, the sessions
+Terminal tool window first (`TabsParkedInTheTerminal`: the terminal's public `detachTab`, then the content manager's
+`addContent`), and the reloaded plugin takes back each tab in or below whose process Claude Code runs a saved session. Uninstalled, the sessions
 run on in the Terminal tool window.
 
 A tab whose Claude Code has exited goes with the tool window, and the reloaded plugin resumes its session in a new tab,
@@ -71,6 +72,11 @@ it (tried in the sandbox, 2026-11-17).
 - **The reworked terminal's API is experimental** as a whole since 2025.3 (the SDK's "Embedded Terminal" page), so
   `verifyPlugin` lets experimental-API findings through, and fails on every other kind.
 - **`TerminalToolWindowTabsManager.getTabs()` lists only the Terminal tool window's tabs:** the view keeps its own.
+- **`attachTab` activates the Terminal tool window,** whichever content manager it attaches the tab to, and selects
+  the tab only once that's active. The Terminal tool window shares the bottom of the IDE with the view's, so a reload
+  left it shown in the view's place, and the last tab taken back selected whatever had been. A tab is moved with
+  `detachTab`, which removes its content without ending its session, and `addContent`. Only the terminal's own tips,
+  migration notices and tab persistence hear of an attached tab, which these tabs want none of.
 - **Its tab classes live in the content module `intellij.terminal.frontend`,** which a `<depends>` on
   `org.jetbrains.plugins.terminal` reaches, as the SDK says.
 - **Closing a tab whose process runs asks the user to confirm,** both by its close button and by the API's `closeTab`,

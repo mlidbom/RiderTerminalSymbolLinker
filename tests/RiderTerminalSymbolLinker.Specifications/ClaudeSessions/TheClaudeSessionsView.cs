@@ -29,6 +29,19 @@ public sealed class TheClaudeSessionsView
    /// <summary>The folder of the project open in the sandbox, the fixture solution's.</summary>
    public string ProjectFolder => Path.GetFullPath(Project()["basePath"]!.GetValue<string>());
 
+   /// <summary>The tab the view shows, by its place among the tabs, or null when it has none.</summary>
+   public int? SelectedTab => Project()["view"]!["selectedTab"]?.GetValue<int>();
+
+   /// <summary>Selects the tab, as a click on it does.</summary>
+   public void Select(int tab)
+   {
+      Channel.Select(tab);
+      WaitUntil(() => SelectedTab == tab, $"tab {tab} to be selected");
+   }
+
+   /// <summary>Whether the IDE shows the Terminal tool window, where the view's tabs wait while the plugin reloads.</summary>
+   public bool TheTerminalToolWindowIsShown => Project()["terminalToolWindow"]!["visible"]?.GetValue<bool>() ?? false;
+
    /// <summary>Whether the IDE shows the view's tool window: starting a session shows it.</summary>
    public bool IsShown => Project()["view"]!["toolWindowVisible"]!.GetValue<bool>();
 

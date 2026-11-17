@@ -22,6 +22,9 @@ public sealed class ClaudeSessionsObservationChannel(int port) : ObservationChan
    public JsonNode Screen(int tab, string? project = null) => Get("tabs/screen", project, $"tab={tab}");
 
    /// <summary>Types <paramref name="text"/> into the terminal of tab <paramref name="tab"/>, and Enter.</summary>
+   public JsonNode Select(int tab, string? project = null) => Post("tabs/select", project, new { }, $"tab={tab}");
+
+   /// <summary>Types <paramref name="text"/> into the tab's terminal, and Enter.</summary>
    public JsonNode Type(int tab, string text, string? project = null) => Post("tabs/type", project, new { text }, $"tab={tab}");
 
    /// <summary>Closes every tab by ending its process, as Claude Code's exit does, so that a specification starts with none.</summary>

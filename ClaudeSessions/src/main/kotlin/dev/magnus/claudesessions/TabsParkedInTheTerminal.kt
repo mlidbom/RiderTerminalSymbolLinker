@@ -15,6 +15,11 @@ import org.jetbrains.plugins.terminal.TerminalToolWindowFactory
  * the reloaded plugin takes it back. Should the plugin not come back, as when it's uninstalled, the sessions run on in
  * the Terminal tool window.
  *
+ * A tab moves with the terminal's `detachTab`, and the content manager's `addContent`, not the terminal's `attachTab`:
+ * that activates the Terminal tool window, which shares the bottom of the IDE with this plugin's and so hides it, and
+ * selects the tab only once the Terminal tool window is active, which undid the reloaded view's selection of the tab
+ * that was selected before.
+ *
  * Its methods run on the EDT.
  */
 class TabsParkedInTheTerminal(private val project: Project) {
@@ -25,7 +30,7 @@ class TabsParkedInTheTerminal(private val project: Project) {
         val terminalToolWindow = ToolWindowManager.getInstance(project).getToolWindow(TerminalToolWindowFactory.TOOL_WINDOW_ID)!!
         for (tab in tabs) {
             terminals.detachTab(tab.terminal)
-            terminals.attachTab(tab.terminal, terminalToolWindow.contentManager)
+            terminalToolWindow.contentManager.addContent(tab.terminal.content)
         }
     }
 

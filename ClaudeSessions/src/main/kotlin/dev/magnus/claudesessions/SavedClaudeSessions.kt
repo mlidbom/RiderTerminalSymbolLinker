@@ -11,24 +11,31 @@ import java.nio.file.Path
 import java.nio.file.StandardCopyOption
 
 /**
- * The Claude sessions that ran in a project's [ClaudeSessionsView], in the order of its tabs, as the
- * [ClaudeSessionKeeper] last saved them: a file in the IDE's system folder, which survives a restart. The view resumes
- * them when it opens.
+ * The Claude sessions that ran in a project's [ClaudeSessionsView], in the order of its tabs, and the one whose tab was
+ * selected, as the [ClaudeSessionKeeper] last saved them: a file in the IDE's system folder, which survives a restart.
+ * The view resumes them when it opens, and selects that tab again.
  */
 class SavedClaudeSessions(project: Project) {
     private val file: Path = Path.of(PathManager.getSystemPath(), "claude-sessions", "${project.locationHash}.json")
 
     /** The saved sessions, or none when none were ever saved. */
-    fun read(): List<ClaudeSession> {
-        if (!Files.exists(file)) return emptyList()
-        return JsonParser.parseString(Files.readString(file)).asJsonObject.getAsJsonArray("sessions").map { it.asJsonObject.toSession() }
+    fun read(): ClaudeSessionsInTheView {
+        if (!Files.exists(file)) return ClaudeSessionsInTheView.NONE
+        val json = JsonParser.parseString(Files.readString(file)).asJsonObject
+        return ClaudeSessionsInTheView(
+            json.getAsJsonArray("sessions").map { it.asJsonObject.toSession() },
+            json.get("selected")?.takeUnless { it.isJsonNull }?.asString?.let(::ClaudeSessionId),
+        )
     }
 
     /** Replaces the saved sessions with [sessions], at once: a reader never sees half of them. */
-    fun write(sessions: List<ClaudeSession>) {
+    fun write(sessions: ClaudeSessionsInTheView) {
         Files.createDirectories(file.parent)
         val written = file.resolveSibling("${file.fileName}.writing")
-        val json = JsonObject().apply { add("sessions", JsonArray().apply { sessions.forEach { add(it.toJson()) } }) }
+        val json = JsonObject().apply {
+            add("sessions", JsonArray().apply { sessions.sessions.forEach { add(it.toJson()) } })
+            addProperty("selected", sessions.selected?.value)
+        }
         Files.writeString(written, gson.toJson(json))
         Files.move(written, file, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE)
     }

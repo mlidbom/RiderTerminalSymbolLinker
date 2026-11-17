@@ -16,7 +16,7 @@ import kotlin.time.Duration.Companion.seconds
 
 /**
  * Keeps a project's [SavedClaudeSessions] current: every two seconds it looks at which session each tab of the
- * [ClaudeSessionsView] runs, and saves them when they changed, and it saves them one last time as the project closes. So
+ * [ClaudeSessionsView] runs, and which tab is selected, and saves them when they changed, and it saves them one last time as the project closes. So
  * the saved sessions are those that ran when the IDE exits, or within two seconds of when it crashes.
  *
  * It starts once the view has resumed the saved sessions, so that it never saves the view before they're in it, and
@@ -43,7 +43,8 @@ class ClaudeSessionKeeper(private val project: Project, private val scope: Corou
     fun saveOneLastTimeAndStop() {
         if (!isKeeping) return
         keeping?.cancel()
-        SavedClaudeSessions(project).write(ClaudeSessionsView.getInstance(project).tabs.mapNotNull { it.lookAtTheSession() })
+        val view = ClaudeSessionsView.getInstance(project)
+        SavedClaudeSessions(project).write(ClaudeSessionsInTheView.of(view.tabs, view.selectedTab))
     }
 
     private suspend fun keep() {
@@ -60,9 +61,9 @@ class ClaudeSessionKeeper(private val project: Project, private val scope: Corou
         }
     }
 
-    private suspend fun sessionsInTheView(): List<ClaudeSession> {
-        val tabs = withContext(Dispatchers.EDT) { ClaudeSessionsView.getInstance(project).tabs }
-        return withContext(Dispatchers.IO) { tabs.mapNotNull { it.lookAtTheSession() } }
+    private suspend fun sessionsInTheView(): ClaudeSessionsInTheView {
+        val (tabs, selected) = withContext(Dispatchers.EDT) { ClaudeSessionsView.getInstance(project).let { it.tabs to it.selectedTab } }
+        return withContext(Dispatchers.IO) { ClaudeSessionsInTheView.of(tabs, selected) }
     }
 
     companion object {
