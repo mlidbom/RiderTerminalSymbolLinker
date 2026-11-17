@@ -7,9 +7,17 @@
         "CONTEXT7_API_KEY": "${CONTEXT7_API_KEY}"
       }
     },
-	"idea": {
+    "idea": {
       "url": "http://127.0.0.1:64342/stream",
       "type": "http"
+    },
+    "windows-mcp": {
+      "type": "stdio",
+      "command": "windows-mcp",
+      "args": ["serve", "--transport", "stdio"],
+      "env": {
+        "ANONYMIZED_TELEMETRY": "false"
+      }
     }
   }
 }
