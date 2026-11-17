@@ -43,6 +43,7 @@ import java.util.concurrent.TimeoutException
  *    the [LinkClickOutcome], and for an opened file, where the editor is.
  *  - `POST /picker/choose?project=&row=` — chooses a row of the picker the last click showed, as Enter does.
  *  - `POST /picker/close` — closes that picker.
+ *  - `POST /editors/close-all?project=` — closes every editor, so that a click opens its file afresh.
  *  - `POST /plugins/refresh` — has Rider look at its plugins folder again, so that with `idea.auto.reload.plugins`
  *    it reloads a plugin whose files changed, this one included. Nothing else makes Rider look there, but activating
  *    its window. `/state`'s `startedAt` then tells when the new build's channel started.
@@ -72,12 +73,21 @@ class ObservationChannel : Disposable {
             createContext("/picker/choose") { exchange -> answer(exchange) { choose(projectOf(exchange), query(exchange, "row")!!.toInt()) } }
             createContext("/picker/close") { exchange -> answer(exchange) { closePicker() } }
             createContext("/plugins/refresh") { exchange -> answer(exchange) { refreshThePluginsFolder() } }
+            createContext("/editors/close-all") { exchange -> answer(exchange) { closeEveryEditor(projectOf(exchange)) } }
             start()
         }
 
     override fun dispose() {
         server?.stop(0)
         LinkClickOutcomes.observer = null
+    }
+
+    private fun closeEveryEditor(project: Project): Map<String, Any?> {
+        ApplicationManager.getApplication().invokeAndWait {
+            val editors = FileEditorManager.getInstance(project)
+            editors.openFiles.forEach(editors::closeFile)
+        }
+        return mapOf("closed" to true)
     }
 
     /** Asynchronous, as the reload it may cause unloads this very channel. */
@@ -146,7 +156,7 @@ class ObservationChannel : Disposable {
         is LinkClickOutcome.Opened -> mapOf(
             "outcome" to "opened",
             "target" to mapOf("file" to outcome.file, "line" to outcome.line),
-            "editor" to SelectedEditor.of(project),
+            "editor" to SelectedEditor.onceItShows(project, outcome.file),
         )
         is LinkClickOutcome.PickerShown -> {
             shownPicker = outcome
@@ -225,7 +235,28 @@ private class TerminalLine(project: Project, private val line: String) {
 
 /** Where the project's selected editor is: its file, the caret's line, and the lines a selection covers. */
 private object SelectedEditor {
-    fun of(project: Project): Map<String, Any?>? {
+    private const val HOW_LONG_OPENING_MAY_TAKE_MILLISECONDS = 5_000L
+
+    /**
+     * Where the selected editor is once it shows [file], or after a few seconds if it doesn't. Rider opens an editor for
+     * a file that isn't open yet asynchronously, after the click has returned, and puts the caret where it was asked to
+     * once the editor has opened.
+     */
+    fun onceItShows(project: Project, file: String): Map<String, Any?>? {
+        val deadline = System.currentTimeMillis() + HOW_LONG_OPENING_MAY_TAKE_MILLISECONDS
+        var description = of(project)
+        while (!description.isOf(file) && System.currentTimeMillis() < deadline) {
+            Thread.sleep(100)
+            description = of(project)
+        }
+        Thread.sleep(300) // The caret is put in place once the editor has opened.
+        return of(project)
+    }
+
+    private fun Map<String, Any?>?.isOf(file: String): Boolean =
+        (this?.get("file") as String?)?.equals(file.replace('\\', '/'), ignoreCase = true) == true
+
+    private fun of(project: Project): Map<String, Any?>? {
         var description: Map<String, Any?>? = null
         ApplicationManager.getApplication().invokeAndWait {
             val editor = FileEditorManager.getInstance(project).selectedTextEditor ?: return@invokeAndWait
