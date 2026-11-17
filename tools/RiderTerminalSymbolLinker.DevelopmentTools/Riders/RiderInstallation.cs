@@ -16,6 +16,20 @@ public sealed class RiderInstallation
    /// <summary>The launcher that starts Rider's frontend, which in turn starts its .NET backend.</summary>
    public string Launcher => Path.Combine(_installationFolder, "bin", "rider64.exe");
 
+   /// <summary>
+   ///   The name of this version's settings folder, such as <c>Rider2026.3</c>, under which the <see cref="EverydayRider"/>
+   ///   keeps its plugins.
+   /// </summary>
+   public string SettingsFolderName
+   {
+      get
+      {
+         using var productInformation = JsonDocument.Parse(File.ReadAllText(Path.Combine(_installationFolder, "product-info.json")));
+         return productInformation.RootElement.GetProperty("dataDirectoryName").GetString()
+             ?? throw new InvalidOperationException($"{_installationFolder}\\product-info.json has no dataDirectoryName.");
+      }
+   }
+
    /// <summary>The version, such as <c>2026.3</c>, that the Gradle build names its sandbox folder after.</summary>
    public string Version
    {

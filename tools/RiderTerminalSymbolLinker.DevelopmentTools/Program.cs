@@ -26,6 +26,12 @@ static class Program
                                                       rows, found nothing, or fell back to Search Everywhere
                           sandbox picker choose <row> Chooses a row of the picker the last click showed, as Enter does
                           sandbox picker close        Closes that picker
+
+                        Magnus's Riders:
+
+                          everyday deploy             Builds the working tree's plugin and puts it in the everyday plugins
+                                                      folder; each everyday Rider reloads it, without a restart, when he
+                                                      next switches to its window
                         """;
 
    static int Main(string[] arguments)
@@ -66,6 +72,9 @@ static class Program
             break;
          case ["sandbox", "picker", "close"]:
             Console.WriteLine(ObservationChannel.Indent(sandbox.Observation.ClosePicker()));
+            break;
+         case ["everyday", "deploy"]:
+            Console.WriteLine(new EverydayRider(RiderInstallation.OfThisUser()).Deploy());
             break;
          default:
             Console.Error.WriteLine(Usage);
