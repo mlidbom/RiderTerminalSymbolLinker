@@ -64,7 +64,7 @@ public sealed class SandboxRider
    public string SolutionsFolder => Path.Combine(_root, "solutions");
 
    /// <summary>The copy of the fixture solution that the sandbox opens unless it's given another.</summary>
-   public string FixtureSolution => Path.Combine(SolutionsFolder, "FixtureSolution", "FixtureSolution.slnx");
+   public string FixtureSolution => Path.Combine(SolutionsFolder, RepositoryRoot.FixtureSolutionName, RepositoryRoot.FixtureSolutionName + ".slnx");
 
    string ProcessFile => Path.Combine(_root, "running-process.txt");
    string PluginsFolder => Path.Combine(_root, "plugins");

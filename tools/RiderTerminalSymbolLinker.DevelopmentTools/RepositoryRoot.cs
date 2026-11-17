@@ -14,8 +14,14 @@ static class RepositoryRoot
    /// </summary>
    public static string IdeaProjectName => File.ReadAllText(Path.Combine(Folder, ".idea", ".name")).Trim();
 
+   /// <summary>
+   ///   The name of the fixture solution, its folder's and its <c>.slnx</c>'s, prefixed so that Rider's windows and the
+   ///   MCP tell it apart from other projects' fixture solutions.
+   /// </summary>
+   public const string FixtureSolutionName = "RiderTerminalSymbolLinker.FixtureSolution";
+
    /// <summary>The C# solution the sandbox opens unless it's given another, made for what the plugin links.</summary>
-   public static string FixtureSolutionFolder => Path.Combine(Folder, "tests", "FixtureSolution");
+   public static string FixtureSolutionFolder => Path.Combine(Folder, "tests", FixtureSolutionName);
 
    static string FindAbove(string folder) =>
       File.Exists(Path.Combine(folder, "settings.gradle.kts")) && Directory.Exists(Path.Combine(folder, "tools"))

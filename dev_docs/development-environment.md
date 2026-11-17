@@ -17,8 +17,8 @@ What the plugin is built, checked and deployed with. The commands are in
 ## The sandbox Rider
 
 A second Rider with folders of its own under `%LOCALAPPDATA%\RiderTerminalSymbolLinkerSandbox`, started through
-`RIDER_PROPERTIES`, which runs the working tree's build on a copy of `tests/FixtureSolution`. Its window goes on IDEA's
-virtual desktop, on the other monitor.
+`RIDER_PROPERTIES`, which runs the working tree's build on a copy of `tests/RiderTerminalSymbolLinker.FixtureSolution`,
+the fixture solution. Its window goes on IDEA's virtual desktop, on the other monitor.
 
 - **Plugins of its own:** `sandbox install` builds with Gradle's `prepareSandbox` and copies our plugin into the
   sandbox's plugins folder. Loading it straight from Gradle's folder kept Gradle from building while the sandbox ran:

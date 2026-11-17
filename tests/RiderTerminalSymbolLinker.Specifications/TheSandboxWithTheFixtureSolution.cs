@@ -5,7 +5,7 @@ namespace RiderTerminalSymbolLinker.Specifications;
 
 /// <summary>
 ///   The sandbox Rider running this working tree's build of the plugin, with the fixture solution
-///   (<c>tests/FixtureSolution</c>) open and the plugin's indexes of it ready. Every specification asks the plugin there,
+///   (<c>tests/RiderTerminalSymbolLinker.FixtureSolution</c>) open and the plugin's indexes of it ready. Every specification asks the plugin there,
 ///   through its development observation channel.
 /// </summary>
 /// <remarks>
