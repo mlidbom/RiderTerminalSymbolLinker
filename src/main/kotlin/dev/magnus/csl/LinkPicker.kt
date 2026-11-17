@@ -55,7 +55,7 @@ object LinkPicker {
             }
         })
 
-        PopupChooserBuilder(list)
+        val popup = PopupChooserBuilder(list)
             .setTitle(title)
             .setRenderer(
                 object : ColoredListCellRenderer<T>() {
@@ -79,6 +79,17 @@ object LinkPicker {
             .setNamerForFiltering { label(it) }
             .setFilterAlwaysVisible(true)
             .createPopup()
-            .showCenteredInCurrentWindow(project)
+        popup.showCenteredInCurrentWindow(project)
+        LinkClickOutcomes.report(
+            LinkClickOutcome.PickerShown(
+                title,
+                items.map(label),
+                choose = { row ->
+                    popup.cancel()
+                    open(items[row], true)
+                },
+                close = { popup.cancel() },
+            ),
+        )
     }
 }

@@ -48,6 +48,7 @@ class FileHyperlinkInfo(
         val col = ((column ?: 1) - 1).coerceAtLeast(0)
         OpenFileDescriptor(project, file, line, col).navigate(requestFocus)
         if (startLine != null && endLine != null) selectRange(project, file)
+        LinkClickOutcomes.report(LinkClickOutcome.Opened(filePath, line + 1))
     }
 
     /** Select [startLine]..[endLine] in the just-opened editor, so the referenced block is highlighted. */
@@ -78,9 +79,11 @@ class FileHyperlinkInfo(
     }
 
     private fun notifyNoFile(project: Project) {
+        val message = "No file \"$fileName\" found"
         NotificationGroupManager.getInstance()
             .getNotificationGroup("RiderTerminalSymbolLinker")
-            .createNotification("No file \"$fileName\" found", NotificationType.INFORMATION)
+            .createNotification(message, NotificationType.INFORMATION)
             .notify(project)
+        LinkClickOutcomes.report(LinkClickOutcome.NothingFound(message))
     }
 }

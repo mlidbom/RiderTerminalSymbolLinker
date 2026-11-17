@@ -16,6 +16,9 @@ class SolutionFileIndex(private val byName: Map<String, List<String>>) {
     /** Whether [path]'s full segment sequence is a trailing path of a real solution file. */
     fun matches(path: String): Boolean = resolve(path).isNotEmpty()
 
+    /** How many files the snapshot holds. */
+    val fileCount: Int get() = byName.values.sumOf { it.size }
+
     /**
      * Solution files whose path ends with [path]'s segments, aligned segment-for-segment. A bare file
      * name returns every file of that name; a partial or full path returns only those it is a true suffix

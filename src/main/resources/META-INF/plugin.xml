@@ -32,6 +32,9 @@
         <notificationGroup id="RiderTerminalSymbolLinker.Startup" displayType="STICKY_BALLOON"/>
         <postStartupActivity implementation="dev.magnus.csl.SymbolIndexStartup"/>
         <postStartupActivity implementation="dev.magnus.csl.SolutionFileIndexStartup"/>
+        <!-- The development observation channel: it listens only where a system property asks it to, in the
+             sandbox Rider of the plugin's development tools. -->
+        <postStartupActivity implementation="dev.magnus.csl.observation.ObservationStartup"/>
     </extensions>
 
     <actions>

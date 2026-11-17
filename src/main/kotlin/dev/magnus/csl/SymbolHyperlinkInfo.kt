@@ -59,6 +59,7 @@ class SymbolHyperlinkInfo(private val token: String) : HyperlinkInfo {
         val file = LocalFileSystem.getInstance().findFileByPath(hit.file.replace('\\', '/'))
         if (file != null) {
             OpenFileDescriptor(project, file, (hit.line - 1).coerceAtLeast(0), 0).navigate(requestFocus)
+            LinkClickOutcomes.report(LinkClickOutcome.Opened(hit.file, hit.line))
         } else {
             notifyNoSymbol(project)
         }
@@ -83,12 +84,15 @@ class SymbolHyperlinkInfo(private val token: String) : HyperlinkInfo {
         } catch (_: Throwable) {
             searchEverywhere.show("SearchEverywhereContributor.All", token, event)
         }
+        LinkClickOutcomes.report(LinkClickOutcome.FellBackToSearchEverywhere(token))
     }
 
     private fun notifyNoSymbol(project: Project) {
+        val message = "No symbol \"$token\" found"
         NotificationGroupManager.getInstance()
             .getNotificationGroup("RiderTerminalSymbolLinker")
-            .createNotification("No symbol \"$token\" found", NotificationType.INFORMATION)
+            .createNotification(message, NotificationType.INFORMATION)
             .notify(project)
+        LinkClickOutcomes.report(LinkClickOutcome.NothingFound(message))
     }
 }

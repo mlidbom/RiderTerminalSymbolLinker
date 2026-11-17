@@ -25,6 +25,9 @@ class SolutionFileNames {
     /** Solution files [path] is a true trailing-path of; see [SolutionFileIndex.resolve]. */
     fun resolve(path: String): List<String> = index.resolve(path)
 
+    /** How many solution files it knows. */
+    val fileCount: Int get() = index.fileCount
+
     fun set(byName: Map<String, List<String>>) {
         index = SolutionFileIndex(byName)
         isReady = true

@@ -41,6 +41,12 @@ class SymbolIndex {
     /** Whether [name] is a known `SimpleType.Member` combined identifier (a dotted access that exists). */
     fun containsCombined(name: String): Boolean = combined.contains(name)
 
+    /** How many short names it knows. */
+    val shortNameCount: Int get() = short.size
+
+    /** How many `SimpleType.Member` combined names it knows. */
+    val combinedNameCount: Int get() = combined.size
+
     fun set(symbols: SymbolNames) {
         short = symbols.short
         combined = symbols.combined
