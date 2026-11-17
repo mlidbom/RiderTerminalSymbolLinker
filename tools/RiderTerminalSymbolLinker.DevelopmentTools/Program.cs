@@ -11,8 +11,13 @@ static class Program
                           sandbox start [<solution>]  Starts the sandbox Rider with a fresh copy of the fixture solution, or
                                                       the solution given, and waits until the MCP server on port 23861
                                                       answers with it indexed. Installs the plugin first if it never was.
-                          sandbox install             Builds the working tree's plugin into Gradle's sandbox, which the
-                                                      sandbox Rider loads it from; a running one reloads it by itself
+                          sandbox install [--mcp marketplace]
+                                                      Builds the working tree's plugin and puts it in the sandbox's plugins
+                                                      folder, which a running sandbox reloads it from in a second. With it
+                                                      the .NET Analysis&Refactoring MCP: by default the build the everyday
+                                                      Riders run, its plugin and its deployed tools builds; or the
+                                                      Marketplace's. A running sandbox restarts when the MCP's plugin
+                                                      changes, and swaps to new tools builds at its next call.
                           sandbox stop                Closes the sandbox Rider
                           sandbox place               Puts the sandbox's windows in their place again
                           sandbox status              Whether it runs, where its windows are, what the MCP server answers
@@ -48,6 +53,9 @@ static class Program
             break;
          case ["sandbox", "install"]:
             Console.WriteLine(sandbox.Install());
+            break;
+         case ["sandbox", "install", "--mcp", var mcp]:
+            Console.WriteLine(sandbox.Install(Enum.Parse<McpBuild>(mcp, ignoreCase: true)));
             break;
          case ["sandbox", "stop"]:
             sandbox.Stop();

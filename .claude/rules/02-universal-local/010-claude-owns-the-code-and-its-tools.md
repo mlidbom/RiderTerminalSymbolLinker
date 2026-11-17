@@ -13,7 +13,8 @@ under "The tools you develop with are yours, as a product". Today they are:
 - IDEA's MCP server (`idea` in `.mcp.json`), with this project open in it: inspections, the IDE build, and lookups into
   the classes of the Rider the plugin builds against. The `.idea/` files the repository tracks are its project setup;
 - the sandbox Rider, `dotnet run --project tools/RiderTerminalSymbolLinker.DevelopmentTools -- sandbox`, which lists
-  its commands: a Rider of its own that runs this working tree's build on `tests/FixtureSolution`, reloads a new build
+  its commands: a Rider of its own that runs this working tree's build on `tests/FixtureSolution`, with the
+  .NET Analysis&Refactoring MCP build Magnus's Riders run unless told to run the Marketplace's, reloads a new build
   in a second, and tells through the plugin's development observation channel what the plugin links and what a click
   does;
 - the specifications that check that in the sandbox, `dotnet test tests/RiderTerminalSymbolLinker.Specifications`, in

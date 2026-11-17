@@ -30,6 +30,21 @@ sealed class FolderMirror
       return MirrorFolder(source, destination);
    }
 
+   /// <summary>
+   ///   Whether <paramref name="destination"/> holds exactly what <paramref name="source"/> does, the same files with the
+   ///   same sizes and times, as a <see cref="Mirror"/> would leave it.
+   /// </summary>
+   public static bool HoldTheSame(string source, string destination)
+   {
+      return Directory.Exists(destination)
+          && NamesIn(Directory.GetFiles(source)).SetEquals(NamesIn(Directory.GetFiles(destination)))
+          && NamesIn(Directory.GetDirectories(source)).SetEquals(NamesIn(Directory.GetDirectories(destination)))
+          && Directory.GetFiles(source).All(it => IsTheSame(it, Path.Combine(destination, Path.GetFileName(it))))
+          && Directory.GetDirectories(source).All(it => HoldTheSame(it, Path.Combine(destination, Path.GetFileName(it))));
+
+      static HashSet<string> NamesIn(string[] paths) => new(paths.Select(it => Path.GetFileName(it)), StringComparer.OrdinalIgnoreCase);
+   }
+
    bool MirrorFolder(string source, string destination)
    {
       var changed = false;

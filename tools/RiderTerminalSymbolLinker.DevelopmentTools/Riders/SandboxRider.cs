@@ -7,8 +7,9 @@ namespace RiderTerminalSymbolLinker.DevelopmentTools.Riders;
 
 /// <summary>
 ///   A second Rider, with settings, caches, plugins and logs of its own, that runs this working tree's build of the
-///   plugin, and the .NET Analysis&amp;Refactoring MCP's server on a port of its own, <see cref="McpPort"/>. Claude
-///   starts it, verifies the plugin in it and stops it, without touching the Riders Magnus works in.
+///   plugin, and the .NET Analysis&amp;Refactoring MCP's server on a port of its own, <see cref="McpPort"/>, from the
+///   <see cref="McpBuild"/> it's given. Claude starts it, verifies the plugin in it and stops it, without touching
+///   the Riders Magnus works in.
 /// </summary>
 /// <remarks>
 ///   Its folders are under <c>%LOCALAPPDATA%\RiderTerminalSymbolLinkerSandbox</c>, outside the repository, so the IDE
@@ -42,12 +43,21 @@ public sealed class SandboxRider
 
    readonly RiderInstallation _rider;
    readonly GradleSandbox _plugins;
+   readonly EverydayRider _everyday;
    readonly string _root = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "RiderTerminalSymbolLinkerSandbox");
+
+   /// <summary>
+   ///   The tools builds the sandbox's MCP plugin serves the newest of, before those its plugin ships with: the
+   ///   <see cref="EverydayRider"/>'s, or none.
+   /// </summary>
+   readonly McpToolsBuilds _mcpTools;
 
    public SandboxRider(RiderInstallation rider)
    {
       _rider = rider;
       _plugins = new GradleSandbox(rider);
+      _everyday = new EverydayRider(rider);
+      _mcpTools = new McpToolsBuilds(Path.Combine(_root, "mcp-tools"));
    }
 
    /// <summary>Where solutions to open in the sandbox go. The sandbox trusts everything under it.</summary>
@@ -58,37 +68,80 @@ public sealed class SandboxRider
 
    string ProcessFile => Path.Combine(_root, "running-process.txt");
    string PluginsFolder => Path.Combine(_root, "plugins");
-   bool HasBothPlugins => Directory.Exists(Path.Combine(PluginsFolder, GradleSandbox.PluginFolderName))
-                       && Directory.Exists(Path.Combine(PluginsFolder, GradleSandbox.McpPluginFolderName));
-
-   /// <summary>The tools builds the MCP plugin ships with, which it serves here as a Marketplace install does.</summary>
-   string McpToolsFolder => Path.Combine(PluginsFolder, GradleSandbox.McpPluginFolderName, "tools");
+   string McpPluginFolder => Path.Combine(PluginsFolder, GradleSandbox.McpPluginFolderName);
+   bool HasBothPlugins => Directory.Exists(Path.Combine(PluginsFolder, GradleSandbox.PluginFolderName)) && Directory.Exists(McpPluginFolder);
 
    public bool IsRunning => RunningProcess() is not null;
 
    /// <summary>
-   ///   Builds this working tree's plugin with Gradle and puts it in the sandbox's plugins folder. A running sandbox is
-   ///   then made to reload it, and this returns once the new build answers. The MCP plugin, which a running sandbox
-   ///   holds open, is put there only while the sandbox isn't running. Returns what it did.
+   ///   Builds this working tree's plugin with Gradle and puts it in the sandbox's plugins folder, with the
+   ///   <paramref name="mcp"/> build of the .NET Analysis&amp;Refactoring MCP. A running sandbox is then made to reload
+   ///   our plugin, and this returns once the new build answers. Returns what it did.
    /// </summary>
-   public string Install()
+   /// <remarks>
+   ///   The MCP comes in two parts. Its plugin is held open by a running Rider, which can't reload it, so a running
+   ///   sandbox is stopped first when the plugin is to change, and started again afterwards. Its
+   ///   <see cref="McpToolsBuilds"/> it swaps to at its next call.
+   /// </remarks>
+   public string Install(McpBuild mcp = McpBuild.Everyday)
    {
       _plugins.Fill();
+      var mcpPlugin = TheMcpPlugin(mcp);
+      var restartingForTheMcpPlugin = IsRunning && !FolderMirror.HoldTheSame(mcpPlugin, McpPluginFolder);
+      if(restartingForTheMcpPlugin) Stop();
+
+      var mcpToolsChanged = mcp == McpBuild.Everyday ? _mcpTools.TakeTheBuildsOf(_everyday.McpToolsBuilds) : _mcpTools.Clear();
       var mirror = new FolderMirror(Path.Combine(_root, "replaced-plugin-files"));
       var pluginChanged = mirror.Mirror(_plugins.Plugin, Path.Combine(PluginsFolder, GradleSandbox.PluginFolderName));
       if(IsRunning)
       {
-         if(!pluginChanged) return "The sandbox has this build already.";
+         var mcpTools = mcpToolsChanged ? $"Its MCP swapped to the {mcp} tools build {WaitUntilTheMcpServesItsNewestToolsBuild()}. " : "";
+         if(!pluginChanged) return mcpTools + "The sandbox has this build of the plugin already.";
          if(!mirror.AddedOrRemovedAFile)
-            return $"Put the new build in the running sandbox Rider, which reloaded it in {Observation.ReloadThePlugin(TimeSpan.FromMinutes(1)).TotalSeconds:0.0}s.";
+            return mcpTools + $"Put the new build in the running sandbox Rider, which reloaded it in {Observation.ReloadThePlugin(TimeSpan.FromMinutes(1)).TotalSeconds:0.0}s.";
 
          Stop();
          Start();
-         return "Put the new build in the sandbox and restarted it: the build adds or removes a file of the plugin's, which Rider can't reload.";
+         return mcpTools + "Put the new build in the sandbox and restarted it: the build adds or removes a file of the plugin's, which Rider can't reload.";
       }
 
-      mirror.Mirror(_plugins.McpPlugin, Path.Combine(PluginsFolder, GradleSandbox.McpPluginFolderName));
-      return "Put the build in the sandbox: the sandbox Rider loads it when it starts.";
+      mirror.Mirror(mcpPlugin, McpPluginFolder);
+      if(!restartingForTheMcpPlugin) return $"Put the build in the sandbox, with the {mcp} build of the MCP: the sandbox Rider loads them when it starts.";
+
+      Start();
+      return $"Put the build in the sandbox with the {mcp} build of the MCP, and restarted it: a running Rider can't reload the MCP's plugin.";
+   }
+
+   /// <summary>Where the <paramref name="build"/> of the .NET Analysis&amp;Refactoring MCP's plugin is.</summary>
+   string TheMcpPlugin(McpBuild build)
+   {
+      var folder = build switch
+      {
+         McpBuild.Everyday    => _everyday.McpPlugin,
+         McpBuild.Marketplace => _plugins.McpPlugin,
+         _                    => throw new ArgumentOutOfRangeException(nameof(build), build, null)
+      };
+      return Directory.Exists(folder) ? folder : throw new InvalidOperationException($"There is no {build} build of the MCP's plugin at {folder}.");
+   }
+
+   /// <summary>
+   ///   Waits until the running sandbox's MCP serves the newest of <see cref="_mcpTools"/> built against its host, which
+   ///   it notices within 2 seconds, and returns the build's name.
+   /// </summary>
+   string WaitUntilTheMcpServesItsNewestToolsBuild()
+   {
+      var served = "";
+      WaitUntil(() =>
+                {
+                   if(TheMcpServersHealth() is not {} health) return false;
+                   using var document = JsonDocument.Parse(health);
+                   var tools = document.RootElement.GetProperty("solutions").EnumerateArray().First().GetProperty("tools");
+                   served = tools.GetProperty("build").GetString()!;
+                   return served == (_mcpTools.NewestBuiltAgainst(tools.GetProperty("host").GetString()!) ?? served);
+                },
+                TimeSpan.FromSeconds(30),
+                $"the MCP server on port {McpPort} to serve the newest tools build in {_mcpTools.Folder}");
+      return served;
    }
 
    /// <summary>
@@ -191,7 +244,7 @@ public sealed class SandboxRider
    {
       Environment.SetEnvironmentVariable("RIDER_PROPERTIES", Path.Combine(_root, "idea.properties"));
       Environment.SetEnvironmentVariable("DOTNET_ANALYSIS_AND_REFACTORING_MCP_PORT", McpPort.ToString());
-      Environment.SetEnvironmentVariable("DOTNET_ANALYSIS_AND_REFACTORING_MCP_TOOLS", McpToolsFolder);
+      Environment.SetEnvironmentVariable("DOTNET_ANALYSIS_AND_REFACTORING_MCP_TOOLS", _mcpTools.Folder);
       var startInformation = new ProcessStartInfo(_rider.Launcher) { UseShellExecute = true };
       startInformation.ArgumentList.Add(solution);
       return Process.Start(startInformation) ?? throw new InvalidOperationException($"Could not start {_rider.Launcher}.");

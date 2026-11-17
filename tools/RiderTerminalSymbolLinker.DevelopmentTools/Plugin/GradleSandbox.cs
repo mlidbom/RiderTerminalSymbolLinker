@@ -6,7 +6,8 @@ namespace RiderTerminalSymbolLinker.DevelopmentTools.Plugin;
 /// <summary>
 ///   The plugins folder that the Gradle build's <c>prepareSandbox</c> task fills: this working tree's build of the
 ///   plugin, and the .NET Analysis&amp;Refactoring MCP it depends on, as the Marketplace has it. The
-///   <see cref="SandboxRider"/> installs its plugins from here.
+///   <see cref="SandboxRider"/> installs our plugin from here, and the MCP's when it's to run the
+///   <see cref="McpBuild.Marketplace"/> build.
 /// </summary>
 /// <remarks>
 ///   The Gradle build names the folder after the Rider it builds against, the installed one, as <c>localIdePath</c> in

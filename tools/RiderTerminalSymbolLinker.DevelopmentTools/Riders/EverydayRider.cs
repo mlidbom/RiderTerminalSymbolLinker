@@ -23,6 +23,19 @@ public sealed class EverydayRider
    }
 
    /// <summary>
+   ///   The .NET Analysis&amp;Refactoring MCP's plugin that these Riders run: the MCP's own session deploys its working
+   ///   tree's builds here.
+   /// </summary>
+   public string McpPlugin => Path.Combine(_pluginsFolder, GradleSandbox.McpPluginFolderName);
+
+   /// <summary>
+   ///   The tools builds that these Riders' <see cref="McpPlugin"/> serves the newest of: the MCP's own session deploys
+   ///   its working tree's builds here, and every everyday Rider takes a new one up at its next call.
+   /// </summary>
+   public McpToolsBuilds McpToolsBuilds { get; } =
+      new(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "DotNetAnalysisAndRefactoringMcp", "tools"));
+
+   /// <summary>
    ///   Builds this working tree's plugin and puts it in the everyday plugins folder, in place of the one there. Returns
    ///   what it did.
    /// </summary>

@@ -21,9 +21,16 @@ A second Rider with folders of its own under `%LOCALAPPDATA%\RiderTerminalSymbol
 virtual desktop, on the other monitor.
 
 - **Plugins of its own:** `sandbox install` builds with Gradle's `prepareSandbox` and copies our plugin into the
-  sandbox's plugins folder, and the .NET Analysis&Refactoring MCP's plugin only while the sandbox is stopped. Loading
-  them straight from Gradle's folder kept Gradle from building while the sandbox ran: its .NET backend holds the MCP
-  plugin's DLL open.
+  sandbox's plugins folder. Loading it straight from Gradle's folder kept Gradle from building while the sandbox ran:
+  its .NET backend holds the MCP plugin's DLL open.
+- **The MCP Magnus runs, by default:** the .NET Analysis&Refactoring MCP comes in two parts, its plugin and its tools
+  builds, which the plugin swaps to at its next call, without a restart (the MCP's `dev_docs/swappable-tools.md`).
+  extend-mcp deploys both to the everyday Riders ahead of the Marketplace: the plugin to their plugins folder, the
+  tools builds to `%LOCALAPPDATA%\DotNetAnalysisAndRefactoringMcp\tools`. `sandbox install` copies both, the tools
+  builds into the sandbox's `mcp-tools`, which `DOTNET_ANALYSIS_AND_REFACTORING_MCP_TOOLS` names there. So the
+  specifications check the plugin against what Magnus runs and what the MCP releases next. A running sandbox restarts
+  when the MCP's plugin changes, and swaps to new tools builds at once. `sandbox install --mcp marketplace` runs the
+  Marketplace's build instead, the one Gradle's `prepareSandbox` fetches: what the plugin's users run.
 - **Reloading without a restart:** the sandbox runs with `idea.auto.reload.plugins`. Windows won't overwrite a jar a
   running Rider maps into memory, but lets it be moved, so the old jar is moved aside first and deleted by a later
   install. Rider notices changed plugin files only when it looks at its plugins folder, which nothing watches, so
