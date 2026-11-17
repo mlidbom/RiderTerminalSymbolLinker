@@ -17,6 +17,6 @@ public class When_a_line_of_terminal_output_names_the_solutions_symbols_and_file
    [XF] public void a_file_name_that_two_files_share_links_as_a_file() => _links.Must().Contain(("Bounds.cs", "file"));
    [XF] public void a_word_that_names_no_symbol_does_not_link() => _links.Must().Satisfy(it => it.All(link => link.Text != "ambiguous"));
 
-   [XF(Skip = "The .NET Analysis&Refactoring MCP that the sandbox runs, the Marketplace's 0.14.0, lists an extension block's property only as its accessor, get_Diameter. Its tools since 2026-11-17 list it as a property, which the plugin reads: unskip once the sandbox runs a release that has them.")]
+   [XF]
    public void a_property_declared_in_a_csharp_14_extension_block_links_as_a_symbol() => _links.Must().Contain(("Diameter", "symbol"));
 }
