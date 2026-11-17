@@ -27,6 +27,15 @@ public class When_clicking_a_link(TheSandboxWithTheFixtureSolution sandbox)
       [XF] public void the_caret_is_at_the_start_of_the_propertys_name() => _outcome.CaretColumn.Must().Be(19);
    }
 
+   public class to_a_property_of_a_positional_record(TheSandboxWithTheFixtureSolution sandbox) : When_clicking_a_link(sandbox)
+   {
+      readonly ClickOutcome _outcome = sandbox.Click("Bounds.Width is negative", "Bounds.Width");
+
+      [XF] public void it_opens_the_records_file() => _outcome.OpenedFile.Must().Be("Geometry/Shapes/Bounds.cs");
+      [XF] public void the_caret_is_on_the_records_header() => _outcome.CaretLine.Must().Be(4);
+      [XF] public void the_caret_is_at_the_start_of_the_parameter_that_declares_the_property() => _outcome.CaretColumn.Must().Be(29);
+   }
+
    public class to_a_partial_path_with_a_line(TheSandboxWithTheFixtureSolution sandbox) : When_clicking_a_link(sandbox)
    {
       readonly ClickOutcome _outcome = sandbox.Click("see Shapes/Circle.cs:10", "Shapes/Circle.cs:10");
