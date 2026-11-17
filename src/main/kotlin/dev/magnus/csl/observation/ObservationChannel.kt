@@ -26,6 +26,8 @@ import dev.magnus.csl.SymbolLinkFilterProvider
 import java.net.InetAddress
 import java.net.InetSocketAddress
 import java.net.URLDecoder
+import java.util.concurrent.ExecutorService
+import java.util.concurrent.Executors
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.TimeoutException
@@ -62,6 +64,9 @@ class ObservationChannel : Disposable {
 
     private fun listenOn(port: Int): HttpServer =
         HttpServer.create(InetSocketAddress(InetAddress.getLoopbackAddress(), port), 0).apply {
+            // Each request on a thread of its own: on the server's one thread, a request waiting for the EDT deadlocks a
+            // reload of the plugin, whose unloading stops this server on the EDT and waits for that thread.
+            executor = Executors.newCachedThreadPool()
             createContext("/state") { exchange -> answer(exchange) { state() } }
             createContext("/links") { exchange -> answer(exchange) { links(projectOf(exchange), request<LineRequest>(exchange).line) } }
             createContext("/click") { exchange ->
@@ -79,6 +84,7 @@ class ObservationChannel : Disposable {
 
     override fun dispose() {
         server?.stop(0)
+        (server?.executor as ExecutorService?)?.shutdown()
         LinkClickOutcomes.observer = null
     }
 
