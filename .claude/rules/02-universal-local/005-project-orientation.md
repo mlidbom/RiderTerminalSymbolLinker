@@ -1,13 +1,22 @@
 # Project orientation
 
-The .NET Terminal Symbol Linker: a Rider plugin, in Kotlin under `src/main/kotlin/dev/magnus/csl`, that makes .NET
-symbol names and file paths in Rider's terminal output clickable. It gets C# symbols from the .NET Analysis&Refactoring
-MCP, the plugin it depends on (`C:\Dev\resharper-mcp`, whose session is extend-mcp).
+Two JetBrains plugins, in Kotlin, each a Gradle project of its own:
 
-- **`dev_docs/architecture.md`:** how the plugin links and resolves, where the symbols come from, and the MCP tools'
-  and plugin.xml's traps. Read it before changing the plugin's code.
-- **`dev_docs/development-environment.md`:** building, the sandbox Rider, the observation channel, the specifications,
-  and deploying to Magnus's Rider.
-- **`dev_docs/releasing.md`:** versions, which Riders it supports, CI and the Marketplace.
-- **The rest:** `src/test` holds the Kotlin unit tests, `tools/` the C# development tools, and `tests/` the fixture
-  solution and the sandbox specifications.
+- **The .NET Terminal Symbol Linker,** the root project, under `src/main/kotlin/dev/magnus/csl`: a Rider plugin that
+  makes .NET symbol names and file paths in Rider's terminal output clickable. It gets C# symbols from the .NET
+  Analysis&Refactoring MCP, the plugin it depends on (`C:\Dev\resharper-mcp`, whose session is extend-mcp).
+- **Claude Sessions,** `ClaudeSessions/`, under `src/main/kotlin/dev/magnus/claudesessions`: a tool window, in any
+  JetBrains IDE, whose tabs each run a Claude Code session, and which resumes them when the IDE restarts. A project of
+  its own so that it can move to a repository of its own: keep what's its own inside its folder.
+
+The documents:
+
+- **`dev_docs/architecture.md`:** how the symbol linker links and resolves, where the symbols come from, and the MCP
+  tools' and plugin.xml's traps. Read it before changing the symbol linker's code.
+- **`dev_docs/claude-sessions.md`:** how Claude Sessions knows, saves and resumes the sessions, and the terminal API's
+  traps. Read it before changing Claude Sessions' code.
+- **`dev_docs/development-environment.md`:** building, the sandbox Rider, the observation channels, the specifications,
+  and deploying to Magnus's IDEs.
+- **`dev_docs/releasing.md`:** the symbol linker's versions, which Riders it supports, CI and the Marketplace.
+- **The rest:** `src/test` holds the symbol linker's Kotlin unit tests, `tools/` the C# development tools and the fake
+  Claude Code, and `tests/` the fixture solution and both plugins' sandbox specifications.

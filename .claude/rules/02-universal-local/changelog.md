@@ -1,8 +1,16 @@
 # Record every change in the changelog
 
 Whenever you add a feature, fix a bug, or make any user-facing or otherwise notable change, add an entry
-to [CHANGELOG.md](../../../CHANGELOG.md) as part of the same change — not as a follow-up. **A change isn't
+to the plugin's changelog as part of the same change — not as a follow-up. **A change isn't
 done until it's in the changelog.**
+
+Each plugin has its own:
+
+- **The symbol linker:** [CHANGELOG.md](../../../CHANGELOG.md), with its version in `pluginVersion` in
+  [gradle.properties](../../../gradle.properties) and its release tags `v<version>`, as below.
+- **Claude Sessions:** [ClaudeSessions/CHANGELOG.md](../../../ClaudeSessions/CHANGELOG.md), with its version in
+  [ClaudeSessions/build.gradle.kts](../../../ClaudeSessions/build.gradle.kts). It has no release yet, so its top
+  version is the one in progress.
 
 ## Which version section to add it to
 

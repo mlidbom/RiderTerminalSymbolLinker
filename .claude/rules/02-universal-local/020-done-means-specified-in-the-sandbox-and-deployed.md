@@ -7,6 +7,7 @@
   it isn't in use. A specification run stops one it started itself.
 - **Record it in the changelog,** as [the changelog rule](changelog.md) says.
 - **Deploy it:** `dotnet run --project tools/RiderTerminalSymbolLinker.DevelopmentTools -- everyday deploy`, and tell
-  Magnus that his Riders reload it when he next switches to them, without a restart.
+  Magnus what it says for each IDE: that it reloads the plugin when he next switches to it, or that he must restart it.
 - **A zip only when he asks for one:** `.\build.ps1`, which runs Gradle's `buildPlugin` with the repository's own JDK
-  21, puts it at `build/distributions/RiderTerminalSymbolLinker-<pluginVersion>.zip`.
+  21, puts the symbol linker's at `build/distributions/RiderTerminalSymbolLinker-<pluginVersion>.zip`, and Claude
+  Sessions' at `ClaudeSessions/build/distributions/ClaudeSessions-<version>.zip`.

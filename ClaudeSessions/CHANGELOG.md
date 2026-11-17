@@ -12,3 +12,5 @@ All notable changes to Claude Sessions are documented here. The format follows
 - **Sessions survive a restart.** When the project opens again, every session that ran in the tool window when it
   closed is resumed in its own tab, in its own folder, in the same order. That includes a session switched to with
   `/resume` or started with `/clear` in a tab.
+- **Sessions run on through an update of the plugin.** While the plugin reloads, its tabs wait in the Terminal tool
+  window, and come back when it has. Should the plugin be uninstalled, they run on there.

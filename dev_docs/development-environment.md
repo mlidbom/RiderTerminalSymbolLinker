@@ -1,6 +1,7 @@
 # The development environment
 
-What the plugin is built, checked and deployed with. The commands are in
+What the plugins are built, checked and deployed with: the symbol linker, and Claude Sessions
+([how it works](claude-sessions.md)). The commands are in
 `dotnet run --project tools/RiderTerminalSymbolLinker.DevelopmentTools`, which lists them.
 
 ## Building
@@ -17,11 +18,13 @@ What the plugin is built, checked and deployed with. The commands are in
 ## The sandbox Rider
 
 A second Rider with folders of its own under `%LOCALAPPDATA%\RiderTerminalSymbolLinkerSandbox`, started through
-`RIDER_PROPERTIES`, which runs the working tree's build on a copy of `tests/RiderTerminalSymbolLinker.FixtureSolution`,
-the fixture solution. Its window goes on IDEA's virtual desktop, on the other monitor.
+`RIDER_PROPERTIES`, which runs the working tree's builds of both plugins on a copy of
+`tests/RiderTerminalSymbolLinker.FixtureSolution`, the fixture solution. Its window goes on IDEA's virtual desktop, on
+the other monitor. Claude Sessions runs in any JetBrains IDE, and is checked in this Rider too: what it uses is the
+platform's and the terminal's, alike in every IDE.
 
-- **Plugins of its own:** `sandbox install` builds with Gradle's `prepareSandbox` and copies our plugin into the
-  sandbox's plugins folder. Loading it straight from Gradle's folder kept Gradle from building while the sandbox ran:
+- **Plugins of its own:** `sandbox install` builds with Gradle's `prepareSandbox`, which every project has, and copies
+  our plugins into the sandbox's plugins folder. Loading it straight from Gradle's folder kept Gradle from building while the sandbox ran:
   its .NET backend holds the MCP plugin's DLL open.
 - **The MCP Magnus runs, by default:** the .NET Analysis&Refactoring MCP comes in two parts, its plugin and its tools
   builds, which the plugin swaps to at its next call, without a restart (the MCP's `dev_docs/swappable-tools.md`).
@@ -46,33 +49,57 @@ the fixture solution. Its window goes on IDEA's virtual desktop, on the other mo
   plugin.xml said 0.2.11. So `sandbox install` restarts the sandbox, and `everyday deploy` says Magnus must restart,
   when a build changes what its plugin.xml registers (`PluginRegistrations`: all of it but the version, change notes
   and description, which the changelog edits).
+  Once, right after the sandbox started, a replaced jar wasn't noticed, nor any change after it, until a restart
+  (2026-11-17): not seen since, and not understood.
 - **Ports:** the MCP server listens on 23861 there. Rider 2026.3's second backend process,
   `Rider.LightweightBackend.exe`, loads that plugin too, and its server takes the next free port, empty: not intended,
-  and on the MCP plugin's backlog. So the observation channel is on 23871, well away.
+  and on the MCP plugin's backlog. So the observation channels are on 23871 and 23872, well away.
+- **No trace of the Claude Code session the tools run in:** the sandbox inherits the tools' environment, and a Claude
+  Code session sets variables for its children, `CLAUDE_CODE_CHILD_SESSION` and its session id among them. A Claude Code
+  started in the sandbox then took itself for a child session, and neither recorded its session nor saved its
+  transcript. So the sandbox starts without the `CLAUDE*` variables that aren't set for the user or the machine.
+- **A fake Claude Code:** `tools/FakeClaudeCode`, built with the tools as `claude.exe`, is first on the sandbox's
+  `PATH`, with a `CLAUDE_CONFIG_DIR` of its own, `claude-code` in the sandbox's folder. It records its session as Claude
+  Code does, and understands `--resume`, `/clear` and `/exit`. So Claude Sessions' specifications run in seconds, cost
+  nothing, and leave nothing in Magnus's `~/.claude`.
+- **Nothing waits for a human:** the sandbox exits without confirming, and terminates terminal processes as it exits
+  without asking (`processCloseConfirmation`): the terminal's dialog about Claude Sessions' running tabs blocked its
+  exit.
 
-## The observation channel
+## The observation channels
 
-`dev.magnus.csl.observation.ObservationChannel`, an HTTP server inside the plugin that listens only when the system
-property `dev.magnus.csl.observation.port` is set, which only the sandbox does. It tells the indexes' state, the links
-the plugin's filters make in a line, and what a click does: which file opened, where the caret and selection are, or
-which rows a picker shows. The links report what a click did through `LinkClickOutcomes`, which nothing listens to
-outside the sandbox. The `sandbox state|links|click|picker` commands call it.
+An HTTP server inside each plugin, that listens only when a system property names its port, which only the sandbox
+sets. Each request runs on a thread of its own: on the server's one thread, a request waiting for the EDT deadlocked a
+reload of the plugin, whose unloading stops the server on the EDT.
+
+- **The symbol linker's,** `dev.magnus.csl.observation.ObservationChannel` on 23871, tells the indexes' state, the links
+  the plugin's filters make in a line, and what a click does: which file opened, where the caret and selection are, or
+  which rows a picker shows. The links report what a click did through `LinkClickOutcomes`, which nothing listens to
+  outside the sandbox. The `sandbox state|links|click|picker` commands call it.
+- **Claude Sessions',** `dev.magnus.claudesessions.observation.ObservationChannel` on 23872, tells the view's tabs, the
+  process and session each runs, the saved sessions, and the Terminal tool window's tabs; it starts sessions, types into
+  a tab, shows what a tab's terminal shows, and closes tabs. It closes a tab by ending its process, as Claude Code's exit
+  does: the close button, and the terminal API's `closeTab`, ask the user to confirm. The `sandbox sessions` commands
+  call it.
 
 ## The specifications
 
-`dotnet test tests/RiderTerminalSymbolLinker.Specifications` checks what the plugin links and what a click does, in the
-sandbox, against the fixture solution. A run starts a stopped sandbox, in about half a minute, and stops it again at its
+`dotnet test tests/RiderTerminalSymbolLinker.Specifications` checks what the symbol linker links and what a click does,
+in the sandbox, against the fixture solution, and, in `ClaudeSessions/`, what Claude Sessions does with the fake Claude
+Code: a new session, `/clear`, an IDE restart, a plugin reload, and Claude Code exiting. A run starts a stopped sandbox, in about half a minute, and stops it again at its
 end: the sandbox holds about 4.6 GB of Magnus's memory, and he wants it off when it isn't in use (2026-11-17). A
 sandbox that `sandbox start` started is left running, and gets the working tree's build reloaded, so a run takes
 seconds: start it so for a stretch of work, and `sandbox stop` it when the work is done. Every click starts with no
 editor open. They don't yet cover the terminal itself: whether it applies the filters, and
 re-highlights old output.
 
-## Deploying to Magnus's Rider
+## Deploying to Magnus's IDEs
 
-`everyday deploy` puts the working tree's build in `%APPDATA%\JetBrains\Rider2026.3\plugins`, moving the mapped jar
-aside. His Rider runs with `-Didea.auto.reload.plugins=true` (since 2026-11-17), so it reloads the plugin without a
-restart when it next looks at its plugins folder, expected when he switches to its window.
+`everyday deploy` puts each plugin's working-tree build in the plugins folder of every installed IDE it runs in, such as
+`%APPDATA%\JetBrains\Rider2026.3\plugins`, moving the mapped jar aside: the symbol linker in Rider, Claude Sessions in
+Rider, IntelliJ IDEA and PyCharm. His Rider runs with `-Didea.auto.reload.plugins=true` (since 2026-11-17), so it reloads
+a plugin without a restart when it next looks at its plugins folder, expected when he switches to its window. The
+deploy says for each IDE whether it does, or needs a restart: a plugin new to an IDE always does.
 
 **Install Plugin from Disk always restarts Rider** when an earlier version is installed, whatever the plugin is: read
 from the bytecode of `PluginInstaller.installFromDisk` in Rider 2026.3. Auto-reload and Marketplace updates are the
