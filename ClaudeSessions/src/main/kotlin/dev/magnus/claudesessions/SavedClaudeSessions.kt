@@ -1,0 +1,56 @@
+package dev.magnus.claudesessions
+
+import com.google.gson.GsonBuilder
+import com.google.gson.JsonArray
+import com.google.gson.JsonObject
+import com.google.gson.JsonParser
+import com.intellij.openapi.application.PathManager
+import com.intellij.openapi.project.Project
+import java.nio.file.Files
+import java.nio.file.Path
+import java.nio.file.StandardCopyOption
+
+/**
+ * The Claude sessions that ran in a project's [ClaudeSessionsView], in the order of its tabs, as the
+ * [ClaudeSessionKeeper] last saved them: a file in the IDE's system folder, which survives a restart. The view resumes
+ * them when it opens.
+ */
+class SavedClaudeSessions(project: Project) {
+    private val file: Path = Path.of(PathManager.getSystemPath(), "claude-sessions", "${project.locationHash}.json")
+
+    /** The saved sessions, or none when none were ever saved. */
+    fun read(): List<ClaudeSession> {
+        if (!Files.exists(file)) return emptyList()
+        return JsonParser.parseString(Files.readString(file)).asJsonObject.getAsJsonArray("sessions").map { it.asJsonObject.toSession() }
+    }
+
+    /** Replaces the saved sessions with [sessions], at once: a reader never sees half of them. */
+    fun write(sessions: List<ClaudeSession>) {
+        Files.createDirectories(file.parent)
+        val written = file.resolveSibling("${file.fileName}.writing")
+        val json = JsonObject().apply { add("sessions", JsonArray().apply { sessions.forEach { add(it.toJson()) } }) }
+        Files.writeString(written, gson.toJson(json))
+        Files.move(written, file, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE)
+    }
+
+    /** Where the sessions are saved, for the development observation channel to show. */
+    val location: Path get() = file
+
+    private fun ClaudeSession.toJson(): JsonObject =
+        JsonObject().apply {
+            addProperty("id", id.value)
+            addProperty("workingDirectory", workingDirectory.toString())
+            addProperty("name", name)
+        }
+
+    private fun JsonObject.toSession(): ClaudeSession =
+        ClaudeSession(
+            ClaudeSessionId(get("id").asString),
+            Path.of(get("workingDirectory").asString),
+            get("name")?.takeUnless { it.isJsonNull }?.asString,
+        )
+
+    private companion object {
+        val gson = GsonBuilder().setPrettyPrinting().disableHtmlEscaping().create()!!
+    }
+}
