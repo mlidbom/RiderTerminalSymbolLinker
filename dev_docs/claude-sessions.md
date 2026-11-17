@@ -23,6 +23,10 @@ these tabs: `restoreOnProjectReopen(false)`.
   them would be taken for the shell and exit with Claude Code. An npm install's `claude.cmd` runs that way, and such a
   session can't be reloaded.
 - **The shell finds `claude` on its `PATH`,** as when a user types it. Where it doesn't, the shell says so in the tab.
+- **Every terminal tab in the tool window is the view's,** not only those it opened: `ClaudeSessionsView.tabs` takes on
+  any other as it comes across it, by the terminal's `TerminalToolWindowTab.KEY` on the content. A tab the view hadn't
+  opened ran Magnus's resident-server session on 2026-11-17, and was neither saved nor kept through a reload. How it
+  came into the tool window wasn't found: the terminal's New Tab action is disabled outside the Terminal tool window.
 
 ## Which session a tab runs
 
