@@ -37,6 +37,12 @@ class TabsParkedInTheTerminal(private val project: Project) {
 
     /** Moves [tabs] to the Terminal tool window, each marked with the session it ran last. */
     fun park(tabs: List<ClaudeSessionTab>) {
+        //bug: with tabs parked, the unloaded build stays in memory: the IDE logs "Plugins that were expected to unload but
+        //   are still referenced", and tells the user "'Claude Sessions' plugin didn't unload fully". It has done so at
+        //   every reload since the first build. With no tab open, the unload is clean (2026-11-17), so something in a
+        //   parked tab, which outlives the unload, references the old build. What isn't found: the terminal keeps no
+        //   reference to the content manager a tab was created with, and the platform's snapshot of a failed unload
+        //   (registry ide.plugins.snapshot.on.unload.fail) wrote nothing in Rider. Next: the live heap, with a debugger.
         val terminalToolWindow = ToolWindowManager.getInstance(project).getToolWindow(TerminalToolWindowFactory.TOOL_WINDOW_ID)!!
         for (tab in tabs) {
             tab.terminal.content.component.putClientProperty(PARKED_TAB, tab.session?.id?.value.orEmpty())

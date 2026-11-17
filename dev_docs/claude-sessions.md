@@ -70,6 +70,9 @@ window.
 - **Tabs parked by an earlier build carry no mark,** and are still taken back by the session their Claude Code runs.
 - **Each park and take-back is logged** to the IDE's `idea.log` by `TabsParkedInTheTerminal`: each tab's name, process
   and session.
+- **A known leak:** with tabs parked, the unloaded build stays in memory, and the IDE says the plugin "didn't unload
+  fully" and advises a restart. With no tab open, the unload is clean. See the `bug:` comment in
+  `TabsParkedInTheTerminal.park`.
 
 ## The local API: showing a session's tab for another tool
 
