@@ -241,6 +241,9 @@ object ReSharperMcp {
                     // ReSharper lists a C# extension block as a synthetic `$extension` member; skip it (and any
                     // other `$`-prefixed synthetic name) — it's not a real identifier and can never appear as a
                     // token in terminal output. The block's actual methods are listed flattened alongside it.
+                    //bug: an extension block's properties are listed flattened only as their accessors, such as
+                    //   get_Diameter, so a property such as Diameter never links. The `$extension` member's own
+                    //   get_symbol_info lists them as properties. Found in the sandbox's fixture solution, 2026-11-17.
                     if (name.isNotEmpty() && !name.startsWith('$')) {
                         names.add(name)
                         combined.add("$simpleType.$name")
