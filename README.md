@@ -40,8 +40,8 @@ click jumps to the symbol's declaration, or opens the file. Helpful for working 
 
 ## Requirements
 
-- **Rider 2026.1+** (built and tested against 2026.2; the reworked terminal must be the active
-  terminal engine).
+- **Rider 2026.3+** (the reworked terminal must be the active terminal engine). On Rider 2026.1 and
+  2026.2, version 0.2.9 is the last that runs.
 - The **.NET Analysis&Refactoring MCP** plugin —
   [`mlidbom/dotnet-analysis-and-refactoring-mcp-for-rider`](https://github.com/mlidbom/dotnet-analysis-and-refactoring-mcp-for-rider),
   a fork of [`joshua-light/resharper-mcp`](https://github.com/joshua-light/resharper-mcp), listed in Rider

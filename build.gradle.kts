@@ -32,7 +32,7 @@ dependencies {
         bundledPlugin("org.jetbrains.plugins.terminal")
         // The .NET Analysis&Refactoring MCP we declare a hard <depends> on in plugin.xml. Pulled from the
         // Marketplace so the sandbox/verifier can resolve the dependency; it is NOT bundled into our distribution.
-        plugin("dev.magnus.dotnet-analysis-and-refactoring-mcp", "0.13.0")
+        plugin("dev.magnus.dotnet-analysis-and-refactoring-mcp", "0.14.0")
     }
 
     // Plain JUnit 5 for the pure unit tests (FileReferences / SolutionFileIndex). They touch no platform
@@ -49,13 +49,15 @@ tasks.test {
 intellijPlatform {
     pluginConfiguration {
         ideaVersion {
-            // 261 = Rider 2026.1 (the stable CI build target). No upper bound: a cap disables the plugin for
-            // every user on each new Rider until a release raises it, as Rider 2026.3 did to 0.2.7 though
-            // nothing in the code needed changing. The re-highlight and terminal-context-menu hooks rely
-            // on reworked-terminal internals that can shift, so check them after each new Rider.
+            // 263 = Rider 2026.3 (the stable CI build target), the earliest Rider the .NET Analysis&Refactoring
+            // MCP supports from its 0.14.0 on: claiming an older Rider than the dependency would offer users a
+            // plugin they can't satisfy. No upper bound: a cap disables the plugin for every user on each new
+            // Rider until a release raises it, as Rider 2026.3 did to 0.2.7 though nothing in the code needed
+            // changing. The re-highlight and terminal-context-menu hooks rely on reworked-terminal internals
+            // that can shift, so check them after each new Rider.
             // `provider { null }` omits until-build; leaving the property out would default it to the
-            // build platform's MAJOR.* (261.* in CI).
-            sinceBuild = "261"
+            // build platform's MAJOR.* (263.* in CI).
+            sinceBuild = "263"
             untilBuild = provider { null }
         }
         // Per-version "What's new" on the Marketplace listing, rendered from this version's CHANGELOG.md

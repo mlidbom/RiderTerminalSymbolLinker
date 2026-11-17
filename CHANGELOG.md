@@ -4,6 +4,13 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project aims to follow
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.10]
+
+### Changed
+- **Requires Rider 2026.3 or later.** The .NET Analysis&Refactoring MCP this plugin depends on supports only
+  Rider 2026.3 and later from its version 0.14.0 on, so this plugin does the same. On Rider 2026.1 and 2026.2
+  the Marketplace keeps offering 0.2.9, which works there with the MCP's 0.13.0.
+
 ## [0.2.9]
 
 ### Changed
@@ -182,7 +189,8 @@ First public release.
   in the background.
 - Multi-solution support: each call targets the correct open solution.
 
-[0.2.9]: https://github.com/mlidbom/RiderTerminalSymbolLinker/compare/v0.2.8...HEAD
+[0.2.10]: https://github.com/mlidbom/RiderTerminalSymbolLinker/compare/v0.2.9...HEAD
+[0.2.9]: https://github.com/mlidbom/RiderTerminalSymbolLinker/compare/v0.2.8...v0.2.9
 [0.2.8]: https://github.com/mlidbom/RiderTerminalSymbolLinker/compare/v0.2.7...v0.2.8
 [0.2.7]: https://github.com/mlidbom/RiderTerminalSymbolLinker/compare/v0.2.6...v0.2.7
 [0.2.6]: https://github.com/mlidbom/RiderTerminalSymbolLinker/compare/v0.2.5...v0.2.6
