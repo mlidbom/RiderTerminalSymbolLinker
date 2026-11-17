@@ -6,6 +6,5 @@
 - **Record it in the changelog,** as [the changelog rule](changelog.md) says.
 - **Deploy it:** `dotnet run --project tools/RiderTerminalSymbolLinker.DevelopmentTools -- everyday deploy`, and tell
   Magnus that his Riders reload it when he next switches to them, without a restart.
-- **A zip only when he asks for one:** the `buildPlugin` Gradle task puts it at
-  `build/distributions/RiderTerminalSymbolLinker-<pluginVersion>.zip`. Gradle needs `JAVA_HOME` to be the repository's
-  own JDK 21: `$env:JAVA_HOME = "$PWD\.tooling\jdk\jdk-21.0.11+10"; .\gradlew.bat buildPlugin`.
+- **A zip only when he asks for one:** `.\build.ps1`, which runs Gradle's `buildPlugin` with the repository's own JDK
+  21, puts it at `build/distributions/RiderTerminalSymbolLinker-<pluginVersion>.zip`.
