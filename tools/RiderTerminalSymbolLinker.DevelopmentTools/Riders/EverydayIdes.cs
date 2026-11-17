@@ -14,6 +14,9 @@ static class EverydayIdes
    ///   switches to its window. A build that adds or removes a file of the plugin's, or changes what its plugin.xml
    ///   registers, takes a restart all the same: a reload would run its classes with the registrations the IDE read when it
    ///   started. A plugin new to an IDE always does.
+   ///   <br/>It also names the Marketplace as where the plugin gets its updates from, in the IDE's
+   ///   <see cref="PluginUpdateSources"/>, where no source is named: a plugin installed from disk has none, and the IDE
+   ///   warns about it as it starts.
    /// </remarks>
    public static IReadOnlyList<string> Deploy(GradleSandbox builds)
    {
@@ -24,11 +27,19 @@ static class EverydayIdes
          .. from plugin in OurPlugin.All
             from ide in plugin.RunsIn
             where ide.IsInstalled
-            select DeployTo(ide, plugin, builds.BuildOf(plugin), new FolderMirror(setAside))
+            from line in DeployTo(ide, plugin, builds.BuildOf(plugin), new FolderMirror(setAside))
+            select line
       ];
    }
 
-   static string DeployTo(EverydayIde ide, OurPlugin plugin, string build, FolderMirror mirror)
+   static IEnumerable<string> DeployTo(EverydayIde ide, OurPlugin plugin, string build, FolderMirror mirror)
+   {
+      yield return MirrorTheBuild(ide, plugin, build, mirror);
+      if(ide.PluginUpdateSources.NameTheMarketplaceUnlessASourceIsNamed(plugin))
+         yield return $"{ide} gets updates of {plugin} from the Marketplace now, so it no longer warns, from its next start, that it can't tell where the plugin came from.";
+   }
+
+   static string MirrorTheBuild(EverydayIde ide, OurPlugin plugin, string build, FolderMirror mirror)
    {
       var pluginFolder = Path.Combine(ide.PluginsFolder, plugin.Name);
       var registeredBefore = PluginRegistrations.InPluginFolder(pluginFolder);

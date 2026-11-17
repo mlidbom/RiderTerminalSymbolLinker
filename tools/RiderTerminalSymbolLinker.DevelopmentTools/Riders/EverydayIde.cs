@@ -33,10 +33,12 @@ public sealed record EverydayIde(string Name, string InstallationFolderName)
    /// <summary>The plugins folder every window of the IDE loads its plugins from.</summary>
    public string PluginsFolder => Path.Combine(SettingsFolder, "plugins");
 
+   public PluginUpdateSources PluginUpdateSources => new(SettingsFolder);
+
    /// <summary>
    ///   Whether the IDE runs with <c>-Didea.auto.reload.plugins=true</c> in its VM options, and so reloads a plugin whose
    ///   files changed, without a restart, when it next looks at its plugins folder: when Magnus switches to its window.
-   ///   His Rider does since 2026-11-17.
+   ///   His Rider, IntelliJ IDEA and PyCharm do, since 2026-11-17.
    /// </summary>
    public bool ReloadsChangedPlugins =>
       Directory.GetFiles(SettingsFolder, "*.vmoptions").Any(it => File.ReadAllLines(it).Any(line => line.Trim() == "-Didea.auto.reload.plugins=true"));

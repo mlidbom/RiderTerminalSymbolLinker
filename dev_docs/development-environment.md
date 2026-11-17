@@ -103,6 +103,12 @@ one's folder under `%APPDATA%\JetBrains` (Rider since 2026-11-17, IDEA and PyCha
 each reloads a plugin without a restart when it next looks at its plugins folder, expected when he switches to its
 window. The deploy says for each IDE whether it does, or needs a restart: a plugin new to an IDE always does.
 
+**A plugin installed from disk has no update source,** and IntelliJ IDEA 2026.3, at least, warns as it starts that it
+can't tell where the plugin came from ("Cannot update plugin"). So the deploy names the Marketplace as its source in the IDE's
+`options\pluginUpdateSources.xml` where none is named, as the IDE does for a plugin installed from there: it finds no
+update there for an unpublished plugin, and finds the published ones. The IDE writes that file only when it changes a
+source itself, so an entry written while it runs survives its exit (tried in the sandbox, 2026-11-17).
+
 **Install Plugin from Disk always restarts Rider** when an earlier version is installed, whatever the plugin is: read
 from the bytecode of `PluginInstaller.installFromDisk` in Rider 2026.3. Auto-reload and Marketplace updates are the
 routes that reload a running plugin. Auto-reload reacts to every plugin's folder, the MCP plugin's included, which can't
