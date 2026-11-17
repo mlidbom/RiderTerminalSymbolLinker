@@ -17,7 +17,7 @@ namespace RiderTerminalSymbolLinker.DevelopmentTools.Riders;
 ///   The properties file also sets <c>idea.auto.reload.plugins</c>, so that a running sandbox reloads the plugin when
 ///   <see cref="Install"/> puts a new build in its plugins folder, without a restart.
 /// </remarks>
-sealed class SandboxRider
+public sealed class SandboxRider
 {
    /// <summary>
    ///   The port the .NET Analysis&amp;Refactoring MCP's server listens on in this sandbox, which the plugin calls too.

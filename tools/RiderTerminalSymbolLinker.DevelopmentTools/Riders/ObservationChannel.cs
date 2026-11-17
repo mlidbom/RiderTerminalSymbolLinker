@@ -13,7 +13,7 @@ namespace RiderTerminalSymbolLinker.DevelopmentTools.Riders;
 ///   Every call takes the project to ask about by name, or none when the sandbox has one open. Its answers are the
 ///   channel's JSON, as it sends them.
 /// </remarks>
-sealed class ObservationChannel
+public sealed class ObservationChannel
 {
    static readonly HttpClient Client = new() { Timeout = TimeSpan.FromSeconds(60) };
    static readonly JsonSerializerOptions Indented = new() { WriteIndented = true };
@@ -40,6 +40,9 @@ sealed class ObservationChannel
 
    /// <summary>Closes the picker the last click showed.</summary>
    public JsonNode ClosePicker() => Post("picker/close", null, new { });
+
+   /// <summary>Closes every editor, so that a click opens its file afresh.</summary>
+   public JsonNode CloseEveryEditor(string? project = null) => Post("editors/close-all", project, new { });
 
    /// <summary>
    ///   Has Rider look at its plugins folder again, so that it reloads the plugin when its files changed, and waits until

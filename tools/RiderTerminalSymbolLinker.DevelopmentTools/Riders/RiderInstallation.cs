@@ -3,7 +3,7 @@ using System.Text.Json;
 namespace RiderTerminalSymbolLinker.DevelopmentTools.Riders;
 
 /// <summary>The Rider installed on this machine, which the <see cref="SandboxRider"/> runs and the plugin builds against.</summary>
-sealed class RiderInstallation
+public sealed class RiderInstallation
 {
    readonly string _installationFolder;
 
