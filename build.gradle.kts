@@ -28,6 +28,10 @@ dependencies {
         } else {
             rider(providers.gradleProperty("platformVersion").get())
         }
+        // The Marketplace ZIP Signer that signPlugin runs. The Gradle plugin's docs require declaring it. This build
+        // resolved one without it, but the .NET Analysis&Refactoring MCP's identical setup found none on CI and its
+        // release failed at signing (2026-11-17), so it is declared, as there.
+        zipSigner()
         // Provides the Terminal.ReworkedTerminalContextMenu group our refresh action attaches to.
         bundledPlugin("org.jetbrains.plugins.terminal")
         // The .NET Analysis&Refactoring MCP we declare a hard <depends> on in plugin.xml. Pulled from the
