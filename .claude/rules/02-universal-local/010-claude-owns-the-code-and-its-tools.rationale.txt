@@ -1,0 +1,19 @@
+# Why Claude owns the symbol linker's code and its tools
+
+On 2026-11-17, when IDEA had just been set up as the IDE to develop the plugin in, Magnus said:
+
+> On what works for me. Let's be real here. This is your project in terms of code. You are the technical lead. I just
+> tell you what features I need so the environment needs are yours.
+>
+> Look at the rules the other projects in C:\Dev have set up for being the product owner of their own tools for
+> developing. I figure we'll do the same here if you don't disagree :)
+
+The rule follows Deskmancer's (`090-claude-owns-its-verification-tools.md`, `091-code-changes-development-needs-require-no-permission.md`),
+JAStudio's (`090-claude-owns-the-jastudio-mcp-server.md`) and the .NET Analysis&Refactoring MCP's
+(`developing-the-plugin.md`). The general part, what owning a tool means, is in the shared collaboration rules; this
+rule only says what it covers here, and goes further than the others in one respect, in Magnus's words: the code
+itself, not just the tools, is Claude's to decide, with the features his.
+
+The boundary "which Riders and which MCP plugin it requires" counts as what the plugin does for its users because a
+change there decides who can install it: 0.2.10 moved to Rider 2026.3 because the MCP plugin it depends on did, after
+Magnus agreed to it.
