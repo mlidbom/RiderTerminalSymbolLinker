@@ -33,13 +33,14 @@ import java.util.concurrent.Executors
  * `idea.properties` sets, so a user's IDE never has it.
  *
  * Every endpoint answers JSON. `project` names the open project to ask about, and may be left out when one is open:
- *  - `GET /state` — each open project's [ClaudeSessionsView]: its tabs, the process each runs and the session in it,
- *    the [SavedClaudeSessions], and whether the [ClaudeSessionKeeper] keeps them.
+ *  - `GET /state` — each open project's [ClaudeSessionsView]: its tabs, each with the process its terminal runs, its
+ *    shell, the Claude Code that runs below it and that one's parent process, and its session, the
+ *    [SavedClaudeSessions], and whether the [ClaudeSessionKeeper] keeps them.
  *  - `POST /view/open?project=` — has the IDE give the view its content, as showing the tool window would.
  *  - `POST /sessions/new?project=` — starts a new session in a tab, as the New Claude Session action does.
  *  - `GET /tabs/screen?project=&tab=` — the text the tab's terminal shows, from the top of its screen.
  *  - `POST /tabs/type?project=&tab=` with `{"text": …}` — types the text into the tab's terminal, and Enter.
- *  - `POST /tabs/close?project=&tab=` — closes the tab by ending its process, as Claude Code's exit does: closing it
+ *  - `POST /tabs/close?project=&tab=` — closes the tab by ending its processes, as its shell's exit does: closing it
  *    as its close button does asks the user to confirm, and that dialog would wait for a human.
  *  - `POST /tabs/close-all?project=` — closes every tab so, and answers once they're gone, so that a specification
  *    starts with none.
@@ -110,6 +111,7 @@ class ObservationChannel : Disposable {
     private fun describe(tab: ClaudeSessionTab): Map<String, Any?> = mapOf(
         "name" to tab.content.displayName,
         "processId" to tab.process?.pid(),
+        "claudeCode" to tab.claudeCode?.process?.let { mapOf("processId" to it.pid(), "parentProcessId" to it.parent().orElse(null)?.pid()) },
         "session" to tab.lookAtTheSession()?.let(::describe),
     )
 

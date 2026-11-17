@@ -33,6 +33,10 @@ public sealed class TheClaudeSessionsView
    public IReadOnlyList<SessionTab> Tabs =>
    [
       .. Project()["view"]!["tabs"]!.AsArray().Select(tab => new SessionTab(tab!["processId"]?.GetValue<long>(),
+                                                                            tab["claudeCode"] is {} claudeCode
+                                                                               ? new ClaudeCodeProcess(claudeCode["processId"]!.GetValue<long>(),
+                                                                                                       claudeCode["parentProcessId"]?.GetValue<long>())
+                                                                               : null,
                                                                             tab["session"]?["id"]!.GetValue<string>(),
                                                                             tab["session"]?["workingDirectory"]!.GetValue<string>()))
    ];
@@ -57,6 +61,30 @@ public sealed class TheClaudeSessionsView
    /// <summary>Types <paramref name="text"/> into the tab's terminal, and Enter.</summary>
    public void Type(int tab, string text) => Channel.Type(tab, text);
 
+   /// <summary>
+   ///   Types <paramref name="line"/> into the tab's Claude Code, as a line of its conversation, and returns once the fake
+   ///   Claude Code shows it: it has then written it to the session's transcript.
+   /// </summary>
+   public void Say(int tab, string line)
+   {
+      Type(tab, line);
+      WaitUntil(() => Screen(tab).Contains($"> {line}"), $"the tab to show \"{line}\"");
+   }
+
+   /// <summary>Types <c>/exit</c> into the tab's Claude Code, and returns once it has exited.</summary>
+   public void ExitClaudeCode(int tab)
+   {
+      Type(tab, "/exit");
+      WaitUntil(() => Tabs[tab].ClaudeCode is null, "Claude Code to exit in the tab");
+   }
+
+   /// <summary>Deletes the transcript of the session, as archiving or deleting the session does, so that it can't be resumed.</summary>
+   public void DeleteTheTranscriptOf(string session)
+   {
+      foreach(var transcript in Directory.GetFiles(Path.Combine(_sandbox.ClaudeCodeFolder, "projects"), session + ".jsonl", SearchOption.AllDirectories))
+         File.Delete(transcript);
+   }
+
    /// <summary>The text the tab's terminal shows.</summary>
    public IReadOnlyList<string> Screen(int tab) => [.. Channel.Screen(tab)["lines"]!.AsArray().Select(it => it!.GetValue<string>())];
 
@@ -71,12 +99,15 @@ public sealed class TheClaudeSessionsView
       }
    }
 
-   /// <summary>Closes the sandbox Rider as a user would, and starts it again, and returns once the view has its tabs.</summary>
+   /// <summary>
+   ///   Closes the sandbox Rider as a user would, and starts it again, and returns once the view has its tabs, each with
+   ///   its Claude Code running.
+   /// </summary>
    public void RestartTheIde(int tabsToComeBack)
    {
       _sandbox.Stop();
       _sandbox.Start();
-      WaitUntil(() => Tabs.Count == tabsToComeBack && Tabs.All(it => it.SessionId is not null), $"{tabsToComeBack} tabs to run their sessions again");
+      WaitUntil(() => Tabs.Count == tabsToComeBack && Tabs.All(it => it.ClaudeCode is not null), $"{tabsToComeBack} tabs to run their sessions again");
    }
 
    /// <summary>Has the sandbox reload Claude Sessions, as for an update, and returns once the reloaded plugin answers.</summary>
@@ -85,5 +116,11 @@ public sealed class TheClaudeSessionsView
    JsonNode Project() => Channel.State()["projects"]!.AsArray().Single()!;
 }
 
-/// <summary>A tab of the view: the process its terminal runs, and the session that runs in it, once it does.</summary>
-public sealed record SessionTab(long? ProcessId, string? SessionId, string? WorkingDirectory);
+/// <summary>
+///   A tab of the view: the process its terminal runs, its shell; the Claude Code that runs below it, while one does; and
+///   the session that runs in it, or ran in it last.
+/// </summary>
+public sealed record SessionTab(long? ShellProcessId, ClaudeCodeProcess? ClaudeCode, string? SessionId, string? WorkingDirectory);
+
+/// <summary>The process of a Claude Code that runs in a tab, and the process it's a child of.</summary>
+public sealed record ClaudeCodeProcess(long ProcessId, long? ParentProcessId);

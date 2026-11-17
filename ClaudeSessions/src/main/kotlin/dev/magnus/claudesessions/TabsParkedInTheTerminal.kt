@@ -30,14 +30,13 @@ class TabsParkedInTheTerminal(private val project: Project) {
     }
 
     /**
-     * Takes the parked tabs that run one of [sessions] out of the Terminal tool window, and returns them by the session
-     * each runs. A parked tab runs Claude Code itself, so a tab of the Terminal tool window whose shell runs Claude Code
-     * is never taken.
+     * Takes the parked tabs whose Claude Code runs one of [sessions] out of the Terminal tool window, and returns them by
+     * the session each runs. A tab of the Terminal tool window whose Claude Code runs another session is left there.
      */
     fun takeBack(sessions: List<ClaudeSession>): Map<ClaudeSessionId, TerminalToolWindowTab> {
         val wanted = sessions.map { it.id }.toSet()
         val parked = terminals.tabs.mapNotNull { terminal ->
-            val session = ClaudeSessionTab.processOf(terminal)?.let(ClaudeCodeSessionsFolder::sessionOf)
+            val session = ClaudeSessionTab.processOf(terminal)?.let(RunningClaudeCode::inOrBelow)?.session
             if (session != null && session.id in wanted) session.id to terminal else null
         }.toMap()
         parked.values.forEach(terminals::detachTab)

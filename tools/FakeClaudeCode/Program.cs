@@ -11,8 +11,9 @@ namespace FakeClaudeCode;
 /// <remarks>
 ///   <c>claude</c> starts a new session, and <c>claude --resume &lt;id&gt;</c> resumes one; each says which it did, with
 ///   the session's id, and then the lines its conversation had. Typed lines are its conversation: <c>/clear</c> starts a
-///   new session, as Claude Code's does, and <c>/exit</c> ends it, deleting its record. The conversations are kept in
-///   <c>fake-conversations</c> in the same folder.
+///   new session, as Claude Code's does, and <c>/exit</c> ends it, deleting its record. It keeps each session's
+///   conversation where Claude Code keeps a session's transcript, as <c>projects/&lt;a name made from its
+///   folder&gt;/&lt;session id&gt;.jsonl</c> in the same folder, a line of JSON for each line typed, from the first.
 /// </remarks>
 static class Program
 {
@@ -41,7 +42,7 @@ static class Program
                Record(session);
                break;
             default:
-               File.AppendAllLines(ConversationFile(session), [typed]);
+               AddToTheTranscript(session, typed);
                Console.WriteLine($"> {typed}");
                break;
          }
@@ -67,13 +68,21 @@ static class Program
                         }));
    }
 
-   static string ConversationFile(string session)
+   /// <summary>
+   ///   The session's transcript, in the folder Claude Code would keep it in for the folder it runs in: its path, with each
+   ///   character that is neither a letter nor a digit made a <c>-</c>.
+   /// </summary>
+   static string TranscriptFile(string session) =>
+      Path.Combine(ClaudeCodeFolder, "projects", new string([.. Environment.CurrentDirectory.Select(it => char.IsAsciiLetterOrDigit(it) ? it : '-')]), session + ".jsonl");
+
+   static void AddToTheTranscript(string session, string typed)
    {
-      var folder = Path.Combine(ClaudeCodeFolder, "fake-conversations");
-      Directory.CreateDirectory(folder);
-      return Path.Combine(folder, session + ".txt");
+      Directory.CreateDirectory(Path.GetDirectoryName(TranscriptFile(session))!);
+      File.AppendAllLines(TranscriptFile(session), [JsonSerializer.Serialize(new Dictionary<string, string> { ["typed"] = typed })]);
    }
 
    static IEnumerable<string> ConversationOf(string session) =>
-      File.Exists(ConversationFile(session)) ? File.ReadAllLines(ConversationFile(session)) : [];
+      File.Exists(TranscriptFile(session))
+         ? File.ReadAllLines(TranscriptFile(session)).Select(line => JsonSerializer.Deserialize<Dictionary<string, string>>(line)!["typed"])
+         : [];
 }

@@ -17,6 +17,9 @@
         <toolWindow id="Claude Sessions" anchor="bottom" canCloseContents="true" doNotActivateOnStart="true"
                     icon="AllIcons.Toolwindows.ToolWindowMessages"
                     factoryClass="dev.magnus.claudesessions.ClaudeSessionsToolWindowFactory"/>
+        <!-- todo: nothing notifies through this group since a tab runs Claude Code in a shell, which says itself when it
+             can't find `claude` (2026-11-17). Remove it with the next change here that takes a restart anyway: a
+             change of what plugin.xml registers takes one, and this alone isn't worth it. -->
         <notificationGroup id="ClaudeSessions" displayType="BALLOON"/>
         <postStartupActivity implementation="dev.magnus.claudesessions.ClaudeSessionsStartup"/>
         <!-- The development observation channel: it listens only where a system property asks it to, in the sandbox

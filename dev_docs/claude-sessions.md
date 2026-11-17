@@ -7,19 +7,30 @@ restarts. It runs in any JetBrains IDE: it uses only the platform and the termin
 
 It lives in this repository as a project of its own, so that it can move to a repository of its own.
 
-## A tab is a session
+## A tab runs a shell, and Claude Code in it
 
 Each tab of the view (`ClaudeSessionsView`) is a reworked-terminal tab, made with the terminal's public
-`TerminalToolWindowTabsManager.createTabBuilder()`, that runs `claude` itself, not a shell (`ClaudeCodeCommand` finds it
-on the `PATH` as a shell would, `.cmd` scripts through `cmd.exe`). The tab closes when Claude Code exits. The terminal
-plugin neither saves nor restores these tabs: `restoreOnProjectReopen(false)`.
+`TerminalToolWindowTabsManager.createTabBuilder()`, that runs the user's shell, into which the tab types `claude`, or
+`claude --resume <id>` (`ClaudeCodeCommand`). When Claude Code exits, the shell is left at its prompt, and the tab keeps
+the session that ran in it last; the tab closes when the shell exits. The terminal plugin neither saves nor restores
+these tabs: `restoreOnProjectReopen(false)`.
+
+- **Why a shell:** Magnus's session tooling reloads a session (to run a new Claude Code, or take in changed settings)
+  by typing `/exit` into Claude Code, and then `claude --resume <id>` into the shell above it, which it takes to be
+  Claude Code's direct parent process: pwsh, powershell, cmd, bash, sh or zsh (tooling-owner, 2026-11-17). The first
+  version ran `claude` as the tab's own process, with no shell to type into, and its tabs closed with Claude Code.
+- **So Claude Code must be the shell's direct child.** Typed into the shell, `claude.exe` is. A `cmd.exe /c` between
+  them would be taken for the shell and exit with Claude Code. An npm install's `claude.cmd` runs that way, and such a
+  session can't be reloaded.
+- **The shell finds `claude` on its `PATH`,** as when a user types it. Where it doesn't, the shell says so in the tab.
 
 ## Which session a tab runs
 
 Claude Code records each running session in `sessions/<process id>.json` in its folder (`CLAUDE_CONFIG_DIR`, or
 `~/.claude`): the session id, the folder it runs in, and its name. It rewrites the record when `/clear` starts a new
 session or `/resume` switches to another, and deletes it when it exits. `ClaudeCodeSessionsFolder` reads it for the
-tab's process, which `TerminalView.startupOptionsDeferred` gives, or a process below it.
+processes below the tab's process, its shell, which `TerminalView.startupOptionsDeferred` gives
+(`RunningClaudeCode.inOrBelow`).
 
 - **The record is undocumented internal state of Claude Code** (seen in 2.1.326). If a Claude Code update changes it,
   this is where it breaks. A `SessionStart` hook in Claude Code's settings would be the fallback.
@@ -31,18 +42,29 @@ tab's process, which `TerminalView.startupOptionsDeferred` gives, or a process b
 - **`ClaudeSessionKeeper`** saves the sessions the tabs run, in tab order, every two seconds, and once more as the
   project closes or the plugin unloads (`SavedClaudeSessions`, a file per project in the IDE's system folder). It starts
   only once the view has resumed the saved sessions, so that it never saves a view they aren't in yet.
+- **A tab whose Claude Code has exited keeps its session,** and the keeper saves it, so it's resumed at the next start.
+  That way a stop of every session before an IDE restart, which the session tooling plans, ends with them resumed.
 - **`ClaudeSessionsStartup`** has the IDE give the tool window its content as the project opens, when sessions were
   saved, and the view resumes each with `claude --resume <id>`, in its own folder and tab.
+- **A session that can't be resumed is left out:** one whose transcript, `projects/<folder as a name>/<id>.jsonl` in
+  Claude Code's folder, is gone (`ClaudeCodeTranscripts`), as archiving or deleting a session moves or removes it.
+  `claude --resume` would fail on it.
 
 ## Surviving a reload of the plugin
 
 Unloading the plugin, as for an update, removes its tool window, and with it the terminals of its tabs, which would end
-every session mid-turn. So `ParkTheTabsWhileThePluginReloads` moves the tabs to the terminal's own Terminal tool window
-first (`TabsParkedInTheTerminal`, with the terminal's public `detachTab` and `attachTab`), and the reloaded plugin takes
-back each tab whose own process runs a saved session. Uninstalled, the sessions run on in the Terminal tool window.
+every session mid-turn. So `ParkTheTabsWhileThePluginReloads` moves the tabs that run Claude Code to the terminal's own
+Terminal tool window first (`TabsParkedInTheTerminal`, with the terminal's public `detachTab` and `attachTab`), and the
+reloaded plugin takes back each tab in or below whose process Claude Code runs a saved session. Uninstalled, the sessions
+run on in the Terminal tool window.
+
+A tab whose Claude Code has exited goes with the tool window, and the reloaded plugin resumes its session in a new tab,
+as after a restart: nothing in it tells it apart from a tab of the user's own.
 
 A reference to the parked tabs can't be handed from the old plugin to the new: `Key.findKeyByName`, the one way to find
-a value by name across class loaders, is deprecated. Finding them by the session their process runs needs no handover.
+a value by name across class loaders, is deprecated. Finding them by the session their Claude Code runs needs no
+handover, and took back the tabs of the first version, whose own process was Claude Code, when the second reloaded over
+it (tried in the sandbox, 2026-11-17).
 
 ## The terminal API, and its traps
 
