@@ -88,6 +88,18 @@ public sealed class SandboxRider
    /// </summary>
    string FakeClaudeCodeFolder => Path.Combine(_root, "fake-claude-code");
 
+   /// <summary>
+   ///   The sandbox's fake Claude Code itself, to run one outside Claude Sessions' tabs, as in a plain terminal: with
+   ///   <c>CLAUDE_CONFIG_DIR</c> naming <see cref="ClaudeCodeFolder"/>, as the sandbox's own environment does.
+   /// </summary>
+   public string FakeClaudeCode => Path.Combine(FakeClaudeCodeFolder, "claude.exe");
+
+   /// <summary>
+   ///   Where the sandbox's Claude Sessions announces its local API to other tools, and finds other IDEs' announcements:
+   ///   a folder of its own, so that the user's tools and IDEs don't take the sandbox for one of theirs.
+   /// </summary>
+   public string LocalApiAnnouncementsFolder => Path.Combine(_root, "local-api-announcements");
+
    /// <summary>Where solutions to open in the sandbox go. The sandbox trusts everything under it.</summary>
    public string SolutionsFolder => Path.Combine(_root, "solutions");
 
@@ -347,6 +359,9 @@ public sealed class SandboxRider
       LeaveOutTheClaudeCodeSessionThisRunsIn();
       Environment.SetEnvironmentVariable("CLAUDE_CONFIG_DIR", ClaudeCodeFolder);
       Environment.SetEnvironmentVariable("PATH", FakeClaudeCodeFolder + Path.PathSeparator + Environment.GetEnvironmentVariable("PATH"));
+      // The sandbox is in the user's home folder, which is a git repository: without a ceiling, git takes the solutions in
+      // the sandbox for part of it.
+      Environment.SetEnvironmentVariable("GIT_CEILING_DIRECTORIES", _root);
       Environment.SetEnvironmentVariable("RIDER_PROPERTIES", Path.Combine(_root, "idea.properties"));
       Environment.SetEnvironmentVariable("RIDER_VM_OPTIONS", JvmOptionsFile);
       Environment.SetEnvironmentVariable("DOTNET_ANALYSIS_AND_REFACTORING_MCP_PORT", McpPort.ToString());
@@ -383,7 +398,8 @@ public sealed class SandboxRider
                             $"idea.log.path={Forward(_root)}/log",
                             "idea.auto.reload.plugins=true",
                             $"dev.magnus.csl.observation.port={SymbolLinkerObservationPort}",
-                            $"dev.magnus.claudesessions.observation.port={ClaudeSessionsObservationPort}"
+                            $"dev.magnus.claudesessions.observation.port={ClaudeSessionsObservationPort}",
+                            $"dev.magnus.claudesessions.localApi.announcements={Forward(LocalApiAnnouncementsFolder)}"
                          ]);
    }
 

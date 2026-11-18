@@ -116,6 +116,21 @@ its pipe until both daemons were stopped. A build that finds a daemon running do
 happens only sometimes. They don't yet cover the terminal itself: whether it applies the filters, and
 re-highlights old output.
 
+## The sandbox's Claude Code, git and local API
+
+- **The fake Claude Code** writes its transcripts in Claude Code's format, the entries Claude Sessions reads: a `user`
+  entry with its folder and a `last-prompt` for each line typed, an `ai-title` after the first, and a `custom-title`
+  for `/rename <name>`. `--resume` finds the transcript in any project's folder, as Claude Code does. The sandbox takes
+  a copy of its build as it starts, so a change to it takes a restart of the sandbox.
+- **Each story starts with no history:** `TheClaudeSessionsView` deletes the sandbox's transcripts. A story writes the
+  transcripts it needs with `SessionTranscript`, dated as it likes.
+- **`GIT_CEILING_DIRECTORIES` is the sandbox's folder:** the sandbox is in Magnus's home folder, a git repository, which
+  git would otherwise take the fixture solution for part of. A story that needs git makes the solution a repository of
+  its own, and deletes it after.
+- **The sandbox's Claude Sessions announces its local API in a folder of its own,** which
+  `dev.magnus.claudesessions.localApi.announcements` names in its `idea.properties`: so that Magnus's tools and IDEs
+  don't take it for one of theirs, and a story can stand in another IDE there (`AnotherIdeStandIn`).
+
 ## Deploying to Magnus's IDEs
 
 `everyday deploy` puts each plugin's working-tree build in the plugins folder of every installed IDE it runs in, such as
