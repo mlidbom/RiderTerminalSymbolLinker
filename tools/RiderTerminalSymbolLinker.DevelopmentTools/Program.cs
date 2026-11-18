@@ -26,6 +26,10 @@ static class Program
                           sandbox place               Puts the sandbox's windows in their place again
                           sandbox status              Whether it runs, where its windows are, what the MCP server answers
 
+                          start, install and stop take the machine's sandbox turn, %LOCALAPPDATA%\SandboxRiders\turn.lock,
+                          as the specifications do: they wait while another suite of sandbox Riders runs, such as the
+                          .NET Analysis&Refactoring MCP's.
+
                         What the symbol linker does in the sandbox, through its development observation channel on port 23871:
 
                           sandbox state               Each open project's symbol and file indexes: ready, and their sizes
@@ -68,22 +72,22 @@ static class Program
       switch(arguments)
       {
          case ["sandbox", "start"]:
-            sandbox.Start();
+            using(sandbox.TakeTheTurn("`sandbox start`")) sandbox.Start();
             break;
          case ["sandbox", "reload", var plugin]:
             sandbox.ReloadThePlugin(OurPlugin.Named(plugin));
             break;
          case ["sandbox", "start", var solution]:
-            sandbox.Start(Path.GetFullPath(solution));
+            using(sandbox.TakeTheTurn("`sandbox start`")) sandbox.Start(Path.GetFullPath(solution));
             break;
          case ["sandbox", "install"]:
-            Console.WriteLine(sandbox.Install());
+            using(sandbox.TakeTheTurn("`sandbox install`")) Console.WriteLine(sandbox.Install());
             break;
          case ["sandbox", "install", "--mcp", var mcp]:
-            Console.WriteLine(sandbox.Install(Enum.Parse<McpBuild>(mcp, ignoreCase: true)));
+            using(sandbox.TakeTheTurn("`sandbox install`")) Console.WriteLine(sandbox.Install(Enum.Parse<McpBuild>(mcp, ignoreCase: true)));
             break;
          case ["sandbox", "stop"]:
-            sandbox.Stop();
+            using(sandbox.TakeTheTurn("`sandbox stop`")) sandbox.Stop();
             break;
          case ["sandbox", "place"]:
             sandbox.PlaceWindows();

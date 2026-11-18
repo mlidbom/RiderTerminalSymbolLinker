@@ -101,6 +101,14 @@ sandbox that `sandbox start` started is left running, and gets the working tree'
 seconds: start it so for a stretch of work, and `sandbox stop` it when the work is done. Every click starts with no
 editor open.
 
+**One suite of sandbox Riders at a time, machine-wide:** a run holds the machine's sandbox turn, `SandboxTurn`, from
+before it installs the build until its sandbox has stopped, and `sandbox start`, `install` and `stop` hold it while they
+run. The .NET Analysis&Refactoring MCP's specifications and tools take the same turn, so each waits while the other
+runs, and says who holds it. Several suites at once, beside Magnus's IDEs, froze his machine (2026-11-17). The turn is
+`%LOCALAPPDATA%\SandboxRiders\turn.lock` held open, which the operating system closes when its process dies: both
+repositories' copies of `SandboxTurn` must open it the same way. A sandbox that `sandbox start` left running doesn't
+hold it.
+
 **Don't pipe a run's output into a command that reads to its end,** such as `| Select-Object -Last 5` or `| tail`. When
 the run's Gradle build starts a new Gradle daemon, that daemon and the Kotlin compile daemon it starts inherit the run's
 output handle, and the pipe stays open until they exit, hours later: on 2026-11-18 a run that passed in 66 seconds held

@@ -14,17 +14,21 @@ namespace RiderTerminalSymbolLinker.Specifications;
 ///   minute.<br/>
 ///   A sandbox the run started is stopped when the run ends: it holds about 4.6 GB, which Magnus's machine needs
 ///   (Magnus, 2026-11-17: "keep it off when you are not working with it"). One that was running before the run, because
-///   <c>sandbox start</c> started it for a stretch of work, is left running, and each run then takes seconds.
+///   <c>sandbox start</c> started it for a stretch of work, is left running, and each run then takes seconds.<br/>
+///   The run holds the machine's <see cref="SandboxTurn"/> from before it installs the build until its sandbox has
+///   stopped, so it waits while another suite of sandbox Riders runs, such as the .NET Analysis&amp;Refactoring MCP's.
 /// </remarks>
 public sealed class TheSandboxWithTheFixtureSolution : IDisposable
 {
    static readonly TimeSpan HowLongIndexingMayTake = TimeSpan.FromMinutes(2);
 
    readonly SandboxRider _sandbox = new(RiderInstallation.OfThisUser());
+   readonly SandboxTurn _turn;
    readonly bool _theRunStartedTheSandbox;
 
    public TheSandboxWithTheFixtureSolution()
    {
+      _turn = _sandbox.TakeTheTurn("the specifications");
       _theRunStartedTheSandbox = !_sandbox.IsRunning;
       try
       {
@@ -48,7 +52,14 @@ public sealed class TheSandboxWithTheFixtureSolution : IDisposable
 
    public void Dispose()
    {
-      if(_theRunStartedTheSandbox) _sandbox.Stop();
+      try
+      {
+         if(_theRunStartedTheSandbox) _sandbox.Stop();
+      }
+      finally
+      {
+         _turn.Dispose();
+      }
    }
 
    /// <summary>

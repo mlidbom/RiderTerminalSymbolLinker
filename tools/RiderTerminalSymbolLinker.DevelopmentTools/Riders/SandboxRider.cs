@@ -101,6 +101,12 @@ public sealed class SandboxRider
 
    public bool IsRunning => RunningProcess() is not null;
 
+   /// <summary>
+   ///   Takes the machine's <see cref="SandboxTurn"/> for <paramref name="whatFor"/> in this repository, such as the
+   ///   specifications, and waits for it while another suite of sandbox Riders runs.
+   /// </summary>
+   public SandboxTurn TakeTheTurn(string whatFor) => SandboxTurn.Take($"{whatFor} in {RepositoryRoot.Folder}");
+
    /// <summary>The process the running sandbox Rider runs as.</summary>
    public int ProcessId => (RunningProcess() ?? throw new InvalidOperationException("The sandbox Rider isn't running.")).Id;
 
