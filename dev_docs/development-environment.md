@@ -104,6 +104,11 @@ one's folder under `%APPDATA%\JetBrains` (Rider since 2026-11-17, IDEA and PyCha
 each reloads a plugin without a restart when it next looks at its plugins folder, expected when he switches to its
 window. The deploy says for each IDE whether it does, or needs a restart: a plugin new to an IDE always does.
 
+**`everyday reload <plugin> [<IDE>]` reloads the build an IDE has,** to see in Magnus's own IDEs what a reload does,
+such as whether his tabs come through it. It gives the plugin's jars the time of now, as `sandbox reload` does in the
+sandbox, which the IDE takes for a new build. On 2026-11-18 his Rider reloaded within 13 seconds, both times. The next
+`everyday deploy` puts the build's own times back, and so reloads the plugin once more, even if the build is the same.
+
 **A plugin installed from disk has no update source,** and IntelliJ IDEA 2026.3, at least, warns as it starts that it
 can't tell where the plugin came from ("Cannot update plugin"). So the deploy names the Marketplace as its source in the IDE's
 `options\pluginUpdateSources.xml` where none is named, as the IDE does for a plugin installed from there: it finds no

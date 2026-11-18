@@ -32,6 +32,31 @@ static class EverydayIdes
       ];
    }
 
+   /// <summary>
+   ///   Has the installed IDEs that <paramref name="plugin"/> <see cref="OurPlugin.RunsIn"/>, or only
+   ///   <paramref name="onlyIn"/>, reload the build of it they have, as they would a new one: when Magnus next switches to
+   ///   the IDE's window. Returns what it did, a line for each IDE.
+   /// </summary>
+   /// <remarks>
+   ///   To see in Magnus's own IDEs what a reload does, such as whether his tabs come through it.
+   ///   <br/>The next <see cref="Deploy"/> puts the build's own times back on its files, and so has the IDE reload it once
+   ///   more, even if the build is the same.
+   /// </remarks>
+   public static IReadOnlyList<string> Reload(OurPlugin plugin, EverydayIde? onlyIn = null) =>
+   [
+      .. from ide in plugin.RunsIn
+         where ide.IsInstalled && (onlyIn is null || ide == onlyIn)
+         select ReloadIn(ide, plugin)
+   ];
+
+   static string ReloadIn(EverydayIde ide, OurPlugin plugin)
+   {
+      if(!Directory.Exists(Path.Combine(ide.PluginsFolder, plugin.Name))) return $"{ide} doesn't have {plugin}: deploy it first.";
+      if(!ide.ReloadsChangedPlugins) return $"{ide} doesn't reload {plugin} without a restart: it doesn't run with -Didea.auto.reload.plugins=true.";
+      plugin.MakeItLookChangedIn(ide.PluginsFolder);
+      return $"{ide} reloads {plugin}, the build it has, when Magnus next switches to its window.";
+   }
+
    static IEnumerable<string> DeployTo(EverydayIde ide, OurPlugin plugin, string build, FolderMirror mirror)
    {
       yield return MirrorTheBuild(ide, plugin, build, mirror);

@@ -55,6 +55,10 @@ static class Program
                                                       of every installed IDE it runs in: the symbol linker in Rider, Claude
                                                       Sessions in Rider, IntelliJ IDEA and PyCharm. Says for each whether it
                                                       reloads it when he next switches to its window, or needs a restart
+                          everyday reload RiderTerminalSymbolLinker|ClaudeSessions [<IDE>]
+                                                      Has his IDEs, or only the one named, such as Rider or
+                                                      "IntelliJ IDEA", reload the build of the plugin they have, when he
+                                                      next switches to its window
                         """;
 
    static int Main(string[] arguments)
@@ -67,7 +71,7 @@ static class Program
             sandbox.Start();
             break;
          case ["sandbox", "reload", var plugin]:
-            sandbox.ReloadThePlugin(OurPlugin.All.Single(it => string.Equals(it.Name, plugin, StringComparison.OrdinalIgnoreCase)));
+            sandbox.ReloadThePlugin(OurPlugin.Named(plugin));
             break;
          case ["sandbox", "start", var solution]:
             sandbox.Start(Path.GetFullPath(solution));
@@ -119,6 +123,12 @@ static class Program
             break;
          case ["sandbox", "sessions", "close", var tab]:
             Console.WriteLine(ObservationChannel.Indent(sandbox.ClaudeSessionsObservation.Close(int.Parse(tab))));
+            break;
+         case ["everyday", "reload", var plugin]:
+            foreach(var line in EverydayIdes.Reload(OurPlugin.Named(plugin))) Console.WriteLine(line);
+            break;
+         case ["everyday", "reload", var plugin, var ide]:
+            foreach(var line in EverydayIdes.Reload(OurPlugin.Named(plugin), EverydayIde.Named(ide))) Console.WriteLine(line);
             break;
          case ["everyday", "deploy"]:
             foreach(var line in EverydayIdes.Deploy(new GradleSandbox(RiderInstallation.OfThisUser()))) Console.WriteLine(line);

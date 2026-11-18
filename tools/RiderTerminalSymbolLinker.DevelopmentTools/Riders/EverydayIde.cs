@@ -14,6 +14,13 @@ public sealed record EverydayIde(string Name, string InstallationFolderName)
    public static readonly EverydayIde IntelliJIdea = new("IntelliJ IDEA", "IntelliJ IDEA");
    public static readonly EverydayIde PyCharm = new("PyCharm", "PyCharm");
 
+   public static IReadOnlyList<EverydayIde> All { get; } = [Rider, IntelliJIdea, PyCharm];
+
+   /// <summary>The IDE named <paramref name="name"/>, as Magnus would say it, such as "IntelliJ IDEA", in any case.</summary>
+   public static EverydayIde Named(string name) =>
+      All.SingleOrDefault(it => string.Equals(it.Name, name, StringComparison.OrdinalIgnoreCase))
+   ?? throw new ArgumentException($"No IDE Magnus works in is named '{name}': {string.Join(", ", All)} are.");
+
    string InstallationFolder => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Programs", InstallationFolderName);
 
    public bool IsInstalled => File.Exists(Path.Combine(InstallationFolder, "product-info.json"));

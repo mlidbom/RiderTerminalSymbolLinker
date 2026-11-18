@@ -239,7 +239,7 @@ public sealed class SandboxRider
    {
       var observation = ObservationOf(plugin);
       var startedBefore = observation.StartedAt();
-      foreach(var jar in Directory.GetFiles(Path.Combine(PluginsFolder, plugin.Name, "lib"), "*.jar")) File.SetLastWriteTimeUtc(jar, DateTime.UtcNow);
+      plugin.MakeItLookChangedIn(PluginsFolder);
       observation.RefreshThePluginsFolder();
       observation.WaitUntilReloaded(startedBefore, TimeSpan.FromMinutes(1));
    }

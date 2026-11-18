@@ -18,5 +18,19 @@ public sealed record OurPlugin(string Name, string Id, IReadOnlyList<EverydayIde
 
    public static IReadOnlyList<OurPlugin> All { get; } = [SymbolLinker, ClaudeSessions];
 
+   /// <summary>The plugin named <paramref name="name"/>, in any case.</summary>
+   public static OurPlugin Named(string name) =>
+      All.SingleOrDefault(it => string.Equals(it.Name, name, StringComparison.OrdinalIgnoreCase))
+   ?? throw new ArgumentException($"No plugin of ours is named '{name}': {string.Join(", ", All)} are.");
+
+   /// <summary>
+   ///   Makes the build of this plugin in <paramref name="pluginsFolder"/> look changed to the IDE that loads it from there,
+   ///   by giving its jars the time of now: an IDE that reloads changed plugins then reloads it, as it does a new build.
+   /// </summary>
+   public void MakeItLookChangedIn(string pluginsFolder)
+   {
+      foreach(var jar in Directory.GetFiles(Path.Combine(pluginsFolder, Name, "lib"), "*.jar")) File.SetLastWriteTimeUtc(jar, DateTime.UtcNow);
+   }
+
    public override string ToString() => Name;
 }
