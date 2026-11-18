@@ -43,6 +43,10 @@ class TabsParkedInTheTerminal(private val project: Project) {
         //   parked tab, which outlives the unload, references the old build. What isn't found: the terminal keeps no
         //   reference to the content manager a tab was created with, and the platform's snapshot of a failed unload
         //   (registry ide.plugins.snapshot.on.unload.fail) wrote nothing in Rider. Next: the live heap, with a debugger.
+        //   A lead (jcmd GC.class_histogram on Magnus's Rider, 2026-11-18, 8 old builds in memory): of each old build, an
+        //   instance of ClaudeSessionsToolWindowFactory and one of NewClaudeSessionAction are still alive, and none of
+        //   its views, tabs, keepers, coroutines or local API servers. So something likely holds the old build's tool
+        //   window, whose factory and title action they are. Each old build's classes took about 0.25 MB of metaspace.
         val terminalToolWindow = ToolWindowManager.getInstance(project).getToolWindow(TerminalToolWindowFactory.TOOL_WINDOW_ID)!!
         for (tab in tabs) {
             tab.terminal.content.component.putClientProperty(PARKED_TAB, tab.session?.id?.value.orEmpty())

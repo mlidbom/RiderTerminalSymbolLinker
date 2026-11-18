@@ -76,7 +76,10 @@ window.
   and session.
 - **A known leak:** with tabs parked, the unloaded build stays in memory, and the IDE says the plugin "didn't unload
   fully" and advises a restart. With no tab open, the unload is clean. See the `bug:` comment in
-  `TabsParkedInTheTerminal.park`.
+  `TabsParkedInTheTerminal.park`. What it costs, measured in Magnus's Rider with 8 old builds in memory (2026-11-18):
+  about 0.25 MB of metaspace for each old build's classes, and a few bytes of its objects; whatever holds them may hold
+  more, which only a heap dump would show. None of an old build's code runs on: its views, keepers, coroutines and
+  local API server were all gone.
 
 ## The local API: showing a session's tab for another tool
 
