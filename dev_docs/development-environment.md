@@ -51,6 +51,13 @@ platform's and the terminal's, alike in every IDE.
   and description, which the changelog edits).
   Once, right after the sandbox started, a replaced jar wasn't noticed, nor any change after it, until a restart
   (2026-11-17): not seen since, and not understood.
+- **JVM options of its own:** `rider64.exe.vmoptions` in the sandbox's folder, which `RIDER_VM_OPTIONS` names, holds
+  `-Xmx2048m`, the installation's default heap. Without it, Rider's launcher reads the everyday Riders'
+  `%APPDATA%\JetBrains\Rider2026.3\rider64.exe.vmoptions` wherever `idea.config.path` points, and the sandbox ran with
+  Magnus's 16 GB heap and Toolbox's options (found 2026-11-18, while the machine's freezes were investigated). The
+  launcher reads the installation's `bin\rider64.exe.vmoptions` first, so the file holds only what overrides it. It
+  changed little in what the sandbox holds after a run, 4.5 GB of working set against 4.6 GB: it limits how far the
+  frontend can grow.
 - **Ports:** the MCP server listens on 23861 there. Rider 2026.3's second backend process,
   `Rider.LightweightBackend.exe`, loads that plugin too, and its server takes the next free port, empty: not intended,
   and on the MCP plugin's backlog. So the observation channels are on 23871 and 23872, well away.

@@ -14,7 +14,8 @@ namespace RiderTerminalSymbolLinker.DevelopmentTools.Riders;
 /// <remarks>
 ///   Its folders are under <c>%LOCALAPPDATA%\RiderTerminalSymbolLinkerSandbox</c>, outside the repository, so the IDE
 ///   that has the repository open doesn't watch its caches change. Rider's launcher reads the folders from the
-///   properties file that the <c>RIDER_PROPERTIES</c> environment variable names.<br/>
+///   properties file that the <c>RIDER_PROPERTIES</c> environment variable names, and its JVM options from a file of
+///   its own too, the <see cref="JvmOptionsFile"/>.<br/>
 ///   The properties file also sets <c>idea.auto.reload.plugins</c>, so that a running sandbox reloads the plugin when
 ///   <see cref="Install"/> puts a new build in its plugins folder, without a restart.<br/>
 ///   Claude Sessions runs in any JetBrains IDE, and is verified in this Rider too: what it uses is the platform's and
@@ -214,6 +215,7 @@ public sealed class SandboxRider
 
          new SandboxRiderSettings(Path.Combine(_root, "config")).Write(SolutionsFolder);
          WriteTheFoldersFile();
+         WriteTheJvmOptionsFile();
          TakeTheFakeClaudeCodeBuild();
          var process = Launch(solution);
          File.WriteAllText(ProcessFile, $"{process.Id};{process.StartTime.Ticks}");
@@ -340,6 +342,7 @@ public sealed class SandboxRider
       Environment.SetEnvironmentVariable("CLAUDE_CONFIG_DIR", ClaudeCodeFolder);
       Environment.SetEnvironmentVariable("PATH", FakeClaudeCodeFolder + Path.PathSeparator + Environment.GetEnvironmentVariable("PATH"));
       Environment.SetEnvironmentVariable("RIDER_PROPERTIES", Path.Combine(_root, "idea.properties"));
+      Environment.SetEnvironmentVariable("RIDER_VM_OPTIONS", JvmOptionsFile);
       Environment.SetEnvironmentVariable("DOTNET_ANALYSIS_AND_REFACTORING_MCP_PORT", McpPort.ToString());
       Environment.SetEnvironmentVariable("DOTNET_ANALYSIS_AND_REFACTORING_MCP_TOOLS", _mcpTools.Folder);
       var startInformation = new ProcessStartInfo(_rider.Launcher) { UseShellExecute = true };
@@ -377,6 +380,22 @@ public sealed class SandboxRider
                             $"dev.magnus.claudesessions.observation.port={ClaudeSessionsObservationPort}"
                          ]);
    }
+
+   /// <summary>
+   ///   The sandbox's own JVM options file, which <c>RIDER_VM_OPTIONS</c> names there. Rider's launcher reads it after
+   ///   the installation's <c>bin\rider64.exe.vmoptions</c>, so it holds only what overrides that file.
+   /// </summary>
+   /// <remarks>
+   ///   Without it, the launcher reads the everyday Riders' file, <c>%APPDATA%\JetBrains\Rider2026.3\rider64.exe.vmoptions</c>,
+   ///   wherever <c>idea.config.path</c> points. The sandbox then ran with Magnus's 16 GB heap, and Toolbox's options.
+   /// </remarks>
+   string JvmOptionsFile => Path.Combine(_root, "rider64.exe.vmoptions");
+
+   /// <summary>
+   ///   Writes the <see cref="JvmOptionsFile"/>, with the installation's default heap of 2 GB, which the fixture solution
+   ///   doesn't need more than.
+   /// </summary>
+   void WriteTheJvmOptionsFile() => File.WriteAllLines(JvmOptionsFile, ["-Xmx2048m"]);
 
    /// <summary>The sandbox's frontend process, which owns its windows, unless it has exited.</summary>
    Process? RunningProcess()
