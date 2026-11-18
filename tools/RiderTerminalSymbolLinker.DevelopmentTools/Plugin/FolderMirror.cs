@@ -103,6 +103,19 @@ sealed class FolderMirror
          Directory.Delete(folder, recursive: true);
    }
 
+   /// <summary>
+   ///   Whether a <see cref="Mirror"/> of <paramref name="source"/> to <paramref name="destination"/> would add a file the
+   ///   destination doesn't have, or remove one, as <see cref="AddedOrRemovedAFile"/> tells after it.
+   /// </summary>
+   public static bool WouldAddOrRemoveAFile(string source, string destination) =>
+      !FilesIn(source).SetEquals(FilesIn(destination));
+
+   /// <summary>The paths of the files in <paramref name="folder"/> and below, relative to it, in any case.</summary>
+   static HashSet<string> FilesIn(string folder) =>
+      Directory.Exists(folder)
+         ? new HashSet<string>(Directory.GetFiles(folder, "*", SearchOption.AllDirectories).Select(it => Path.GetRelativePath(folder, it)), StringComparer.OrdinalIgnoreCase)
+         : [];
+
    static bool IsTheSame(string file, string copy) =>
       File.Exists(copy)
    && new FileInfo(file).Length == new FileInfo(copy).Length

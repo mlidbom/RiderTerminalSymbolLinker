@@ -8,6 +8,11 @@
 - **Record it in the changelog,** as [the changelog rule](changelog.md) says.
 - **Deploy it:** `dotnet run --project tools/RiderTerminalSymbolLinker.DevelopmentTools -- everyday deploy`, and tell
   Magnus what it says for each IDE: that it reloads the plugin when he next switches to it, or that he must restart it.
+- **Get his go-ahead first for a deploy that takes a restart, or may disturb his running sessions:** Magnus,
+  2026-11-18: "when you deploy an update that is apt to cause problems for existing claude sessions and/or require
+  restarting the IDEs please warn me and get my go-ahead first". `everyday deploy --dry-run` builds and says what the
+  deploy would do, marking a restart `RESTART`. A change to Claude Sessions' handling of its tabs through a reload is
+  one that may disturb them, since every reload parks and takes back the tabs his sessions run in.
 - **A zip only when he asks for one:** `.\build.ps1`, which runs Gradle's `buildPlugin` with the repository's own JDK
   21, puts the symbol linker's at `build/distributions/RiderTerminalSymbolLinker-<pluginVersion>.zip`, and Claude
   Sessions' at `ClaudeSessions/build/distributions/ClaudeSessions-<version>.zip`.

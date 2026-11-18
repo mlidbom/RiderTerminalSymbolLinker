@@ -59,6 +59,8 @@ static class Program
                                                       of every installed IDE it runs in: the symbol linker in Rider, Claude
                                                       Sessions in Rider, IntelliJ IDEA and PyCharm. Says for each whether it
                                                       reloads it when he next switches to its window, or needs a restart
+                          everyday deploy --dry-run   Builds the plugins and says what deploying them would do, changing
+                                                      nothing in his IDEs: a line marked RESTART takes his go-ahead
                           everyday reload RiderTerminalSymbolLinker|ClaudeSessions [<IDE>]
                                                       Has his IDEs, or only the one named, such as Rider or
                                                       "IntelliJ IDEA", reload the build of the plugin they have, when he
@@ -136,6 +138,9 @@ static class Program
             break;
          case ["everyday", "deploy"]:
             foreach(var line in EverydayIdes.Deploy(new GradleSandbox())) Console.WriteLine(line);
+            break;
+         case ["everyday", "deploy", "--dry-run"]:
+            foreach(var line in EverydayIdes.Deploy(new GradleSandbox(), dryRun: true)) Console.WriteLine(line);
             break;
          default:
             Console.Error.WriteLine(Usage);

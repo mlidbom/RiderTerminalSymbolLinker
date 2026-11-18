@@ -13,3 +13,10 @@ Untested when the rule was written: that his everyday Rider reloads a deployed b
 the sandbox, the reload was triggered by asking Rider to look at its plugins folder, through the plugin's observation
 channel, which his Rider doesn't run. If deploys don't reload there, look at whether switching windows makes Rider
 look at the plugins folder, before changing the rule.
+
+## The go-ahead for a deploy that takes a restart
+
+On 2026-11-18 (Opus 5.5), the session history picker was deployed to all three IDEs unannounced. It registered a new
+action and a new dependency, so each IDE needed a restart, and switching to an IDE to restart it first reloaded the new
+classes with the old registrations. Magnus then asked to be warned and asked first. The dry run exists so that the
+question can be put before anything lands in his IDEs, not after.
