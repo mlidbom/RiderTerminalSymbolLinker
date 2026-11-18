@@ -61,6 +61,13 @@ object ClaudeCodeFolder {
 object ClaudeCodeSessionsFolder {
     private val folder: Path get() = ClaudeCodeFolder.path.resolve("sessions")
 
+    /** Every Claude Code that runs now, wherever it runs, as its record tells. */
+    fun running(): List<RunningClaudeCode> {
+        if (!Files.isDirectory(folder)) return emptyList()
+        val processIds = Files.newDirectoryStream(folder, "*.json").use { records -> records.mapNotNull { it.fileName.toString().removeSuffix(".json").toLongOrNull() } }
+        return processIds.mapNotNull { ProcessHandle.of(it).orElse(null) }.mapNotNull { process -> sessionOf(process)?.let { RunningClaudeCode(process, it) } }
+    }
+
     /**
      * The session that [process] runs, or null when there is no whole record of one to read: when the process isn't
      * Claude Code, when Claude Code hasn't written the record yet, or has just deleted it as it exits, and while it
@@ -111,5 +118,12 @@ object ClaudeCodeTranscripts {
     fun hasTheTranscriptOf(id: ClaudeSessionId): Boolean {
         if (!Files.isDirectory(folder)) return false
         return Files.newDirectoryStream(folder).use { projects -> projects.any { Files.isRegularFile(it.resolve("${id.value}.jsonl")) } }
+    }
+
+    /** Every transcript Claude Code has, of every project's sessions: not those of the agents a session ran. */
+    fun all(): List<ClaudeCodeTranscript> {
+        if (!Files.isDirectory(folder)) return emptyList()
+        val projects = Files.newDirectoryStream(folder) { Files.isDirectory(it) }.use { it.toList() }
+        return projects.flatMap { project -> Files.newDirectoryStream(project, "*.jsonl").use { transcripts -> transcripts.map(::ClaudeCodeTranscript) } }
     }
 }

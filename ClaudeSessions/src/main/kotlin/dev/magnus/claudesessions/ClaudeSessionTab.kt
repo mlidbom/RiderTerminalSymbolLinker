@@ -43,6 +43,12 @@ class ClaudeSessionTab(
         return session
     }
 
+    /** Types the command that resumes [session] into the tab's shell, at its prompt since the tab's Claude Code exited. */
+    fun resume(session: ClaudeSession) {
+        terminal.view.createSendTextBuilder().shouldExecute().send(ClaudeCodeCommand.resuming(session))
+        this.session = session
+    }
+
     companion object {
         /** The process [terminal] runs, once it has started. */
         @OptIn(ExperimentalCoroutinesApi::class)

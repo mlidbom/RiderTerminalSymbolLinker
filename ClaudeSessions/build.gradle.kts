@@ -32,6 +32,8 @@ dependencies {
         zipSigner()
         // The reworked terminal's API: its tabs, and sending a command to one.
         bundledPlugin("org.jetbrains.plugins.terminal")
+        // The platform's JNA, to call Windows' AllowSetForegroundWindow.
+        bundledPlugin("com.intellij.modules.jna")
     }
 }
 

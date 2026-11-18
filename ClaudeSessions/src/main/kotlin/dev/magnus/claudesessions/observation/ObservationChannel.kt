@@ -20,6 +20,12 @@ import dev.magnus.claudesessions.ClaudeSessionKeeper
 import dev.magnus.claudesessions.ClaudeSessionTab
 import dev.magnus.claudesessions.ClaudeSessionsView
 import dev.magnus.claudesessions.SavedClaudeSessions
+import dev.magnus.claudesessions.history.ClaudeSessionHistoryPicker
+import dev.magnus.claudesessions.history.ClaudeSessionHistoryScope
+import dev.magnus.claudesessions.history.WhereTheSessionIs
+import com.intellij.openapi.keymap.KeymapManager
+import javax.swing.KeyStroke
+import java.awt.event.KeyEvent
 import org.jetbrains.plugins.terminal.TerminalToolWindowFactory
 import java.net.InetAddress
 import java.net.InetSocketAddress
@@ -47,6 +53,19 @@ import java.util.concurrent.Executors
  *    as its close button does asks the user to confirm, and that dialog would wait for a human.
  *  - `POST /tabs/close-all?project=` — closes every tab so, and answers once they're gone, so that a specification
  *    starts with none.
+ *  - `POST /history/open?project=` — opens the session history picker, as the Resume a Claude Session action does,
+ *    and answers as `GET /history` once it shows.
+ *  - `GET /history?project=` — the picker shown in the project's window: its scope, the scopes it offers, its filter,
+ *    its entries, each with where its session is and whether it can be chosen, and the one selected.
+ *  - `POST /history/filter?project=` with `{"text": …}` — types the filter into the picker's search field.
+ *  - `POST /history/scope?project=&scope=` — lists the scope, by its name, as a click on its button does.
+ *  - `POST /history/choose?project=&entry=` — selects the entry, by its place, and chooses it, as Enter does.
+ *  - `POST /history/close?project=` — closes the picker, as Escape does.
+ *  - `POST /history/press?project=&key=` — has the picker's search field take the key, `UP`, `DOWN` or `ENTER`, as
+ *    from the keyboard.
+ *  - `POST /history/double-click?project=&entry=` — double-clicks the entry, by its place.
+ *  - `GET /keymap?keystroke=&keymap=` — the actions the keymap named, or else the active one, binds the keystroke to,
+ *    as `KeyStroke.getKeyStroke` reads it, such as `ctrl alt shift H`: to find a shortcut that is free.
  *  - `POST /plugins/refresh` — has the IDE look at its plugins folder again, so that with `idea.auto.reload.plugins` it
  *    reloads a plugin whose files changed, this one included. `/state`'s `startedAt` then tells when the new build's
  *    channel started.
@@ -77,6 +96,30 @@ class ObservationChannel : Disposable {
             createContext("/tabs/close-all") { exchange -> answer(exchange) { closeEveryTab(projectOf(exchange)) } }
             createContext("/tabs/close") { exchange -> answer(exchange) { close(projectOf(exchange), query(exchange, "tab")!!.toInt()) } }
             createContext("/plugins/refresh") { exchange -> answer(exchange) { refreshThePluginsFolder() } }
+            createContext("/history/open") { exchange -> answer(exchange) { openThePicker(projectOf(exchange)) } }
+            createContext("/history/filter") { exchange ->
+                answer(exchange) { inThePicker(projectOf(exchange)) { it.filter = request<TextRequest>(exchange).text } }
+            }
+            createContext("/history/scope") { exchange ->
+                answer(exchange) { inThePicker(projectOf(exchange)) { it.list(ClaudeSessionHistoryScope.valueOf(query(exchange, "scope")!!)) } }
+            }
+            createContext("/history/choose") { exchange ->
+                answer(exchange) {
+                    inThePicker(projectOf(exchange)) {
+                        it.selected = query(exchange, "entry")!!.toInt()
+                        it.chooseTheSelected()
+                    }
+                }
+            }
+            createContext("/history/close") { exchange -> answer(exchange) { inThePicker(projectOf(exchange)) { it.close() } } }
+            createContext("/history/press") { exchange ->
+                answer(exchange) { inThePicker(projectOf(exchange)) { it.press(KEYS.getValue(query(exchange, "key")!!)) } }
+            }
+            createContext("/history/double-click") { exchange ->
+                answer(exchange) { inThePicker(projectOf(exchange)) { it.doubleClick(query(exchange, "entry")!!.toInt()) } }
+            }
+            createContext("/history") { exchange -> answer(exchange) { onTheEdt { describeThePickerIn(projectOf(exchange)) } } }
+            createContext("/keymap") { exchange -> answer(exchange) { actionsBoundTo(query(exchange, "keystroke")!!, query(exchange, "keymap")) } }
             start()
         }
 
@@ -182,6 +225,54 @@ class ObservationChannel : Disposable {
         process.destroyForcibly()
     }
 
+    private fun openThePicker(project: Project): Map<String, Any?> {
+        onTheEdt { ClaudeSessionHistoryPicker.open(project) }
+        val deadline = System.currentTimeMillis() + 15_000
+        while (onTheEdt { ClaudeSessionHistoryPicker.shownIn(project) } == null && System.currentTimeMillis() < deadline) Thread.sleep(100)
+        return onTheEdt { describeThePickerIn(project) }
+    }
+
+    /** Does [action] to the picker shown in [project]'s window, and answers as `GET /history` then. */
+    private fun inThePicker(project: Project, action: (ClaudeSessionHistoryPicker) -> Unit): Map<String, Any?> = onTheEdt {
+        action(ClaudeSessionHistoryPicker.shownIn(project)!!)
+        describeThePickerIn(project)
+    }
+
+    private fun describeThePickerIn(project: Project): Map<String, Any?> {
+        val picker = ClaudeSessionHistoryPicker.shownIn(project) ?: return mapOf("shown" to false)
+        return mapOf(
+            "shown" to true,
+            "scope" to picker.scope.name,
+            "scopes" to picker.scopes.map { it.name },
+            "filter" to picker.filter,
+            "selected" to picker.selected,
+            "entries" to picker.listed.map { entry ->
+                mapOf(
+                    "session" to entry.session.id.value,
+                    "title" to entry.title,
+                    "lastPrompt" to entry.lastPrompt,
+                    "folder" to entry.session.workingDirectory.toString(),
+                    "gitBranch" to entry.gitBranch,
+                    "where" to describe(entry.where),
+                    "canBeChosen" to entry.where.canBeChosen,
+                )
+            },
+        )
+    }
+
+    private fun describe(where: WhereTheSessionIs): String = when (where) {
+        WhereTheSessionIs.NotRunning -> "not-running"
+        is WhereTheSessionIs.ExitedInATab -> "exited-in-a-tab"
+        is WhereTheSessionIs.RunningInATab -> "running-in-a-tab"
+        is WhereTheSessionIs.RunningInAnotherIde -> "running-in-another-ide"
+        is WhereTheSessionIs.RunningOutsideClaudeSessions -> "running-outside-claude-sessions"
+    }
+
+    private fun actionsBoundTo(keystroke: String, keymapName: String?): Map<String, Any?> {
+        val keymap = keymapName?.let { KeymapManager.getInstance().getKeymap(it)!! } ?: KeymapManager.getInstance().activeKeymap
+        return mapOf("keymap" to keymap.name, "actions" to keymap.getActionIds(KeyStroke.getKeyStroke(keystroke)!!).toList())
+    }
+
     /** Asynchronous, as the reload it may cause unloads this very channel. */
     private fun refreshThePluginsFolder(): Map<String, Any?> {
         val folder = LocalFileSystem.getInstance().refreshAndFindFileByPath(PathManager.getPluginsPath())
@@ -235,5 +326,8 @@ class ObservationChannel : Disposable {
         const val PORT_PROPERTY = "dev.magnus.claudesessions.observation.port"
 
         fun getInstance(): ObservationChannel = service()
+
+        /** The keys `/history/press` presses, by name. */
+        private val KEYS = mapOf("UP" to KeyEvent.VK_UP, "DOWN" to KeyEvent.VK_DOWN, "ENTER" to KeyEvent.VK_ENTER)
     }
 }

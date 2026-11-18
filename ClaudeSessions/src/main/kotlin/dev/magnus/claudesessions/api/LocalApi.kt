@@ -20,8 +20,11 @@ import java.util.concurrent.Executors
 
 /**
  * Claude Sessions' API for other tools on the same machine: an HTTP server that listens on a free port of the loopback
- * address only, and that the IDE's [LocalApiAnnouncement] names. It has one request:
+ * address only, and that the IDE's [LocalApiAnnouncement] names. Its requests:
  *
+ *  - `GET /sessions`: the sessions that run in the IDE's tabs, as `{"sessions": [{"session": <session id>, "process":
+ *    <Claude Code's process id>}]}`. Another IDE's session history picker asks, to tell a session that runs in a tab
+ *    from one that runs elsewhere, as in a plain terminal.
  *  - `POST /sessions/show?session=<session id>&process=<Claude Code's process id>`: brings forward the tab that runs the
  *    session, as clicking a notification about it would want. It finds the tab in which that Claude Code runs, or else
  *    the one that runs the session, or ran it last: `process` finds a tab after `/clear` gave it a new session, and
@@ -44,6 +47,7 @@ class LocalApi : Disposable {
             // Each request on a thread of its own, as they wait for the EDT, which may wait for this server to stop.
             executor = Executors.newCachedThreadPool()
             createContext("/sessions/show") { exchange -> answer(exchange) }
+            createContext("/sessions") { exchange -> answerWithTheSessions(exchange) }
             start()
         }
 
@@ -55,18 +59,26 @@ class LocalApi : Disposable {
         (server.executor as ExecutorService).shutdown()
     }
 
-    private fun answer(exchange: HttpExchange) {
-        try {
-            val (status, body) = if (exchange.requestMethod != "POST") 405 to mapOf("error" to "POST it")
-            else if (show(queryOf(exchange))) 200 to mapOf("shown" to true)
-            else 404 to mapOf("shown" to false)
-            val bytes = gson.toJson(body).toByteArray()
-            exchange.responseHeaders.add("Content-Type", "application/json; charset=utf-8")
-            exchange.sendResponseHeaders(status, bytes.size.toLong())
-            exchange.responseBody.write(bytes)
-        } finally {
-            exchange.close()
-        }
+    private fun answer(exchange: HttpExchange) = reply(exchange) {
+        if (exchange.requestMethod != "POST") 405 to mapOf("error" to "POST it")
+        else if (show(queryOf(exchange))) 200 to mapOf("shown" to true)
+        else 404 to mapOf("shown" to false)
+    }
+
+    private fun answerWithTheSessions(exchange: HttpExchange) = reply(exchange) {
+        val sessions = onTheEdt { ProjectManager.getInstance().openProjects.flatMap { ClaudeSessionsView.getInstance(it).tabs } }
+            .mapNotNull { it.claudeCode }
+            .map { mapOf("session" to it.session.id.value, "process" to it.process.pid()) }
+        200 to mapOf("sessions" to sessions)
+    }
+
+    /** Replies to [exchange] with the status and the body, as JSON, that [compute] returns. */
+    private fun reply(exchange: HttpExchange, compute: () -> Pair<Int, Map<String, Any>>) = exchange.use {
+        val (status, body) = compute()
+        val bytes = gson.toJson(body).toByteArray()
+        exchange.responseHeaders.add("Content-Type", "application/json; charset=utf-8")
+        exchange.sendResponseHeaders(status, bytes.size.toLong())
+        exchange.responseBody.write(bytes)
     }
 
     /** Brings forward the tab the [query] names, and returns whether one of this IDE's tabs runs it. */

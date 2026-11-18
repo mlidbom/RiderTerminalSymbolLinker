@@ -14,10 +14,7 @@ class NewClaudeSessionAction : AnAction(), DumbAware {
     }
 
     override fun actionPerformed(event: AnActionEvent) {
-        val project = event.project ?: return
-        val view = ClaudeSessionsView.getInstance(project)
-        if (!view.isOpen) ClaudeSessionsView.toolWindowOf(project)?.contentManager // Has the IDE give the tool window its content.
-        view.startNewSession()
+        ClaudeSessionsView.openIn(event.project ?: return).startNewSession()
     }
 
     companion object {

@@ -55,6 +55,32 @@ processes below the tab's process, its shell, which `TerminalView.startupOptions
   Claude Code's folder, is gone (`ClaudeCodeTranscripts`), as archiving or deleting a session moves or removes it.
   `claude --resume` would fail on it.
 
+## The session history picker
+
+`ResumeClaudeSessionAction` (the history button in the tool window's title bar, and Ctrl+Alt+Shift+Y, free in the
+default keymap, both Visual Studio keymaps and Magnus's own on 2026-11-18) opens `ClaudeSessionHistoryPicker`, a popup
+over `ClaudeSessionHistory`: what Magnus asked for on 2026-11-18, with the changes he agreed to.
+
+- **The history is the transcripts,** every `projects/*/<id>.jsonl`, read in the background as the picker opens.
+  `ClaudeCodeTranscript.summary` reads only the last megabyte of each: Claude Code writes the session's names
+  (`custom-title`, from `/rename`, and `ai-title`, its own) and its `last-prompt` again and again, and in Magnus's 67
+  transcripts the last of each was at most 208 KB from the end, of files up to hundreds of megabytes. A session's
+  folder is the `cwd` of its last `user` or `assistant` entry: a session resumed elsewhere goes on in the same file,
+  and its entries name the new folder. Left out: a transcript with no such entry (no conversation), and one whose
+  `entrypoint` there is an SDK's (`sdk-cli`, as `claude -p` writes). The read is logged to `idea.log` with its time.
+- **Where each session is, `WhereTheSessionIs`, decides what choosing it does.** Running in a tab of this IDE: the tab
+  is brought forward. Running in a tab of another IDE, as its local API's `GET /sessions` tells: that IDE is asked to
+  show it, after this IDE, the active application, lets it come forward with Windows' `AllowSetForegroundWindow`,
+  through the platform's JNA (`com.intellij.modules.jna`). Running elsewhere, as Claude Code's session records tell:
+  greyed out, and it can't be chosen. Exited in a tab of this IDE: resumed in that tab. Otherwise: resumed in a new tab,
+  in the project's folder, where a new session starts (Magnus's call), whichever folder it ran in: Claude Code 2.1.327
+  finds the transcript in any project's folder, and goes on with it in the new one (tried with `claude -p --resume`).
+- **The scopes** are the git worktree the project is in (or its folder, outside git), every worktree of its repository
+  (`git worktree list`), and everything: `ProjectWorktrees` runs git.
+- **The keys are plain Swing listeners,** the search field's for Up, Down and Enter, and the list's for Enter: the
+  observation channel presses them through the same listeners, as no key event reaches an IDE whose window isn't
+  focused. The platform's `ClickListener` counts clicks itself, so a double click is two clicks to it.
+
 ## Surviving a reload of the plugin
 
 Unloading the plugin, as for an update, removes its tool window, and with it the terminals of its tabs, which would end
@@ -94,9 +120,12 @@ tooling-owner on 2026-11-17 (protocol 1):
   forward.
 - **`POST /sessions/show?session=<id>&process=<Claude Code's process id>`** selects the tab in which that Claude Code
   runs, or else the one that runs the session or ran it last, shows the tool window, and brings the project's window in
-  front of the IDE's others when the IDE is the active application: 200 `{"shown": true}`, or 404 `{"shown": false}`.
+  front of the IDE's others: 200 `{"shown": true}`, or 404 `{"shown": false}`. Windows lets the window come forward
+  when the IDE is the active application, or the active one allowed it, and otherwise flashes its taskbar button.
   `process` finds a tab after `/clear` gave it a new session, as the notification names the old one; `session` finds a
   tab whose Claude Code was resumed in a new process.
+- **`GET /sessions`** lists the sessions that run in the IDE's tabs, `{"sessions": [{"session": <id>, "process":
+  <Claude Code's process id>}]}`: the session history picker of another IDE asks (2026-11-18).
 - **The tooling** brings the window forward itself, since Windows lets the process the user clicked do that, and not
   the IDE. It asks the window's own IDE first, then every other announced one, a second each, and logs the answer to
   `~/.claude/notifying-magnus.log`.

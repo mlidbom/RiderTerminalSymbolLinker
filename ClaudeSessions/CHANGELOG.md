@@ -17,6 +17,14 @@ All notable changes to Claude Sessions are documented here. The format follows
   closed is resumed in its own tab, in its own folder, in the same order. That includes a session switched to with
   `/resume` or started with `/clear` in a tab, and one whose Claude Code had exited in a tab left open. A session
   archived or deleted since, whose transcript Claude Code no longer has, isn't.
+- **Resume any earlier session from the session history picker.** The history button beside the **+**, or
+  Ctrl+Alt+Shift+Y, lists the sessions Claude Code has kept, most recently active first: each by its name, or the title
+  Claude Code gave it, with its last prompt and when it was last active. Typing filters them, word by word. It lists
+  the sessions of the project's worktree at first; all worktrees of its git repository, or all projects, are a click
+  away. Enter or a double click resumes the session in a new tab, in the project's folder, wherever it ran before. A
+  session whose Claude Code exited in a tab is resumed in that tab. A session that runs is never resumed again: one
+  running in a tab, in this IDE or another, is marked running in green, and choosing it brings its tab forward; one
+  running elsewhere, as in a plain terminal, is greyed out, and can't be chosen. Sessions `claude -p` ran are left out.
 - **Other tools on the machine can show a session's tab.** Each IDE announces a local API in
   `%LOCALAPPDATA%\ClaudeSessions\ides\<its process id>.json`. A tool whose notification about a Claude Code session
   you click can ask it to show the session's tab: it selects the tab, and shows the tool window.

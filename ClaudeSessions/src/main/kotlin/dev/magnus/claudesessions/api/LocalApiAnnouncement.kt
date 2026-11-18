@@ -43,12 +43,20 @@ class LocalApiAnnouncement private constructor(private val process: ProcessHandl
         private val gson = GsonBuilder().setPrettyPrinting().create()
 
         /**
-         * The announcement of the API of the IDE that runs as [process]. On Windows, the local application data folder
-         * is the one `LOCALAPPDATA` names; elsewhere, `~/.local/state`.
+         * The system property that names another folder for the announcements: the sandbox IDE of the development tools
+         * sets it, so that its API is apart from those of the user's own IDEs.
          */
-        fun of(process: ProcessHandle): LocalApiAnnouncement {
-            val folder = System.getenv("LOCALAPPDATA")?.let { Path.of(it) } ?: Path.of(System.getProperty("user.home"), ".local", "state")
-            return LocalApiAnnouncement(process, folder.resolve("ClaudeSessions").resolve("ides").resolve("${process.pid()}.json"))
-        }
+        const val FOLDER_PROPERTY = "dev.magnus.claudesessions.localApi.announcements"
+
+        /**
+         * The folder of the announcements: `ClaudeSessions\ides` in the local application data folder, which on Windows
+         * is the one `LOCALAPPDATA` names, and elsewhere `~/.local/state`.
+         */
+        val folder: Path
+            get() = System.getProperty(FOLDER_PROPERTY)?.let { Path.of(it) }
+                ?: (System.getenv("LOCALAPPDATA")?.let { Path.of(it) } ?: Path.of(System.getProperty("user.home"), ".local", "state")).resolve("ClaudeSessions").resolve("ides")
+
+        /** The announcement of the API of the IDE that runs as [process]. */
+        fun of(process: ProcessHandle): LocalApiAnnouncement = LocalApiAnnouncement(process, folder.resolve("${process.pid()}.json"))
     }
 }

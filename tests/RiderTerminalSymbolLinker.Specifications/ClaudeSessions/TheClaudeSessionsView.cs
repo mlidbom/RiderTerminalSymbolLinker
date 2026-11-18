@@ -22,9 +22,74 @@ public sealed class TheClaudeSessionsView
    public TheClaudeSessionsView()
    {
       Channel.OpenTheView();
+      if(Picker.Shown) CloseThePicker();
       Channel.CloseEveryTab();
       WaitUntil(() => Tabs.Count == 0 && SavedSessions.Count == 0, "the view to have no tabs, and no sessions saved");
+      ForgetTheHistory();
    }
+
+   /// <summary>Deletes the transcripts of every session the sandbox's Claude Code ran, so that a story starts with no history.</summary>
+   void ForgetTheHistory()
+   {
+      var transcripts = Path.Combine(_sandbox.ClaudeCodeFolder, "projects");
+      if(Directory.Exists(transcripts)) Directory.Delete(transcripts, recursive: true);
+   }
+
+   /// <summary>Writes <paramref name="transcript"/> where the sandbox's Claude Code keeps its sessions' transcripts.</summary>
+   public SessionTranscript Write(SessionTranscript transcript)
+   {
+      transcript.WriteTo(_sandbox.ClaudeCodeFolder);
+      return transcript;
+   }
+
+   /// <summary>Where the sandbox's Claude Sessions finds other IDEs' announcements of their local APIs.</summary>
+   public string LocalApiAnnouncementsFolder => _sandbox.LocalApiAnnouncementsFolder;
+
+   /// <summary>
+   ///   Runs the sandbox's fake Claude Code outside the view, as in a plain terminal, resuming <paramref name="session"/>
+   ///   in <paramref name="folder"/>, and returns once it has recorded the session.
+   /// </summary>
+   public ClaudeCodeOutsideTheView RunClaudeCodeOutsideTheView(string session, string folder)
+   {
+      var start = new ProcessStartInfo(_sandbox.FakeClaudeCode, ["--resume", session])
+      {
+         WorkingDirectory = folder,
+         UseShellExecute = false,
+         RedirectStandardInput = true,
+         RedirectStandardOutput = true,
+         Environment = { ["CLAUDE_CONFIG_DIR"] = _sandbox.ClaudeCodeFolder }
+      };
+      var claudeCode = new ClaudeCodeOutsideTheView(Process.Start(start)!);
+      WaitUntil(() => File.Exists(Path.Combine(_sandbox.ClaudeCodeFolder, "sessions", $"{claudeCode.Process.Id}.json")), "the Claude Code outside the view to record its session");
+      return claudeCode;
+   }
+
+   /// <summary>The session history picker shown in the project's window.</summary>
+   public HistoryPicker Picker => HistoryPicker.From(Channel.ThePicker());
+
+   /// <summary>Opens the session history picker, as the Resume a Claude Session action does, and returns it once it shows.</summary>
+   public HistoryPicker OpenThePicker() => HistoryPicker.From(Channel.OpenThePicker());
+
+   /// <summary>Types <paramref name="text"/> into the picker's search field.</summary>
+   public HistoryPicker FilterThePicker(string text) => HistoryPicker.From(Channel.FilterThePicker(text));
+
+   /// <summary>Has the picker list <paramref name="scope"/>, such as <c>ALL_PROJECTS</c>, as a click on its button does.</summary>
+   public HistoryPicker ListInThePicker(string scope) => HistoryPicker.From(Channel.ListInThePicker(scope));
+
+   /// <summary>Chooses the picker's entry <paramref name="entry"/>, by its place, as Enter on it does.</summary>
+   public HistoryPicker ChooseInThePicker(int entry) => HistoryPicker.From(Channel.ChooseInThePicker(entry));
+
+   /// <summary>Closes the picker, as Escape does.</summary>
+   public HistoryPicker CloseThePicker() => HistoryPicker.From(Channel.CloseThePicker());
+
+   /// <summary>Presses <paramref name="key"/>, <c>UP</c>, <c>DOWN</c> or <c>ENTER</c>, in the picker's search field.</summary>
+   public HistoryPicker PressInThePicker(string key) => HistoryPicker.From(Channel.PressInThePicker(key));
+
+   /// <summary>Double-clicks the picker's entry <paramref name="entry"/>, by its place.</summary>
+   public HistoryPicker DoubleClickInThePicker(int entry) => HistoryPicker.From(Channel.DoubleClickInThePicker(entry));
+
+   /// <summary>The actions the sandbox's active keymap binds <paramref name="keystroke"/> to, such as <c>ctrl alt shift H</c>.</summary>
+   public IReadOnlyList<string> ActionsBoundTo(string keystroke) => [.. Channel.ActionsBoundTo(keystroke)["actions"]!.AsArray().Select(it => it!.GetValue<string>())];
 
    /// <summary>The folder of the project open in the sandbox, the fixture solution's.</summary>
    public string ProjectFolder => Path.GetFullPath(Project()["basePath"]!.GetValue<string>());
@@ -44,13 +109,13 @@ public sealed class TheClaudeSessionsView
 
    /// <summary>
    ///   The file in which the sandbox Rider's Claude Sessions announces its local API to other tools on the machine:
-   ///   <c>%LOCALAPPDATA%\ClaudeSessions\ides\&lt;its process id&gt;.json</c>, or null while there is none.
+   ///   <c>&lt;its process id&gt;.json</c> in <see cref="LocalApiAnnouncementsFolder"/>, or null while there is none.
    /// </summary>
    public JsonNode? LocalApiAnnouncement
    {
       get
       {
-         var file = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "ClaudeSessions", "ides", $"{_sandbox.ProcessId}.json");
+         var file = Path.Combine(_sandbox.LocalApiAnnouncementsFolder, $"{_sandbox.ProcessId}.json");
          return File.Exists(file) ? JsonNode.Parse(File.ReadAllText(file)) : null;
       }
    }
@@ -185,3 +250,56 @@ public sealed record SessionTab(long? ShellProcessId, ClaudeCodeProcess? ClaudeC
 
 /// <summary>The process of a Claude Code that runs in a tab, and the process it's a child of.</summary>
 public sealed record ClaudeCodeProcess(long ProcessId, long? ParentProcessId);
+
+/// <summary>A fake Claude Code that runs outside the view, as in a plain terminal: disposing it ends it.</summary>
+public sealed class ClaudeCodeOutsideTheView(Process process) : IDisposable
+{
+   public Process Process { get; } = process;
+
+   public void Dispose()
+   {
+      Process.Kill();
+      Process.WaitForExit();
+      Process.Dispose();
+   }
+}
+
+/// <summary>
+///   The session history picker, as the observation channel tells of it: whether it's shown, the scope it lists, the
+///   scopes it offers, its filter, the entry selected, and its entries.
+/// </summary>
+public sealed record HistoryPicker(bool Shown, string? Scope, IReadOnlyList<string> Scopes, string? Filter, int? Selected, IReadOnlyList<PickerEntry> Entries)
+{
+   public static HistoryPicker From(JsonNode picker) =>
+      picker["shown"]!.GetValue<bool>()
+         ? new HistoryPicker(true,
+                             picker["scope"]!.GetValue<string>(),
+                             [.. picker["scopes"]!.AsArray().Select(it => it!.GetValue<string>())],
+                             picker["filter"]!.GetValue<string>(),
+                             picker["selected"]!.GetValue<int>(),
+                             [.. picker["entries"]!.AsArray().Select(it => PickerEntry.From(it!))])
+         : new HistoryPicker(false, null, [], null, null, []);
+
+   /// <summary>The ids of the sessions of its entries, in their order.</summary>
+   public IReadOnlyList<string> Sessions => [.. Entries.Select(it => it.Session)];
+}
+
+/// <summary>
+///   An entry of the session history picker: its session, what the picker calls it, the last prompt it shows after a
+///   name, the folder the session last ran in, its branch, where the session is now, and whether it can be chosen.
+/// </summary>
+/// <param name="Where">
+///   <c>not-running</c>, <c>exited-in-a-tab</c>, <c>running-in-a-tab</c>, <c>running-in-another-ide</c> or
+///   <c>running-outside-claude-sessions</c>.
+/// </param>
+public sealed record PickerEntry(string Session, string Title, string? LastPrompt, string Folder, string? GitBranch, string Where, bool CanBeChosen)
+{
+   public static PickerEntry From(JsonNode entry) =>
+      new(entry["session"]!.GetValue<string>(),
+          entry["title"]!.GetValue<string>(),
+          entry["lastPrompt"]?.GetValue<string>(),
+          entry["folder"]!.GetValue<string>(),
+          entry["gitBranch"]?.GetValue<string>(),
+          entry["where"]!.GetValue<string>(),
+          entry["canBeChosen"]!.GetValue<bool>());
+}

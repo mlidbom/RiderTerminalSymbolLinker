@@ -1,6 +1,5 @@
 package dev.magnus.claudesessions
 
-import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
 import com.intellij.openapi.project.Project
@@ -80,22 +79,40 @@ class ClaudeSessionsView(val project: Project) {
         TabsParkedInTheTerminal(project).park(tabs)
     }
 
+    /** The project's folder, where a new session starts. */
+    private val projectFolder: Path get() = Path.of(project.basePath!!)
+
     /** Opens a tab that starts a new session in the project's folder, and shows it. */
     fun startNewSession(): ClaudeSessionTab =
-        openTab(ClaudeCodeCommand.startingANewSession(), Path.of(project.basePath!!), resuming = null).also(::show)
+        openTab(ClaudeCodeCommand.startingANewSession(), projectFolder, resuming = null).also(::show)
 
-    /** Opens a tab that resumes [session] in its folder. */
+    /** Opens a tab that resumes [session] in its folder, as after a restart. */
     fun resume(session: ClaudeSession): ClaudeSessionTab =
         openTab(ClaudeCodeCommand.resuming(session), session.workingDirectory, resuming = session)
 
     /**
-     * Brings [tab] forward, as for a notification about its session that the user clicked: the tab shown, as [show]
-     * does, and the project's window in front of the IDE's others, when the IDE is the active application, as it is once
-     * the tool the user clicked has brought it forward. Windows lets no inactive application bring its window forward:
-     * it would only flash the window's taskbar button.
+     * Opens a tab that resumes [session] in the project's folder, where a new session starts, whichever folder the session
+     * ran in before, and shows it: as the session history picker does. Claude Code finds the session's transcript in
+     * any project's folder, and goes on with it in the folder it runs in.
+     */
+    fun resumeInTheProjectsFolder(session: ClaudeSession): ClaudeSessionTab =
+        openTab(ClaudeCodeCommand.resuming(session), projectFolder, resuming = session).also(::show)
+
+    /** Resumes [session] in [tab], whose Claude Code has exited, and brings the tab forward. */
+    fun resumeIn(tab: ClaudeSessionTab, session: ClaudeSession) {
+        tab.resume(session)
+        bringForward(tab)
+    }
+
+    /**
+     * Brings [tab] forward, as for a notification about its session that the user clicked, or for the session history
+     * picker of another IDE: the tab shown, as [show] does, and the project's window in front of the IDE's others.
+     * Windows lets an application that isn't active bring its window forward only when the active one allowed it, as
+     * the other IDE's picker does, and as the tool the user clicked does by bringing the IDE forward itself. Otherwise
+     * the window's taskbar button flashes.
      */
     fun bringForward(tab: ClaudeSessionTab) {
-        if (ApplicationManager.getApplication().isActive) WindowManager.getInstance().getFrame(project)?.toFront()
+        WindowManager.getInstance().getFrame(project)?.toFront()
         show(tab)
     }
 
@@ -142,6 +159,15 @@ class ClaudeSessionsView(val project: Project) {
         const val TOOL_WINDOW_ID = "Claude Sessions"
 
         fun getInstance(project: Project): ClaudeSessionsView = project.service()
+
+        /**
+         * The project's view, opened: the IDE gives the tool window its content as it's first asked for it, which it is
+         * otherwise only as it first shows the tool window.
+         */
+        fun openIn(project: Project): ClaudeSessionsView {
+            toolWindowOf(project)!!.contentManager
+            return getInstance(project)
+        }
 
         /** The project's Claude Sessions tool window, which plugin.xml registers. */
         fun toolWindowOf(project: Project): ToolWindow? = ToolWindowManager.getInstance(project).getToolWindow(TOOL_WINDOW_ID)

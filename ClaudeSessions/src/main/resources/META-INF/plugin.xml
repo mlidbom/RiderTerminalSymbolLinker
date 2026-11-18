@@ -11,6 +11,8 @@
     <depends>com.intellij.modules.platform</depends>
     <!-- The reworked terminal, whose terminals the tool window's tabs are. -->
     <depends>org.jetbrains.plugins.terminal</depends>
+    <!-- The platform's JNA, through which the session history picker lets another IDE bring its window forward. -->
+    <depends>com.intellij.modules.jna</depends>
 
     <!-- defaultExtensionNs, never defaultExtensionPointName: see the symbol linker's plugin.xml. -->
     <extensions defaultExtensionNs="com.intellij">
@@ -37,5 +39,13 @@
                 text="New Claude Session"
                 description="Start a new Claude Code session in a tab of the Claude Sessions tool window"
                 icon="AllIcons.General.Add"/>
+        <action id="ClaudeSessions.ResumeSession"
+                class="dev.magnus.claudesessions.history.ResumeClaudeSessionAction"
+                text="Resume a Claude Session…"
+                description="Pick a Claude Code session from the history, and resume it in a tab of the Claude Sessions tool window"
+                icon="AllIcons.Vcs.History">
+            <!-- Free in the default keymap, both Visual Studio keymaps, and Magnus's own (2026-11-18). -->
+            <keyboard-shortcut keymap="$default" first-keystroke="shift ctrl alt Y"/>
+        </action>
     </actions>
 </idea-plugin>
