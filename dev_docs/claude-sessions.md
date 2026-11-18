@@ -107,6 +107,38 @@ window.
   more, which only a heap dump would show. None of an old build's code runs on: its views, keepers, coroutines and
   local API server were all gone.
 
+## Whether a session can be ended without losing anything (researched, not built)
+
+For item 27, asking before closing a tab or exiting the IDE when ending a session would lose something. Magnus's IDEs
+never ask themselves (`processCloseConfirmation=TERMINATE`, `confirmExit=false`). tooling-owner read this from Claude
+Code 2.1.327's own code and five transcripts on 2026-11-18. It isn't documented, so any release may change it.
+
+- **The record's `status`,** rewritten with `statusUpdatedAt` as it or `waitingFor` changes:
+  - `busy`: a turn, compaction, or a delegated task still running after the turn (a background subagent, a local
+    workflow, a teammate that isn't idle, a remote agent that isn't long-running).
+  - `waiting`: a dialog waits for the user. `waitingFor` names it: "permission prompt", "dialog open", "input needed",
+    "sandbox request", "worker request", "goal proposal".
+  - `shell`: otherwise idle, with a background Bash task or a Monitor running.
+  - `idle`: none of those.
+- **What `idle` misses:** an armed wake-up; MCP monitors and tasks; a long-running remote agent's result; a draft in
+  the input box, which Claude Code doesn't keep; the turn's last lines, which land within 0.1 s after `idle`, so it
+  must stand for 0.5 s; a crashed process's record, so the process must be alive with the record's `procStart`;
+  processes the session started detached.
+- **Armed wake-ups, from the transcript:** read `user` and `assistant` entries only (`api-request-blob` repeats the
+  calls), and only those whose `sessionId` is the session's own (a fork carries the original's). A call is a `tool_use`
+  in an assistant entry, and its result the `toolUseResult` of the next user entry with that `tool_use_id`.
+  - `ScheduleWakeup` arms with a result `{scheduledFor, clampedDelaySeconds, wasClamped}`, and with input
+    `{"stop": true}` cancels: `{"scheduledFor": 0, "stopped": true, "cancelledWakeups": n}`. Whether a second one
+    replaces the first isn't verified.
+  - `CronCreate` with `"durable": false` arms a job that dies with the process (`{id, humanSchedule, recurring, durable,
+    nextFireAt}`). Durable jobs are kept in `.claude/scheduled_tasks.json`. `CronDelete {id}` cancels. A one-shot job
+    deletes itself once it fires.
+  - A fire starts a turn whose user entry has `"turnOrigin": "scheduled"` (from the code, never seen). Failing that, a
+    wake-up whose time passed while the process lived has fired.
+  - Only calls since the current process started count, by the entry's timestamp against the record's `startedAt`: a
+    resume lost resident-server's session-only cron job on 2026-11-17. Whether a resume re-arms a /loop wake-up isn't
+    known: 2.1.327 has code that rebuilds one from the transcript.
+
 ## The local API: showing a session's tab for another tool
 
 Clicking the notifications of Magnus's session tooling (tooling-owner's, in `~/.claude`) brings forward the IDE window
