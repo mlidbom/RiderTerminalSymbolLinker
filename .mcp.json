@@ -16,7 +16,8 @@
       "command": "windows-mcp",
       "args": ["serve", "--transport", "stdio"],
       "env": {
-        "ANONYMIZED_TELEMETRY": "false"
+        "ANONYMIZED_TELEMETRY": "false",
+        "WINDOWS_MCP_WATCHDOG": "off"
       }
     }
   }
