@@ -12,7 +12,9 @@ namespace RiderTerminalSymbolLinker.DevelopmentTools.Plugin;
 /// </summary>
 /// <remarks>
 ///   The Gradle build names each folder after its project, and the Rider it builds against, the installed one, as
-///   <c>localIdePath</c> in the user's Gradle properties says.<br/>
+///   <c>localIdePath</c> in the user's Gradle properties says, by its own reading of that Rider's version: Rider
+///   2026.3.0.1's folder is <c>RD-2026.3</c>, while the earlier 2026.1.2's was <c>RD-2026.1.2</c>. So the folder is
+///   found as the one that holds the plugin's newest build, not named here.<br/>
 ///   The sandbox Rider doesn't load its plugins from here: a running Rider holds the MCP plugin's DLL open, and
 ///   <c>prepareSandbox</c> copies every file again, so Gradle couldn't build while it runs.
 /// </remarks>
@@ -21,12 +23,13 @@ sealed class GradleSandbox
    /// <summary>The name of the .NET Analysis&amp;Refactoring MCP's folder in a plugins folder.</summary>
    public const string McpPluginFolderName = "DotNetAnalysisAndRefactoringMcp";
 
-   readonly RiderInstallation _rider;
-
-   public GradleSandbox(RiderInstallation rider) => _rider = rider;
-
-   string PluginsFolderOf(OurPlugin plugin) =>
-      Path.Combine(RepositoryRoot.Folder, ".intellijPlatform", "sandbox", plugin.Name, $"RD-{_rider.Version}", "plugins");
+   /// <summary>The plugins folder that holds the newest build of <paramref name="plugin"/>: the one <see cref="Fill"/> fills.</summary>
+   static string PluginsFolderOf(OurPlugin plugin) =>
+      Directory.GetDirectories(Path.Combine(RepositoryRoot.Folder, ".intellijPlatform", "sandbox", plugin.Name), "RD-*")
+               .Select(it => Path.Combine(it, "plugins"))
+               .Where(it => Directory.Exists(Path.Combine(it, plugin.Name)))
+               .MaxBy(it => Directory.GetFiles(Path.Combine(it, plugin.Name), "*", SearchOption.AllDirectories).Max(File.GetLastWriteTimeUtc))
+   ?? throw new InvalidOperationException($"Gradle's prepareSandbox hasn't built {plugin} yet.");
 
    /// <summary>This working tree's build of <paramref name="plugin"/>, once <see cref="Fill"/> has run.</summary>
    public string BuildOf(OurPlugin plugin) => Path.Combine(PluginsFolderOf(plugin), plugin.Name);

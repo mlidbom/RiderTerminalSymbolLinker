@@ -67,7 +67,7 @@ public sealed class SandboxRider
    public SandboxRider(RiderInstallation rider)
    {
       _rider = rider;
-      _plugins = new GradleSandbox(rider);
+      _plugins = new GradleSandbox();
       _everyday = new EverydayRider(rider);
       _mcpTools = new McpToolsBuilds(Path.Combine(_root, "mcp-tools"));
    }

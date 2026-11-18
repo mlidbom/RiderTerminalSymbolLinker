@@ -29,15 +29,4 @@ public sealed class RiderInstallation
              ?? throw new InvalidOperationException($"{_installationFolder}\\product-info.json has no dataDirectoryName.");
       }
    }
-
-   /// <summary>The version, such as <c>2026.3</c>, that the Gradle build names its sandbox folder after.</summary>
-   public string Version
-   {
-      get
-      {
-         using var productInformation = JsonDocument.Parse(File.ReadAllText(Path.Combine(_installationFolder, "product-info.json")));
-         return productInformation.RootElement.GetProperty("version").GetString()
-             ?? throw new InvalidOperationException($"{_installationFolder}\\product-info.json has no version.");
-      }
-   }
 }

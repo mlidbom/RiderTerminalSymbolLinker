@@ -135,7 +135,7 @@ static class Program
             foreach(var line in EverydayIdes.Reload(OurPlugin.Named(plugin), EverydayIde.Named(ide))) Console.WriteLine(line);
             break;
          case ["everyday", "deploy"]:
-            foreach(var line in EverydayIdes.Deploy(new GradleSandbox(RiderInstallation.OfThisUser()))) Console.WriteLine(line);
+            foreach(var line in EverydayIdes.Deploy(new GradleSandbox())) Console.WriteLine(line);
             break;
          default:
             Console.Error.WriteLine(Usage);
