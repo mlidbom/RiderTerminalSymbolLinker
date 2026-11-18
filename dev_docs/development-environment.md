@@ -99,7 +99,13 @@ Code: a new session, `/clear`, an IDE restart, a plugin reload, and Claude Code 
 end: the sandbox holds about 4.6 GB of Magnus's memory, and he wants it off when it isn't in use (2026-11-17). A
 sandbox that `sandbox start` started is left running, and gets the working tree's build reloaded, so a run takes
 seconds: start it so for a stretch of work, and `sandbox stop` it when the work is done. Every click starts with no
-editor open. They don't yet cover the terminal itself: whether it applies the filters, and
+editor open.
+
+**Don't pipe a run's output into a command that reads to its end,** such as `| Select-Object -Last 5` or `| tail`. When
+the run's Gradle build starts a new Gradle daemon, that daemon and the Kotlin compile daemon it starts inherit the run's
+output handle, and the pipe stays open until they exit, hours later: on 2026-11-18 a run that passed in 66 seconds held
+its pipe until both daemons were stopped. A build that finds a daemon running doesn't start one, which is why it
+happens only sometimes. They don't yet cover the terminal itself: whether it applies the filters, and
 re-highlights old output.
 
 ## Deploying to Magnus's IDEs
