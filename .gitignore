@@ -17,3 +17,7 @@ out/
 # The C# development tools' and the fixture solution's build output
 bin/
 obj/
+
+# The shared Claude config: a git worktree of the machine's one clone of it, ~/.claude/.claude-shared, which the
+# SessionStart hook makes and keeps up to date
+/.claude-shared
