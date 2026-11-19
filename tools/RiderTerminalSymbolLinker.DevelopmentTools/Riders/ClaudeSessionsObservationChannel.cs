@@ -145,6 +145,12 @@ public sealed class ClaudeSessionsObservationChannel(int port) : ObservationChan
    public JsonNode OpenTheFoldInTheChat(int tab, int fold, bool open = true, string? project = null) =>
       Post("tabs/chat/fold", project, new { }, $"tab={tab}&fold={fold}&open={(open ? "true" : "false")}");
 
+   /// <summary>
+   ///   Has the tabs opened from now on get the claude tooling's hub behind their chats, when <paramref name="hub"/>, as
+   ///   outside the sandbox, or else the stand-in the specifications drive, as they do unless asked otherwise.
+   /// </summary>
+   public JsonNode PutBehindTheChats(bool hub) => Post("chats/behind", project: null, new { }, $"by={(hub ? "hub" : "standIn")}");
+
    /// <summary>Scrolls the conversation so that the item <paramref name="item"/>, by its id, is at the top, as the user would.</summary>
    public JsonNode ScrollTheTranscriptInTheChat(int tab, string item, string? project = null) =>
       Post("tabs/chat/scroll", project, new { }, $"tab={tab}&item={Uri.EscapeDataString(item)}");

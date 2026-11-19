@@ -21,9 +21,11 @@ namespace FakeClaudeCode;
 ///   <c>/rename &lt;name&gt;</c> names it, and <c>/exit</c> ends it, deleting its record.
 ///   <br/>It keeps each session's transcript where Claude Code does, as <c>projects/&lt;a name made from the folder it
 ///   started in&gt;/&lt;session id&gt;.jsonl</c> in the same folder, and in Claude Code's format, the entries Claude
-///   Sessions reads: for each line typed, a <c>user</c> entry with the folder it runs in, and a <c>last-prompt</c>; after
-///   the first, an <c>ai-title</c>, the title Claude Code gives a session, made from that line; and for
-///   <c>/rename</c>, a <c>custom-title</c>.
+///   Sessions and the hub read: for each line typed, a <c>user</c> entry with the folder it runs in, an <c>assistant</c>
+///   entry that answers it, <c>Heard: &lt;the line&gt;</c>, each with its <c>uuid</c> and the <c>parentUuid</c> of the one
+///   before it, as the hub follows the conversation's chain, and a <c>last-prompt</c>; after the first, an
+///   <c>ai-title</c>, the title Claude Code gives a session, made from that line; and for <c>/rename</c>, a
+///   <c>custom-title</c>.
 /// </remarks>
 static class Program
 {
@@ -135,13 +137,33 @@ static class Program
    static void Say(string session, string typed)
    {
       var isTheFirstLine = !ConversationOf(session).Any();
+      var prompt = Guid.NewGuid().ToString();
       AddToTheTranscript(session, new JsonObject
       {
          ["type"] = "user",
+         ["uuid"] = prompt,
+         ["parentUuid"] = LastUuidOf(session),
          ["isSidechain"] = false,
          ["message"] = new JsonObject { ["role"] = "user", ["content"] = typed },
          ["timestamp"] = DateTimeOffset.UtcNow.ToString("O"),
          ["entrypoint"] = "cli",
+         ["cwd"] = Environment.CurrentDirectory,
+         ["sessionId"] = session
+      });
+      AddToTheTranscript(session, new JsonObject
+      {
+         ["type"] = "assistant",
+         ["uuid"] = Guid.NewGuid().ToString(),
+         ["parentUuid"] = prompt,
+         ["isSidechain"] = false,
+         ["message"] = new JsonObject
+         {
+            ["id"] = "msg_fake_" + prompt[..8],
+            ["role"] = "assistant",
+            ["model"] = "fake",
+            ["content"] = new JsonArray(new JsonObject { ["type"] = "text", ["text"] = $"Heard: {typed}" })
+         },
+         ["timestamp"] = DateTimeOffset.UtcNow.ToString("O"),
          ["cwd"] = Environment.CurrentDirectory,
          ["sessionId"] = session
       });
@@ -167,6 +189,9 @@ static class Program
 
    static IEnumerable<JsonNode> EntriesOf(string session) =>
       File.Exists(TranscriptFile(session)) ? File.ReadAllLines(TranscriptFile(session)).Select(line => JsonNode.Parse(line)!) : [];
+
+   /// <summary>The <c>uuid</c> of the session's last entry that has one, or null when none has.</summary>
+   static string? LastUuidOf(string session) => EntriesOf(session).Select(it => (string?)it["uuid"]).LastOrDefault(it => it is not null);
 
    static IEnumerable<string> ConversationOf(string session) =>
       EntriesOf(session).Where(it => (string?)it["type"] == "user").Select(it => (string)it["message"]!["content"]!);
