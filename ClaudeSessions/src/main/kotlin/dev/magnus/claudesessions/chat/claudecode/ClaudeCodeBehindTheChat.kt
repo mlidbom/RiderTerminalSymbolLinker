@@ -10,10 +10,12 @@ import kotlinx.coroutines.flow.StateFlow
  * [status], and a way to give it a message and keys as if they were typed into its own input box. The chat shows only
  * what this gives it, and sends only through it.
  *
- * Which side provides it is being agreed between this plugin and the session tooling's owner (Magnus, 2026-11-19): this
- * plugin, which runs the tab's terminal, or the session tooling's resident server, which already reads Claude Code's
- * transcripts and session records, and types into sessions. Until then, only the sandbox IDE has one, a stand-in its
- * specifications drive: see [ClaudeCodeBehindTheChatProvider].
+ * The Claude tooling's hub provides it, as Magnus and the tooling owner agreed on 2026-11-19: it reads Claude Code's
+ * transcripts and session records, and types into Claude Code. Until the hub tells of the conversation, only the
+ * sandbox IDE has one, a stand-in its specifications drive: see [ClaudeCodeBehindTheChatProvider].
+ *
+ * Giving Claude Code a message or a key may take seconds, or minutes when other typing into the session has the turn:
+ * each returns once Claude Code got it, or with why not, its [TypingOutcome].
  *
  * Disposing it ends whatever it follows: the chat disposes it as the chat goes, when its tab closes, or as the plugin
  * reloads.
@@ -32,11 +34,11 @@ interface ClaudeCodeBehindTheChat : Disposable {
      * Gives Claude Code [message], as if it were typed and pasted into its input box, and Enter pressed: Claude Code
      * runs it at once when idle, and queues it while busy. A message that starts with `/` runs the slash command.
      */
-    fun send(message: Message)
+    suspend fun send(message: Message): TypingOutcome
 
-    /** Interrupts what Claude Code is doing, as Escape in its input box does. */
-    fun interrupt()
+    /** Interrupts what Claude Code is doing, as Escape in its input box does: only while it's busy, or waits in a dialog. */
+    suspend fun interrupt(): TypingOutcome
 
     /** Changes Claude Code's permission mode to the next one, as Shift+Tab in its input box does. */
-    fun changeThePermissionMode()
+    suspend fun changeThePermissionMode(): TypingOutcome
 }

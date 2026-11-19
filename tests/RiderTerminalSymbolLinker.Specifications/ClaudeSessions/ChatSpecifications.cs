@@ -7,8 +7,9 @@ using static RiderTerminalSymbolLinker.Specifications.ClaudeSessions.TheChat;
 
 namespace RiderTerminalSymbolLinker.Specifications.ClaudeSessions;
 
-// The chat of a tab, with the sandbox's stand-in behind it in place of a real Claude Code behind it, which isn't built
-// yet: the stories set the conversation and Claude Code's status, and see what the chat sends.
+// The chat of a tab, with the sandbox's stand-in behind it in place of the hub behind it, which doesn't tell of the
+// conversation yet: the stories set the conversation and Claude Code's status, see what the chat sends, and have Claude
+// Code not get it.
 
 public class When_a_tab_with_a_chat_opens(When_a_tab_with_a_chat_opens.Story story) : IClassFixture<When_a_tab_with_a_chat_opens.Story>
 {
@@ -136,7 +137,7 @@ public class When_the_user_sends_a_message_from_the_chat(When_the_user_sends_a_m
          chat.Type(" ");
          WhileWritten = chat.PasteAnImage();
          chat.Press("ENTER");
-         Sent = chat.Sent;
+         Sent = chat.SentOnce(it => it.Messages.Count > 0, "the message to reach Claude Code");
          After = chat.Seen;
       }
    }
@@ -187,6 +188,122 @@ public class When_the_user_sends_a_slash_command_or_keys_from_the_chat(When_the_
    [XF] public void the_command_is_sent_as_typed() => story.Sent.Messages.Single().Must().Satisfy(it => it.SequenceEqual([new MessagePartSeen("typed", "/model")]));
    [XF] public void the_tab_shows_the_terminal_where_it_shows_what_it_does() => story.AfterTheCommand.Card.Must().Be("TERMINAL");
    [XF] public void which_stays_shown_as_if_the_user_chose_it() => story.OnceClaudeCodeIsBusy.Card.Must().Be("TERMINAL");
+}
+
+public class When_claude_code_gets_nothing_of_a_message_from_the_chat(When_claude_code_gets_nothing_of_a_message_from_the_chat.Story story)
+   : IClassFixture<When_claude_code_gets_nothing_of_a_message_from_the_chat.Story>
+{
+   public sealed class Story
+   {
+      public const string Why = "The Claude Code's record names no session yet. Try again in a moment.";
+      public readonly ChatSeen AfterSending;
+      public readonly SentToClaudeCode Sent;
+      public readonly SentToClaudeCode SentAgain;
+      public readonly ChatSeen AfterSendingAgain;
+
+      public Story()
+      {
+         var view = new TheClaudeSessionsView();
+         view.StartANewSession();
+         var chat = view.ChatOf(0);
+         chat.SayTheStatus("IDLE");
+         chat.SeenOnce(it => it.Card == "CHAT", "the tab to show the chat");
+         chat.HaveClaudeCodeGetNothingOfIt(Why, theTerminalShowsWhy: false);
+         chat.Type("Look at ");
+         chat.Paste("pasted");
+         chat.Type(" and ");
+         chat.PasteAnImage();
+         chat.Press("ENTER");
+         AfterSending = chat.SeenOnce(it => it.WhyNotTyped is not null, "the chat to say why Claude Code didn't get it");
+         Sent = chat.Sent;
+         chat.HaveClaudeCodeGetIt();
+         chat.Press("ENTER");
+         SentAgain = chat.SentOnce(it => it.Messages.Count > 0, "the message to reach Claude Code");
+         AfterSendingAgain = chat.SeenOnce(it => it.WhyNotTyped is null, "the chat to stop saying why");
+      }
+   }
+
+   [XF] public void claude_code_gets_none_of_it() => story.Sent.Messages.Must().BeEmpty();
+   [XF] public void the_message_is_back_in_the_box() => story.AfterSending.MessageBox.Must().Be("Look at pasted and [Image #1]");
+   [XF] public void the_chat_says_why() => story.AfterSending.WhyNotTyped.Must().Be(Story.Why);
+   [XF] public void and_stays_shown() => story.AfterSending.Card.Must().Be("CHAT");
+
+   [XF] public void sent_again_each_part_is_what_it_came_into_the_box_as() =>
+      story.SentAgain.Messages.Single().Select(it => (it.Kind, it.Text)).Must().Satisfy(it => it.SequenceEqual([("typed", "Look at "), ("pasted", "pasted"), ("typed", " and "), ("image", "[Image #1]")]));
+
+   [XF] public void the_image_still_its_file() => story.SentAgain.Messages.Single()[^1].FileExists.Must().BeTrue();
+   [XF] public void once_claude_code_got_it_the_chat_no_longer_says_why() => story.AfterSendingAgain.WhyNotTyped.Must().BeNull();
+}
+
+public class When_what_keeps_claude_code_from_getting_a_message_shows_in_the_terminal(When_what_keeps_claude_code_from_getting_a_message_shows_in_the_terminal.Story story)
+   : IClassFixture<When_what_keeps_claude_code_from_getting_a_message_shows_in_the_terminal.Story>
+{
+   public sealed class Story
+   {
+      public const string WhyLeftUnsent = "Enter was pressed, and the box still held the message 5 seconds later.";
+      public readonly ChatSeen AfterARefusal;
+      public readonly ChatSeen BackInTheChat;
+      public readonly ChatSeen AfterLeftUnsent;
+
+      public Story()
+      {
+         var view = new TheClaudeSessionsView();
+         view.StartANewSession();
+         var chat = view.ChatOf(0);
+         chat.SayTheStatus("IDLE");
+         chat.SeenOnce(it => it.Card == "CHAT", "the tab to show the chat");
+         chat.HaveClaudeCodeGetNothingOfIt("Claude Code's own input box holds text.", theTerminalShowsWhy: true);
+         chat.Type("Refused");
+         chat.Press("ENTER");
+         AfterARefusal = chat.SeenOnce(it => it.Card == "TERMINAL", "the tab to show the terminal");
+         BackInTheChat = chat.Switch();
+         chat.HaveClaudeCodeLeaveItUnsent(WhyLeftUnsent);
+         chat.Press("ENTER");
+         AfterLeftUnsent = chat.SeenOnce(it => it.WhyNotTyped == WhyLeftUnsent, "the chat to say why the message was left unsent");
+      }
+   }
+
+   [XF] public void the_tab_shows_the_terminal_where_it_is() => story.AfterARefusal.Card.Must().Be("TERMINAL");
+   [XF] public void with_the_message_back_in_the_chats_box() => story.AfterARefusal.MessageBox.Must().Be("Refused");
+   [XF] public void a_message_left_unsent_in_claude_codes_own_box_shows_there() => (story.BackInTheChat.Card, story.AfterLeftUnsent.Card).Must().Be(("CHAT", "TERMINAL"));
+   [XF] public void and_isnt_back_in_the_chats_box_too() => story.AfterLeftUnsent.MessageBox.Must().Be("");
+   [XF] public void the_chat_says_why() => story.AfterLeftUnsent.WhyNotTyped.Must().Be(Story.WhyLeftUnsent);
+}
+
+public class When_claude_code_gets_nothing_of_a_message_with_more_sent_after_it(When_claude_code_gets_nothing_of_a_message_with_more_sent_after_it.Story story)
+   : IClassFixture<When_claude_code_gets_nothing_of_a_message_with_more_sent_after_it.Story>
+{
+   public sealed class Story
+   {
+      public readonly ChatSeen WhileTheFirstIsGiven;
+      public readonly ChatSeen After;
+      public readonly SentToClaudeCode Sent;
+
+      public Story()
+      {
+         var view = new TheClaudeSessionsView();
+         view.StartANewSession();
+         var chat = view.ChatOf(0);
+         chat.SayTheStatus("BUSY");
+         chat.SeenOnce(it => it.Card == "CHAT", "the tab to show the chat");
+         chat.Hold();
+         chat.Type("First");
+         chat.Press("ENTER");
+         chat.Type("Second");
+         chat.Press("ENTER");
+         chat.Press("ESCAPE");
+         WhileTheFirstIsGiven = chat.Type("Third, not sent yet");
+         chat.HaveClaudeCodeGetNothingOfIt("The tooling typed into the session for all of 10 minutes.", theTerminalShowsWhy: false);
+         chat.LetGo();
+         After = chat.SeenOnce(it => it.WhyNotTyped is not null, "the chat to say why Claude Code didn't get it");
+         Thread.Sleep(500); // Time for what waited to reach Claude Code, were it given.
+         Sent = chat.Sent;
+      }
+   }
+
+   [XF] public void the_box_is_free_for_the_next_while_one_is_given() => story.WhileTheFirstIsGiven.MessageBox.Must().Be("Third, not sent yet");
+   [XF] public void claude_code_gets_none_of_what_waited_after_it() => (story.Sent.Messages.Count, story.Sent.Interruptions).Must().Be((0, 0));
+   [XF] public void the_messages_are_back_in_the_box_in_order_ahead_of_what_was_written_since() => story.After.MessageBox.Must().Be("First\nSecond\nThird, not sent yet");
 }
 
 public class When_claude_code_waits_for_the_user_in_a_dialog(When_claude_code_waits_for_the_user_in_a_dialog.Story story)

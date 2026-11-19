@@ -21,6 +21,7 @@ import dev.magnus.claudesessions.chat.claudecode.Message
 import dev.magnus.claudesessions.chat.claudecode.PastedImage
 import dev.magnus.claudesessions.chat.claudecode.PastedText
 import dev.magnus.claudesessions.chat.claudecode.TypedText
+import dev.magnus.claudesessions.chat.claudecode.TypingOutcome
 import dev.magnus.claudesessions.chat.claudecode.conversation.AssistantText
 import dev.magnus.claudesessions.chat.claudecode.conversation.Compaction
 import dev.magnus.claudesessions.chat.claudecode.conversation.Conversation
@@ -56,8 +57,8 @@ class TheChatObserved(private val project: Project, private val tab: Int) {
 
     /**
      * The tab's chat: the card shown, or null when the tab has no chat; the conversation's text, each fold of it with
-     * its header line, its folded text and whether it is open, and the texts the links cover; the status line; the text
-     * in the input box; and the button's text.
+     * its header line, its folded text and whether it is open, and the texts the links cover; the status line, and why
+     * Claude Code didn't get what the chat last gave it, or null; the text in the input box; and the button's text.
      */
     fun describe(): Map<String, Any?> {
         val cards = sessionTab.cards ?: return mapOf("card" to null)
@@ -76,12 +77,13 @@ class TheChatObserved(private val project: Project, private val tab: Int) {
             },
             "links" to transcript.linkedTexts,
             "statusLine" to cards.chat.statusLine.text,
+            "whyNotTyped" to cards.chat.statusLine.whyNotTyped,
             "messageBox" to cards.chat.messageBox.text,
             "button" to buttonText(),
         )
     }
 
-    /** What the chat sent to the stand-in: its messages, each part with its kind, and the keys it pressed. */
+    /** What Claude Code got from the chat, through the stand-in: its messages, each part with its kind, and the keys it pressed. */
     fun sent(): Map<String, Any?> = mapOf(
         "messages" to standIn.sent.map(::describe),
         "interruptions" to standIn.interruptions.get(),
@@ -97,6 +99,26 @@ class TheChatObserved(private val project: Project, private val tab: Int) {
     /** Has the stand-in say Claude Code's status is [status], such as `IDLE`. */
     fun sayTheStatus(status: String): Map<String, Any?> {
         standIn.status.value = ClaudeCodeStatus.valueOf(status)
+        return describe()
+    }
+
+    /**
+     * Has what comes of what the chat gives the stand-in be what [outcome] says: `{"outcome": "typed"}`,
+     * `{"outcome": "nothingTyped", "why": …, "theTerminalShowsWhy": …}` or `{"outcome": "leftUnsentInTheTerminal", "why": …}`.
+     */
+    fun answerWith(outcome: JsonObject): Map<String, Any?> {
+        standIn.outcome = when (val kind = outcome.get("outcome").asString) {
+            "typed" -> TypingOutcome.Typed
+            "nothingTyped" -> TypingOutcome.NothingTyped(outcome.get("why").asString, outcome.get("theTerminalShowsWhy").asBoolean)
+            "leftUnsentInTheTerminal" -> TypingOutcome.LeftUnsentInTheTerminal(outcome.get("why").asString)
+            else -> error("No outcome of the kind $kind")
+        }
+        return describe()
+    }
+
+    /** Has the stand-in hold what the chat gives it, when [hold], or let it go. */
+    fun hold(hold: Boolean): Map<String, Any?> {
+        standIn.hold(hold)
         return describe()
     }
 
@@ -139,7 +161,8 @@ class TheChatObserved(private val project: Project, private val tab: Int) {
     fun switch(): Map<String, Any?> {
         val view = ClaudeSessionsView.getInstance(project)
         view.show(sessionTab)
-        ActionManager.getInstance().tryToExecute(ActionManager.getInstance().getAction(SwitchBetweenTheChatAndTheTerminalAction.ID), null, cards.chat.component, PLACE, true)
+        // From the tab's content, which shows whichever card is shown: the IDE runs no action from a hidden component.
+        ActionManager.getInstance().tryToExecute(ActionManager.getInstance().getAction(SwitchBetweenTheChatAndTheTerminalAction.ID), null, sessionTab.content.component, PLACE, true)
         return describe()
     }
 

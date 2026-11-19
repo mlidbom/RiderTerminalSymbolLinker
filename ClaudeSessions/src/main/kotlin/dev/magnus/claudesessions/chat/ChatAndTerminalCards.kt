@@ -28,7 +28,8 @@ import kotlinx.coroutines.launch
  * and while it waits for the user in a dialog, which only its own UI draws: a permission prompt, a question, or a
  * picker a slash command opened. When that changes, the tab switches to the terminal, and back to the chat once Claude
  * Code is busy or idle again, but only if it was the tab that switched: a card the user chose stays. A slash command
- * sent from the chat shows the terminal, where it shows what it does, and stays shown, as if the user had chosen it.
+ * sent from the chat shows the terminal, where it shows what it does, and stays shown, as if the user had chosen it; so
+ * does what Claude Code's own UI shows of a message it didn't get.
  *
  * **The terminal's card is shown until Claude Code runs,** so that a tab whose terminal starts its shell only once it
  * is shown starts it, at its size. Hidden, the terminal is still laid out, at the tab's size, and follows its resizes.
@@ -42,7 +43,7 @@ class ChatAndTerminalCards(project: Project, private val content: Content, claud
     private val terminalsFocus: JComponent? = content.preferredFocusableComponent
     private val cards = JPanel(CardLayout())
 
-    val chat = Chat(project, claudeCode, afterSending = { if (it.isASlashCommand) showTheTerminal() }).also { Disposer.register(this, it) }
+    val chat = Chat(project, claudeCode, showTheTerminal = ::showTheTerminal).also { Disposer.register(this, it) }
 
     /** The card shown. */
     var shown: TabCard = TabCard.TERMINAL
@@ -70,7 +71,10 @@ class ChatAndTerminalCards(project: Project, private val content: Content, claud
         show(shown.other, focusIt = true)
     }
 
-    /** Shows the terminal, as the user chose it, as after a slash command sent from the chat. */
+    /**
+     * Shows the terminal, as the user chose it, as after a slash command sent from the chat, or a message Claude Code
+     * didn't get for what its own UI shows.
+     */
     fun showTheTerminal() {
         theTabChoseTheCardShown = false
         show(TabCard.TERMINAL, focusIt = true)

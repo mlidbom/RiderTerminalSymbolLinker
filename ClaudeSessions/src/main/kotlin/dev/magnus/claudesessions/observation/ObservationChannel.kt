@@ -92,7 +92,10 @@ import org.jetbrains.plugins.terminal.TerminalToolWindowFactory
  *  - `POST /tabs/chat/conversation?project=&tab=` with `{"items": [...]}` — has the tab's stand-in give the chat that
  *    conversation: see [TheChatObserved.giveTheConversation].
  *  - `POST /tabs/chat/status?project=&tab=&status=` — has the stand-in say Claude Code's status, such as `IDLE`.
- *  - `GET /tabs/chat/sent?project=&tab=` — the messages the chat sent the stand-in, part by part, and the keys.
+ *  - `GET /tabs/chat/sent?project=&tab=` — the messages Claude Code got from the chat, part by part, and the keys.
+ *  - `POST /tabs/chat/outcome?project=&tab=` with `{"outcome": …}` — has the stand-in answer what the chat gives it with
+ *    that outcome, from then on: see [TheChatObserved.answerWith].
+ *  - `POST /tabs/chat/hold?project=&tab=&hold=` — has the stand-in hold what the chat gives it, or let it go.
  *  - `POST /tabs/chat/type?project=&tab=` with `{"text": …}` — types the text into the input box.
  *  - `POST /tabs/chat/paste?project=&tab=` with `{"text": …}` — pastes the text into it, as from the clipboard.
  *  - `POST /tabs/chat/paste-image?project=&tab=` — pastes a small image into it, as from the clipboard.
@@ -166,6 +169,13 @@ class ObservationChannel : Disposable {
             }
             createContext("/tabs/chat/status") { exchange -> answer(exchange) { inTheChat(exchange) { it.sayTheStatus(query(exchange, "status")!!) } } }
             createContext("/tabs/chat/sent") { exchange -> answer(exchange) { inTheChat(exchange) { it.sent() } } }
+            createContext("/tabs/chat/outcome") { exchange ->
+                answer(exchange) {
+                    val outcome = request<JsonObject>(exchange)
+                    inTheChat(exchange) { it.answerWith(outcome) }
+                }
+            }
+            createContext("/tabs/chat/hold") { exchange -> answer(exchange) { inTheChat(exchange) { it.hold(query(exchange, "hold") != "false") } } }
             createContext("/tabs/chat/type") { exchange ->
                 answer(exchange) {
                     val text = request<TextRequest>(exchange).text

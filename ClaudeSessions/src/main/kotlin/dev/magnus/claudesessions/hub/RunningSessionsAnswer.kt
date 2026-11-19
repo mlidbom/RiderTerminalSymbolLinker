@@ -22,6 +22,7 @@ class RunningSessionsAnswer private constructor(val runningSessions: List<Runnin
             RunningSessionInTheAnswer(
                 processId = session.get("processId").asLong,
                 sessionId = session.get("sessionId").asString,
+                status = session.get("status").asString,
                 name = session.get("name").takeUnless { it.isJsonNull }?.asString,
                 directory = session.get("directory").asString,
             )

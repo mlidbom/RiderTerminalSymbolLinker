@@ -5,6 +5,7 @@ import dev.magnus.claudesessions.chat.claudecode.Message
 import dev.magnus.claudesessions.chat.claudecode.PastedImage
 import dev.magnus.claudesessions.chat.claudecode.PastedText
 import dev.magnus.claudesessions.chat.claudecode.TypedText
+import dev.magnus.claudesessions.chat.claudecode.TypingOutcome
 import dev.magnus.claudesessions.claudecode.ClaudeCodeCommand
 import dev.magnus.claudesessions.claudecode.ClaudeSession
 import dev.magnus.claudesessions.claudecode.ClaudeSessionId
@@ -40,15 +41,15 @@ class TheHubsLocalApiContractTest {
     }
 
     @Test
-    fun `the running sessions are read with each one's Claude Code's process, its session, its name and its directory`() {
+    fun `the running sessions are read with each one's Claude Code's process, its session, its status, its name and its directory`() {
         val answer = HttpSample(HttpSample.named("running-sessions.http"))
 
         assertEquals(200, answer.status)
         assertEquals(HubProtocol.VERSION.toString(), answer.header(HubProtocol.HEADER))
         assertEquals(
             listOf(
-                RunningSessionInTheAnswer(24936, "87c58397-ae2b-4346-ab49-ebc624ed1193", "chat-view", "C:\\Dev\\ClaudeSymbolLinker"),
-                RunningSessionInTheAnswer(61812, "34aba8f2-a171-443f-955b-d2733a92adf2", null, "C:\\Users\\magnu\\.claude"),
+                RunningSessionInTheAnswer(24936, "87c58397-ae2b-4346-ab49-ebc624ed1193", "waiting", "chat-view", "C:\\Dev\\ClaudeSymbolLinker"),
+                RunningSessionInTheAnswer(61812, "34aba8f2-a171-443f-955b-d2733a92adf2", "idle", null, "C:\\Users\\magnu\\.claude"),
             ),
             RunningSessionsAnswer.parse(answer.body).runningSessions,
         )
@@ -93,6 +94,28 @@ class TheHubsLocalApiContractTest {
             TypingAnswer.NotTyped("The shell runs claude.exe, process 113568, which would get the line: nothing typed.", "shellRunsAProgram"),
             typingAnswerIn("shell-runs-a-program.http"),
         )
+    }
+
+    @Test
+    fun `the chat is told what came of what it typed, and whether the terminal shows why`() {
+        val outcomes = mapOf(
+            "typed-into-the-session.http" to TypingOutcome.Typed::class,
+            "input-box-holds-text.http" to TypingOutcome.NothingTyped::class,
+            "no-input-box.http" to TypingOutcome.NothingTyped::class,
+            "no-such-claude-code.http" to TypingOutcome.NothingTyped::class,
+            "nothing-to-interrupt.http" to TypingOutcome.NothingTyped::class,
+            "turn-at-typing-not-free.http" to TypingOutcome.NothingTyped::class,
+            "input-box-shows-other-than-typed.http" to TypingOutcome.LeftUnsentInTheTerminal::class,
+            "not-sent-by-enter.http" to TypingOutcome.LeftUnsentInTheTerminal::class,
+        )
+        val theTerminalShowsWhy = setOf("input-box-holds-text.http", "no-input-box.http", "input-box-shows-other-than-typed.http", "not-sent-by-enter.http")
+
+        outcomes.forEach { (sample, kind) ->
+            val outcome = TheHubBehindTheChat.outcomeOf(typingAnswerIn(sample))
+            assertEquals(kind, outcome::class, sample)
+            assertEquals(sample in theTerminalShowsWhy, outcome.theTerminalShowsWhy, sample)
+        }
+        assertEquals((typingAnswerIn("input-box-holds-text.http") as TypingAnswer.NotTyped).why, TheHubBehindTheChat.outcomeOf(typingAnswerIn("input-box-holds-text.http")).whyNotTyped)
     }
 
     @Test

@@ -9,8 +9,8 @@ import dev.magnus.claudesessions.ClaudeSessionTab
  * type into Claude Code, can switch. A tab that no provider gives one has no chat, and shows its terminal alone, as
  * before the chat existed.
  *
- * Today only the sandbox IDE's stand-in provides one: which side will provide it for Magnus's IDEs is being agreed (see
- * [ClaudeCodeBehindTheChat]).
+ * Today only the sandbox IDE's stand-in provides one: the hub's adapter will, once the hub tells of the conversation
+ * (see [ClaudeCodeBehindTheChat]).
  */
 interface ClaudeCodeBehindTheChatProvider {
     /** The Claude Code behind [tab]'s chat, new, or null when this provider has none for it. */

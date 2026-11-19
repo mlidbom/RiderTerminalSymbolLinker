@@ -228,13 +228,15 @@ it Great(TM)".
 
 So the chat holds no transcript reader and no typing of its own. It talks to one interface,
 **`ClaudeCodeBehindTheChat`**: a `StateFlow` of the conversation, whole, a `StateFlow` of Claude Code's status
-(`NOT_RUNNING`, `IDLE`, `BUSY`, `WAITING`), and `send(Message)`, `interrupt()` and `changeThePermissionMode()`. A
-`Message` is its parts as they came into the box: `TypedText`, `PastedText`, `PastedImage` (the file). A
-**`ClaudeCodeBehindTheChatProvider`**, on the plugin's extension point `dev.magnus.claudesessions.claudeCodeBehindTheChat`,
-gives a tab one. The hub's will be an adapter, the one place in the plugin that knows the hub's wire format, folding its
-events into those flows. Until it exists, **only the sandbox IDE's tabs have a chat**: the stand-in
-`StandInBehindTheChat`, which the specifications drive through the observation channel. In every other IDE no provider
-gives a tab one, and it shows its terminal alone, as before.
+(`NOT_RUNNING`, `IDLE`, `BUSY`, `WAITING`), and `send(Message)`, `interrupt()` and `changeThePermissionMode()`, each
+suspending until Claude Code got it, or with why not, its `TypingOutcome`. A `Message` is its parts as they came into
+the box: `TypedText`, `PastedText`, `PastedImage` (the file). A **`ClaudeCodeBehindTheChatProvider`**, on the plugin's
+extension point `dev.magnus.claudesessions.claudeCodeBehindTheChat`, gives a tab one. The hub's is the adapter
+**`TheHubBehindTheChat`**: the status of the tab's Claude Code from the running sessions, and typing through
+`TypingIntoClaudeCode`, each refusal's `reason` read into a `TypingOutcome` (`TheHubBehindTheChat.outcomeOf`). Its
+conversation is none until the hub tells of one, so no provider gives it yet, and **only the sandbox IDE's tabs have a
+chat**: the stand-in `StandInBehindTheChat`, which the specifications drive through the observation channel. In every
+other IDE no provider gives a tab one, and it shows its terminal alone, as before.
 
 ### What the first version does, as built
 
@@ -276,6 +278,15 @@ gives a tab one, and it shows its terminal alone, as before.
   - **The message's parts:** each stretch of the text as what it came in as, typed, pasted, or an image, the innermost
     paste deciding; two pastes side by side stay two, as in Claude Code's box.
   - **A message that starts with `/`** shows the terminal, as if the user chose it, where the command shows what it does.
+  - **The box is free for the next message at once:** `TypingFromTheChat` gives Claude Code what the user gave it, in
+    turn, in the order given, as giving one takes a second or two, and minutes while other typing has the session's
+    turn.
+  - **What Claude Code didn't get comes back:** the message goes back into the box, ahead of what the user wrote since,
+    each part marked as it came in, and the status line says why, in red, until Claude Code gets the next. The messages
+    that waited after it come back with it, a line apart, rather than overtake it; the keys that waited are dropped.
+    When what is in the way shows in Claude Code's own UI, a dialog or text in its own input box, the tab shows the
+    terminal. A message the hub typed and left unsent in Claude Code's own box (`inputBoxShowsOtherThanTyped`,
+    `notSentByEnter`) isn't put back: the terminal shows it there.
 - **A status line** above the input box: whether Claude is busy, idle or waiting in the terminal, and how many commands
   the turn has run, counted from the conversation.
 
@@ -283,8 +294,9 @@ gives a tab one, and it shows its terminal alone, as before.
 
 - **The hub's side, and the plugin's adapter to it,** as agreed, a step at a time in the bundle's order of building:
   the records stream, which the plugin follows since 2026-11-19 (above, "Which session a tab runs"); then typing, the
-  shell included, through which the tabs start Claude Code since 2026-11-19, and which the chat's adapter is still to
-  send, interrupt and change the permission mode through; then the conversation of a session's whole line, across compactions and `/clear` (Magnus: "One
+  shell included, through which the tabs start Claude Code since 2026-11-19, and through which `TheHubBehindTheChat`
+  sends, interrupts and changes the permission mode, built and not yet given to a tab; then the conversation of a
+  session's whole line, across compactions and `/clear` (Magnus: "One
   session just restarted itself with /clear and the entire history disappeared for me. I would love to still have it
   there"); then the sessions on disk. Then the stand-in stays for the chat's specifications, and new ones run end to end
   with the fake Claude Code, which must then read raw console input (bracketed pastes, Ctrl+J, Escape, back-tab) and

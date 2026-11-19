@@ -116,8 +116,18 @@ public sealed class ClaudeSessionsObservationChannel(int port) : ObservationChan
    /// <summary>Has the stand-in behind the chat say Claude Code's status is <paramref name="status"/>: <c>NOT_RUNNING</c>, <c>IDLE</c>, <c>BUSY</c> or <c>WAITING</c>.</summary>
    public JsonNode SayTheStatusToTheChat(int tab, string status, string? project = null) => Post("tabs/chat/status", project, new { }, $"tab={tab}&status={status}");
 
-   /// <summary>What the chat sent the stand-in behind it: its messages, part by part, and how often it interrupted and changed the permission mode.</summary>
+   /// <summary>What Claude Code got from the chat, through the stand-in behind it: its messages, part by part, and how often it was interrupted and its permission mode changed.</summary>
    public JsonNode WhatTheChatSent(int tab, string? project = null) => Get("tabs/chat/sent", project, $"tab={tab}");
+
+   /// <summary>
+   ///   Has the stand-in behind the chat answer what the chat gives it with <paramref name="outcome"/> from then on:
+   ///   <c>{"outcome": "typed"}</c>, <c>{"outcome": "nothingTyped", "why": …, "theTerminalShowsWhy": …}</c> or
+   ///   <c>{"outcome": "leftUnsentInTheTerminal", "why": …}</c>, as <c>TheChatObserved.answerWith</c> in the plugin reads it.
+   /// </summary>
+   public JsonNode AnswerWhatTheChatTypesWith(int tab, object outcome, string? project = null) => Post("tabs/chat/outcome", project, outcome, $"tab={tab}");
+
+   /// <summary>Has the stand-in behind the chat hold what the chat gives it, when <paramref name="hold"/>, or let it go.</summary>
+   public JsonNode HoldWhatTheChatTypes(int tab, bool hold, string? project = null) => Post("tabs/chat/hold", project, new { }, $"tab={tab}&hold={(hold ? "true" : "false")}");
 
    /// <summary>Types <paramref name="text"/> into the chat's input box, at its caret.</summary>
    public JsonNode TypeInTheChat(int tab, string text, string? project = null) => Post("tabs/chat/type", project, new { text }, $"tab={tab}");

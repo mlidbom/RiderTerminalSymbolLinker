@@ -8,7 +8,7 @@ namespace RiderTerminalSymbolLinker.Specifications.ClaudeSessions;
 ///   The chat of a tab of the Claude Sessions view in the sandbox Rider, as the specifications see and drive it through
 ///   Claude Sessions' observation channel: its cards, its conversation, its status line and its input box, and the
 ///   stand-in behind it, <c>StandInBehindTheChat</c>, which gives the chat its conversation and Claude Code's status,
-///   and takes what it sends, in place of the real Claude Code behind it, which isn't built yet.
+///   and takes what it sends, or refuses it, in place of the hub behind it, which doesn't tell of the conversation yet.
 /// </summary>
 public sealed class TheChat(ClaudeSessionsObservationChannel channel, int tab)
 {
@@ -46,8 +46,37 @@ public sealed class TheChat(ClaudeSessionsObservationChannel channel, int tab)
    /// <summary>Opens the conversation's fold <paramref name="fold"/>, by its place among the folds.</summary>
    public ChatSeen OpenTheFold(int fold) => ChatSeen.From(channel.OpenTheFoldInTheChat(tab, fold));
 
-   /// <summary>What the chat sent the stand-in: its messages, and the keys it passed on.</summary>
+   /// <summary>Has the stand-in refuse what the chat gives it from then on, nothing of it typed, for <paramref name="why"/>, shown in the terminal when <paramref name="theTerminalShowsWhy"/>.</summary>
+   public ChatSeen HaveClaudeCodeGetNothingOfIt(string why, bool theTerminalShowsWhy) =>
+      ChatSeen.From(channel.AnswerWhatTheChatTypesWith(tab, new { outcome = "nothingTyped", why, theTerminalShowsWhy }));
+
+   /// <summary>Has the stand-in leave what the chat gives it from then on unsent in Claude Code's own input box, for <paramref name="why"/>.</summary>
+   public ChatSeen HaveClaudeCodeLeaveItUnsent(string why) => ChatSeen.From(channel.AnswerWhatTheChatTypesWith(tab, new { outcome = "leftUnsentInTheTerminal", why }));
+
+   /// <summary>Has the stand-in take what the chat gives it from then on, as Claude Code does.</summary>
+   public ChatSeen HaveClaudeCodeGetIt() => ChatSeen.From(channel.AnswerWhatTheChatTypesWith(tab, new { outcome = "typed" }));
+
+   /// <summary>Has the stand-in hold what the chat gives it until <see cref="LetGo"/>, as typing into Claude Code waits while other typing has the turn.</summary>
+   public ChatSeen Hold() => ChatSeen.From(channel.HoldWhatTheChatTypes(tab, hold: true));
+
+   /// <summary>Has the stand-in let go of what it held.</summary>
+   public ChatSeen LetGo() => ChatSeen.From(channel.HoldWhatTheChatTypes(tab, hold: false));
+
+   /// <summary>What Claude Code got from the chat, through the stand-in: its messages, and the keys it passed on.</summary>
    public SentToClaudeCode Sent => SentToClaudeCode.From(channel.WhatTheChatSent(tab));
+
+   /// <summary>What Claude Code got from the chat once <paramref name="condition"/> holds of it: the chat gives it what it was given in turn, on the EDT.</summary>
+   public SentToClaudeCode SentOnce(Func<SentToClaudeCode, bool> condition, string whatItWaitsFor)
+   {
+      var stopwatch = Stopwatch.StartNew();
+      while(true)
+      {
+         var sent = Sent;
+         if(condition(sent)) return sent;
+         if(stopwatch.Elapsed > HowLongAChangeMayTake) throw new TimeoutException($"Gave up after {HowLongAChangeMayTake} waiting for {whatItWaitsFor}. Sent: {ObservationChannel.Indent(channel.WhatTheChatSent(tab))}");
+         Thread.Sleep(100);
+      }
+   }
 
    /// <summary>The chat once <paramref name="condition"/> holds of it, as it takes a change in.</summary>
    public ChatSeen SeenOnce(Func<ChatSeen, bool> condition, string whatItWaitsFor)
@@ -78,19 +107,21 @@ public sealed class TheChat(ClaudeSessionsObservationChannel channel, int tab)
 
 /// <summary>
 ///   A tab's chat as the observation channel tells of it: the card the tab shows, <c>CHAT</c> or <c>TERMINAL</c>, or
-///   null when the tab has no chat; the conversation's text, its folds and the texts its links cover; the status line;
-///   the text in the input box; and the switch button's text.
+///   null when the tab has no chat; the conversation's text, its folds and the texts its links cover; the status line,
+///   and why Claude Code didn't get what the chat last gave it, or null; the text in the input box; and the switch
+///   button's text.
 /// </summary>
-public sealed record ChatSeen(string? Card, string Transcript, IReadOnlyList<FoldSeen> Folds, IReadOnlyList<string> Links, string? StatusLine, string? MessageBox, string? Button)
+public sealed record ChatSeen(string? Card, string Transcript, IReadOnlyList<FoldSeen> Folds, IReadOnlyList<string> Links, string? StatusLine, string? WhyNotTyped, string? MessageBox, string? Button)
 {
    public static ChatSeen From(JsonNode chat) =>
       chat["card"] is null
-         ? new ChatSeen(null, "", [], [], null, null, null)
+         ? new ChatSeen(null, "", [], [], null, null, null, null)
          : new ChatSeen(chat["card"]!.GetValue<string>(),
                         chat["transcript"]!.GetValue<string>(),
                         [.. chat["folds"]!.AsArray().Select(it => new FoldSeen(it!["header"]!.GetValue<string>(), it["folded"]!.GetValue<string>(), it["open"]!.GetValue<bool>()))],
                         [.. chat["links"]!.AsArray().Select(it => it!.GetValue<string>())],
                         chat["statusLine"]!.GetValue<string>(),
+                        chat["whyNotTyped"]?.GetValue<string>(),
                         chat["messageBox"]!.GetValue<string>(),
                         chat["button"]?.GetValue<string>());
 }
@@ -98,7 +129,7 @@ public sealed record ChatSeen(string? Card, string Transcript, IReadOnlyList<Fol
 /// <summary>A fold of the chat's conversation: the line it starts on, up to it, the text it folds away, and whether it's open.</summary>
 public sealed record FoldSeen(string Header, string Folded, bool Open);
 
-/// <summary>What a tab's chat sent the stand-in behind it: its messages, and how often it interrupted Claude Code and changed its permission mode.</summary>
+/// <summary>What Claude Code got from a tab's chat, through the stand-in behind it: its messages, and how often it was interrupted and its permission mode changed.</summary>
 public sealed record SentToClaudeCode(IReadOnlyList<IReadOnlyList<MessagePartSeen>> Messages, int Interruptions, int PermissionModeChanges)
 {
    public static SentToClaudeCode From(JsonNode sent) =>

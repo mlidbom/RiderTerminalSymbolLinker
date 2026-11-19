@@ -7,11 +7,20 @@ import java.nio.file.Path
 
 /**
  * A running session as the hub's [RunningSessionsAnswer] tells of it, in the answer's own terms: the process of its
- * Claude Code, which is the same across a `/clear`, the session that Claude Code runs now, its name, if it has one, and
- * the directory Claude Code was started in.
+ * Claude Code, which is the same across a `/clear`, the session that Claude Code runs now, its status, as Claude Code
+ * names it, its name, if it has one, and the directory Claude Code was started in.
  */
-data class RunningSessionInTheAnswer(val processId: Long, val sessionId: String, val name: String?, val directory: String) {
+data class RunningSessionInTheAnswer(val processId: Long, val sessionId: String, val status: String, val name: String?, val directory: String) {
     /** The Claude Code it tells of, or null once its process no longer runs. */
     fun asRunningClaudeCode(): RunningClaudeCode? =
-        ProcessHandle.of(processId).orElse(null)?.let { RunningClaudeCode(it, ClaudeSession(ClaudeSessionId(sessionId), Path.of(directory), name)) }
+        ProcessHandle.of(processId).orElse(null)?.let { RunningClaudeCode(it, ClaudeSession(ClaudeSessionId(sessionId), Path.of(directory), name), statusOfTheClaudeCode()) }
+
+    /** The status of the Claude Code it tells of: one this build doesn't know is [RunningClaudeCode.Status.OTHER], as the contract has readers ignore it. */
+    private fun statusOfTheClaudeCode(): RunningClaudeCode.Status = when (status) {
+        "idle" -> RunningClaudeCode.Status.IDLE
+        "shell" -> RunningClaudeCode.Status.IDLE_WITH_A_BACKGROUND_TASK
+        "busy" -> RunningClaudeCode.Status.BUSY
+        "waiting" -> RunningClaudeCode.Status.WAITING
+        else -> RunningClaudeCode.Status.OTHER
+    }
 }

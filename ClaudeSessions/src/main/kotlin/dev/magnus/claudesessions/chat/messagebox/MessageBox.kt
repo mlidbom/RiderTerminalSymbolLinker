@@ -20,7 +20,7 @@ import com.intellij.openapi.util.Key
 import com.intellij.openapi.util.TextRange
 import com.intellij.openapi.util.text.StringUtil
 import com.intellij.testFramework.LightVirtualFile
-import dev.magnus.claudesessions.chat.claudecode.ClaudeCodeBehindTheChat
+import dev.magnus.claudesessions.chat.TypingFromTheChat
 import dev.magnus.claudesessions.chat.claudecode.Message
 import dev.magnus.claudesessions.chat.claudecode.MessagePart
 import dev.magnus.claudesessions.chat.claudecode.PastedImage
@@ -49,7 +49,7 @@ import javax.swing.KeyStroke
  */
 class MessageBox(
     private val project: Project,
-    private val claudeCode: ClaudeCodeBehindTheChat,
+    private val typing: TypingFromTheChat,
     private val afterSending: (Message) -> Unit,
     parent: Disposable,
 ) : Disposable {
@@ -84,8 +84,8 @@ class MessageBox(
         Disposer.register(parent, this)
         MessageBoxKey(KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, 0), notWhileALookupShows = true) { send() }.registerOn(editor.contentComponent, this)
         MessageBoxKey(KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, InputEvent.SHIFT_DOWN_MASK), notWhileALookupShows = true) { startANewLine() }.registerOn(editor.contentComponent, this)
-        MessageBoxKey(KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0), notWhileALookupShows = true) { claudeCode.interrupt() }.registerOn(editor.contentComponent, this)
-        MessageBoxKey(KeyStroke.getKeyStroke(KeyEvent.VK_TAB, InputEvent.SHIFT_DOWN_MASK), notWhileALookupShows = false) { claudeCode.changeThePermissionMode() }.registerOn(editor.contentComponent, this)
+        MessageBoxKey(KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0), notWhileALookupShows = true) { typing.interrupt() }.registerOn(editor.contentComponent, this)
+        MessageBoxKey(KeyStroke.getKeyStroke(KeyEvent.VK_TAB, InputEvent.SHIFT_DOWN_MASK), notWhileALookupShows = false) { typing.changeThePermissionMode() }.registerOn(editor.contentComponent, this)
     }
 
     /** The message's text, as the box shows it. */
@@ -106,7 +106,10 @@ class MessageBox(
         }
     }
 
-    /** Sends the message in the box to [claudeCode], unless the box is empty, and empties it. */
+    /**
+     * Sends the message in the box to Claude Code, through [typing], unless the box is empty, and empties it at once,
+     * for the next: a message Claude Code doesn't get comes back, through [putBack].
+     */
     fun send() {
         if (document.text.isBlank()) return
         val message = message()
@@ -114,8 +117,28 @@ class MessageBox(
         (pastedTexts + pastedImages.keys).forEach(RangeMarker::dispose)
         pastedTexts.clear()
         pastedImages.clear()
-        claudeCode.send(message)
+        typing.send(message)
         afterSending(message)
+    }
+
+    /**
+     * Puts [messages], which Claude Code didn't get, back into the box, ahead of what the user wrote since, each on a
+     * line of its own, and each part marked as what it came into the box as, as before they were sent.
+     */
+    fun putBack(messages: List<Message>) {
+        if (messages.isEmpty()) return
+        val wasEmpty = document.textLength == 0
+        val lineBreak = TypedText("\n")
+        val parts = messages.flatMapIndexed { at, message -> if (at == 0) message.parts else listOf(lineBreak) + message.parts } + listOfNotNull(lineBreak.takeUnless { wasEmpty })
+        var offset = 0
+        WriteCommandAction.runWriteCommandAction(project) {
+            for (part in parts) {
+                document.insertString(offset, part.text)
+                markAsWhatItCameInAs(part, TextRange(offset, offset + part.text.length))
+                offset += part.text.length
+            }
+            if (wasEmpty) editor.caretModel.moveToOffset(document.textLength)
+        }
     }
 
     /** Starts a new line at the caret, as Enter does in an editor, in place of what is selected. */
@@ -146,6 +169,15 @@ class MessageBox(
         null -> TypedText(text)
         in pastedImages -> PastedImage(pastedImages.getValue(paste), text)
         else -> PastedText(text)
+    }
+
+    /** Marks [range] of the box as what [part] came into it as: pasted text, or an image's place-holder. */
+    private fun markAsWhatItCameInAs(part: MessagePart, range: TextRange) {
+        when (part) {
+            is TypedText -> {}
+            is PastedText -> pastedTexts += document.createRangeMarker(range)
+            is PastedImage -> pastedImages[document.createRangeMarker(range)] = part.file
+        }
     }
 
     /** Inserts [text] at the caret, in place of what is selected, and returns where it now is. */
