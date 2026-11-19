@@ -1,0 +1,5 @@
+HTTP/1.1 409 Conflict
+Content-Type: application/json; charset=utf-8
+Claude-Tooling-Protocol: 1
+
+{"error":"The tooling was typing into session 1d24f54b for all of 600 seconds, as clear-and-continue does while it waits for the session's turn to end: nothing typed. What it did is in C:\\Users\\magnu\\.claude\\typing-into-sessions.log.","reason":"turnAtTypingNotFree"}

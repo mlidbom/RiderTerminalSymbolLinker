@@ -1,11 +1,11 @@
 package dev.magnus.claudesessions.hub
 
-import com.intellij.notification.NotificationGroupManager
 import com.intellij.notification.NotificationType
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
 import com.intellij.openapi.diagnostic.thisLogger
+import dev.magnus.claudesessions.ClaudeSessionsNotifications
 import dev.magnus.claudesessions.claudecode.ClaudeCodeFolder
 import dev.magnus.claudesessions.claudecode.RunningClaudeCodes
 import java.io.IOException
@@ -25,11 +25,13 @@ import kotlin.time.Duration.Companion.milliseconds
 /**
  * The Claude tooling's hub, ClaudeTooling's resident server, as the IDE follows it: the one place in the plugin that
  * talks to it. The hub owns everything about Claude Code, as Magnus and the tooling owner agreed on 2026-11-19
- * (`~/.claude/dev_docs/the-claude-tooling-bundle.md`): today, which Claude Codes run, with their sessions, which the
- * plugin follows on the stream of its local API, `GET /running-sessions/stream`.
+ * (`~/.claude/dev_docs/the-claude-tooling-bundle.md`): which Claude Codes run, with their sessions, which the plugin
+ * follows on the stream of its local API, `GET /running-sessions/stream`, and all [typing] into Claude Code and the shell
+ * below it.
  *
  * Every Claude Code session's SessionStart hook starts the hub, and it stops only once no session has run for minutes.
- * So when no hub runs, no Claude Code does: the plugin then waits for one to announce itself.
+ * So when no hub runs, no Claude Code does, and the plugin waits for one to announce itself, unless it must type into
+ * a shell first: then it starts [ThePublishedHub].
  *
  * The hub is republished several times a day, under running sessions: the old hub ends its streams and stops, and the
  * new build's announces itself, on a port and with a token of its own, a few tenths of a second later. So when a
@@ -44,6 +46,9 @@ class ClaudeToolingHub(scope: CoroutineScope) : Disposable {
 
     /** The Claude Codes that run, as the hub last told of them: none until it has. */
     val runningClaudeCodes: StateFlow<RunningClaudeCodes> = told.asStateFlow()
+
+    /** Typing into Claude Code, and into the shell below it, through the hub. */
+    val typing = TypingIntoClaudeCode(client)
 
     /** The builds of the hubs the user has been told about, each once: one of a protocol this build doesn't know, or of another Claude Code folder. */
     private val toldAbout = mutableSetOf<String>()
@@ -106,12 +111,13 @@ class ClaudeToolingHub(scope: CoroutineScope) : Disposable {
     /** Tells the user, once for each hub, that the hub of [build] speaks [protocol], which this build doesn't know. */
     private fun tellToRestartTheIde(build: String, protocol: String?) {
         if (!toldAbout.add(build)) return
-        NotificationGroupManager.getInstance().getNotificationGroup(NOTIFICATION_GROUP).createNotification(
+        ClaudeSessionsNotifications.tell(
+            project = null,
             "Claude Sessions can't follow the Claude tooling's hub",
             "The hub speaks protocol $protocol, and this build of Claude Sessions knows protocol ${HubProtocol.VERSION}, so its tabs can't tell which " +
                 "sessions run in them. Restart the IDE to run a build that knows it.",
             NotificationType.WARNING,
-        ).notify(null)
+        )
     }
 
     private fun logOnce(build: String, message: () -> String) {
@@ -126,9 +132,6 @@ class ClaudeToolingHub(scope: CoroutineScope) : Disposable {
 
         /** The name of the stream's events that tell of the running sessions. */
         private const val RUNNING_SESSIONS = "running-sessions"
-
-        /** The notification group, in plugin.xml, of what the plugin tells the user. */
-        private const val NOTIFICATION_GROUP = "Claude Sessions"
 
         fun getInstance(): ClaudeToolingHub = service()
     }

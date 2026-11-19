@@ -15,8 +15,9 @@ GitHub repository, are still Magnus's to choose. The merge comes after the chat 
 Its packages, below `dev.magnus.claudesessions`, which holds the tool window and its tabs:
 
 - **`claudecode`:** Claude Code seen from outside: its sessions, the folder it keeps them in, the Claude Codes that
-  run, its transcripts, and the command line a tab types to run it, quoted for the tab's shell.
-- **`hub`:** the Claude tooling's hub, as the plugin follows it: the one place that knows the hub's local API.
+  run, its transcripts, and the command a tab's shell runs it with.
+- **`hub`:** the Claude tooling's hub, as the plugin follows it and types through it: the one place that knows the hub's
+  local API.
 - **`saving`:** saving the sessions the tabs run, and resuming them as the IDE starts.
 - **`reload`:** keeping the tabs through a reload of the plugin.
 - **`newsession`:** the + and the popup that names a new session.
@@ -31,10 +32,11 @@ Its packages, below `dev.magnus.claudesessions`, which holds the tool window and
 ## A tab runs a shell, and Claude Code in it
 
 Each tab of the view (`ClaudeSessionsView`) is a reworked-terminal tab, made with the terminal's public
-`TerminalToolWindowTabsManager.createTabBuilder()`, that runs the user's shell, into which the tab types `claude`,
-`claude --name <name>`, or `claude --resume <id>` (`ClaudeCodeCommand`). When Claude Code exits, the shell is left at its prompt, and the tab keeps
-the session that ran in it last; the tab closes when the shell exits. The terminal plugin neither saves nor restores
-these tabs: `restoreOnProjectReopen(false)`.
+`TerminalToolWindowTabsManager.createTabBuilder()`, that runs the user's shell. Once the shell has started, the hub types
+`claude`, `claude --name <name>`, or `claude --resume <id>` into it (`ClaudeCodeCommand`), at the tab's request: the hub
+owns all typing into Claude Code and the shell under it (below, "Who provides what"). When Claude Code exits, the shell is
+left at its prompt, and the tab keeps the session that ran in it last; the tab closes when the shell exits. The terminal
+plugin neither saves nor restores these tabs: `restoreOnProjectReopen(false)`.
 
 - **Why a shell:** Magnus's session tooling reloads a session (to run a new Claude Code, or take in changed settings)
   by typing `/exit` into Claude Code, and then `claude --resume <id>` into the shell above it, which it takes to be
@@ -57,22 +59,14 @@ with `claude --name <name>`, which Claude Code (2.1.328) shows in its prompt box
 title, and the tab is named after it. With the field left empty, Enter starts it with plain `claude`, and the tab is
 named "Claude". Escape, or a click outside, starts none.
 
-**The tab types the name as its shell reads it** (`Shell`): any characters may be in a name, and each shell quotes
-differently. The tab waits until its shell has started, and the terminal's startup options say which shell runs, before
-it types. A word no shell treats specially, such as a session's id, is typed as it is.
-
-- **PowerShell 7, `pwsh`,** Magnus's: single quotes, each single quote doubled, the typographic ones too.
-- **Windows PowerShell, `powershell`:** single quotes too, but it hands a word with whitespace on to a program in double
-  quotes without escaping a `"` in it, or a backslash before the closing one: the tab escapes them first, as Windows'
-  C runtime reads them.
-- **`cmd`:** double quotes, as Windows' C runtime reads them, and a `^` before each of cmd's own characters outside what
-  it takes as quoted. cmd still puts a variable's value in place of `%NAME%`, and has no escape for that on its command
-  line.
-- **Any other shell** is taken for a POSIX one, such as bash: single quotes, each single quote ended, escaped and begun
-  again.
+**The hub types the name as the tab's shell reads it** (`POST /shells/{processId}/start-claude-code`): any characters may
+be in a name, and each shell quotes differently. The tab asks once its shell has started. The quoting rules for pwsh,
+Windows PowerShell, cmd and POSIX shells were the plugin's until 2026-11-19, and are the hub's now, in its contract,
+"Typing into a running session". When the hub doesn't type the line, the tab's shell waits at its prompt, and a
+notification says why.
 
 The specifications start a session named with each character some shell acts on in each of these four, with Git Bash
-for the POSIX one, and check that the fake Claude Code got the name as it was typed.
+for the POSIX one, and check that the fake Claude Code got the name as it was typed: the plugin and the hub, end to end.
 
 ## Which session a tab runs: the hub tells
 
@@ -98,7 +92,13 @@ tells of below the tab's process, its shell, which `TerminalView.startupOptionsD
   services' coroutine scopes and waits for them. Read without the interrupt, the stream kept its coroutine running,
   and the sandbox IDE froze in the unload (2026-11-19).
 - **No hub, no Claude Code:** every Claude Code session's SessionStart hook starts the hub, which stops only once no
-  session has run for 5 minutes. So the plugin never starts one.
+  session has run for 5 minutes. But a tab's shell must have Claude Code typed into it first, as when the IDE resumes
+  its sessions after a reboot: then the plugin starts the published hub, with `~/.claude/bin/ClaudeTooling.exe
+  resident-server start` (`ThePublishedHub`), and waits for it to announce itself. A hub tried out apart from the
+  published one, as the sandbox's, is started by whoever tries it.
+- **Typing through the hub** (`TypingIntoClaudeCode`): each request is answered once typed, which may take minutes
+  while the tooling's own typing has the session's turn, or refused with why. At a publish, a request whose hub stops
+  goes to the next one.
 - **A protocol this build doesn't know:** the hub raises its protocol's version, in the announcement and in each
   answer's header, only for a change a reader of the earlier one would get wrong. The plugin then tells the user, once
   for each hub, in a notification, to restart the IDE, rather than read it wrongly. A hub of another Claude Code folder
@@ -283,7 +283,8 @@ gives a tab one, and it shows its terminal alone, as before.
 
 - **The hub's side, and the plugin's adapter to it,** as agreed, a step at a time in the bundle's order of building:
   the records stream, which the plugin follows since 2026-11-19 (above, "Which session a tab runs"); then typing, the
-  shell included; then the conversation of a session's whole line, across compactions and `/clear` (Magnus: "One
+  shell included, through which the tabs start Claude Code since 2026-11-19, and which the chat's adapter is still to
+  send, interrupt and change the permission mode through; then the conversation of a session's whole line, across compactions and `/clear` (Magnus: "One
   session just restarted itself with /clear and the entire history disappeared for me. I would love to still have it
   there"); then the sessions on disk. Then the stand-in stays for the chat's specifications, and new ones run end to end
   with the fake Claude Code, which must then read raw console input (bracketed pastes, Ctrl+J, Escape, back-tab) and

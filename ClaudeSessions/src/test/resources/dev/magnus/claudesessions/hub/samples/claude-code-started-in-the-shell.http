@@ -1,0 +1,5 @@
+HTTP/1.1 200 OK
+Content-Type: application/json; charset=utf-8
+Claude-Tooling-Protocol: 1
+
+{"kindOfShell":"pwsh","line":"claude --resume 1d24f54b-3002-4132-8a65-4d7dc8977525"}

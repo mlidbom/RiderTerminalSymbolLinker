@@ -50,7 +50,7 @@ class ClaudeSessionsView(val project: Project) : Disposable {
 
     /** The tab whose content [content] is, if it's a terminal's: one the view opened, or else one it takes on now. */
     private fun tabOf(content: Content): ClaudeSessionTab? =
-        tabsByContent[content] ?: content.getUserData(TerminalToolWindowTab.KEY)?.let { terminal -> tabsByContent.getOrPut(content) { ClaudeSessionTab(terminal, resuming = null) } }
+        tabsByContent[content] ?: content.getUserData(TerminalToolWindowTab.KEY)?.let { terminal -> tabsByContent.getOrPut(content) { ClaudeSessionTab(project, terminal, resuming = null) } }
 
     /**
      * Takes [toolWindow] as the view, as [ClaudeSessionsToolWindowFactory] gives it its content, and has the
@@ -69,7 +69,7 @@ class ClaudeSessionsView(val project: Project) : Disposable {
         val saved = SavedClaudeSessions(project).read()
         val parked = TabsParkedInTheTerminal(project).takeBack(saved.sessions)
         val takenBack = parked.map { adopt(it.terminal, it.session) }
-        takenBack.forEach { it.giveItAChat(project, this) }
+        takenBack.forEach { it.giveItAChat(this) }
         val sessionsTakenBack = parked.mapNotNull { it.session?.id }.toSet()
         val tabs = takenBack + saved.sessions.filter { it.id !in sessionsTakenBack && it.canBeResumed }.map(::resume)
         tabs.firstOrNull { it.session?.id == saved.selected }?.let { toolWindow.contentManager.setSelectedContent(it.content, false) }
@@ -94,7 +94,7 @@ class ClaudeSessionsView(val project: Project) : Disposable {
 
     /** Opens a tab that starts a new session in the project's folder, named [name] unless that's null, and shows it. */
     fun startNewSession(name: String?): ClaudeSessionTab =
-        openTab(ClaudeCodeCommand.startingANewSession(name), projectFolder, resuming = null, tabName = name, shownAtOnce = true)
+        openTab(ClaudeCodeCommand.StartingANewSession(name), projectFolder, resuming = null, tabName = name, shownAtOnce = true)
 
     /**
      * Opens a tab that resumes [session] in its folder, as after a restart, without showing it.
@@ -104,7 +104,7 @@ class ClaudeSessionsView(val project: Project) : Disposable {
      *   Its shell can't simply wait until the tab is shown, since its session must run even if the tool window never is.
      */
     fun resume(session: ClaudeSession): ClaudeSessionTab =
-        openTab(ClaudeCodeCommand.resuming(session), session.workingDirectory, resuming = session, tabName = session.name, shownAtOnce = false)
+        openTab(ClaudeCodeCommand.Resuming(session), session.workingDirectory, resuming = session, tabName = session.name, shownAtOnce = false)
 
     /**
      * Opens a tab that resumes [session] in the project's folder, where a new session starts, whichever folder the session
@@ -112,7 +112,7 @@ class ClaudeSessionsView(val project: Project) : Disposable {
      * any project's folder, and goes on with it in the folder it runs in.
      */
     fun resumeInTheProjectsFolder(session: ClaudeSession): ClaudeSessionTab =
-        openTab(ClaudeCodeCommand.resuming(session), projectFolder, resuming = session, tabName = session.name, shownAtOnce = true)
+        openTab(ClaudeCodeCommand.Resuming(session), projectFolder, resuming = session, tabName = session.name, shownAtOnce = true)
 
     /** Resumes [session] in [tab], whose Claude Code has exited, and brings the tab forward. */
     fun resumeIn(tab: ClaudeSessionTab, session: ClaudeSession) {
@@ -144,7 +144,7 @@ class ClaudeSessionsView(val project: Project) : Disposable {
      * [TabsParkedInTheTerminal] does, and says why.
      */
     private fun adopt(terminal: TerminalToolWindowTab, session: ClaudeSession?): ClaudeSessionTab {
-        val tab = ClaudeSessionTab(terminal, session)
+        val tab = ClaudeSessionTab(project, terminal, session)
         tabsByContent[tab.content] = tab
         toolWindow!!.contentManager.addContent(terminal.content)
         return tab
@@ -173,9 +173,9 @@ class ClaudeSessionsView(val project: Project) : Disposable {
             .deferSessionStartUntilUiShown(shownAtOnce)
             .requestFocus(false)
             .createTab()
-        val tab = ClaudeSessionTab(terminal, resuming)
+        val tab = ClaudeSessionTab(project, terminal, resuming)
         tabsByContent[tab.content] = tab
-        tab.giveItAChat(project, this)
+        tab.giveItAChat(this)
         tab.run(command)
         if (shownAtOnce) show(tab)
         return tab

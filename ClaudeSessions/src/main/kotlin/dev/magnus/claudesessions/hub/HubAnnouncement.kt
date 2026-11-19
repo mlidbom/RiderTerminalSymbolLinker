@@ -48,13 +48,17 @@ class HubAnnouncement private constructor(private val json: JsonObject) {
          */
         private const val VARIABLE_NAMING_THE_FOLDER = "CLAUDE_TOOLING_LOCAL_API_FOLDER"
 
+        private val trialHubsFolder: Path? get() = System.getenv(VARIABLE_NAMING_THE_FOLDER)?.takeIf { it.isNotEmpty() }?.let { Path.of(it) }
+
+        /** Whether the announcement read is of a hub tried out apart from the published one: [VARIABLE_NAMING_THE_FOLDER] names its folder. */
+        val isOfATrialHub: Boolean get() = trialHubsFolder != null
+
         /**
          * The folder of the announcement: the one [VARIABLE_NAMING_THE_FOLDER] names, or else the published hub's,
          * `%LOCALAPPDATA%\ClaudeTooling`. Null where neither is set, as outside Windows, where no hub runs.
          */
         private val folder: Path?
-            get() = System.getenv(VARIABLE_NAMING_THE_FOLDER)?.takeIf { it.isNotEmpty() }?.let { Path.of(it) }
-                ?: System.getenv("LOCALAPPDATA")?.let { Path.of(it, "ClaudeTooling") }
+            get() = trialHubsFolder ?: System.getenv("LOCALAPPDATA")?.let { Path.of(it, "ClaudeTooling") }
 
         /**
          * The announcement of the hub that runs now, or null when none does. The hub writes it whole at once, so it's

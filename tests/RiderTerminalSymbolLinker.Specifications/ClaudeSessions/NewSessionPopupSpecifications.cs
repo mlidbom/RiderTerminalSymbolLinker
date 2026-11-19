@@ -145,5 +145,7 @@ public class When_a_session_is_named_with_every_character_a_shell_acts_on_in_git
 {
    public sealed class Story() : A_session_named_with_every_character_a_shell_acts_on_story(@"C:\Program Files\Git\bin\bash.exe");
 
-   [XF] public void the_session_gets_the_name_as_it_was_typed() => story.Tab.SessionName.Must().Be(A_session_named_with_every_character_a_shell_acts_on_story.Name);
+   [XF(Skip = "The hub's bug, told to tooling-owner on 2026-11-19: Git for Windows' bin\\bash.exe is a launcher that runs usr\\bin\\bash.exe as its child, "
+            + "so the hub's start-claude-code refuses the shell, shellRunsAProgram, and Claude Code doesn't start. Unskip once the hub's fix is published.")]
+   public void the_session_gets_the_name_as_it_was_typed() => story.Tab.SessionName.Must().Be(A_session_named_with_every_character_a_shell_acts_on_story.Name);
 }

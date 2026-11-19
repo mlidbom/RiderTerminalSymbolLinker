@@ -1,0 +1,5 @@
+HTTP/1.1 409 Conflict
+Content-Type: application/json; charset=utf-8
+Claude-Tooling-Protocol: 1
+
+{"error":"Process 61812 runs node.exe, which is no shell this knows: pwsh, powershell, cmd, bash, sh or zsh. Nothing typed.","reason":"shellNotKnown"}

@@ -42,6 +42,10 @@ All notable changes to Claude Sessions are documented here. The format follows
   runs, instead of reading Claude Code's own records of them. When a new build of the hub replaces the old one, Claude
   Sessions follows the new one within a second. Should the hub speak a protocol this build of Claude Sessions doesn't
   know, a notification asks you to restart the IDE.
+- **The hub starts Claude Code in a tab's shell.** The `claude` line a tab runs, with the session's name or the session
+  to resume, is typed into the shell by the hub, quoted for that shell as before. When no hub runs, as when the IDE
+  resumes its sessions after a reboot, Claude Sessions starts it. Should the hub not type the line, the tab stays at the
+  shell's prompt, and a notification says why.
 
 ### Fixed
 - **A new session's tab shows Claude Code at the tab's size.** A tab opened by the **+**, or by the session history

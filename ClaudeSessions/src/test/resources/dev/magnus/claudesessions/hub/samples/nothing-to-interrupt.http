@@ -1,0 +1,5 @@
+HTTP/1.1 409 Conflict
+Content-Type: application/json; charset=utf-8
+Claude-Tooling-Protocol: 1
+
+{"error":"Claude Code says the session is idle: there is nothing to interrupt, so Escape wasn't pressed.","reason":"nothingToInterrupt"}

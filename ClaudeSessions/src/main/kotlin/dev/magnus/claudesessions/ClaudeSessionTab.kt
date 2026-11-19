@@ -1,7 +1,8 @@
 package dev.magnus.claudesessions
 
+import com.intellij.notification.NotificationType
 import com.intellij.openapi.Disposable
-import com.intellij.openapi.application.EDT
+import com.intellij.openapi.diagnostic.thisLogger
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Disposer
 import com.intellij.terminal.frontend.toolwindow.TerminalToolWindowTab
@@ -12,15 +13,14 @@ import dev.magnus.claudesessions.claudecode.ClaudeCodeCommand
 import dev.magnus.claudesessions.claudecode.ClaudeSession
 import dev.magnus.claudesessions.claudecode.RunningClaudeCode
 import dev.magnus.claudesessions.hub.ClaudeToolingHub
-import dev.magnus.claudesessions.claudecode.Shell
-import kotlinx.coroutines.Dispatchers
+import dev.magnus.claudesessions.hub.TypingAnswer
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.launch
 
 /**
- * A tab of the [ClaudeSessionsView]: a terminal whose shell runs Claude Code, which the tab types the command for as it
- * opens. When Claude Code exits, the shell is left at its prompt, and the tab keeps the session that ran in it last: it
- * closes when the shell exits.
+ * A tab of the [ClaudeSessionsView], in [project]'s view: a terminal whose shell runs Claude Code, whose command the
+ * [ClaudeToolingHub] types into the shell as the tab opens. When Claude Code exits, the shell is left at its prompt, and
+ * the tab keeps the session that ran in it last: it closes when the shell exits.
  *
  * The terminal is the reworked terminal's: the terminal plugin creates and runs it, and this plugin only hosts it in
  * its own tool window.
@@ -29,6 +29,7 @@ import kotlinx.coroutines.launch
  * content is then its [cards], the chat and the terminal, one shown at a time. Today only the sandbox IDE's tabs do.
  */
 class ClaudeSessionTab(
+    private val project: Project,
     val terminal: TerminalToolWindowTab,
     resuming: ClaudeSession?,
 ) {
@@ -51,7 +52,7 @@ class ClaudeSessionTab(
      * Gives the tab a chat, if a [ClaudeCodeBehindTheChatProvider] has a Claude Code behind one for it, kept until
      * [takeAwayItsChat], or until [parent] is disposed. On the EDT.
      */
-    fun giveItAChat(project: Project, parent: Disposable) {
+    fun giveItAChat(parent: Disposable) {
         if (cards != null) return
         val claudeCode = ClaudeCodeBehindTheChatProvider.behindTheChatOf(this) ?: return
         cards = ChatAndTerminalCards(project, content, claudeCode).also { Disposer.register(parent, it) }
@@ -83,19 +84,26 @@ class ClaudeSessionTab(
     }
 
     /**
-     * Has the tab's shell run [command]: types it, as that [Shell] reads it, once the shell has started and it's known
-     * which one runs.
+     * Has the tab's shell run [command], once the shell has started: the [ClaudeToolingHub] types it, quoted as that
+     * shell reads it. When it doesn't, the user is told why, and the shell waits at its prompt.
      */
     fun run(command: ClaudeCodeCommand) {
-        terminal.view.coroutineScope.launch(Dispatchers.EDT) {
-            val shell = Shell.runBy(terminal.view.startupOptionsDeferred.await().shellCommand)
-            terminal.view.createSendTextBuilder().shouldExecute().send(shell.lineThatRuns(command))
+        terminal.view.coroutineScope.launch {
+            val shellProcessId = checkNotNull(terminal.view.startupOptionsDeferred.await().pid) { "The terminal started the tab's shell, and doesn't say its process." }
+            val shell = ProcessHandle.of(shellProcessId).orElse(null) ?: return@launch // The shell exited at once, and the tab closed with it.
+            val answer = ClaudeToolingHub.getInstance().typing.startClaudeCode(shell, command)
+            if (answer is TypingAnswer.NotTyped) tellClaudeCodeDidNotStart(answer)
         }
+    }
+
+    private fun tellClaudeCodeDidNotStart(answer: TypingAnswer.NotTyped) {
+        thisLogger().warn("Claude Code wasn't started in the tab ${content.displayName}: ${answer.why} (${answer.reason})")
+        ClaudeSessionsNotifications.tell(project, "Claude Code didn't start in the tab ${content.displayName}", answer.why, NotificationType.WARNING)
     }
 
     /** Has the tab's shell, at its prompt since the tab's Claude Code exited, resume [session]. */
     fun resume(session: ClaudeSession) {
-        run(ClaudeCodeCommand.resuming(session))
+        run(ClaudeCodeCommand.Resuming(session))
         this.session = session
     }
 
