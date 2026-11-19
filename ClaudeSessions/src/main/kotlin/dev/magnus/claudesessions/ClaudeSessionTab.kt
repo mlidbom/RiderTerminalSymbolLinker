@@ -1,8 +1,13 @@
 package dev.magnus.claudesessions
 
+import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.EDT
+import com.intellij.openapi.project.Project
+import com.intellij.openapi.util.Disposer
 import com.intellij.terminal.frontend.toolwindow.TerminalToolWindowTab
 import com.intellij.ui.content.Content
+import dev.magnus.claudesessions.chat.ChatAndTerminalCards
+import dev.magnus.claudesessions.chat.claudecode.ClaudeCodeBehindTheChatProvider
 import dev.magnus.claudesessions.claudecode.ClaudeCodeCommand
 import dev.magnus.claudesessions.claudecode.ClaudeSession
 import dev.magnus.claudesessions.claudecode.RunningClaudeCode
@@ -18,6 +23,9 @@ import kotlinx.coroutines.launch
  *
  * The terminal is the reworked terminal's: the terminal plugin creates and runs it, and this plugin only hosts it in
  * its own tool window.
+ *
+ * A tab that a [ClaudeCodeBehindTheChatProvider] gives a Claude Code behind a chat shows its session as a chat too: its
+ * content is then its [cards], the chat and the terminal, one shown at a time. Today only the sandbox IDE's tabs do.
  */
 class ClaudeSessionTab(
     val terminal: TerminalToolWindowTab,
@@ -33,6 +41,29 @@ class ClaudeSessionTab(
     @Volatile
     var session: ClaudeSession? = resuming
         private set
+
+    /** The tab's chat and its terminal, of which it shows one at a time, or null while it shows its terminal alone. */
+    var cards: ChatAndTerminalCards? = null
+        private set
+
+    /**
+     * Gives the tab a chat, if a [ClaudeCodeBehindTheChatProvider] has a Claude Code behind one for it, kept until
+     * [takeAwayItsChat], or until [parent] is disposed. On the EDT.
+     */
+    fun giveItAChat(project: Project, parent: Disposable) {
+        if (cards != null) return
+        val claudeCode = ClaudeCodeBehindTheChatProvider.behindTheChatOf(this) ?: return
+        cards = ChatAndTerminalCards(project, content, claudeCode).also { Disposer.register(parent, it) }
+    }
+
+    /**
+     * Takes the tab's chat away, if it has one, giving its content its terminal back, as before: as the tab closes, and
+     * before it's parked while the plugin reloads, as the reloaded plugin can't use this build's chat. On the EDT.
+     */
+    fun takeAwayItsChat() {
+        cards?.let(Disposer::dispose)
+        cards = null
+    }
 
     /** The process the tab's terminal runs, once it has started: the shell. */
     val process: ProcessHandle? get() = processOf(terminal)

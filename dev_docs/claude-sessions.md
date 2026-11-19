@@ -21,6 +21,10 @@ Its packages, below `dev.magnus.claudesessions`, which holds the tool window and
 - **`newsession`:** the + and the popup that names a new session.
 - **`history`:** the session history picker.
 - **`api`:** the local API through which other tools, and other IDEs, show a session's tab.
+- **`chat`:** the chat view: a tab's two cards, the chat and the terminal, the chat itself, and the switch between
+  them. Below it, `chat.transcript`, the pane that shows the conversation; `chat.messagebox`, the box the user writes
+  in; and `chat.claudecode`, what the chat needs of the Claude Code behind it, with `chat.claudecode.conversation`, the
+  conversation as the chat shows it.
 - **`observation`:** the development observation channel, which only the sandbox IDE runs.
 
 ## A tab runs a shell, and Claude Code in it
@@ -183,46 +187,85 @@ Code 2.1.327's own code and five transcripts on 2026-11-18. It isn't documented,
 ## The chat view (being built)
 
 Magnus's go, 2026-11-19, for a first version to test. A tab shows its session as a chat of the plugin's own: the
-transcript in an editor pane, and an input box that is an editor too, with Claude Code's own UI, the TUI, hidden in the
-same tab, a key away. Why, in his words: "Text editing in claude code sucks ... Virtually NONE of the absolutely standard
-text editing stuff works", "Virtually all rider/idea shortcuts break in the tui", and "Normal search in the transcript
-sucks ... in both the search provided by rider and the search provided by claude code". The TUI stays for what the chat
-doesn't do: "I would have access to the full / command stuff etc, but all the every day back and forth talking would
-happen in a UI that does not make me want to scream".
+conversation in an editor pane, and an input box that is an editor too, with Claude Code's own UI, the TUI, hidden in
+the same tab, a key away. Why, in his words: "Text editing in claude code sucks ... Virtually NONE of the absolutely
+standard text editing stuff works", "Virtually all rider/idea shortcuts break in the tui", and "Normal search in the
+transcript sucks ... in both the search provided by rider and the search provided by claude code". The TUI stays for
+what the chat doesn't do: "I would have access to the full / command stuff etc, but all the every day back and forth
+talking would happen in a UI that does not make me want to scream".
 
-**What the first version does:**
+### Who provides what: the chat is the plugin's, Claude Code the hub's
 
-- **Two cards in each tab, in a `CardLayout`:** the chat and the terminal. The terminal's card is shown until its shell
-  has started, then the chat's (see the spikes below). A key and a button switch between them. The tab shows the
-  terminal by itself when Claude Code's record says `waiting`, as dialogs, permission prompts and pickers are drawn only
-  there, and the chat again when it says `busy` or `idle`, if it was the tab that switched.
-- **The transcript pane, a read-only editor:** Rider's own search, selection and shortcuts work in it. Its text is
-  markdown, highlighted as markdown where the bundled Markdown plugin is there (an optional dependency).
-  - **Shown:** Magnus's prompts; all of the assistant's text, the self-talk included ("The self talk tends to just be a
-    line or two"); each tool call as a fold, collapsed, with a one-line header such as `Bash: git status`, and its
-    result inside ("The tool output becomes a novel over a long running session").
-  - **Not shown:** entries that aren't the conversation: every `type` but `user` and `assistant`, `isMeta` and
-    `isSidechain` entries, attachments. A slash command shows as the command typed.
-  - **The whole session, across compactions,** which the TUI loses after one (Magnus: "LOVE that"); a compaction shows
-    as a divider. Rewinds branch the transcript: the conversation is the chain from the newest entry back, through
-    `parentUuid`, not the file's order.
-  - **Live:** the file is read in the background as the tab opens, then followed as Claude Code appends to it. The tab
-    follows its session when `/clear` or `/resume` changes it, as it does already.
-  - **Links:** every filter on the platform's `consoleFilterProvider` extension point runs over the pane's text, as in a
-    console. In Rider that brings the symbol linker's links, and in every IDE the platform's own.
-- **The input box, an editor:** every editing feature and shortcut of the IDE. Enter sends and Shift+Enter starts a new
-  line, as in Claude Code's box.
-  - **Ctrl+V of an image** on the clipboard puts it in the message, as it does in Claude Code's box, which is the only
-    way Magnus attaches images: "I've always used just Ctrl+v and it just works." The plugin saves it to a file and
-    hands Claude Code the file's path.
-  - **Sending,** as the spikes found: what Magnus typed is typed into Claude Code in pieces of about 200 characters, with
-    Ctrl+J between lines; what he pasted into the box goes as a bracketed paste of its own, so that Claude Code marks
-    it as pasted, as it would in its own box; each image's path as a bracketed paste of its own; then Enter. Claude
-    Code then queues it while busy, and runs hooks and slash commands, as for a prompt typed in its box.
-  - **A message that starts with `/`** is sent, and the tab shows the terminal, where the command shows what it does.
-  - **Esc** in the chat interrupts Claude Code, as in its box, and **Shift+Tab** changes its permission mode.
-- **A status line** above the input box: whether Claude Code is busy, waiting or idle, from its record, and how many
-  commands the turn has run.
+**Agreed on 2026-11-19 with the tooling owner, at Magnus's request,** in `~/.claude/dev_docs/the-claude-tooling-bundle.md`:
+the Claude tooling is one bundle, and each concept has one home in it. ClaudeTooling's resident server, the hub, owns
+everything about Claude Code: its session records, its transcripts read into a conversation, a session's line across
+`/clear`, resume, fork and compaction, and typing into its TUI, the shell under it included. The plugin owns the IDE:
+the tabs, the terminals, the chat's rendering, its input box, images saved to files, links and windows. The hub serves
+the plugin over loopback HTTP and JSON, with Server-Sent Events for what it follows. Building the hub's side waits for
+Magnus's go, with what it means for publishing: the plugin would need the hub.
+
+So the chat holds no transcript reader and no typing of its own. It talks to one interface,
+**`ClaudeCodeBehindTheChat`**: a `StateFlow` of the conversation, whole, a `StateFlow` of Claude Code's status
+(`NOT_RUNNING`, `IDLE`, `BUSY`, `WAITING`), and `send(Message)`, `interrupt()` and `changeThePermissionMode()`. A
+`Message` is its parts as they came into the box: `TypedText`, `PastedText`, `PastedImage` (the file). A
+**`ClaudeCodeBehindTheChatProvider`**, on the plugin's extension point `dev.magnus.claudesessions.claudeCodeBehindTheChat`,
+gives a tab one. The hub's will be an adapter, the one place in the plugin that knows the hub's wire format, folding its
+events into those flows. Until it exists, **only the sandbox IDE's tabs have a chat**: the stand-in
+`StandInBehindTheChat`, which the specifications drive through the observation channel. In every other IDE no provider
+gives a tab one, and it shows its terminal alone, as before.
+
+### What the first version does, as built
+
+- **Two cards in each tab, in a `CardLayout`:** the chat and the terminal (`ChatAndTerminalCards`), the tab's content
+  in place of the terminal's component. A tab gets them as the view opens it or takes it back after a reload, and gives
+  them up, its content the terminal again, before it's parked for a reload and as it closes.
+  - **What the tab shows by itself:** the chat while Claude Code is busy or idle, and the terminal while it doesn't
+    run, and while it's `waiting`: Claude Code's record says so whenever a dialog is open, a permission prompt, a
+    question, or a picker a slash command opened (`function B4o` in Claude Code 2.1.328's code), which only the TUI
+    draws. When that changes, the tab switches, and back to the chat once Claude Code is busy or idle again, only if it
+    was the tab that switched: a card the user chose stays. The terminal's card is shown until Claude Code runs, so a
+    tab whose shell starts only once it's shown starts it, at its size.
+  - **The switch:** `SwitchBetweenTheChatAndTheTerminalAction`, a button in the tool window's title bar, and
+    **Ctrl+Alt+Shift+Z**, free in the default keymap, both Visual Studio keymaps and Magnus's own on 2026-11-19 (a
+    specification checks the bundled ones). Its shortcut works in the terminal too, through the terminal's
+    `allowedActionsProvider` extension point, as the terminal otherwise sends keys to the program it runs.
+- **The transcript pane** (`TranscriptPane`), a read-only editor: the IDE's search, selection and shortcuts work in it.
+  Its text is markdown, highlighted as markdown where the IDE has the Markdown file type, found by name, so no
+  dependency on the Markdown plugin.
+  - **Each prompt under `## You`, each turn of Claude's under `## Claude`;** a slash command as typed; a compaction as
+    a divider line.
+  - **Each tool call as its header,** such as `▸ Bash: git status` (`ToolCallHeader`: the field that says what it ran
+    on, for Claude Code's own tools), with its input and its result folded away below it, collapsed, in a fenced code
+    block fenced with more backticks than any run inside.
+  - **It shows anew only from the first item that differs** from what it shows: a tool call's result coming, or a
+    rewind, redraws from there, so what the user scrolled to, selected or opened above stays. A fold the user opened
+    stays open when its tool call is redrawn. It follows the end while scrolled to the end.
+  - **Links:** every filter on the platform's `consoleFilterProvider` extension point runs over new text, **each by
+    itself**, as the terminal runs them: a filter's result ends the filtering of its line unless it says otherwise
+    (`Filter.NextAction.EXIT` by default), so a `CompositeFilter` let the symbol linker's symbol links hide its file
+    links on the same line. Links over text taken away go with it.
+- **The input box** (`MessageBox`), an editor of a plain-text `LightVirtualFile`. Enter sends, Shift+Enter starts a new
+  line, Escape interrupts Claude Code, Shift+Tab changes its permission mode, each a key of the box's own, ahead of the
+  keymap's; Enter, Shift+Enter and Escape go to a completion list instead while one shows.
+  - **The IDE's paste,** whatever the keymap binds it to, goes through `MessageBoxPasteHandler`, the first handler of
+    `EditorPaste`: text is inserted and marked as pasted; an image with no text on the clipboard is saved as PNG by
+    `PastedImages`, in the IDE's system folder, kept a week, and shown as `[Image #n]`. Every other editor's paste is the
+    one it had.
+  - **The message's parts:** each stretch of the text as what it came in as, typed, pasted, or an image, the innermost
+    paste deciding; two pastes side by side stay two, as in Claude Code's box.
+  - **A message that starts with `/`** shows the terminal, as if the user chose it, where the command shows what it does.
+- **A status line** above the input box: whether Claude is busy, idle or waiting in the terminal, and how many commands
+  the turn has run, counted from the conversation.
+
+### What's left for the first version
+
+- **The hub's side, and the plugin's adapter to it,** as agreed: the conversation of a session's whole line, across
+  compactions and `/clear` (Magnus: "One session just restarted itself with /clear and the entire history disappeared
+  for me. I would love to still have it there"), the records stream, typing, the shell. Then the stand-in stays for the
+  chat's specifications, and new ones run end to end with the fake Claude Code, which must then read raw console input
+  (bracketed pastes, Ctrl+J, Escape, back-tab) and write the real transcript format.
+- **Not tried with the real Claude Code:** the chat with a hub behind it; the real TUI drawn through hiding and showing
+  its card (only the fake's sizes were seen).
 
 ## The chat view: what the spikes found
 

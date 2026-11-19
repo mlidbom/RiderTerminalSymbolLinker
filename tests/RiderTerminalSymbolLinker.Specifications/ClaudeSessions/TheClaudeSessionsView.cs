@@ -118,6 +118,13 @@ public sealed class TheClaudeSessionsView
    /// <summary>The actions the sandbox's active keymap binds <paramref name="keystroke"/> to, such as <c>ctrl alt shift H</c>.</summary>
    public IReadOnlyList<string> ActionsBoundTo(string keystroke) => [.. Channel.ActionsBoundTo(keystroke)["actions"]!.AsArray().Select(it => it!.GetValue<string>())];
 
+   /// <summary>The actions the keymap named <paramref name="keymap"/>, such as <c>Visual Studio 2022</c>, binds <paramref name="keystroke"/> to.</summary>
+   public IReadOnlyList<string> ActionsBoundTo(string keystroke, string keymap) =>
+      [.. Channel.ActionsBoundTo(keystroke, keymap)["actions"]!.AsArray().Select(it => it!.GetValue<string>())];
+
+   /// <summary>The chat of tab <paramref name="tab"/>, which every tab has in the sandbox, with a stand-in behind it.</summary>
+   public TheChat ChatOf(int tab) => new(Channel, tab);
+
    /// <summary>The folder of the project open in the sandbox, the fixture solution's.</summary>
    public string ProjectFolder => Path.GetFullPath(Project()["basePath"]!.GetValue<string>());
 

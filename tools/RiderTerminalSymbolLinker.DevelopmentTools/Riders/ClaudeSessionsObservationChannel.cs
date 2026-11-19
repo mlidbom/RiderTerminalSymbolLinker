@@ -92,4 +92,49 @@ public sealed class ClaudeSessionsObservationChannel(int port) : ObservationChan
 
    /// <summary>The actions the sandbox's active keymap binds <paramref name="keystroke"/> to, such as <c>ctrl alt shift H</c>.</summary>
    public JsonNode ActionsBoundTo(string keystroke) => Get("keymap", null, $"keystroke={Uri.EscapeDataString(keystroke)}");
+
+   /// <summary>
+   ///   The actions the keymap named <paramref name="keymap"/>, such as <c>Visual Studio 2022</c>, binds
+   ///   <paramref name="keystroke"/> to.
+   /// </summary>
+   public JsonNode ActionsBoundTo(string keystroke, string keymap) =>
+      Get("keymap", null, $"keystroke={Uri.EscapeDataString(keystroke)}&keymap={Uri.EscapeDataString(keymap)}");
+
+   /// <summary>
+   ///   The chat of tab <paramref name="tab"/>: the card shown, or null when the tab has no chat; the conversation's text,
+   ///   its folds, each with its header line, its folded text and whether it's open, and the texts its links cover; the
+   ///   status line; the text in the input box; and the switch button's text. Every chat call answers so.
+   /// </summary>
+   public JsonNode TheChat(int tab, string? project = null) => Get("tabs/chat", project, $"tab={tab}");
+
+   /// <summary>
+   ///   Has the stand-in behind the chat of tab <paramref name="tab"/> give it a conversation: <c>{"items": [...]}</c>,
+   ///   each item with its <c>kind</c> and <c>id</c>, as <c>TheChatObserved.conversationFrom</c> in the plugin reads it.
+   /// </summary>
+   public JsonNode GiveTheChatAConversation(int tab, object conversation, string? project = null) => Post("tabs/chat/conversation", project, conversation, $"tab={tab}");
+
+   /// <summary>Has the stand-in behind the chat say Claude Code's status is <paramref name="status"/>: <c>NOT_RUNNING</c>, <c>IDLE</c>, <c>BUSY</c> or <c>WAITING</c>.</summary>
+   public JsonNode SayTheStatusToTheChat(int tab, string status, string? project = null) => Post("tabs/chat/status", project, new { }, $"tab={tab}&status={status}");
+
+   /// <summary>What the chat sent the stand-in behind it: its messages, part by part, and how often it interrupted and changed the permission mode.</summary>
+   public JsonNode WhatTheChatSent(int tab, string? project = null) => Get("tabs/chat/sent", project, $"tab={tab}");
+
+   /// <summary>Types <paramref name="text"/> into the chat's input box, at its caret.</summary>
+   public JsonNode TypeInTheChat(int tab, string text, string? project = null) => Post("tabs/chat/type", project, new { text }, $"tab={tab}");
+
+   /// <summary>Pastes <paramref name="text"/> into the chat's input box, as from the clipboard, though not through the system's.</summary>
+   public JsonNode PasteInTheChat(int tab, string text, string? project = null) => Post("tabs/chat/paste", project, new { text }, $"tab={tab}");
+
+   /// <summary>Pastes a small image into the chat's input box, as from the clipboard.</summary>
+   public JsonNode PasteAnImageInTheChat(int tab, string? project = null) => Post("tabs/chat/paste-image", project, new { }, $"tab={tab}");
+
+   /// <summary>Presses <paramref name="key"/>, <c>ENTER</c>, <c>SHIFT_ENTER</c>, <c>ESCAPE</c> or <c>SHIFT_TAB</c>, in the chat's input box.</summary>
+   public JsonNode PressInTheChat(int tab, string key, string? project = null) => Post("tabs/chat/press", project, new { }, $"tab={tab}&key={key}");
+
+   /// <summary>Switches tab <paramref name="tab"/> between its chat and its terminal, as the button in the tool window's title bar does.</summary>
+   public JsonNode SwitchBetweenTheChatAndTheTerminal(int tab, string? project = null) => Post("tabs/chat/switch", project, new { }, $"tab={tab}");
+
+   /// <summary>Opens the conversation's fold <paramref name="fold"/>, by its place, or closes it when not <paramref name="open"/>.</summary>
+   public JsonNode OpenTheFoldInTheChat(int tab, int fold, bool open = true, string? project = null) =>
+      Post("tabs/chat/fold", project, new { }, $"tab={tab}&fold={fold}&open={(open ? "true" : "false")}");
 }

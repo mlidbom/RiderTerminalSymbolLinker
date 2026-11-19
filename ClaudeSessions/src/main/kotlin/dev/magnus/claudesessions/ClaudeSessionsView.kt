@@ -1,5 +1,6 @@
 package dev.magnus.claudesessions
 
+import com.intellij.openapi.Disposable
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
 import com.intellij.openapi.project.Project
@@ -27,7 +28,7 @@ import java.util.concurrent.ConcurrentHashMap
  * Its methods run on the EDT.
  */
 @Service(Service.Level.PROJECT)
-class ClaudeSessionsView(val project: Project) {
+class ClaudeSessionsView(val project: Project) : Disposable {
     private var toolWindow: ToolWindow? = null
     private val tabsByContent = ConcurrentHashMap<Content, ClaudeSessionTab>()
 
@@ -62,12 +63,13 @@ class ClaudeSessionsView(val project: Project) {
         this.toolWindow = toolWindow
         toolWindow.contentManager.addContentManagerListener(object : ContentManagerListener {
             override fun contentRemoved(event: ContentManagerEvent) {
-                tabsByContent.remove(event.content)
+                tabsByContent.remove(event.content)?.takeAwayItsChat()
             }
         })
         val saved = SavedClaudeSessions(project).read()
         val parked = TabsParkedInTheTerminal(project).takeBack(saved.sessions)
         val takenBack = parked.map { adopt(it.terminal, it.session) }
+        takenBack.forEach { it.giveItAChat(project, this) }
         val sessionsTakenBack = parked.mapNotNull { it.session?.id }.toSet()
         val tabs = takenBack + saved.sessions.filter { it.id !in sessionsTakenBack && it.canBeResumed }.map(::resume)
         tabs.firstOrNull { it.session?.id == saved.selected }?.let { toolWindow.contentManager.setSelectedContent(it.content, false) }
@@ -77,10 +79,13 @@ class ClaudeSessionsView(val project: Project) {
     /**
      * Moves the tabs to the Terminal tool window, where their sessions run on while the plugin reloads, and has the
      * [ClaudeSessionKeeper] save their sessions first, and the selected tab, and stop, so that it doesn't save the view
-     * as it empties.
+     * as it empties. Each tab's chat is taken away first, giving its content its terminal back: the reloaded plugin gives
+     * it a chat of its own.
      */
     fun parkTheTabs() {
         ClaudeSessionKeeper.getInstance(project).saveOneLastTimeAndStop()
+        val tabs = tabs
+        tabs.forEach(ClaudeSessionTab::takeAwayItsChat)
         TabsParkedInTheTerminal(project).park(tabs)
     }
 
@@ -170,10 +175,14 @@ class ClaudeSessionsView(val project: Project) {
             .createTab()
         val tab = ClaudeSessionTab(terminal, resuming)
         tabsByContent[tab.content] = tab
+        tab.giveItAChat(project, this)
         tab.run(command)
         if (shownAtOnce) show(tab)
         return tab
     }
+
+    /** Gives up the tabs' chats, as the project closes or the plugin unloads: their editors are disposed with them. */
+    override fun dispose() {}
 
     companion object {
         /** The tool window's id, which plugin.xml registers it with. */

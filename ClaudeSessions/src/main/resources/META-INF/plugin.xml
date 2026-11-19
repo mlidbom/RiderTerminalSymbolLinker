@@ -14,6 +14,13 @@
     <!-- The platform's JNA, through which the session history picker lets another IDE bring its window forward. -->
     <depends>com.intellij.modules.jna</depends>
 
+    <!-- Where a tab's chat gets the Claude Code behind it: see ClaudeCodeBehindTheChatProvider. Only the sandbox's stand-in
+         provides one today, so in every other IDE a tab shows its terminal alone. -->
+    <extensionPoints>
+        <extensionPoint qualifiedName="dev.magnus.claudesessions.claudeCodeBehindTheChat"
+                        interface="dev.magnus.claudesessions.chat.claudecode.ClaudeCodeBehindTheChatProvider" dynamic="true"/>
+    </extensionPoints>
+
     <!-- defaultExtensionNs, never defaultExtensionPointName: see the symbol linker's plugin.xml. -->
     <extensions defaultExtensionNs="com.intellij">
         <!-- Never doNotActivateOnStart: IntelliJ IDEA then hides the tool window at every start, even when it was open as
@@ -25,6 +32,20 @@
         <!-- The development observation channel: it listens only where a system property asks it to, in the sandbox
              IDE of the development tools. -->
         <postStartupActivity implementation="dev.magnus.claudesessions.observation.ObservationStartup"/>
+        <!-- The IDE's paste in a chat's input box: it knows what was pasted, and takes images. Every other editor's paste
+             is the one it had. -->
+        <editorActionHandler action="EditorPaste" implementationClass="dev.magnus.claudesessions.chat.messagebox.MessageBoxPasteHandler"
+                             order="first"/>
+    </extensions>
+
+    <extensions defaultExtensionNs="org.jetbrains.plugins.terminal">
+        <!-- The shortcut that switches between the chat and the terminal works in the terminal too. -->
+        <allowedActionsProvider implementation="dev.magnus.claudesessions.chat.TheChatsActionsInTheTerminal"/>
+    </extensions>
+
+    <extensions defaultExtensionNs="dev.magnus.claudesessions">
+        <!-- Only in the sandbox IDE of the development tools: a stand-in its specifications drive. -->
+        <claudeCodeBehindTheChat implementation="dev.magnus.claudesessions.observation.StandInBehindTheChatInTheSandbox"/>
     </extensions>
 
     <applicationListeners>
@@ -46,6 +67,14 @@
                 icon="AllIcons.Vcs.History">
             <!-- Free in the default keymap, both Visual Studio keymaps, and Magnus's own (2026-11-18). -->
             <keyboard-shortcut keymap="$default" first-keystroke="shift ctrl alt Y"/>
+        </action>
+        <action id="ClaudeSessions.SwitchBetweenTheChatAndTheTerminal"
+                class="dev.magnus.claudesessions.chat.SwitchBetweenTheChatAndTheTerminalAction"
+                text="Switch Between the Chat and the Terminal"
+                description="Show the Claude Sessions tab's terminal, with Claude Code's own UI, in place of its chat, or its chat in place of its terminal"
+                icon="AllIcons.Nodes.Console">
+            <!-- Free in the default keymap, both Visual Studio keymaps, and Magnus's own (2026-11-19). -->
+            <keyboard-shortcut keymap="$default" first-keystroke="shift ctrl alt Z"/>
         </action>
     </actions>
 </idea-plugin>

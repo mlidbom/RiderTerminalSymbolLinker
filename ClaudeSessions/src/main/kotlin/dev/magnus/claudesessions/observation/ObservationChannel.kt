@@ -2,6 +2,7 @@ package dev.magnus.claudesessions.observation
 
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
+import com.google.gson.JsonObject
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.PathManager
@@ -82,6 +83,20 @@ import org.jetbrains.plugins.terminal.TerminalToolWindowFactory
  *  - `POST /plugins/refresh` — has the IDE look at its plugins folder again, so that with `idea.auto.reload.plugins` it
  *    reloads a plugin whose files changed, this one included. `/state`'s `startedAt` then tells when the new build's
  *    channel started.
+ *
+ * A tab's chat, through [TheChatObserved], each answering as `GET /tabs/chat` does:
+ *  - `GET /tabs/chat?project=&tab=` — the card shown, or null for a tab without a chat; the conversation's text, its
+ *    folds and its links; the status line; the text in the input box; and the switch button's text.
+ *  - `POST /tabs/chat/conversation?project=&tab=` with `{"items": [...]}` — has the tab's stand-in give the chat that
+ *    conversation: see [TheChatObserved.giveTheConversation].
+ *  - `POST /tabs/chat/status?project=&tab=&status=` — has the stand-in say Claude Code's status, such as `IDLE`.
+ *  - `GET /tabs/chat/sent?project=&tab=` — the messages the chat sent the stand-in, part by part, and the keys.
+ *  - `POST /tabs/chat/type?project=&tab=` with `{"text": …}` — types the text into the input box.
+ *  - `POST /tabs/chat/paste?project=&tab=` with `{"text": …}` — pastes the text into it, as from the clipboard.
+ *  - `POST /tabs/chat/paste-image?project=&tab=` — pastes a small image into it, as from the clipboard.
+ *  - `POST /tabs/chat/press?project=&tab=&key=` — presses `ENTER`, `SHIFT_ENTER`, `ESCAPE` or `SHIFT_TAB` in it.
+ *  - `POST /tabs/chat/switch?project=&tab=` — switches between the chat and the terminal, as the button does.
+ *  - `POST /tabs/chat/fold?project=&tab=&fold=&open=` — opens a fold of the conversation, by its place, or closes it.
  */
 @Service(Service.Level.APP)
 class ObservationChannel : Disposable {
@@ -141,6 +156,33 @@ class ObservationChannel : Disposable {
             }
             createContext("/history") { exchange -> answer(exchange) { onTheEdt { describeThePickerIn(projectOf(exchange)) } } }
             createContext("/keymap") { exchange -> answer(exchange) { actionsBoundTo(query(exchange, "keystroke")!!, query(exchange, "keymap")) } }
+            createContext("/tabs/chat/conversation") { exchange ->
+                answer(exchange) {
+                    val conversation = request<JsonObject>(exchange)
+                    inTheChat(exchange) { it.giveTheConversation(conversation) }
+                }
+            }
+            createContext("/tabs/chat/status") { exchange -> answer(exchange) { inTheChat(exchange) { it.sayTheStatus(query(exchange, "status")!!) } } }
+            createContext("/tabs/chat/sent") { exchange -> answer(exchange) { inTheChat(exchange) { it.sent() } } }
+            createContext("/tabs/chat/type") { exchange ->
+                answer(exchange) {
+                    val text = request<TextRequest>(exchange).text
+                    inTheChat(exchange) { it.type(text) }
+                }
+            }
+            createContext("/tabs/chat/paste-image") { exchange -> answer(exchange) { inTheChat(exchange) { it.pasteAnImage() } } }
+            createContext("/tabs/chat/paste") { exchange ->
+                answer(exchange) {
+                    val text = request<TextRequest>(exchange).text
+                    inTheChat(exchange) { it.paste(text) }
+                }
+            }
+            createContext("/tabs/chat/press") { exchange -> answer(exchange) { inTheChat(exchange) { it.press(query(exchange, "key")!!) } } }
+            createContext("/tabs/chat/switch") { exchange -> answer(exchange) { inTheChat(exchange) { it.switch() } } }
+            createContext("/tabs/chat/fold") { exchange ->
+                answer(exchange) { inTheChat(exchange) { it.openTheFold(query(exchange, "fold")!!.toInt(), query(exchange, "open") != "false") } }
+            }
+            createContext("/tabs/chat") { exchange -> answer(exchange) { inTheChat(exchange) { it.describe() } } }
             start()
         }
 
@@ -337,6 +379,13 @@ class ObservationChannel : Disposable {
         return mapOf("refreshing" to folder.path)
     }
 
+    /** Does [action] in the chat of the tab the request names, on the EDT. */
+    private fun inTheChat(exchange: HttpExchange, action: (TheChatObserved) -> Map<String, Any?>): Map<String, Any?> {
+        val project = projectOf(exchange)
+        val tab = query(exchange, "tab")!!.toInt()
+        return onTheEdt { action(TheChatObserved(project, tab)) }
+    }
+
     private fun <T> onTheEdt(compute: () -> T): T {
         var result: T? = null
         ApplicationManager.getApplication().invokeAndWait { result = compute() }
@@ -382,6 +431,9 @@ class ObservationChannel : Disposable {
         const val PORT_PROPERTY = "dev.magnus.claudesessions.observation.port"
 
         fun getInstance(): ObservationChannel = service()
+
+        /** Whether the channel listens in this IDE: only in the sandbox IDE, whose `idea.properties` names its port. */
+        val listens: Boolean get() = System.getProperty(PORT_PROPERTY) != null
 
         /** The keys `/history/press` presses, by name. */
         private val KEYS = mapOf("UP" to KeyEvent.VK_UP, "DOWN" to KeyEvent.VK_DOWN, "ENTER" to KeyEvent.VK_ENTER)
