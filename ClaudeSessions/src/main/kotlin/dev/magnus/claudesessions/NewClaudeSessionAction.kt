@@ -1,4 +1,4 @@
-package dev.magnus.claudesessions.newsession
+package dev.magnus.claudesessions
 
 import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnAction
