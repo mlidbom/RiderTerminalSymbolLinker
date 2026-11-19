@@ -1,9 +1,12 @@
-package dev.magnus.claudesessions
+package dev.magnus.claudesessions.saving
 
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
 import com.intellij.openapi.project.Project
+import dev.magnus.claudesessions.ClaudeSessionsView
+import kotlin.coroutines.coroutineContext
+import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -11,8 +14,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import kotlin.coroutines.coroutineContext
-import kotlin.time.Duration.Companion.seconds
 
 /**
  * Keeps a project's [SavedClaudeSessions] current: every two seconds it looks at which session each tab of the

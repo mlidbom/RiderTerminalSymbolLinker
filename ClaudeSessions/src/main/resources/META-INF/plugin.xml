@@ -21,16 +21,16 @@
         <toolWindow id="Claude Sessions" anchor="bottom" canCloseContents="true"
                     icon="AllIcons.Toolwindows.ToolWindowMessages"
                     factoryClass="dev.magnus.claudesessions.ClaudeSessionsToolWindowFactory"/>
-        <postStartupActivity implementation="dev.magnus.claudesessions.ClaudeSessionsStartup"/>
+        <postStartupActivity implementation="dev.magnus.claudesessions.saving.ClaudeSessionsStartup"/>
         <!-- The development observation channel: it listens only where a system property asks it to, in the sandbox
              IDE of the development tools. -->
         <postStartupActivity implementation="dev.magnus.claudesessions.observation.ObservationStartup"/>
     </extensions>
 
     <applicationListeners>
-        <listener class="dev.magnus.claudesessions.SaveTheSessionsAsTheProjectCloses" topic="com.intellij.openapi.project.ProjectCloseListener"/>
-        <listener class="dev.magnus.claudesessions.SaveTheSessionsAsTheProjectCloses" topic="com.intellij.ide.AppLifecycleListener"/>
-        <listener class="dev.magnus.claudesessions.ParkTheTabsWhileThePluginReloads" topic="com.intellij.ide.plugins.DynamicPluginListener"/>
+        <listener class="dev.magnus.claudesessions.saving.SaveTheSessionsAsTheProjectCloses" topic="com.intellij.openapi.project.ProjectCloseListener"/>
+        <listener class="dev.magnus.claudesessions.saving.SaveTheSessionsAsTheProjectCloses" topic="com.intellij.ide.AppLifecycleListener"/>
+        <listener class="dev.magnus.claudesessions.reload.ParkTheTabsWhileThePluginReloads" topic="com.intellij.ide.plugins.DynamicPluginListener"/>
     </applicationListeners>
 
     <actions>

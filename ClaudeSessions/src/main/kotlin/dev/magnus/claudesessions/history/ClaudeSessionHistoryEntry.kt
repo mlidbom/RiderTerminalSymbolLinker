@@ -1,8 +1,8 @@
 package dev.magnus.claudesessions.history
 
-import dev.magnus.claudesessions.ClaudeCodeTranscript
-import dev.magnus.claudesessions.ClaudeSession
 import dev.magnus.claudesessions.ClaudeSessionsView
+import dev.magnus.claudesessions.claudecode.ClaudeCodeTranscript
+import dev.magnus.claudesessions.claudecode.ClaudeSession
 
 /**
  * A session of the [ClaudeSessionHistory], as the [ClaudeSessionHistoryPicker] lists it: what its transcript tells of

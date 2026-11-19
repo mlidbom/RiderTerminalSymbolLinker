@@ -7,6 +7,7 @@ import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.PathManager
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
+import com.intellij.openapi.keymap.KeymapManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.project.ProjectManager
 import com.intellij.openapi.vfs.LocalFileSystem
@@ -15,25 +16,24 @@ import com.intellij.openapi.wm.ToolWindowManager
 import com.intellij.terminal.frontend.toolwindow.TerminalToolWindowTabsManager
 import com.sun.net.httpserver.HttpExchange
 import com.sun.net.httpserver.HttpServer
-import dev.magnus.claudesessions.ClaudeSession
-import dev.magnus.claudesessions.ClaudeSessionKeeper
 import dev.magnus.claudesessions.ClaudeSessionTab
 import dev.magnus.claudesessions.ClaudeSessionsView
-import dev.magnus.claudesessions.SavedClaudeSessions
+import dev.magnus.claudesessions.claudecode.ClaudeSession
 import dev.magnus.claudesessions.history.ClaudeSessionHistoryPicker
 import dev.magnus.claudesessions.history.ClaudeSessionHistoryScope
 import dev.magnus.claudesessions.history.WhereTheSessionIs
 import dev.magnus.claudesessions.newsession.NewClaudeSessionPopup
-import com.intellij.openapi.keymap.KeymapManager
-import javax.swing.KeyStroke
+import dev.magnus.claudesessions.saving.ClaudeSessionKeeper
+import dev.magnus.claudesessions.saving.SavedClaudeSessions
 import java.awt.event.KeyEvent
-import org.jetbrains.plugins.terminal.TerminalProjectOptionsProvider
-import org.jetbrains.plugins.terminal.TerminalToolWindowFactory
 import java.net.InetAddress
 import java.net.InetSocketAddress
 import java.net.URLDecoder
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
+import javax.swing.KeyStroke
+import org.jetbrains.plugins.terminal.TerminalProjectOptionsProvider
+import org.jetbrains.plugins.terminal.TerminalToolWindowFactory
 
 /**
  * A development-only HTTP server through which the development tools see and drive what the plugin does in the

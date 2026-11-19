@@ -1,4 +1,9 @@
-package dev.magnus.claudesessions
+package dev.magnus.claudesessions.saving
+
+import dev.magnus.claudesessions.ClaudeSessionTab
+import dev.magnus.claudesessions.ClaudeSessionsView
+import dev.magnus.claudesessions.claudecode.ClaudeSession
+import dev.magnus.claudesessions.claudecode.ClaudeSessionId
 
 /**
  * What the [ClaudeSessionKeeper] saves of the [ClaudeSessionsView], for the view to come back as it was: the sessions its

@@ -1,4 +1,6 @@
-package dev.magnus.claudesessions
+package dev.magnus.claudesessions.claudecode
+
+import dev.magnus.claudesessions.ClaudeSessionTab
 
 /**
  * What a [ClaudeSessionTab] types into its shell to run Claude Code: the `claude` command, as a user types it, which the

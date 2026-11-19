@@ -1,8 +1,9 @@
-package dev.magnus.claudesessions
+package dev.magnus.claudesessions.saving
 
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.startup.ProjectActivity
+import dev.magnus.claudesessions.ClaudeSessionsView
 import dev.magnus.claudesessions.api.LocalApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext

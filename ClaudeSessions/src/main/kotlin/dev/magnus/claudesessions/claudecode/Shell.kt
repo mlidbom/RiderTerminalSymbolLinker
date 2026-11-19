@@ -1,4 +1,6 @@
-package dev.magnus.claudesessions
+package dev.magnus.claudesessions.claudecode
+
+import dev.magnus.claudesessions.ClaudeSessionTab
 
 /**
  * A kind of shell that a [ClaudeSessionTab]'s terminal runs, by how it reads a command typed into it: so that the tab

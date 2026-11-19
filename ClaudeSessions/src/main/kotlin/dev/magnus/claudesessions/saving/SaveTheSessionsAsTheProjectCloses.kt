@@ -1,9 +1,10 @@
-package dev.magnus.claudesessions
+package dev.magnus.claudesessions.saving
 
 import com.intellij.ide.AppLifecycleListener
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.project.ProjectCloseListener
 import com.intellij.openapi.project.ProjectManager
+import dev.magnus.claudesessions.ClaudeSessionsView
 
 /**
  * Has each project's [ClaudeSessionKeeper] save the sessions one last time and stop as the project closes, or the IDE

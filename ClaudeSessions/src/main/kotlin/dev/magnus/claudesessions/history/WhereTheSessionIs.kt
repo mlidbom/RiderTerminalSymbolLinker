@@ -1,10 +1,10 @@
 package dev.magnus.claudesessions.history
 
 import com.intellij.openapi.application.ApplicationManager
-import dev.magnus.claudesessions.ClaudeSession
 import dev.magnus.claudesessions.ClaudeSessionTab
 import dev.magnus.claudesessions.ClaudeSessionsView
 import dev.magnus.claudesessions.api.AnotherIde
+import dev.magnus.claudesessions.claudecode.ClaudeSession
 
 /**
  * Where a session of the [ClaudeSessionHistory] is now, which decides what choosing it in the

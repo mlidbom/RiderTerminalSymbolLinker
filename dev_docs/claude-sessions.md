@@ -7,6 +7,17 @@ restarts. It runs in any JetBrains IDE: it uses only the platform and the termin
 
 It lives in this repository as a project of its own, so that it can move to a repository of its own.
 
+Its packages, below `dev.magnus.claudesessions`, which holds the tool window and its tabs:
+
+- **`claudecode`:** Claude Code seen from outside: its sessions, the folder it keeps them in, its records of the
+  sessions that run, its transcripts, and the command line a tab types to run it, quoted for the tab's shell.
+- **`saving`:** saving the sessions the tabs run, and resuming them as the IDE starts.
+- **`reload`:** keeping the tabs through a reload of the plugin.
+- **`newsession`:** the + and the popup that names a new session.
+- **`history`:** the session history picker.
+- **`api`:** the local API through which other tools, and other IDEs, show a session's tab.
+- **`observation`:** the development observation channel, which only the sandbox IDE runs.
+
 ## A tab runs a shell, and Claude Code in it
 
 Each tab of the view (`ClaudeSessionsView`) is a reworked-terminal tab, made with the terminal's public

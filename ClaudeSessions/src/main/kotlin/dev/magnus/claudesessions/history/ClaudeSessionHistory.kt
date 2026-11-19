@@ -4,12 +4,12 @@ import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.diagnostic.thisLogger
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.project.ProjectManager
-import dev.magnus.claudesessions.ClaudeCodeSessionsFolder
-import dev.magnus.claudesessions.ClaudeCodeTranscripts
-import dev.magnus.claudesessions.ClaudeSessionId
 import dev.magnus.claudesessions.ClaudeSessionTab
 import dev.magnus.claudesessions.ClaudeSessionsView
 import dev.magnus.claudesessions.api.AnotherIde
+import dev.magnus.claudesessions.claudecode.ClaudeCodeSessionsFolder
+import dev.magnus.claudesessions.claudecode.ClaudeCodeTranscripts
+import dev.magnus.claudesessions.claudecode.ClaudeSessionId
 import java.nio.file.Path
 
 /**

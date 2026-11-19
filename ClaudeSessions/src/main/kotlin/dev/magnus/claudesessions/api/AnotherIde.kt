@@ -4,7 +4,7 @@ import com.google.gson.JsonParser
 import com.intellij.openapi.util.SystemInfo
 import com.sun.jna.Native
 import com.sun.jna.win32.StdCallLibrary
-import dev.magnus.claudesessions.ClaudeSessionId
+import dev.magnus.claudesessions.claudecode.ClaudeSessionId
 import java.net.ConnectException
 import java.net.URI
 import java.net.URLEncoder

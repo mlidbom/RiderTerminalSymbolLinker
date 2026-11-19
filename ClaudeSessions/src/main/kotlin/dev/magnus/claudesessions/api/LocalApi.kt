@@ -9,9 +9,9 @@ import com.intellij.openapi.components.service
 import com.intellij.openapi.project.ProjectManager
 import com.sun.net.httpserver.HttpExchange
 import com.sun.net.httpserver.HttpServer
-import dev.magnus.claudesessions.ClaudeSessionId
 import dev.magnus.claudesessions.ClaudeSessionTab
 import dev.magnus.claudesessions.ClaudeSessionsView
+import dev.magnus.claudesessions.claudecode.ClaudeSessionId
 import java.net.InetAddress
 import java.net.InetSocketAddress
 import java.net.URLDecoder

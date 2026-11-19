@@ -3,6 +3,10 @@ package dev.magnus.claudesessions
 import com.intellij.openapi.application.EDT
 import com.intellij.terminal.frontend.toolwindow.TerminalToolWindowTab
 import com.intellij.ui.content.Content
+import dev.magnus.claudesessions.claudecode.ClaudeCodeCommand
+import dev.magnus.claudesessions.claudecode.ClaudeSession
+import dev.magnus.claudesessions.claudecode.RunningClaudeCode
+import dev.magnus.claudesessions.claudecode.Shell
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.launch

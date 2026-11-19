@@ -8,11 +8,16 @@ import com.intellij.openapi.wm.ToolWindowManager
 import com.intellij.openapi.wm.WindowManager
 import com.intellij.terminal.frontend.toolwindow.TerminalToolWindowTab
 import com.intellij.terminal.frontend.toolwindow.TerminalToolWindowTabsManager
+import com.intellij.ui.content.Content
 import com.intellij.ui.content.ContentManagerEvent
 import com.intellij.ui.content.ContentManagerListener
+import dev.magnus.claudesessions.claudecode.ClaudeCodeCommand
+import dev.magnus.claudesessions.claudecode.ClaudeSession
+import dev.magnus.claudesessions.reload.TabsParkedInTheTerminal
+import dev.magnus.claudesessions.saving.ClaudeSessionKeeper
+import dev.magnus.claudesessions.saving.SavedClaudeSessions
 import java.nio.file.Path
 import java.util.concurrent.ConcurrentHashMap
-import com.intellij.ui.content.Content
 
 /**
  * A project's Claude Sessions tool window: a tab for each Claude Code session, each a [ClaudeSessionTab] whose shell

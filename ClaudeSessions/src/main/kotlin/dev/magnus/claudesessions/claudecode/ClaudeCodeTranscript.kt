@@ -1,4 +1,4 @@
-package dev.magnus.claudesessions
+package dev.magnus.claudesessions.claudecode
 
 import com.google.gson.stream.JsonReader
 import com.google.gson.stream.JsonToken

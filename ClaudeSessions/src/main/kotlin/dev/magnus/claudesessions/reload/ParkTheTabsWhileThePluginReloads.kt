@@ -1,8 +1,9 @@
-package dev.magnus.claudesessions
+package dev.magnus.claudesessions.reload
 
 import com.intellij.ide.plugins.DynamicPluginListener
 import com.intellij.ide.plugins.IdeaPluginDescriptor
 import com.intellij.openapi.project.ProjectManager
+import dev.magnus.claudesessions.ClaudeSessionsView
 
 /**
  * Parks the tabs of every open project's [ClaudeSessionsView] in the Terminal tool window as this plugin unloads, so

@@ -1,4 +1,4 @@
-package dev.magnus.claudesessions
+package dev.magnus.claudesessions.saving
 
 import com.google.gson.GsonBuilder
 import com.google.gson.JsonArray
@@ -6,6 +6,9 @@ import com.google.gson.JsonObject
 import com.google.gson.JsonParser
 import com.intellij.openapi.application.PathManager
 import com.intellij.openapi.project.Project
+import dev.magnus.claudesessions.ClaudeSessionsView
+import dev.magnus.claudesessions.claudecode.ClaudeSession
+import dev.magnus.claudesessions.claudecode.ClaudeSessionId
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.StandardCopyOption

@@ -1,10 +1,16 @@
-package dev.magnus.claudesessions
+package dev.magnus.claudesessions.reload
 
 import com.intellij.openapi.diagnostic.thisLogger
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.wm.ToolWindowManager
 import com.intellij.terminal.frontend.toolwindow.TerminalToolWindowTab
 import com.intellij.terminal.frontend.toolwindow.TerminalToolWindowTabsManager
+import dev.magnus.claudesessions.ClaudeSessionTab
+import dev.magnus.claudesessions.ClaudeSessionsToolWindowFactory
+import dev.magnus.claudesessions.ClaudeSessionsView
+import dev.magnus.claudesessions.claudecode.ClaudeSession
+import dev.magnus.claudesessions.claudecode.ClaudeSessionId
+import dev.magnus.claudesessions.claudecode.RunningClaudeCode
 import org.jetbrains.plugins.terminal.TerminalToolWindowFactory
 
 /**
