@@ -25,10 +25,18 @@ namespace RiderTerminalSymbolLinker.DevelopmentTools.Riders;
 public sealed class SandboxHub(string folder)
 {
    /// <summary>
-   ///   The executables the hub is: its server, its client, which starts its server when none runs, and its session host,
-   ///   which the server starts from beside itself, and whose attach client the sandbox's tabs run.
+   ///   The executables the hub is: the hub itself, its client, which starts the hub when none runs, and its session host,
+   ///   which the hub starts from beside itself, and whose attach client the sandbox's tabs run.
    /// </summary>
-   static readonly string[] Executables = ["ClaudeTooling.Server.exe", "ClaudeTooling.exe", "ClaudeTooling.SessionHost.exe"];
+   static string[] Executables => [HubExecutable, "ClaudeTooling.exe", "ClaudeTooling.SessionHost.exe"];
+
+   /// <summary>
+   ///   The hub's own executable, as the published build names it: <c>ClaudeTooling.Hub.exe</c> since the tooling owner
+   ///   renamed the resident server the hub (2026-11-19), and <c>ClaudeTooling.Server.exe</c> before.
+   /// </summary>
+   static string HubExecutable => File.Exists(Path.Combine(PublishedFolder, "ClaudeTooling.Hub.exe")) ? "ClaudeTooling.Hub.exe" : FormerHubExecutable;
+
+   const string FormerHubExecutable = "ClaudeTooling.Server.exe";
 
    static readonly TimeSpan HowLongStartingMayTake = TimeSpan.FromSeconds(30);
 
@@ -36,7 +44,7 @@ public sealed class SandboxHub(string folder)
 
    string CopyFolder => Path.Combine(folder, "bin");
 
-   string Server => Path.Combine(CopyFolder, Executables[0]);
+   string Hub => Path.Combine(CopyFolder, HubExecutable);
 
    /// <summary>Where the copy records the last write time of the published server it was copied from, in ticks.</summary>
    string CopiedFromFile => Path.Combine(folder, "copied-from-build.txt");
@@ -123,7 +131,7 @@ public sealed class SandboxHub(string folder)
    {
       if(Announcement() is not {} announcement) return false;
       var build = DateTime.Parse(announcement["build"]!.GetValue<string>(), CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind);
-      return build == File.GetLastWriteTimeUtc(Server) && IsRunning(announcement["processId"]!.GetValue<int>());
+      return build == File.GetLastWriteTimeUtc(Hub) && IsRunning(announcement["processId"]!.GetValue<int>());
    }
 
    static bool IsRunning(int processId) => Process.GetProcesses().Any(it => it.Id == processId);
@@ -131,8 +139,8 @@ public sealed class SandboxHub(string folder)
    /// <summary>Copies the published hub's build, unless the copy is of it already.</summary>
    void TakeThePublishedBuild()
    {
-      var published = File.GetLastWriteTimeUtc(Path.Combine(PublishedFolder, Executables[0])).Ticks.ToString(CultureInfo.InvariantCulture);
-      if(File.Exists(Server) && File.Exists(CopiedFromFile) && File.ReadAllText(CopiedFromFile) == published) return;
+      var published = File.GetLastWriteTimeUtc(Path.Combine(PublishedFolder, HubExecutable)).Ticks.ToString(CultureInfo.InvariantCulture);
+      if(File.Exists(Hub) && File.Exists(CopiedFromFile) && File.ReadAllText(CopiedFromFile) == published) return;
 
       Directory.CreateDirectory(CopyFolder);
       var replacedAt = DateTime.Now.ToString("yyyyMMdd-HHmmss-fff", CultureInfo.InvariantCulture);
@@ -143,7 +151,10 @@ public sealed class SandboxHub(string folder)
          File.Copy(Path.Combine(PublishedFolder, executable), copy);
       }
 
-      File.SetLastWriteTimeUtc(Server, DateTime.UtcNow); // A build of its own, whose pipe is its own.
+      // The hub's former executable goes too, once the build names it anew.
+      var former = Path.Combine(CopyFolder, FormerHubExecutable);
+      if(HubExecutable != FormerHubExecutable && File.Exists(former)) File.Move(former, $"{former}.replaced-{replacedAt}");
+      File.SetLastWriteTimeUtc(Hub, DateTime.UtcNow); // A build of its own, whose pipe is its own.
       File.WriteAllText(CopiedFromFile, published);
       DeleteTheReplacedExecutablesNoLongerRunning();
    }
