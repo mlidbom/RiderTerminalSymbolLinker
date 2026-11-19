@@ -206,8 +206,10 @@ component, the chat card shown.
 - **Typed instead:** the text sent as it is, with a line feed between lines (Ctrl+J, Claude Code's `chat:newline`), and
   `\r` after, is recorded as plain text, newlines intact. But long text is taken for a paste even without the brackets:
   a single write of 1,500 characters became `[Pasted text]`, and so did writes of 1,000 characters 50 ms apart. Writes
-  of 200 characters about 130 ms apart, 6,442 characters in 60 lines in 4.2 seconds, were recorded as plain text. Where
-  the limit is exactly isn't known.
+  of 200 characters about 130 ms apart, 6,442 characters in 60 lines in 4.2 seconds, were recorded as plain text. The
+  limit lies between 800 and 1,000 characters a write: the tooling owner's check on Claude Code 2.1.328, typing into a
+  console with `WriteConsoleInput`, had 500 and 800 recorded as typed and 1,000 as pasted (ClaudeTooling's `InputBox`,
+  2026-11-19). The input box shows what the model gets: `[Pasted text #n]` there means a paste.
 - **So:** type what he typed, in small pieces, and send what he pasted into the box as a bracketed paste of its own,
   which Claude Code then marks as pasted, as it does a paste into its own box.
 - **Images:**
