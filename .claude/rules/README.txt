@@ -16,7 +16,7 @@ adopted path-scoped rules. Project-specific rules live alongside as regular file
 flat in `.claude/skills/` with a `shared-` prefix on the link name — grouping folders break skill discovery,
 and the link folder's name becomes the skill's name; see the catalog README.) If the links look wrong, run
 `.claude-shared/git-scripts/verify-claude-symlinks.ps1`. If `.claude-shared/` is
-missing, the next session start makes it, or run `sh .claude/verify-shared-claude-config.sessionstart-hook.sh`.
+missing, the next session start makes it, or run `sh .claude/attach-shared-claude-config.sessionstart-hook.sh`.
 To sync with upstream, run `sh .claude-shared/git-scripts/pull.sh` or `push.sh`.
 
 (This README is `.txt` on purpose — a `README.md` with no frontmatter would inject into every session. Like
