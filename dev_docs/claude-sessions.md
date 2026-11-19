@@ -220,6 +220,10 @@ component, the chat card shown.
     it too. That takes the system clipboard, Magnus's: the spike saved his text first, and put it back.
   - So: save a pasted image to a file, and send its path as a bracketed paste of its own. That leaves his clipboard
     alone.
+  - **What Magnus needs (2026-11-19):** Ctrl+V of an image on the clipboard, into the chat's input box, puts it in his
+    message, as Ctrl+V does in Claude Code's box today: "I cannot remember attaching a file in any other way than from my
+    clipboard ever." The file and its path are the plugin's way of handing it on, unseen by him. Not tried: a path
+    pasted mid-message, between typed pieces, so that the image lands where he pasted it.
 - **Escape twice clears the input box.** Ctrl+L, `chat:clearInput` in Claude Code's keymap, sent as `0x0C`, didn't.
 - **The real Claude Code ran with `--setting-sources project,local`,** and `--settings` with only `"tui": "fullscreen"`,
   so that none of Magnus's hooks ran, such as the notification at a turn's end.
