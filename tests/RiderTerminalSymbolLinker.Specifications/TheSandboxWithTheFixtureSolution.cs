@@ -84,17 +84,33 @@ public sealed class TheSandboxWithTheFixtureSolution : IDisposable
 
    string FixtureFolder => Path.GetDirectoryName(_sandbox.FixtureSolution)!;
 
+   /// <summary>
+   ///   Waits until the symbol linker has indexed the fixture solution. Its observation channel may not listen yet when
+   ///   the sandbox has started, which waits for the MCP server only: a refused connection is waited out too.
+   /// </summary>
    void WaitUntilThePluginHasIndexedTheSolution()
    {
       var deadline = DateTime.UtcNow + HowLongIndexingMayTake;
-      JsonNode state;
-      while(!BothIndexesAreReady(state = _sandbox.SymbolLinkerObservation.State()))
+      JsonNode? state;
+      while(!BothIndexesAreReady(state = StateOrNullWhileNotListening()))
       {
-         if(DateTime.UtcNow > deadline) throw new TimeoutException($"The plugin's indexes of the fixture solution weren't ready after {HowLongIndexingMayTake}: {state}");
+         if(DateTime.UtcNow > deadline) throw new TimeoutException($"The plugin's indexes of the fixture solution weren't ready after {HowLongIndexingMayTake}: {state?.ToJsonString() ?? "its observation channel didn't listen"}");
          Thread.Sleep(500);
       }
 
-      static bool BothIndexesAreReady(JsonNode state) =>
-         state["projects"]!.AsArray().Any(it => it!["symbolIndex"]!["ready"]!.GetValue<bool>() && it["fileIndex"]!["ready"]!.GetValue<bool>());
+      JsonNode? StateOrNullWhileNotListening()
+      {
+         try
+         {
+            return _sandbox.SymbolLinkerObservation.State();
+         }
+         catch(HttpRequestException exception) when(exception.HttpRequestError == HttpRequestError.ConnectionError)
+         {
+            return null;
+         }
+      }
+
+      static bool BothIndexesAreReady(JsonNode? state) =>
+         state?["projects"]!.AsArray().Any(it => it!["symbolIndex"]!["ready"]!.GetValue<bool>() && it["fileIndex"]!["ready"]!.GetValue<bool>()) == true;
    }
 }
