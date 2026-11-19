@@ -9,8 +9,9 @@ It lives in this repository as a project of its own. **Decided, not yet done (Ma
 the symbol linker become one plugin, a Claude Code enhancement plugin, under the symbol linker's id,
 `dev.magnus.riderterminalsymbollinker`, with a new name, so that the symbol linker's users get it as an update. The
 symbol linking becomes an optional part, in a config file of its own that loads only when the .NET
-Analysis&Refactoring MCP plugin is installed, and the plugin runs in every JetBrains IDE. The name, and renaming the
-GitHub repository, are still Magnus's to choose. The merge comes after the chat view's first version (below).
+Analysis&Refactoring MCP plugin is installed, and the plugin runs in every JetBrains IDE. Its name is Cloyd (Magnus,
+2026-11-19), which plays on Claude as Royder, the MCP plugin's coming name, plays on Rider. Renaming the GitHub
+repository is still Magnus's to choose. The merge comes after the chat view's first version (below).
 
 Its packages, below `dev.magnus.claudesessions`, which holds the tool window and its tabs:
 
