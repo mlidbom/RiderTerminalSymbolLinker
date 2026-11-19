@@ -132,15 +132,17 @@ re-highlights old output.
 
 - **The sandbox's hub** (`SandboxHub`), which Claude Sessions there follows for the Claude Codes that run, and which
   starts the session hosts its tabs' sessions run in: a copy of the published hub's build, `ClaudeTooling.exe`,
-  `ClaudeTooling.Server.exe` and `ClaudeTooling.SessionHost.exe` from `~/.claude/bin`, in `hub` in the sandbox's
-  folder, started with the sandbox's `CLAUDE_CONFIG_DIR` and with `CLAUDE_TOOLING_LOCAL_API_FOLDER` naming a
-  folder of its own for its announcement, which the sandbox Rider gets too, as the hub's contract says. For its Rider
+  `ClaudeTooling.Hub.exe` and `ClaudeTooling.SessionHost.exe` from `~/.claude/bin`, in `hub` in the sandbox's
+  folder, started with `ClaudeTooling.exe hub start`, with the sandbox's `CLAUDE_CONFIG_DIR`, and with
+  `CLAUDE_TOOLING_LOCAL_API_FOLDER` naming a folder of its own for its announcement, which the sandbox Rider gets too,
+  as the hub's contract says. Its log is `hub.log` there, which `CLAUDE_TOOLING_HUB_LOG` names: without it, it would
+  write to Magnus's hub's, `~/.claude/hub.log`. For its Rider
   restart, `CLAUDE_SESSIONS_LOCAL_API_FOLDER` names the sandbox Rider's announcements, the only IDEs it restarts, and
   `DOTNET_ANALYSIS_AND_REFACTORING_MCP_PORT` the sandbox's Royder: a hub outside `~/.claude/bin` takes both from its
   start environment, and without the folder answers that it has no IDEs. A hub that runs with other values of these
-  four than the sandbox now sets, as after a change to the tools, is ended and started anew (`started.json` beside
+  five than the sandbox now sets, as after a change to the tools, is ended and started anew (`started.json` beside
   the copy records them). It's run as the sandbox starts, and before each install into a running one, taking the published build anew when there is a newer
-  one. The copy's server is given a write time of its own: the hub's pipe is named after it, and with the published
+  one. The copy's hub is given a write time of its own: the hub's pipe is named after it, and with the published
   one's, the copy's client would hand its commands to Magnus's hub. It stops 5 minutes after the sandbox Rider's stream
   of it closes. `sandbox status` shows its announcement. `When_the_hub_restarts_rider` has it restart the sandbox
   Rider through `POST /rider-restart`, with `askedByMagnus`, so it shows Magnus no prompt: the sandbox Rider's window

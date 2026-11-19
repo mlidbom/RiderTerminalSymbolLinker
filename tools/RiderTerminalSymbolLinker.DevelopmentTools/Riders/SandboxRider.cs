@@ -526,6 +526,7 @@ public sealed class SandboxRider
       LeaveOutTheClaudeCodeSessionThisRunsIn();
       Environment.SetEnvironmentVariable("CLAUDE_CONFIG_DIR", ClaudeCodeFolder);
       Environment.SetEnvironmentVariable("CLAUDE_TOOLING_LOCAL_API_FOLDER", _hub.AnnouncementFolder);
+      Environment.SetEnvironmentVariable("CLAUDE_TOOLING_HUB_LOG", _hub.Log);
       // For the hub's Rider restart: the IDEs it restarts are those announced here, the sandbox Rider's.
       Environment.SetEnvironmentVariable("CLAUDE_SESSIONS_LOCAL_API_FOLDER", LocalApiAnnouncementsFolder);
       var path = Environment.GetEnvironmentVariable("PATH")!;

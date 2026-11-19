@@ -31,13 +31,7 @@ public sealed class SandboxHub(string folder)
    /// </summary>
    static string[] Executables => [HubExecutable, "ClaudeTooling.exe", "ClaudeTooling.SessionHost.exe"];
 
-   /// <summary>
-   ///   The hub's own executable, as the published build names it: <c>ClaudeTooling.Hub.exe</c> since the tooling owner
-   ///   renamed the resident server the hub (2026-11-19), and <c>ClaudeTooling.Server.exe</c> before.
-   /// </summary>
-   static string HubExecutable => File.Exists(Path.Combine(PublishedFolder, "ClaudeTooling.Hub.exe")) ? "ClaudeTooling.Hub.exe" : FormerHubExecutable;
-
-   const string FormerHubExecutable = "ClaudeTooling.Server.exe";
+   const string HubExecutable = "ClaudeTooling.Hub.exe";
 
    static readonly TimeSpan HowLongStartingMayTake = TimeSpan.FromSeconds(30);
 
@@ -47,16 +41,26 @@ public sealed class SandboxHub(string folder)
 
    string Hub => Path.Combine(CopyFolder, HubExecutable);
 
-   /// <summary>Where the copy records the last write time of the published server it was copied from, in ticks.</summary>
+   /// <summary>Where the copy records the last write time of the published hub it was copied from, in ticks.</summary>
    string CopiedFromFile => Path.Combine(folder, "copied-from-build.txt");
 
    /// <summary>
    ///   The variables of its start environment that the hub serves the sandbox by: its Claude Code folder and the folder
-   ///   it announces in, as its contract has it; and for its Rider restart, the folder of the IDEs' announcements and
-   ///   Royder's port, which a hub outside <c>~/.claude/bin</c> takes from its start environment.
+   ///   it announces in, as its contract has it; for its Rider restart, the folder of the IDEs' announcements and
+   ///   Royder's port, which a hub outside <c>~/.claude/bin</c> takes from its start environment; and its
+   ///   <see cref="Log"/>.
    /// </summary>
    static readonly string[] TheVariablesItServesBy =
-      ["CLAUDE_CONFIG_DIR", "CLAUDE_TOOLING_LOCAL_API_FOLDER", "CLAUDE_SESSIONS_LOCAL_API_FOLDER", "DOTNET_ANALYSIS_AND_REFACTORING_MCP_PORT"];
+   [
+      "CLAUDE_CONFIG_DIR", "CLAUDE_TOOLING_LOCAL_API_FOLDER", "CLAUDE_SESSIONS_LOCAL_API_FOLDER", "DOTNET_ANALYSIS_AND_REFACTORING_MCP_PORT",
+      "CLAUDE_TOOLING_HUB_LOG"
+   ];
+
+   /// <summary>
+   ///   The hub's log, which <c>CLAUDE_TOOLING_HUB_LOG</c> names for it: without it, it would write to the machine's,
+   ///   <c>~/.claude/hub.log</c>, among the lines of the hub Magnus's sessions use.
+   /// </summary>
+   public string Log => Path.Combine(folder, "hub.log");
 
    /// <summary>
    ///   Where the copy records the hub it started, by its process, and <see cref="TheVariablesItServesBy"/> as it started
@@ -83,19 +87,19 @@ public sealed class SandboxHub(string folder)
       TakeThePublishedBuild();
       EndTheHubIfItRunsInAnotherEnvironment();
       var start = new ProcessStartInfo(Path.Combine(CopyFolder, "ClaudeTooling.exe")) { UseShellExecute = true, WindowStyle = ProcessWindowStyle.Hidden };
-      start.ArgumentList.Add("resident-server");
+      start.ArgumentList.Add("hub");
       start.ArgumentList.Add("start");
       using(var client = Process.Start(start) ?? throw new InvalidOperationException($"Could not start {start.FileName}."))
       {
-         if(!client.WaitForExit(HowLongStartingMayTake)) throw new TimeoutException($"{start.FileName} resident-server start didn't exit within {HowLongStartingMayTake}.");
-         if(client.ExitCode != 0) throw new InvalidOperationException($"{start.FileName} resident-server start exited with {client.ExitCode}.");
+         if(!client.WaitForExit(HowLongStartingMayTake)) throw new TimeoutException($"{start.FileName} hub start didn't exit within {HowLongStartingMayTake}.");
+         if(client.ExitCode != 0) throw new InvalidOperationException($"{start.FileName} hub start exited with {client.ExitCode}.");
       }
 
       var clock = Stopwatch.StartNew();
       while(!AnnouncesTheBuildCopied())
       {
          if(clock.Elapsed > HowLongStartingMayTake)
-            throw new TimeoutException($"Gave up after {HowLongStartingMayTake} waiting for the sandbox's hub to announce its local API in {AnnouncementFile}. Its log is ~/.claude/resident-server.log.");
+            throw new TimeoutException($"Gave up after {HowLongStartingMayTake} waiting for the sandbox's hub to announce its local API in {AnnouncementFile}. Its log is {Log}.");
          Thread.Sleep(100);
       }
 
@@ -239,9 +243,6 @@ public sealed class SandboxHub(string folder)
          File.Copy(Path.Combine(PublishedFolder, executable), copy);
       }
 
-      // The hub's former executable goes too, once the build names it anew.
-      var former = Path.Combine(CopyFolder, FormerHubExecutable);
-      if(HubExecutable != FormerHubExecutable && File.Exists(former)) File.Move(former, $"{former}.replaced-{replacedAt}");
       File.SetLastWriteTimeUtc(Hub, DateTime.UtcNow); // A build of its own, whose pipe is its own.
       File.WriteAllText(CopiedFromFile, published);
       DeleteTheReplacedExecutablesNoLongerRunning();
