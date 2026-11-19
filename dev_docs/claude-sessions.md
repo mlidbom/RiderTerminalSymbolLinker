@@ -24,7 +24,10 @@ Its packages, below `dev.magnus.claudesessions`, which holds the tool window and
   the IDE's terminal would give them.
 - **`newsession`:** the + and the popup that names a new session.
 - **`history`:** the session history picker.
-- **`api`:** the local API through which other tools, and other IDEs, show a session's tab.
+- **`api`:** the local API through which other tools, and other IDEs, show a session's tab, see the IDE's windows, and
+  have it restart.
+- **`windows`:** the IDE's project windows, their native handles and virtual desktops, and putting each back on its
+  desktop after a restart.
 - **`chat`:** the chat view: a tab's two cards, the chat and the terminal, the chat itself, and the switch between
   them. Below it, `chat.transcript`, the pane that shows the conversation; `chat.messagebox`, the box the user writes
   in; `chat.claudecode`, what the chat needs of the Claude Code behind it, with `chat.claudecode.conversation`, the
@@ -456,7 +459,7 @@ mode, input `0x208`):
   multi-line paste into the TUI would be sent at its first line. So the host must set them again for each new attach
   client, before the repaint: told to survive-IDE-restart.
 
-## The local API: showing a session's tab for another tool
+## The local API: showing a session's tab, and restarting the IDE, for another tool
 
 Clicking the notifications of Magnus's session tooling (tooling-owner's, in `~/.claude`) brings forward the IDE window
 of the session, and then asks Claude Sessions in that IDE to show the session's tab. The contract, agreed with
@@ -464,8 +467,8 @@ tooling-owner on 2026-11-17 (protocol 1):
 
 - **`LocalApi`,** an application service that the first project's `ClaudeSessionsStartup` starts, listens on a free
   port of the loopback address. **`LocalApiAnnouncement`** names it in
-  `%LOCALAPPDATA%\ClaudeSessions\ides\<the IDE's process id>.json`, `{"protocol": 1, "processId": …, "port": …}`,
-  and deletes the file as the API stops. The tooling knows the IDE's process: the one that owns the window it brought
+  `%LOCALAPPDATA%\ClaudeSessions\ides\<the IDE's process id>.json`, `{"protocol": 1, "processId": …, "port": …,
+  "token": …}`, and deletes the file as the API stops. The tooling knows the IDE's process: the one that owns the window it brought
   forward.
 - **`POST /sessions/show?session=<id>&process=<Claude Code's process id>`** selects the tab in which that Claude Code
   runs, or else the one that runs the session or ran it last, shows the tool window, and brings the project's window in
@@ -478,8 +481,25 @@ tooling-owner on 2026-11-17 (protocol 1):
 - **The tooling** brings the window forward itself, since Windows lets the process the user clicked do that, and not
   the IDE. It asks the window's own IDE first, then every other announced one, a second each, and logs the answer to
   `~/.claude/notifying-magnus.log`.
-- **No authentication,** as showing a tab is harmless. tooling-owner's condition: a request that changes something,
-  such as resuming a session or typing into one, takes a token in the announcement, required with each request.
+- **`GET /windows`** and **`POST /restart`,** for the tooling owner's tool for restarting Rider
+  (`~/.claude/dev_docs/restarting-rider.md`), agreed with it on 2026-11-19. `GET /windows`: each project window's
+  folder, title, native handle (`HWND`), whether it or a dialog it owns has the input focus, and its virtual desktop's
+  GUID. `POST /restart` `{"why", "askedBy"}`: 202, then `ApplicationEx.restart(exitConfirmed = true)`; 409 while a
+  modal dialog is open; one that exits already goes on exiting (`Application.isExitInProgress` is internal API, which
+  the verifier refuses). Rider may still ask on the way, as whether to end running processes.
+  The new announcement comes once the first project has opened. Rider restarts its launcher without the arguments it
+  started with (`Restarter.restartOnWindows`), and reopens every solution it had open, each in its window, as "Reopen
+  projects on startup" is on by default: a specification checks it with three.
+- **Each project window goes back to its virtual desktop after every restart** (Magnus: "Every restart please :)"):
+  `RecordTheWindowsDesktopsAsTheIdeExits` records each one's desktop as the IDE exits, and
+  `PutTheWindowBackOnItsDesktop` moves it back once its project has opened and its window shows
+  (`DesktopsThroughARestart`). Through Windows' documented `IVirtualDesktopManager` (`VirtualDesktops`), over JNA's COM,
+  on a thread of its own in the multithreaded apartment: it moves only the calling process's own windows, which the
+  IDE's are, so the plugin does it rather than the hub. A desktop gone since is skipped.
+- **A token, and the `Host`:** a request that changes something, as `POST /restart` does, carries the announcement's
+  token, `Authorization: Bearer <token>`, new at each start of the IDE: 401 without it. Showing a tab and what only
+  reads need none. Every request must name `127.0.0.1:<port>` or `localhost:<port>` as its `Host`, else 403: a web
+  page can't reach the API through a name of its own that resolves to the loopback address.
 - **A file left by a crash** costs a click up to the tooling's one-second timeout: on Windows, a connection to a loopback
   port nothing listens on takes about two seconds to be refused.
 

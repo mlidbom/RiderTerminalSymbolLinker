@@ -1,20 +1,28 @@
 package dev.magnus.claudesessions.api
 
-import com.google.gson.Gson
+import com.google.gson.GsonBuilder
+import com.google.gson.JsonObject
+import com.google.gson.JsonParser
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.ModalityState
+import com.intellij.openapi.application.ex.ApplicationManagerEx
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
+import com.intellij.openapi.diagnostic.thisLogger
 import com.intellij.openapi.project.ProjectManager
 import com.sun.net.httpserver.HttpExchange
 import com.sun.net.httpserver.HttpServer
 import dev.magnus.claudesessions.ClaudeSessionTab
 import dev.magnus.claudesessions.ClaudeSessionsView
 import dev.magnus.claudesessions.claudecode.ClaudeSessionId
+import dev.magnus.claudesessions.windows.DesktopsThroughARestart
+import dev.magnus.claudesessions.windows.ProjectWindow
 import java.net.InetAddress
 import java.net.InetSocketAddress
 import java.net.URLDecoder
+import java.security.SecureRandom
+import java.util.HexFormat
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
@@ -30,28 +38,45 @@ import java.util.concurrent.Executors
  *    the one that runs the session, or ran it last: `process` finds a tab after `/clear` gave it a new session, and
  *    `session` finds one whose Claude Code was resumed in a new process. Either may be left out. It answers 200 with
  *    `{"shown": true}`, or 404 with `{"shown": false}` when none of this IDE's tabs runs the session.
+ *  - `GET /windows`: the windows of the projects open in the IDE, as `{"windows": [{"project": <the project's folder>,
+ *    "title": <the window's title>, "window": <its native handle, HWND>, "hasTheInputFocus": <whether it, or a dialog it
+ *    owns, has the input focus>, "desktop": <the GUID of the virtual desktop it's on, or null>}]}`.
+ *  - `POST /restart` with `{"why": <why>, "askedBy": <who asked>}`, and the announcement's token: has the IDE restart
+ *    itself, as after a plugin's update, without asking the user to confirm it. It answers 202 once the restart is on
+ *    its way, or 409 with `{"error": <why not>}` when a modal dialog is open. The IDE
+ *    may still ask on the way, as whether to end the processes that run, and the user may cancel it. Each project's
+ *    window goes back to its virtual desktop once the project has opened again, as after every restart
+ *    ([DesktopsThroughARestart]). The tool for restarting Rider asks, which the tooling owner builds
+ *    (`~/.claude/dev_docs/restarting-rider.md`).
  *
- * A tool whose notification about a session the user clicks calls it, after it has brought the IDE's window forward
- * itself: Windows lets the process the user clicked bring a window forward, and not the IDE.
+ * A tool whose notification about a session the user clicks calls `POST /sessions/show`, after it has brought the
+ * IDE's window forward itself: Windows lets the process the user clicked bring a window forward, and not the IDE.
  *
- * It has no authentication: any process on the machine can reach a loopback port, and showing a tab is harmless. A
- * request that changes something, such as typing into a session, would need a token in the announcement, required with
- * each request.
+ * Any process on the machine can reach a loopback port, so a request that changes something, as `POST /restart` does,
+ * must carry the announcement's token, `Authorization: Bearer <token>`, new at each start of the IDE; it's answered 401
+ * without it. Showing a tab, and what is only read, are harmless, and need none. Every request must name the API's own
+ * address as its `Host`, else it's answered 403: a web page can't then reach it through a name of its own that resolves
+ * to the loopback address.
  */
 @Service(Service.Level.APP)
 class LocalApi : Disposable {
-    private val gson = Gson()
+    private val gson = GsonBuilder().serializeNulls().disableHtmlEscaping().create()
+
+    /** What a request that changes something must carry: see the API's description. */
+    private val token: String = HexFormat.of().formatHex(ByteArray(32).also(SecureRandom()::nextBytes))
 
     private val server: HttpServer =
         HttpServer.create(InetSocketAddress(InetAddress.getLoopbackAddress(), 0), 0).apply {
             // Each request on a thread of its own, as they wait for the EDT, which may wait for this server to stop.
             executor = Executors.newCachedThreadPool()
-            createContext("/sessions/show") { exchange -> answer(exchange) }
-            createContext("/sessions") { exchange -> answerWithTheSessions(exchange) }
+            createContext("/sessions/show") { exchange -> ifItsHostIsThisApi(exchange, ::answer) }
+            createContext("/sessions") { exchange -> ifItsHostIsThisApi(exchange, ::answerWithTheSessions) }
+            createContext("/windows") { exchange -> ifItsHostIsThisApi(exchange, ::answerWithTheWindows) }
+            createContext("/restart") { exchange -> ifItsHostIsThisApi(exchange, ::restart) }
             start()
         }
 
-    private val announcement = LocalApiAnnouncement.of(ProcessHandle.current()).also { it.announce(server.address.port) }
+    private val announcement = LocalApiAnnouncement.of(ProcessHandle.current()).also { it.announce(server.address.port, token) }
 
     override fun dispose() {
         announcement.withdraw()
@@ -72,8 +97,58 @@ class LocalApi : Disposable {
         200 to mapOf("sessions" to sessions)
     }
 
+    private fun answerWithTheWindows(exchange: HttpExchange) = reply(exchange) {
+        val windows = onTheEdt { ProjectWindow.ofTheOpenProjects() }.map {
+            mapOf("project" to it.project.toString(), "title" to it.title, "window" to it.handle.value, "hasTheInputFocus" to it.hasTheInputFocus, "desktop" to it.desktop?.value?.toString())
+        }
+        200 to mapOf("windows" to windows)
+    }
+
+    /** Has the IDE restart itself, once it has answered, unless it can't now: see the API's description. */
+    private fun restart(exchange: HttpExchange) {
+        var restarting = false
+        reply(exchange) {
+            when {
+                exchange.requestMethod != "POST" -> 405 to mapOf("error" to "POST it")
+                !carriesTheToken(exchange) -> 401 to mapOf("error" to "A restart must carry the token of the IDE's announcement, as Authorization: Bearer <token>.")
+                else -> {
+                    val request = JsonParser.parseString(exchange.requestBody.readAllBytes().decodeToString()).asJsonObject
+                    val whyNot = onTheEdt { whyTheIdeCannotRestartNow() }
+                    if (whyNot != null) 409 to mapOf("error" to whyNot)
+                    else {
+                        thisLogger().info("Restarting the IDE, as ${request.textOf("askedBy")} asked: ${request.textOf("why")}")
+                        restarting = true
+                        202 to mapOf("restarting" to true)
+                    }
+                }
+            }
+        }
+        if (restarting) ApplicationManager.getApplication().invokeLater({ ApplicationManagerEx.getApplicationEx().restart(true) }, ModalityState.nonModal())
+    }
+
+    /**
+     * Why the IDE can't restart now, or null when it can. On the EDT. One that exits already exits: asked to restart
+     * then, it goes on as it was.
+     */
+    private fun whyTheIdeCannotRestartNow(): String? =
+        "A modal dialog is open in the IDE: it would wait for the user.".takeIf { ModalityState.current() != ModalityState.nonModal() }
+
+    private fun JsonObject.textOf(name: String): String = get(name)?.takeUnless { it.isJsonNull }?.asString ?: "(not said)"
+
+    private fun carriesTheToken(exchange: HttpExchange): Boolean = exchange.requestHeaders.getFirst("Authorization") == "Bearer $token"
+
+    /**
+     * Has [answer] answer [exchange] if it names this API's own address as its `Host`, and else answers 403: see the
+     * API's description.
+     */
+    private fun ifItsHostIsThisApi(exchange: HttpExchange, answer: (HttpExchange) -> Unit) {
+        val port = server.address.port
+        if (exchange.requestHeaders.getFirst("Host") in setOf("127.0.0.1:$port", "localhost:$port")) answer(exchange)
+        else reply(exchange) { 403 to mapOf("error" to "The request's Host must be this API's own address, 127.0.0.1:$port.") }
+    }
+
     /** Replies to [exchange] with the status and the body, as JSON, that [compute] returns. */
-    private fun reply(exchange: HttpExchange, compute: () -> Pair<Int, Map<String, Any>>) = exchange.use {
+    private fun reply(exchange: HttpExchange, compute: () -> Pair<Int, Map<String, Any?>>) = exchange.use {
         val (status, body) = compute()
         val bytes = gson.toJson(body).toByteArray()
         exchange.responseHeaders.add("Content-Type", "application/json; charset=utf-8")

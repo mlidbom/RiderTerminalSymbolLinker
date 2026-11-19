@@ -8,8 +8,9 @@ import java.nio.file.StandardCopyOption
 
 /**
  * The file that tells other tools where an IDE's [LocalApi] listens: `ClaudeSessions\ides\<the IDE's process id>.json`
- * in the user's local application data folder, which names the protocol, the process, and the port. A tool that knows
- * the IDE's process, as one that brings its window forward does, finds the file by it.
+ * in the user's local application data folder, which names the protocol, the process, the port, and the token a
+ * request that changes something must carry. A tool that knows the IDE's process, as one that brings its window forward
+ * does, finds the file by it.
  *
  * The IDE writes it as the API starts, and deletes it as the API stops. One left behind by a crash names a process that
  * no longer runs, or a port nothing listens on: a refused connection tells a tool that the API isn't there.
@@ -18,12 +19,16 @@ import java.nio.file.StandardCopyOption
  * would get wrong.
  */
 class LocalApiAnnouncement private constructor(private val process: ProcessHandle, private val file: Path) {
-    /** Writes the file, saying that the API listens on [port]: at once, so that a tool never reads half of it. */
-    fun announce(port: Int) {
+    /**
+     * Writes the file, saying that the API listens on [port], and takes [token] with each request that changes
+     * something: at once, so that a tool never reads half of it.
+     */
+    fun announce(port: Int, token: String) {
         val json = JsonObject().apply {
             addProperty("protocol", PROTOCOL)
             addProperty("processId", process.pid())
             addProperty("port", port)
+            addProperty("token", token)
         }
         Files.createDirectories(file.parent)
         val written = file.resolveSibling("${file.fileName}.writing")

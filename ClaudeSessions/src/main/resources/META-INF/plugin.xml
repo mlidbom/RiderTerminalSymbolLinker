@@ -29,6 +29,7 @@
                     icon="AllIcons.Toolwindows.ToolWindowMessages"
                     factoryClass="dev.magnus.claudesessions.ClaudeSessionsToolWindowFactory"/>
         <postStartupActivity implementation="dev.magnus.claudesessions.saving.ClaudeSessionsStartup"/>
+        <postStartupActivity implementation="dev.magnus.claudesessions.windows.PutTheWindowBackOnItsDesktop"/>
         <!-- What the plugin tells the user, such as that the Claude tooling's hub speaks a protocol it doesn't know. -->
         <notificationGroup id="Claude Sessions" displayType="BALLOON"/>
         <!-- The development observation channel: it listens only where a system property asks it to, in the sandbox
@@ -54,6 +55,7 @@
         <listener class="dev.magnus.claudesessions.DetachTheTabsAsTheViewGoes" topic="com.intellij.openapi.project.ProjectCloseListener"/>
         <listener class="dev.magnus.claudesessions.DetachTheTabsAsTheViewGoes" topic="com.intellij.ide.AppLifecycleListener"/>
         <listener class="dev.magnus.claudesessions.DetachTheTabsAsTheViewGoes" topic="com.intellij.ide.plugins.DynamicPluginListener"/>
+        <listener class="dev.magnus.claudesessions.windows.RecordTheWindowsDesktopsAsTheIdeExits" topic="com.intellij.ide.AppLifecycleListener"/>
     </applicationListeners>
 
     <actions>

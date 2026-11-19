@@ -1,4 +1,6 @@
 using System.Diagnostics;
+using System.Net.Http.Headers;
+using System.Net.Http.Json;
 using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
 using RiderTerminalSymbolLinker.DevelopmentTools.Plugin;
@@ -172,6 +174,81 @@ public sealed class TheClaudeSessionsView
       return (int)client.PostAsync($"http://127.0.0.1:{port}/sessions/show?{query}", null).Result.StatusCode;
    }
 
+   /// <summary>
+   ///   Asks Claude Sessions' local API <paramref name="method"/> <paramref name="path"/>, with <paramref name="body"/> as
+   ///   JSON if any, and the announcement's token when <paramref name="withTheToken"/>, naming <paramref name="host"/> as
+   ///   its <c>Host</c>, or else the API's own address, and returns the answer: its status code and its body.
+   /// </summary>
+   public (int Status, JsonNode? Body) AskTheLocalApi(string method, string path, object? body = null, bool withTheToken = false, string? host = null)
+   {
+      var announcement = LocalApiAnnouncement!;
+      var port = announcement["port"]!.GetValue<int>();
+      using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(10) };
+      using var request = new HttpRequestMessage(new HttpMethod(method), $"http://127.0.0.1:{port}{path}");
+      if(body is not null) request.Content = JsonContent.Create(body);
+      if(withTheToken) request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", announcement["token"]!.GetValue<string>());
+      if(host is not null) request.Headers.Host = host;
+      using var answer = client.Send(request);
+      var text = answer.Content.ReadAsStringAsync().Result;
+      return ((int)answer.StatusCode, text.Length > 0 ? JsonNode.Parse(text) : null);
+   }
+
+   /// <summary>
+   ///   Follows the sandbox Rider through a restart it makes itself, as <c>POST /restart</c> has it do, from the process
+   ///   <paramref name="before"/> it ran as, and returns once the view has its tabs back, each with its session.
+   /// </summary>
+   public void FollowTheIdesRestart(int before, int tabsToComeBack)
+   {
+      _sandbox.FollowItsRestart(before, _sandbox.FixtureSolution);
+      WaitUntil(() => Tabs.Count == tabsToComeBack && Tabs.All(it => it.SessionId is not null), $"{tabsToComeBack} tabs to be back with their sessions");
+   }
+
+   /// <summary>
+   ///   Has the sandbox Rider restart itself through Claude Sessions' local API, as the tool for restarting Rider does, and
+   ///   returns once it runs again with the fixture solution open: its other solutions may still be opening.
+   /// </summary>
+   public void RestartTheIdeThroughItsLocalApi()
+   {
+      var before = SandboxProcessId;
+      var asked = AskTheLocalApi("POST", "/restart", new { why = "A specification restarts it", askedBy = "the specifications" }, withTheToken: true);
+      if(asked.Status != 202) throw new InvalidOperationException($"The IDE refused to restart: {asked.Status} {asked.Body}");
+      _sandbox.FollowItsRestart(before, _sandbox.FixtureSolution);
+   }
+
+   /// <summary>The folders of the projects whose windows the sandbox Rider shows, as Claude Sessions' <c>GET /windows</c> tells of them.</summary>
+   public IReadOnlyList<string> ProjectWindows =>
+      [.. AskTheLocalApi("GET", "/windows").Body!["windows"]!.AsArray().Select(it => Path.GetFullPath(it!["project"]!.GetValue<string>())).Order()];
+
+   /// <summary>
+   ///   Opens a fresh copy of the fixture solution, in a folder of its own named <paramref name="name"/>, in a window of
+   ///   its own, and returns its folder. <see cref="CloseTheCopiesOfTheFixtureSolution"/> closes it, for the next story.
+   /// </summary>
+   public string OpenAnotherCopyOfTheFixtureSolution(string name)
+   {
+      var solution = _sandbox.AnotherCopyOfTheFixtureSolution(name);
+      _sandbox.OpenAlso(solution);
+      return Path.GetDirectoryName(solution)!;
+   }
+
+   /// <summary>
+   ///   Ends the launchers that handed the copies of the fixture solution to the sandbox Rider, once their windows show:
+   ///   one that stayed was there as Rider restarted, and held the solutions folder.
+   /// </summary>
+   public void EndTheLaunchersOfTheCopies() => _sandbox.EndTheLaunchersOfOtherSolutions();
+
+   /// <summary>
+   ///   Closes the copies of the fixture solution <see cref="OpenAnotherCopyOfTheFixtureSolution"/> opened as
+   ///   <paramref name="names"/>: kills the sandbox Rider, deletes them, so that it doesn't open them again, and starts it
+   ///   again with the fixture solution alone. Killed, not stopped: closed one window after the other, Rider showed its
+   ///   Rider Home window in place of the last, and didn't exit (2026-11-19).
+   /// </summary>
+   public void CloseTheCopiesOfTheFixtureSolution(params string[] names)
+   {
+      _sandbox.Kill();
+      foreach(var name in names) _sandbox.DeleteTheCopyOfTheFixtureSolution(name);
+      _sandbox.Start(_sandbox.FixtureSolution);
+   }
+
    /// <summary>Whether the IDE shows the view's tool window: starting a session shows it.</summary>
    public bool IsShown => Project()["view"]!["toolWindowVisible"]!.GetValue<bool>();
 
@@ -286,12 +363,15 @@ public sealed class TheClaudeSessionsView
    }
 
    /// <summary>Waits until <paramref name="condition"/> holds, as the view takes in what happened.</summary>
-   public void WaitUntil(Func<bool> condition, string whatItWaitsFor)
+   public void WaitUntil(Func<bool> condition, string whatItWaitsFor) => WaitUntil(condition, whatItWaitsFor, HowLongAChangeMayTake);
+
+   /// <summary>Waits until <paramref name="condition"/> holds, for as long as <paramref name="itMayTake"/>.</summary>
+   public static void WaitUntil(Func<bool> condition, string whatItWaitsFor, TimeSpan itMayTake)
    {
       var stopwatch = Stopwatch.StartNew();
       while(!condition())
       {
-         if(stopwatch.Elapsed > HowLongAChangeMayTake) throw new TimeoutException($"Gave up after {HowLongAChangeMayTake} waiting for {whatItWaitsFor}.");
+         if(stopwatch.Elapsed > itMayTake) throw new TimeoutException($"Gave up after {itMayTake} waiting for {whatItWaitsFor}.");
          Thread.Sleep(250);
       }
    }
