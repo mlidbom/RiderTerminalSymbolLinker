@@ -10,7 +10,6 @@ import dev.magnus.claudesessions.ClaudeSessionsToolWindowFactory
 import dev.magnus.claudesessions.ClaudeSessionsView
 import dev.magnus.claudesessions.claudecode.ClaudeSession
 import dev.magnus.claudesessions.claudecode.ClaudeSessionId
-import dev.magnus.claudesessions.claudecode.RunningClaudeCode
 import org.jetbrains.plugins.terminal.TerminalToolWindowFactory
 
 /**
@@ -27,7 +26,6 @@ import org.jetbrains.plugins.terminal.TerminalToolWindowFactory
  * takes back every tab as it was, whether or not Claude Code runs in it, and whatever Claude Code's record of its
  * session says as it reads it. Told by the session their Claude Code's record names, one tab in use was lost at every
  * reload, for a reason not found, and a tab whose Claude Code had exited went too (2026-11-17).
- * Tabs that an earlier build parked carry no mark: those are told by their session still.
  *
  * A tab moves with the terminal's `detachTab`, and the content manager's `addContent`, not the terminal's `attachTab`:
  * that activates the Terminal tool window, which shares the bottom of the IDE with this plugin's and so hides it, and
@@ -64,15 +62,12 @@ class TabsParkedInTheTerminal(private val project: Project) {
 
     /**
      * Takes the parked tabs out of the Terminal tool window, and returns them in their order, each with the one of the
-     * [saved] sessions it ran last, if it has one. A tab an earlier build parked is taken back when its Claude Code runs
-     * one of them; the other tabs of the Terminal tool window are left there.
+     * [saved] sessions it ran last, if it has one. The other tabs of the Terminal tool window are left there.
      */
     fun takeBack(saved: List<ClaudeSession>): List<ParkedTab> {
         val savedById = saved.associateBy { it.id }
         val parked = terminals.tabs.mapNotNull { terminal ->
-            val mark = terminal.content.component.getClientProperty(PARKED_TAB) as String?
-            if (mark != null) ParkedTab(terminal, savedById[ClaudeSessionId(mark)])
-            else ClaudeSessionTab.processOf(terminal)?.let(RunningClaudeCode::inOrBelow)?.session?.id?.let(savedById::get)?.let { ParkedTab(terminal, it) }
+            (terminal.content.component.getClientProperty(PARKED_TAB) as String?)?.let { ParkedTab(terminal, savedById[ClaudeSessionId(it)]) }
         }
         for (tab in parked) {
             terminals.detachTab(tab.terminal)

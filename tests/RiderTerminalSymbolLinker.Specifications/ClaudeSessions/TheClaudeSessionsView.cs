@@ -56,7 +56,7 @@ public sealed class TheClaudeSessionsView
 
    /// <summary>
    ///   Runs the sandbox's fake Claude Code outside the view, as in a plain terminal, resuming <paramref name="session"/>
-   ///   in <paramref name="folder"/>, and returns once it has recorded the session.
+   ///   in <paramref name="folder"/>, and returns once the sandbox's hub has told the view of it.
    /// </summary>
    public ClaudeCodeOutsideTheView RunClaudeCodeOutsideTheView(string session, string folder)
    {
@@ -69,9 +69,12 @@ public sealed class TheClaudeSessionsView
          Environment = { ["CLAUDE_CONFIG_DIR"] = _sandbox.ClaudeCodeFolder }
       };
       var claudeCode = new ClaudeCodeOutsideTheView(Process.Start(start)!);
-      WaitUntil(() => File.Exists(Path.Combine(_sandbox.ClaudeCodeFolder, "sessions", $"{claudeCode.Process.Id}.json")), "the Claude Code outside the view to record its session");
+      WaitUntil(() => RunningClaudeCodes.Contains(claudeCode.Process.Id), "the sandbox's hub to tell the view of the Claude Code outside it");
       return claudeCode;
    }
+
+   /// <summary>The processes of the Claude Codes that the sandbox's hub last told the view of.</summary>
+   public IReadOnlyList<int> RunningClaudeCodes => [.. Channel.State()["runningClaudeCodes"]!.AsArray().Select(it => it!["processId"]!.GetValue<int>())];
 
    /// <summary>The session history picker shown in the project's window.</summary>
    public HistoryPicker Picker => HistoryPicker.From(Channel.ThePicker());

@@ -7,9 +7,9 @@ import com.intellij.openapi.project.ProjectManager
 import dev.magnus.claudesessions.ClaudeSessionTab
 import dev.magnus.claudesessions.ClaudeSessionsView
 import dev.magnus.claudesessions.api.AnotherIde
-import dev.magnus.claudesessions.claudecode.ClaudeCodeSessionsFolder
 import dev.magnus.claudesessions.claudecode.ClaudeCodeTranscripts
 import dev.magnus.claudesessions.claudecode.ClaudeSessionId
+import dev.magnus.claudesessions.hub.ClaudeToolingHub
 import java.nio.file.Path
 
 /**
@@ -32,7 +32,7 @@ class ClaudeSessionHistory private constructor(val entries: List<ClaudeSessionHi
         fun readFor(project: Project): ClaudeSessionHistory {
             val started = System.currentTimeMillis()
             val summaries = ClaudeCodeTranscripts.all().mapNotNull { it.summary() }.filter { !it.wasRunByATool }
-            val running = ClaudeCodeSessionsFolder.running().associate { it.session.id to it.process.pid() }
+            val running = ClaudeToolingHub.getInstance().runningClaudeCodes.value.all.associate { it.session.id to it.process.pid() }
             val inTheOtherIdes = AnotherIde.all().flatMap { ide -> ide.sessionsInItsTabs().map { it.session to WhereTheSessionIs.RunningInAnotherIde(ide, it.process) } }.toMap()
             val worktrees = ProjectWorktrees.of(Path.of(project.basePath!!))
             var tabsHere: List<TabHere> = emptyList()

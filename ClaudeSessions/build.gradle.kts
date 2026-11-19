@@ -35,6 +35,19 @@ dependencies {
         // The platform's JNA, to call Windows' AllowSetForegroundWindow.
         bundledPlugin("com.intellij.modules.jna")
     }
+
+    // Plain JUnit Jupiter, as for the symbol linker's unit tests: the contract test of the hub's local API touches no
+    // platform type that needs a test fixture.
+    testImplementation(platform("org.junit:junit-bom:6.1.3"))
+    testImplementation("org.junit.jupiter:junit-jupiter")
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+    // IntelliJ's JUnit5TestSessionListener, on the test classpath with the IDE's bundled plugins, needs JUnit 4: see the
+    // symbol linker's build.gradle.kts.
+    testRuntimeOnly("junit:junit:4.13.2")
+}
+
+tasks.test {
+    useJUnitPlatform()
 }
 
 // Named without the version, as the symbol linker's jar is, so that an IDE started with idea.auto.reload.plugins

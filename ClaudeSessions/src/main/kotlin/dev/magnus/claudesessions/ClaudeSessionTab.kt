@@ -11,6 +11,7 @@ import dev.magnus.claudesessions.chat.claudecode.ClaudeCodeBehindTheChatProvider
 import dev.magnus.claudesessions.claudecode.ClaudeCodeCommand
 import dev.magnus.claudesessions.claudecode.ClaudeSession
 import dev.magnus.claudesessions.claudecode.RunningClaudeCode
+import dev.magnus.claudesessions.hub.ClaudeToolingHub
 import dev.magnus.claudesessions.claudecode.Shell
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -68,8 +69,8 @@ class ClaudeSessionTab(
     /** The process the tab's terminal runs, once it has started: the shell. */
     val process: ProcessHandle? get() = processOf(terminal)
 
-    /** The Claude Code that runs in the tab now, below its shell, or null while none does. */
-    val claudeCode: RunningClaudeCode? get() = process?.let(RunningClaudeCode::inOrBelow)
+    /** The Claude Code that runs in the tab now, below its shell, as the [ClaudeToolingHub] last told, or null while none does. */
+    val claudeCode: RunningClaudeCode? get() = process?.let(ClaudeToolingHub.getInstance().runningClaudeCodes.value::inOrBelow)
 
     /**
      * Looks at which session Claude Code runs in the tab now, and returns it: [session], updated. A session changes

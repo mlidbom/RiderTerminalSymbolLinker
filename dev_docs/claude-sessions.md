@@ -14,8 +14,9 @@ GitHub repository, are still Magnus's to choose. The merge comes after the chat 
 
 Its packages, below `dev.magnus.claudesessions`, which holds the tool window and its tabs:
 
-- **`claudecode`:** Claude Code seen from outside: its sessions, the folder it keeps them in, its records of the
-  sessions that run, its transcripts, and the command line a tab types to run it, quoted for the tab's shell.
+- **`claudecode`:** Claude Code seen from outside: its sessions, the folder it keeps them in, the Claude Codes that
+  run, its transcripts, and the command line a tab types to run it, quoted for the tab's shell.
+- **`hub`:** the Claude tooling's hub, as the plugin follows it: the one place that knows the hub's local API.
 - **`saving`:** saving the sessions the tabs run, and resuming them as the IDE starts.
 - **`reload`:** keeping the tabs through a reload of the plugin.
 - **`newsession`:** the + and the popup that names a new session.
@@ -73,18 +74,39 @@ it types. A word no shell treats specially, such as a session's id, is typed as 
 The specifications start a session named with each character some shell acts on in each of these four, with Git Bash
 for the POSIX one, and check that the fake Claude Code got the name as it was typed.
 
-## Which session a tab runs
+## Which session a tab runs: the hub tells
 
 Claude Code records each running session in `sessions/<process id>.json` in its folder (`CLAUDE_CONFIG_DIR`, or
-`~/.claude`): the session id, the folder it runs in, and its name. It rewrites the record when `/clear` starts a new
-session or `/resume` switches to another, and deletes it when it exits. `ClaudeCodeSessionsFolder` reads it for the
-processes below the tab's process, its shell, which `TerminalView.startupOptionsDeferred` gives
-(`RunningClaudeCode.inOrBelow`).
+`~/.claude`): the session id, the folder it runs in, its name and its status. It rewrites the record when `/clear`
+starts a new session or `/resume` switches to another, and deletes it when it exits. **The plugin doesn't read the
+records:** the Claude tooling's hub does, ClaudeTooling's resident server, which owns everything about Claude Code, as
+agreed (below, "Who provides what"), and the plugin follows its stream of them. A tab's Claude Code is the one the hub
+tells of below the tab's process, its shell, which `TerminalView.startupOptionsDeferred` gives
+(`RunningClaudeCodes.inOrBelow`).
 
-- **The record is undocumented internal state of Claude Code** (seen in 2.1.326). If a Claude Code update changes it,
-  this is where it breaks. A `SessionStart` hook in Claude Code's settings would be the fallback.
-- **A Claude Code that's killed leaves its record behind,** as when its tab closes, and a later process may get its
-  process id: a record whose `startedAt` is before the process started is ignored.
+- **`ClaudeToolingHub`,** an application service the first project's `ClaudeSessionsStartup` starts, follows
+  `GET /running-sessions/stream` of the hub's local API, whose contract is `~/.claude/dev_docs/the-hubs-local-api.md`,
+  and keeps what it last told as a `StateFlow` of `RunningClaudeCodes`. It finds the hub by its announcement,
+  `%LOCALAPPDATA%\ClaudeTooling\local-api.json` (`HubAnnouncement`), or in the folder `CLAUDE_TOOLING_LOCAL_API_FOLDER`
+  names, as the sandbox's does. Each request carries the announcement's token.
+- **A new hub at each publish:** the tooling is republished several times a day, under running sessions. The old hub
+  ends its stream and stops, and the new build's announces itself, on a port and with a token of its own, a few tenths
+  of a second later. So when a stream ends, or the hub announced isn't there, the plugin reads the announcement again,
+  every quarter of a second, and meanwhile keeps what the last hub told, leaving out the Claude Codes whose processes
+  have exited since.
+- **The stream is read on a thread it blocks, interruptibly** (`runInterruptible`): a plugin's unload cancels its
+  services' coroutine scopes and waits for them. Read without the interrupt, the stream kept its coroutine running,
+  and the sandbox IDE froze in the unload (2026-11-19).
+- **No hub, no Claude Code:** every Claude Code session's SessionStart hook starts the hub, which stops only once no
+  session has run for 5 minutes. So the plugin never starts one.
+- **A protocol this build doesn't know:** the hub raises its protocol's version, in the announcement and in each
+  answer's header, only for a change a reader of the earlier one would get wrong. The plugin then tells the user, once
+  for each hub, in a notification, to restart the IDE, rather than read it wrongly. A hub of another Claude Code folder
+  than the IDE's is left alone, with a line in `idea.log`.
+- **The contract test,** `TheHubsLocalApiContractTest`, reads copies of the hub's samples of its answers, which its own
+  specifications compare its answers with.
+- **The record is undocumented internal state of Claude Code,** which the hub follows as each version writes it. Its
+  status, `idle`, `busy`, `waiting` or `shell`, is for the chat view, through its adapter, still to come.
 
 ## Saving and resuming
 
@@ -142,7 +164,6 @@ window.
   Magnus's, resident-server, wasn't taken back at any of four reloads, though four others in the same Rider were; its
   tab was resumed anew, or lost. Why its record didn't match was never found: the reload log below is there for the next
   time. A tab whose Claude Code had exited went with the tool window too.
-- **Tabs parked by an earlier build carry no mark,** and are still taken back by the session their Claude Code runs.
 - **Each park and take-back is logged** to the IDE's `idea.log` by `TabsParkedInTheTerminal`: each tab's name, process
   and session.
 - **A known leak:** with tabs parked, the unloaded build stays in memory, and the IDE says the plugin "didn't unload
@@ -201,8 +222,9 @@ the Claude tooling is one bundle, and each concept has one home in it. ClaudeToo
 everything about Claude Code: its session records, its transcripts read into a conversation, a session's line across
 `/clear`, resume, fork and compaction, and typing into its TUI, the shell under it included. The plugin owns the IDE:
 the tabs, the terminals, the chat's rendering, its input box, images saved to files, links and windows. The hub serves
-the plugin over loopback HTTP and JSON, with Server-Sent Events for what it follows. Building the hub's side waits for
-Magnus's go, with what it means for publishing: the plugin would need the hub.
+the plugin over loopback HTTP and JSON, with Server-Sent Events for what it follows. So the plugin needs the hub, which
+Magnus agreed to that day: "Yes to both. How, and even if, we publish this is a question for the future. First we make
+it Great(TM)".
 
 So the chat holds no transcript reader and no typing of its own. It talks to one interface,
 **`ClaudeCodeBehindTheChat`**: a `StateFlow` of the conversation, whole, a `StateFlow` of Claude Code's status
@@ -259,11 +281,13 @@ gives a tab one, and it shows its terminal alone, as before.
 
 ### What's left for the first version
 
-- **The hub's side, and the plugin's adapter to it,** as agreed: the conversation of a session's whole line, across
-  compactions and `/clear` (Magnus: "One session just restarted itself with /clear and the entire history disappeared
-  for me. I would love to still have it there"), the records stream, typing, the shell. Then the stand-in stays for the
-  chat's specifications, and new ones run end to end with the fake Claude Code, which must then read raw console input
-  (bracketed pastes, Ctrl+J, Escape, back-tab) and write the real transcript format.
+- **The hub's side, and the plugin's adapter to it,** as agreed, a step at a time in the bundle's order of building:
+  the records stream, which the plugin follows since 2026-11-19 (above, "Which session a tab runs"); then typing, the
+  shell included; then the conversation of a session's whole line, across compactions and `/clear` (Magnus: "One
+  session just restarted itself with /clear and the entire history disappeared for me. I would love to still have it
+  there"); then the sessions on disk. Then the stand-in stays for the chat's specifications, and new ones run end to end
+  with the fake Claude Code, which must then read raw console input (bracketed pastes, Ctrl+J, Escape, back-tab) and
+  write the real transcript format.
 - **Not tried with the real Claude Code:** the chat with a hub behind it; the real TUI drawn through hiding and showing
   its card (only the fake's sizes were seen).
 

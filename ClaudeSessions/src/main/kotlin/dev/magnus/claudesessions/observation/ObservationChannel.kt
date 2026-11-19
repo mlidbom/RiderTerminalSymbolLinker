@@ -23,6 +23,7 @@ import dev.magnus.claudesessions.claudecode.ClaudeSession
 import dev.magnus.claudesessions.history.ClaudeSessionHistoryPicker
 import dev.magnus.claudesessions.history.ClaudeSessionHistoryScope
 import dev.magnus.claudesessions.history.WhereTheSessionIs
+import dev.magnus.claudesessions.hub.ClaudeToolingHub
 import dev.magnus.claudesessions.newsession.NewClaudeSessionPopup
 import dev.magnus.claudesessions.saving.ClaudeSessionKeeper
 import dev.magnus.claudesessions.saving.SavedClaudeSessions
@@ -44,7 +45,8 @@ import org.jetbrains.plugins.terminal.TerminalToolWindowFactory
  * Every endpoint answers JSON. `project` names the open project to ask about, and may be left out when one is open:
  *  - `GET /state` — each open project's [ClaudeSessionsView]: its tabs, each with the process its terminal runs, its
  *    shell, the Claude Code that runs below it and that one's parent process, and its session, the
- *    [SavedClaudeSessions], and whether the [ClaudeSessionKeeper] keeps them.
+ *    [SavedClaudeSessions], and whether the [ClaudeSessionKeeper] keeps them; and the Claude Codes the
+ *    [ClaudeToolingHub] last told of, each with its process and its session.
  *  - `POST /view/open?project=` — has the IDE give the view its content, as showing the tool window would.
  *  - `POST /sessions/new?project=` — starts a new session in a tab, without a name, as the New Claude Session popup
  *    does with its field left empty.
@@ -193,6 +195,7 @@ class ObservationChannel : Disposable {
 
     private fun state(): Map<String, Any?> = mapOf(
         "startedAt" to startedAt,
+        "runningClaudeCodes" to ClaudeToolingHub.getInstance().runningClaudeCodes.value.all.map { mapOf("processId" to it.process.pid(), "session" to it.session.id.value) },
         "projects" to ProjectManager.getInstance().openProjects.map { project ->
             val saved = SavedClaudeSessions(project)
             mapOf(
