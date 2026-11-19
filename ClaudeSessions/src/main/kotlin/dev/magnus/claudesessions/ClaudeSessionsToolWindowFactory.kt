@@ -6,6 +6,7 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.wm.ToolWindow
 import com.intellij.openapi.wm.ToolWindowFactory
 import dev.magnus.claudesessions.history.ResumeClaudeSessionAction
+import dev.magnus.claudesessions.newsession.NewClaudeSessionAction
 
 /**
  * Gives the Claude Sessions tool window its content as the IDE first shows it, or as [ClaudeSessionsStartup] has it

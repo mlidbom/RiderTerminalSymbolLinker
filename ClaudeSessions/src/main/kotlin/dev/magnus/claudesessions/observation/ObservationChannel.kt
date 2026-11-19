@@ -23,7 +23,7 @@ import dev.magnus.claudesessions.SavedClaudeSessions
 import dev.magnus.claudesessions.history.ClaudeSessionHistoryPicker
 import dev.magnus.claudesessions.history.ClaudeSessionHistoryScope
 import dev.magnus.claudesessions.history.WhereTheSessionIs
-import dev.magnus.claudesessions.NewClaudeSessionPopup
+import dev.magnus.claudesessions.newsession.NewClaudeSessionPopup
 import com.intellij.openapi.keymap.KeymapManager
 import javax.swing.KeyStroke
 import java.awt.event.KeyEvent

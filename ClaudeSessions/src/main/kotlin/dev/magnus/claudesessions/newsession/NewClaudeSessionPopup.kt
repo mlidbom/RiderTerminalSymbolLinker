@@ -1,4 +1,4 @@
-package dev.magnus.claudesessions
+package dev.magnus.claudesessions.newsession
 
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.popup.JBPopup
@@ -7,6 +7,7 @@ import com.intellij.openapi.ui.popup.JBPopupListener
 import com.intellij.openapi.ui.popup.LightweightWindowEvent
 import com.intellij.ui.components.JBTextField
 import com.intellij.util.ui.JBUI
+import dev.magnus.claudesessions.ClaudeSessionsView
 import java.awt.BorderLayout
 import java.awt.Component
 import java.util.concurrent.ConcurrentHashMap

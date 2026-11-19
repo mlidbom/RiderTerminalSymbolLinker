@@ -35,9 +35,9 @@
 
     <actions>
         <action id="ClaudeSessions.NewSession"
-                class="dev.magnus.claudesessions.NewClaudeSessionAction"
-                text="New Claude Session"
-                description="Start a new Claude Code session in a tab of the Claude Sessions tool window"
+                class="dev.magnus.claudesessions.newsession.NewClaudeSessionAction"
+                text="New Claude Session…"
+                description="Name a new Claude Code session, or leave it unnamed, and start it in a tab of the Claude Sessions tool window"
                 icon="AllIcons.General.Add"/>
         <action id="ClaudeSessions.ResumeSession"
                 class="dev.magnus.claudesessions.history.ResumeClaudeSessionAction"
