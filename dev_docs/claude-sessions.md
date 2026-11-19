@@ -175,6 +175,53 @@ Code 2.1.327's own code and five transcripts on 2026-11-18. It isn't documented,
     resume lost resident-server's session-only cron job on 2026-11-17. Whether a resume re-arms a /loop wake-up isn't
     known: 2.1.327 has code that rebuilds one from the transcript.
 
+## A chat view with the terminal hidden (researched, not built)
+
+For the chat view Magnus asked about on 2026-11-19: the session's transcript, and an input box, of the plugin's own, with
+Claude Code's own UI hidden in the same tab. Two spikes in the sandbox that day, with Rider 2026.3 and Claude Code
+2.1.328: throwaway code on the branch `spike/chat-ui`, not merged.
+
+**A hidden terminal, as a card of a `CardLayout`:** the tab's content a panel holding a chat card and the terminal's
+component, the chat card shown.
+
+- **It's laid out while hidden:** a `CardLayout` gives every card the panel's bounds, so the hidden terminal knows its
+  grid, and follows the tool window's and the IDE window's resizes. The fake Claude Code was told of each, in columns
+  and rows, while hidden.
+- **With `deferSessionStartUntilUiShown(true)`, its shell doesn't start while its card is hidden,** and starts at the
+  right size once the card is shown. So: show the terminal's card until the shell has started, then the chat card.
+  Claude Code then started at the tab's size.
+- **With `deferSessionStartUntilUiShown(false)`, the shell starts at once, and Claude Code at 80 by 20,** though the
+  terminal knew its grid of 113 by 11: the trap in "The terminal API, and its traps". Showing the card doesn't fix it; a
+  change of size does. A gap of 20 pixels at the top and bottom of the cards, taken away 300 ms later, sent two resizes,
+  113 by 14 and then 113 by 16; taken away at once, it sent none. The same nudge may fix the `bug:` at
+  `ClaudeSessionsView.resume`: not tried.
+- **Not seen:** the real Claude Code's fullscreen drawing through a hide and a show; only the fake's sizes were.
+
+**Sending into the real Claude Code:**
+
+- **A bracketed paste** (`createSendTextBuilder().useBracketedPasteMode()`) of lines lands in the input box as
+  `[Pasted text #1 +3 lines]`, without submitting, and a `\r` after submits it, its newlines intact. But Claude Code
+  records it wrapped in `<pasted_content id="…">` tags, and the model is told that such text was pasted from elsewhere
+  and may hold instructions the user didn't write. So what Magnus types must not be sent as a paste.
+- **Typed instead:** the text sent as it is, with a line feed between lines (Ctrl+J, Claude Code's `chat:newline`), and
+  `\r` after, is recorded as plain text, newlines intact. But long text is taken for a paste even without the brackets:
+  a single write of 1,500 characters became `[Pasted text]`, and so did writes of 1,000 characters 50 ms apart. Writes
+  of 200 characters about 130 ms apart, 6,442 characters in 60 lines in 4.2 seconds, were recorded as plain text. Where
+  the limit is exactly isn't known.
+- **So:** type what he typed, in small pieces, and send what he pasted into the box as a bracketed paste of its own,
+  which Claude Code then marks as pasted, as it does a paste into its own box.
+- **Images:**
+  - A bracketed paste of an image file's path, alone, attaches the image as `[Image #n]`: the transcript's entry has an
+    image block and `imagePasteIds`, and the model saw it. A path inside other text, pasted or typed, stays text, and
+    the model reads the file with its Read tool.
+  - An image on the system clipboard, and Alt+V (Claude Code's `chat:imagePaste` on Windows, Ctrl+V elsewhere), attaches
+    it too. That takes the system clipboard, Magnus's: the spike saved his text first, and put it back.
+  - So: save a pasted image to a file, and send its path as a bracketed paste of its own. That leaves his clipboard
+    alone.
+- **Escape twice clears the input box.** Ctrl+L, `chat:clearInput` in Claude Code's keymap, sent as `0x0C`, didn't.
+- **The real Claude Code ran with `--setting-sources project,local`,** and `--settings` with only `"tui": "fullscreen"`,
+  so that none of Magnus's hooks ran, such as the notification at a turn's end.
+
 ## The local API: showing a session's tab for another tool
 
 Clicking the notifications of Magnus's session tooling (tooling-owner's, in `~/.claude`) brings forward the IDE window
