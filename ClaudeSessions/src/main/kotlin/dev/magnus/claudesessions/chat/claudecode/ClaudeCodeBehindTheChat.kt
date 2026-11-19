@@ -11,8 +11,8 @@ import kotlinx.coroutines.flow.StateFlow
  * what this gives it, and sends only through it.
  *
  * The Claude tooling's hub provides it, as Magnus and the tooling owner agreed on 2026-11-19: it reads Claude Code's
- * transcripts and session records, and types into Claude Code. Until the hub tells of the conversation, only the
- * sandbox IDE has one, a stand-in its specifications drive: see [ClaudeCodeBehindTheChatProvider].
+ * transcripts and session records, and types into Claude Code. The sandbox IDE has a stand-in its specifications drive
+ * as well: see [ClaudeCodeBehindTheChatProvider].
  *
  * Giving Claude Code a message or a key may take seconds, or minutes when other typing into the session has the turn:
  * each returns once Claude Code got it, or with why not, its [TypingOutcome].

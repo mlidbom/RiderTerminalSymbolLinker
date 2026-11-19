@@ -6,6 +6,6 @@ package dev.magnus.claudesessions.chat.claudecode.conversation
  * itself, such as hooks' reminders and its requests to the model, isn't in it.
  */
 data class Conversation(val items: List<ConversationItem>) {
-    /** The tool calls made since the last prompt: the commands the turn has run, or runs. */
-    val toolCallsOfTheLastTurn: Int get() = items.takeLastWhile { it !is Prompt }.count { it is ToolCall }
+    /** The tool calls made since the last prompt, the user's or from elsewhere: the commands the turn has run, or runs. */
+    val toolCallsOfTheLastTurn: Int get() = items.takeLastWhile { it !is Prompt && it !is PromptFromElsewhere }.count { it is ToolCall }
 }

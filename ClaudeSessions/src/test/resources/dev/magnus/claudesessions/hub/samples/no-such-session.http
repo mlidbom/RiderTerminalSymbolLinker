@@ -1,0 +1,5 @@
+HTTP/1.1 404 Not Found
+Content-Type: application/json; charset=utf-8
+Claude-Tooling-Protocol: 1
+
+{"error":"No transcript is named by session 87c58397-ae2b-4346-ab49-ebc624ed1193, and no Claude Code runs it.","reason":"noSuchSession"}

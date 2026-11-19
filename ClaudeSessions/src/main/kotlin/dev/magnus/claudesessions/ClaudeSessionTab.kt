@@ -42,7 +42,8 @@ import kotlinx.coroutines.withContext
  * its own tool window.
  *
  * A tab that a [ClaudeCodeBehindTheChatProvider] gives a Claude Code behind a chat shows its session as a chat too: its
- * content is then its [cards], the chat and the terminal, one shown at a time. Today only the sandbox IDE's tabs do.
+ * content is then its [cards], the chat and the terminal, one shown at a time: every tab whose session runs in a
+ * session host.
  */
 class ClaudeSessionTab(
     private val project: Project,

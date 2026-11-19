@@ -114,7 +114,7 @@ tells of in the tab's session host, by the `sessionHost` of its running session 
 - **The contract test,** `TheHubsLocalApiContractTest`, reads copies of the hub's samples of its answers, which its own
   specifications compare its answers with.
 - **The record is undocumented internal state of Claude Code,** which the hub follows as each version writes it. Its
-  status, `idle`, `busy`, `waiting` or `shell`, is for the chat view, through its adapter, still to come.
+  status, `idle`, `busy`, `waiting` or `shell`, is the chat view's status line, through `TheHubBehindTheChat`.
 
 ## Saving and bringing back
 
@@ -221,7 +221,7 @@ Code 2.1.327's own code and five transcripts on 2026-11-18. It isn't documented,
     resume lost resident-server's session-only cron job on 2026-11-17. Whether a resume re-arms a /loop wake-up isn't
     known: 2.1.327 has code that rebuilds one from the transcript.
 
-## The chat view (being built)
+## The chat view
 
 Magnus's go, 2026-11-19, for a first version to test. A tab shows its session as a chat of the plugin's own: the
 conversation in an editor pane, and an input box that is an editor too, with Claude Code's own UI, the TUI, hidden in
@@ -248,11 +248,21 @@ So the chat holds no transcript reader and no typing of its own. It talks to one
 suspending until Claude Code got it, or with why not, its `TypingOutcome`. A `Message` is its parts as they came into
 the box: `TypedText`, `PastedText`, `PastedImage` (the file). A **`ClaudeCodeBehindTheChatProvider`**, on the plugin's
 extension point `dev.magnus.claudesessions.claudeCodeBehindTheChat`, gives a tab one. The hub's is the adapter
-**`TheHubBehindTheChat`**: the status of the tab's Claude Code from the running sessions, and typing through
-`TypingIntoClaudeCode`, each refusal's `reason` read into a `TypingOutcome` (`TheHubBehindTheChat.outcomeOf`). Its
-conversation is none until the hub tells of one, so no provider gives it yet, and **only the sandbox IDE's tabs have a
-chat**: the stand-in `StandInBehindTheChat`, which the specifications drive through the observation channel. In every
-other IDE no provider gives a tab one, and it shows its terminal alone, as before.
+**`TheHubBehindTheChat`**, which `TheHubBehindTheChatProvider` gives every tab whose session runs in a session host:
+
+- **The conversation of the session's line,** through `TheHubsConversations`, which follows the hub's
+  `GET /sessions/{id}/conversation/stream` and reads each of its events, a message, a tool's result, a rewind, into the
+  conversation (`TheHubsConversationStream`), publishing it once the hub has caught up. The line goes on across
+  `/clear`, as the hub's stream does; a session of another line, as one `/resume` switched to, is followed anew, the
+  conversation unknown, null, until the hub has told of it. A dropped stream is followed again, a session the hub
+  doesn't know as an empty conversation, retried every five seconds.
+- **The status of the tab's Claude Code** from the running sessions.
+- **Typing** through `TypingIntoClaudeCode`, each refusal's `reason` read into a `TypingOutcome`
+  (`TheHubBehindTheChat.outcomeOf`).
+
+The sandbox IDE's tabs get the stand-in `StandInBehindTheChat` instead, which the specifications drive through the
+observation channel, unless a story asks for the hub (`POST /chats/behind?by=hub`, `HaveTheHubBehindTheChats`). A
+plain terminal tab, with no session host, gets none, and shows its terminal alone.
 
 ### What the first version does, as built
 
@@ -272,8 +282,11 @@ other IDE no provider gives a tab one, and it shows its terminal alone, as befor
 - **The transcript pane** (`TranscriptPane`), a read-only editor: the IDE's search, selection and shortcuts work in it.
   Its text is markdown, highlighted as markdown where the IDE has the Markdown file type, found by name, so no
   dependency on the Markdown plugin.
-  - **Each prompt under `## You`, each turn of Claude's under `## Claude`;** a slash command as typed; a compaction as
-    a divider line.
+  - **Each prompt under `## You`, each turn of Claude's under `## Claude`;** a prompt from elsewhere under where it came
+    from (`## From <the session's name>`, `## A background task finished`, `## A scheduled wake-up`,
+    `## From Claude Code`, `## From a program`); a slash command as typed; thinking folded under `▸ Thinking`; an
+    interruption in italics; a compaction, and a `/clear`, as a divider line, the line's next session going on below
+    the `/clear`.
   - **Each tool call as its header,** such as `▸ Bash: git status` (`ToolCallHeader`: the field that says what it ran
     on, for Claude Code's own tools), with its input and its result folded away below it, collapsed, in a fenced code
     block fenced with more backticks than any run inside.
@@ -332,25 +345,20 @@ other IDE no provider gives a tab one, and it shows its terminal alone, as befor
 
 ### What's left for the first version
 
-- **The hub's side, and the plugin's adapter to it,** as agreed, a step at a time in the bundle's order of building:
-  the records stream, which the plugin follows since 2026-11-19 (above, "Which session a tab runs"); then typing, the
-  shell included, through which the tabs start Claude Code since 2026-11-19, and through which `TheHubBehindTheChat`
-  sends, interrupts and changes the permission mode, built and not yet given to a tab; then the conversation of a
-  session's whole line, across compactions and `/clear` (Magnus: "One
-  session just restarted itself with /clear and the entire history disappeared for me. I would love to still have it
-  there"); then the sessions on disk. Then the stand-in stays for the chat's specifications, and new ones run end to end
-  through the hub.
-- **One imitation of Claude Code, the hub's:** the hub's own specifications run a stand-in for Claude Code
-  (`~/.claude/src/StandInForClaudeCode`) that draws and takes an input box as Claude Code does. Asked of the tooling
-  owner on 2026-11-19: it grows what the sandbox's fake does (records, transcripts, `--name`, `--resume`, `/clear`,
-  `/rename`, `/exit`, the conversation and the terminal's size on its screen), and a busy state and a mode line for the
-  chat's specifications, and is published as a built `claude.exe`. The sandbox then runs it, and `tools/FakeClaudeCode`
-  goes. Until then the fake has no input box, and nothing types into it through the hub but the shell's line.
-- **Not tried with the real Claude Code:** the chat with a hub behind it; the real TUI drawn through hiding and showing
+The hub's side was built a step at a time, in the bundle's order of building, and the plugin follows each since
+2026-11-19: the records stream (above, "Which session a tab runs"); typing, the shell included; and the conversation of
+a session's whole line, across compactions and `/clear` (Magnus: "One session just restarted itself with /clear and
+the entire history disappeared for me. I would love to still have it there"). A story runs the chat end to end through
+the sandbox's hub (`When_the_hub_is_behind_a_tabs_chat`); the others keep the stand-in.
+
+- **The sessions on disk,** the hub's `GET /sessions`, for the history picker in place of its own reading of the
+  transcripts: published by the hub, not used yet.
+- **One imitation of Claude Code, the hub's:** the tooling owner's stand-in for Claude Code, published as
+  `~/.claude/bin/stand-in-for-claude-code`, draws and takes an input box as Claude Code does, and grows what the
+  sandbox's fake does. The sandbox is to run it in place of `tools/FakeClaudeCode/bin/claude`, first on the `PATH`,
+  with `CLAUDE_CONFIG_DIR` set, and the fake then goes.
+- **Not tried with the real Claude Code:** the chat with the hub behind it; the real TUI drawn through hiding and showing
   its card (only the fake's sizes were seen).
-- **A command that makes the IDE restart itself,** in the plugin's local API, for the tooling owner's Rider restart tool
-  (`~/.claude/dev_docs/restarting-rider.md`), agreed with the tooling owner on 2026-11-19: a token in the announcement,
-  `GET /windows`, `POST /restart`, and the plugin putting its frames back on their virtual desktops.
 
 ## The chat view: what the spikes found
 

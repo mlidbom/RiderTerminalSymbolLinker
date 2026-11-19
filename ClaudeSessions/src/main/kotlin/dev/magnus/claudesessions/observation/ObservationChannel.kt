@@ -105,6 +105,8 @@ import org.jetbrains.plugins.terminal.TerminalProjectOptionsProvider
  *  - `POST /tabs/chat/switch?project=&tab=` — switches between the chat and the terminal, as the button does.
  *  - `POST /tabs/chat/fold?project=&tab=&fold=&open=` — opens a fold of the conversation, by its place, or closes it.
  *  - `POST /tabs/chat/scroll?project=&tab=&item=` — scrolls the conversation so that the item, by its id, is at the top.
+ *  - `POST /chats/behind?by=` — has the tabs opened from then on get `standIn`, a [StandInBehindTheChat], behind their
+ *    chats, as they do unless asked otherwise, or the `hub`'s adapter, as outside the sandbox.
  */
 @Service(Service.Level.APP)
 class ObservationChannel : Disposable {
@@ -198,6 +200,16 @@ class ObservationChannel : Disposable {
                 answer(exchange) { inTheChat(exchange) { it.openTheFold(query(exchange, "fold")!!.toInt(), query(exchange, "open") != "false") } }
             }
             createContext("/tabs/chat/scroll") { exchange -> answer(exchange) { inTheChat(exchange) { it.scrollTheTranscriptTo(query(exchange, "item")!!) } } }
+            createContext("/chats/behind") { exchange ->
+                answer(exchange) {
+                    StandInBehindTheChatInTheSandbox.standInsBehindTheChats = when (val by = query(exchange, "by")) {
+                        "standIn" -> true
+                        "hub" -> false
+                        else -> error("Nothing of the name $by goes behind the chats: standIn or hub.")
+                    }
+                    mapOf("standInsBehindTheChats" to StandInBehindTheChatInTheSandbox.standInsBehindTheChats)
+                }
+            }
             createContext("/tabs/chat") { exchange -> answer(exchange) { inTheChat(exchange) { it.describe() } } }
             start()
         }

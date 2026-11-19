@@ -14,8 +14,8 @@
     <!-- The platform's JNA, through which the session history picker lets another IDE bring its window forward. -->
     <depends>com.intellij.modules.jna</depends>
 
-    <!-- Where a tab's chat gets the Claude Code behind it: see ClaudeCodeBehindTheChatProvider. Only the sandbox's stand-in
-         provides one today, so in every other IDE a tab shows its terminal alone. -->
+    <!-- Where a tab's chat gets the Claude Code behind it: see ClaudeCodeBehindTheChatProvider. The hub's adapter provides
+         one for every tab whose session runs in a session host; the sandbox's stand-in, first, in the sandbox IDE. -->
     <extensionPoints>
         <extensionPoint qualifiedName="dev.magnus.claudesessions.claudeCodeBehindTheChat"
                         interface="dev.magnus.claudesessions.chat.claudecode.ClaudeCodeBehindTheChatProvider" dynamic="true"/>
@@ -47,8 +47,10 @@
     </extensions>
 
     <extensions defaultExtensionNs="dev.magnus.claudesessions">
-        <!-- Only in the sandbox IDE of the development tools: a stand-in its specifications drive. -->
-        <claudeCodeBehindTheChat implementation="dev.magnus.claudesessions.observation.StandInBehindTheChatInTheSandbox"/>
+        <!-- Only in the sandbox IDE of the development tools: a stand-in its specifications drive, ahead of the hub's. -->
+        <claudeCodeBehindTheChat implementation="dev.magnus.claudesessions.observation.StandInBehindTheChatInTheSandbox" order="first"/>
+        <!-- The Claude tooling's hub, which tells of a tab's conversation and types into its Claude Code. -->
+        <claudeCodeBehindTheChat implementation="dev.magnus.claudesessions.hub.TheHubBehindTheChatProvider"/>
     </extensions>
 
     <applicationListeners>

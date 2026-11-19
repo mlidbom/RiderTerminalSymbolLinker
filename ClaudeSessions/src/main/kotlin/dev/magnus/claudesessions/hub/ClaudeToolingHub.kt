@@ -55,6 +55,9 @@ class ClaudeToolingHub(scope: CoroutineScope) : Disposable {
     /** The session hosts, outside the IDE, that the tabs' sessions run in, as the hub starts, lists and ends them. */
     val sessionHosts = SessionHosts(requests)
 
+    /** The sessions' conversations, as the hub tells of them, for the tabs' chats. */
+    val conversations = TheHubsConversations(client)
+
     /** The builds of the hubs the user has been told about, each once: one of a protocol this build doesn't know, or of another Claude Code folder. */
     private val toldAbout = mutableSetOf<String>()
 

@@ -6,6 +6,16 @@ import dev.magnus.claudesessions.chat.claudecode.PastedImage
 import dev.magnus.claudesessions.chat.claudecode.PastedText
 import dev.magnus.claudesessions.chat.claudecode.TypedText
 import dev.magnus.claudesessions.chat.claudecode.TypingOutcome
+import dev.magnus.claudesessions.chat.claudecode.conversation.AssistantText
+import dev.magnus.claudesessions.chat.claudecode.conversation.Clearing
+import dev.magnus.claudesessions.chat.claudecode.conversation.Compaction
+import dev.magnus.claudesessions.chat.claudecode.conversation.Interruption
+import dev.magnus.claudesessions.chat.claudecode.conversation.Prompt
+import dev.magnus.claudesessions.chat.claudecode.conversation.PromptFromElsewhere
+import dev.magnus.claudesessions.chat.claudecode.conversation.Thinking
+import dev.magnus.claudesessions.chat.claudecode.conversation.ToolCall
+import dev.magnus.claudesessions.chat.claudecode.conversation.ToolInputField
+import dev.magnus.claudesessions.chat.claudecode.conversation.ToolResult
 import dev.magnus.claudesessions.claudecode.ClaudeCodeCommand
 import dev.magnus.claudesessions.claudecode.ClaudeSession
 import dev.magnus.claudesessions.claudecode.ClaudeSessionId
@@ -23,8 +33,9 @@ import org.junit.jupiter.api.assertThrows
  * Whether the plugin reads the hub's local API as the hub answers it, and asks as the hub reads it: on copies of the
  * samples of its answers that the hub's own specifications compare its answers with, in
  * `~/.claude/src/ClaudeTooling.Specifications/ResidentServer/LocalApi/Samples`, copied on 2026-11-19 from the tooling's
- * commits cc7853b, for typing 1d16ff3, and for session hosts eff80d7, and message-sent.http from 7b23e8a, and on the
- * examples of its contract, `~/.claude/dev_docs/the-hubs-local-api.md`.
+ * commits cc7853b, for typing 1d16ff3, and for session hosts eff80d7, and message-sent.http and the conversation's,
+ * conversation-stream.http and no-such-session.http, from 7b23e8a, and on the examples of its contract,
+ * `~/.claude/dev_docs/the-hubs-local-api.md`.
  * When the samples change, as the contract changes, copy them again.
  */
 class TheHubsLocalApiContractTest {
@@ -183,6 +194,58 @@ class TheHubsLocalApiContractTest {
         assertEquals(JsonParser.parseString("{}"), TypingIntoClaudeCode.bodyThatRuns(ClaudeCodeCommand.StartingANewSession(name = null)))
         assertEquals(JsonParser.parseString("""{"name": "Fixing the login bug"}"""), TypingIntoClaudeCode.bodyThatRuns(ClaudeCodeCommand.StartingANewSession("Fixing the login bug")))
         assertEquals(JsonParser.parseString("""{"sessionToResume": "1d24f54b-3002-4132-8a65-4d7dc8977525"}"""), TypingIntoClaudeCode.bodyThatRuns(ClaudeCodeCommand.Resuming(session)))
+    }
+
+    @Test
+    fun `a conversation's stream is read into each kind of item the chat shows, as of each caught-up`() {
+        val stream = HttpSample(HttpSample.named("conversation-stream.http"))
+        val reading = ServerSentEvents()
+        val conversation = TheHubsConversationStream()
+        val told = stream.bodyLines.mapNotNull(reading::read).mapNotNull(conversation::read)
+
+        assertEquals(200, stream.status)
+        assertEquals(2, told.size)
+        assertEquals(
+            listOf(
+                Prompt("7bfc8827-e689-57f9-ad85-0475d64b2557", "/clear"),
+                Clearing("51f73c28-aa76-5c10-bdbd-47a25730b162", goesOnIn = "87c58397-ae2b-4346-ab49-ebc624ed1193"),
+                Prompt("aa02714e-1a9c-5920-a408-da077fa9fd90", "Fix the merge, please.\n\nthe merge's log"),
+                Thinking("e2a48d99-2a3b-5e4e-a10e-0c703c6864cf", "Reading the merge first."),
+                AssistantText("bcb000ca-83d2-59fc-bb1b-ae470327b85d", "I'll look at **the merge**."),
+                ToolCall(
+                    "be1335c1-4197-5192-96e7-9e8bd8015e85", "Bash",
+                    listOf(ToolInputField("command", "git status"), ToolInputField("description", "Show the status")),
+                    ToolResult("M file.cs", isAnError = false),
+                ),
+                PromptFromElsewhere("01426427-3fa4-52a5-9352-98b541b69b4d", PromptFromElsewhere.Source.AnotherSession("deskmancer"), "Can you look at this?"),
+                Prompt("19347bec-e330-5e3d-b6bb-06b858943fa5", "Look: [Image #1]"),
+                Interruption("cd9ad7a2-a1b3-58fe-9ede-06c644fd70c3", "[Request interrupted by user]"),
+                Prompt("467c3f8b-073f-56c6-bd5c-d04124ccc218", "/compact keep the fix"),
+                Compaction("ace6d5fe-ad40-5a30-b04a-ca1a134509e8"),
+                AssistantText("6b2f146d-31a4-58d9-95c9-9ee9fbbec331", "Fixed."),
+            ),
+            told[0].conversation.items,
+        )
+        assertEquals(setOf(ClaudeSessionId("87c58397-ae2b-4346-ab49-ebc624ed1193")), told[0].sessions)
+    }
+
+    @Test
+    fun `a rewind takes away what came after the message it keeps, and the new branch follows`() {
+        val stream = HttpSample(HttpSample.named("conversation-stream.http"))
+        val reading = ServerSentEvents()
+        val conversation = TheHubsConversationStream()
+        val (before, after) = stream.bodyLines.mapNotNull(reading::read).mapNotNull(conversation::read)
+
+        assertEquals(before.conversation.items.dropLast(1), after.conversation.items.dropLast(1))
+        assertEquals(Prompt("50f1a89b-eb80-5c05-b2fa-387763846f2e", "Now push it."), after.conversation.items.last())
+    }
+
+    @Test
+    fun `a session the hub knows nothing of is no such session`() {
+        val sample = HttpSample(HttpSample.named("no-such-session.http"))
+
+        assertEquals(404, sample.status)
+        assertEquals("noSuchSession", JsonParser.parseString(sample.body).asJsonObject.get("reason").asString)
     }
 
     private fun typingAnswerIn(sample: String): TypingAnswer =

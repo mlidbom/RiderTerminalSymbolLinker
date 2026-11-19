@@ -20,6 +20,21 @@ All notable changes to Claude Sessions are documented here. The format follows
   session host of the Claude tooling's hub, outside the IDE, and the tab shows it. When the IDE goes, the sessions run
   on, mid-turn included, and when the project opens again every tab comes back as it was, in the same order, showing
   its session as it is now. Closing a tab ends its session.
+- **Each tab shows its session as a chat.** In place of Claude Code's own UI, a tab shows the conversation in an
+  editor, where the IDE's search, selection and shortcuts work, and an input box that is an editor too. Each prompt shows
+  under `## You`, each turn of Claude's under `## Claude`, and a prompt from another session, a background task or a
+  scheduled wake-up under where it came from. Each tool call is one line, its input and result folded below it, and
+  thinking is folded too; file paths and symbols are links, as in the terminal. A `/clear` shows as a divider, with the
+  conversation going on below it. Enter sends, Shift+Enter starts a new line, Escape interrupts Claude, Shift+Tab changes
+  its permission mode, and the IDE's paste takes text and images. The box is free for the next message at once; a
+  message Claude Code doesn't get comes back into the box, and the status line says why. Claude Code's own UI is a key
+  away, Ctrl+Alt+Shift+Z or the button in the tool window's title bar, and the tab shows it by itself while Claude Code
+  waits in a dialog, and for a slash command.
+- **Nothing written in a chat is lost when the IDE goes.** What is in a chat's input box is saved half a second after
+  each change, and as the IDE closes, and comes back as it was after a restart, a crash or a plugin update, the caret
+  included. Messages that waited to be given to Claude Code come back into the box, marked as not sent, and are never
+  sent again by themselves. The conversation comes back scrolled to where it was, with the tool calls you opened open,
+  and a tab shows the chat or the terminal as you chose.
 - **Each solution's window goes back to its virtual desktop after a restart.** When the IDE starts again, each
   project's window is moved to the Windows virtual desktop it was on as the IDE closed, rather than opening on the one
   shown then. A desktop removed since is skipped.

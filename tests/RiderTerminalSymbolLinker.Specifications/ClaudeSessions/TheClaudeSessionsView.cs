@@ -13,8 +13,9 @@ namespace RiderTerminalSymbolLinker.Specifications.ClaudeSessions;
 ///   Sessions' development observation channel. Its tabs run the sandbox's fake Claude Code, <c>tools/FakeClaudeCode</c>.
 /// </summary>
 /// <remarks>
-///   It starts with no tabs, no session hosts, no sessions saved, and its terminals running
-///   <see cref="TheShellStoriesStartIn"/>: every story starts from there. A tab's session runs in a session host of the
+///   It starts with no tabs, no session hosts, no sessions saved, its terminals running
+///   <see cref="TheShellStoriesStartIn"/>, and stand-ins behind the chats of the tabs it opens: every story starts from
+///   there. A tab's session runs in a session host of the
 ///   sandbox's hub, outside the sandbox Rider, and outlives it.
 /// </remarks>
 public sealed class TheClaudeSessionsView
@@ -32,6 +33,7 @@ public sealed class TheClaudeSessionsView
    public TheClaudeSessionsView()
    {
       Channel.OpenTheView();
+      Channel.PutBehindTheChats(hub: false);
       if(Picker.Shown) CloseThePicker();
       if(NewSessionPopup.Shown) CloseTheNewSessionPopup();
       RunTheShell(TheShellStoriesStartIn);
@@ -129,8 +131,18 @@ public sealed class TheClaudeSessionsView
    public IReadOnlyList<string> ActionsBoundTo(string keystroke, string keymap) =>
       [.. Channel.ActionsBoundTo(keystroke, keymap)["actions"]!.AsArray().Select(it => it!.GetValue<string>())];
 
-   /// <summary>The chat of tab <paramref name="tab"/>, which every tab has in the sandbox, with a stand-in behind it.</summary>
+   /// <summary>
+   ///   The chat of tab <paramref name="tab"/>, which every tab has in the sandbox, with a stand-in behind it, or the
+   ///   sandbox's hub when the tab opened after <see cref="HaveTheHubBehindTheChats"/>.
+   /// </summary>
    public TheChat ChatOf(int tab) => new(Channel, tab);
+
+   /// <summary>
+   ///   Has the tabs opened from now on get the sandbox's hub behind their chats, as outside the sandbox, in place of the
+   ///   stand-in the stories drive: the chat then shows the conversation of the tab's fake Claude Code, as the hub reads
+   ///   it from its transcript. Until the next story, which starts with stand-ins again.
+   /// </summary>
+   public void HaveTheHubBehindTheChats() => Channel.PutBehindTheChats(hub: true);
 
    /// <summary>The folder of the project open in the sandbox, the fixture solution's.</summary>
    public string ProjectFolder => Path.GetFullPath(Project()["basePath"]!.GetValue<string>());
