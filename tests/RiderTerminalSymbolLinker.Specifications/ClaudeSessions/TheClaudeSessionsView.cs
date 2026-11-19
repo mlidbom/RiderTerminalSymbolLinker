@@ -227,6 +227,28 @@ public sealed class TheClaudeSessionsView
       _sandbox.FollowItsRestart(before, _sandbox.FixtureSolution);
    }
 
+   /// <summary>
+   ///   Has the sandbox's hub restart the sandbox Rider, as Claude Sessions asks it for a button Magnus presses, so with no
+   ///   prompt of his, and returns once <paramref name="tabsToComeBack"/> tabs are back with their sessions and the hub has
+   ///   an outcome: see <see cref="SandboxRider.AskItsHubToRestartRider"/>.
+   /// </summary>
+   public RiderRestartByTheHub HaveTheHubRestartTheIde(string why, int tabsToComeBack)
+   {
+      var before = SandboxProcessId;
+      _sandbox.AskItsHubToRestartRider(why, askedBy: "Claude Sessions' specifications");
+      FollowTheIdesRestart(before, tabsToComeBack);
+      WaitUntil(() => _sandbox.TheRiderRestartOfItsHub()?["stage"]?.GetValue<string>() == "done", "the hub to say how the restart went",
+                HowLongTheHubMayTakeToSayRiderIsBack);
+      var restart = _sandbox.TheRiderRestartOfItsHub()!;
+      return new RiderRestartByTheHub(restart["outcome"]!["kind"]!.GetValue<string>(),
+                                      restart["outcome"]!["headline"]!.GetValue<string>(),
+                                      [.. restart["progress"]!.AsArray().Select(it => it!["text"]!.GetValue<string>())],
+                                      File.Exists(_sandbox.RiderRestartsLog) ? File.ReadAllText(_sandbox.RiderRestartsLog) : "");
+   }
+
+   /// <summary>How long the hub may take, once the sandbox Rider runs again, to find it back: its projects open and Royder done indexing them.</summary>
+   static readonly TimeSpan HowLongTheHubMayTakeToSayRiderIsBack = TimeSpan.FromMinutes(3);
+
    /// <summary>The folders of the projects whose windows the sandbox Rider shows, as Claude Sessions' <c>GET /windows</c> tells of them.</summary>
    public IReadOnlyList<string> ProjectWindows =>
       [.. AskTheLocalApi("GET", "/windows").Body!["windows"]!.AsArray().Select(it => Path.GetFullPath(it!["project"]!.GetValue<string>())).Order()];

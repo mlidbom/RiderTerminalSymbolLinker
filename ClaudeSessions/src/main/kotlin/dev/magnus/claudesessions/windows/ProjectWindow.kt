@@ -22,6 +22,10 @@ data class ProjectWindow(val project: Path, val title: String, val handle: Windo
         /** The window of [project], if it's shown. On the EDT. */
         fun of(project: Project): ProjectWindow? {
             val frame = WindowManager.getInstance().getFrame(project)?.takeIf { it.isShowing } ?: return null
+            //todo: remove hasTheInputFocus, here and in LocalApi's GET /windows, once the hub finds whether a Rider window has
+            //   the focus itself, from Windows' foreground window (the tooling owner, 2026-11-20): nothing else reads it. A
+            //   freshly started sandbox Rider said true by Java's activeWindow, and it isn't known whether its window was
+            //   in the foreground then.
             return ProjectWindow(Path.of(project.basePath!!), frame.title.orEmpty(), WindowHandle.of(frame), frame.hasTheInputFocus)
         }
 

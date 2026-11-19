@@ -67,6 +67,41 @@ public class When_a_tool_asks_the_ide_to_restart(When_a_tool_asks_the_ide_to_res
 }
 
 /// <summary>
+///   The tool for restarting Rider end to end: the sandbox's hub restarts the sandbox Rider through Claude Sessions' local
+///   API, and finds it back. Asked as for a button Magnus presses, so with no prompt of his: the sandbox Rider's window
+///   has the input focus once it has started, and an agent's request would show him one.
+/// </summary>
+public class When_the_hub_restarts_rider(When_the_hub_restarts_rider.Story story) : IClassFixture<When_the_hub_restarts_rider.Story>
+{
+   public sealed class Story
+   {
+      public readonly int ProcessBefore;
+      public readonly IReadOnlyList<SessionTab> TabsBefore;
+      public readonly RiderRestartByTheHub Restart;
+      public readonly int ProcessAfter;
+      public readonly IReadOnlyList<SessionTab> TabsAfter;
+
+      public Story()
+      {
+         var view = new TheClaudeSessionsView();
+         view.StartANewSession();
+         ProcessBefore = view.SandboxProcessId;
+         TabsBefore = view.Tabs;
+         Restart = view.HaveTheHubRestartTheIde("A specification of Claude Sessions has the hub restart Rider", tabsToComeBack: 1);
+         ProcessAfter = view.SandboxProcessId;
+         TabsAfter = view.Tabs;
+      }
+   }
+
+   [XF] public void the_hub_says_rider_is_back() => story.Restart.Outcome.Must().Be("back");
+   [XF] public void as_restarted_and_back() => story.Restart.Headline.Must().Be("Restarted and back");
+   [XF] public void the_ide_restarted_as_another_process() => story.ProcessAfter.Must().Satisfy(it => it != story.ProcessBefore);
+
+   [XF] public void with_its_tab_attached_to_its_session_again() =>
+      story.TabsAfter.Single().Must().Satisfy(it => it.SessionHost == story.TabsBefore.Single().SessionHost && it.SessionId == story.TabsBefore.Single().SessionId);
+}
+
+/// <summary>
 ///   Whether Rider's own restart reopens every solution that was open, each in its window, which the tool for restarting
 ///   Rider relies on: Rider restarts without the command line it started with, and reopens the solutions it had open.
 /// </summary>

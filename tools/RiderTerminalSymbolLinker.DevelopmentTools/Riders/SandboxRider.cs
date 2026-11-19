@@ -288,6 +288,23 @@ public sealed class SandboxRider
    }
 
    /// <summary>
+   ///   Has the sandbox's hub restart the sandbox Rider, as the published hub restarts Magnus's, and returns once the hub
+   ///   has started the restart: see <see cref="SandboxHub.AskToRestartRider"/>. <see cref="TheRiderRestartOfItsHub"/>
+   ///   tells how it goes, and <see cref="RiderRestartsLog"/> has each step.
+   /// </summary>
+   public void AskItsHubToRestartRider(string why, string askedBy)
+   {
+      RunTheHub();
+      _hub.AskToRestartRider(why, askedBy);
+   }
+
+   /// <summary>The Rider restart the sandbox's hub has under way, or made last: see <see cref="SandboxHub.TheRiderRestart"/>.</summary>
+   public JsonNode? TheRiderRestartOfItsHub() => _hub.TheRiderRestart();
+
+   /// <summary>The log in which the sandbox's hub records each step of each Rider restart it makes, with its time.</summary>
+   public string RiderRestartsLog => Path.Combine(ClaudeCodeFolder, "rider-restarts.log");
+
+   /// <summary>
    ///   Copies the <see cref="StandInForClaudeCodeBuild"/> into the sandbox, where the stand-ins of sessions that outlive
    ///   the sandbox Rider may run: Windows lets a running executable be moved, not replaced.
    /// </summary>
@@ -509,6 +526,8 @@ public sealed class SandboxRider
       LeaveOutTheClaudeCodeSessionThisRunsIn();
       Environment.SetEnvironmentVariable("CLAUDE_CONFIG_DIR", ClaudeCodeFolder);
       Environment.SetEnvironmentVariable("CLAUDE_TOOLING_LOCAL_API_FOLDER", _hub.AnnouncementFolder);
+      // For the hub's Rider restart: the IDEs it restarts are those announced here, the sandbox Rider's.
+      Environment.SetEnvironmentVariable("CLAUDE_SESSIONS_LOCAL_API_FOLDER", LocalApiAnnouncementsFolder);
       var path = Environment.GetEnvironmentVariable("PATH")!;
       if(!path.StartsWith(StandInForClaudeCodeFolder + Path.PathSeparator)) Environment.SetEnvironmentVariable("PATH", StandInForClaudeCodeFolder + Path.PathSeparator + path);
       // The sandbox is in the user's home folder, which is a git repository: without a ceiling, git takes the solutions in

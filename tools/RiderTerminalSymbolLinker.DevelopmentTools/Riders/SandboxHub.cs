@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Globalization;
 using System.Net;
 using System.Net.Http.Headers;
+using System.Net.Http.Json;
 using System.Text.Json.Nodes;
 
 namespace RiderTerminalSymbolLinker.DevelopmentTools.Riders;
@@ -50,6 +51,20 @@ public sealed class SandboxHub(string folder)
    string CopiedFromFile => Path.Combine(folder, "copied-from-build.txt");
 
    /// <summary>
+   ///   The variables of its start environment that the hub serves the sandbox by: its Claude Code folder and the folder
+   ///   it announces in, as its contract has it; and for its Rider restart, the folder of the IDEs' announcements and
+   ///   Royder's port, which a hub outside <c>~/.claude/bin</c> takes from its start environment.
+   /// </summary>
+   static readonly string[] TheVariablesItServesBy =
+      ["CLAUDE_CONFIG_DIR", "CLAUDE_TOOLING_LOCAL_API_FOLDER", "CLAUDE_SESSIONS_LOCAL_API_FOLDER", "DOTNET_ANALYSIS_AND_REFACTORING_MCP_PORT"];
+
+   /// <summary>
+   ///   Where the copy records the hub it started, by its process, and <see cref="TheVariablesItServesBy"/> as it started
+   ///   it: a hub that runs with others, as after a change to the tools, is ended and started anew.
+   /// </summary>
+   string StartedFile => Path.Combine(folder, "started.json");
+
+   /// <summary>
    ///   The folder the hub announces its local API in, which <c>CLAUDE_TOOLING_LOCAL_API_FOLDER</c> names for the hub and
    ///   for the sandbox Rider's Claude Sessions.
    /// </summary>
@@ -61,11 +76,12 @@ public sealed class SandboxHub(string folder)
    ///   Has the hub run, on the published build, and returns once it has announced its local API. It
    ///   starts in this process's environment, which must name the sandbox's Claude Code folder and
    ///   <see cref="AnnouncementFolder"/>, as <see cref="SandboxRider"/> has it, and starts with no window, through the
-   ///   shell, so that it holds none of this process's handles.
+   ///   shell, so that it holds none of this process's handles. A hub that runs in another environment is ended first.
    /// </summary>
    public void Run()
    {
       TakeThePublishedBuild();
+      EndTheHubIfItRunsInAnotherEnvironment();
       var start = new ProcessStartInfo(Path.Combine(CopyFolder, "ClaudeTooling.exe")) { UseShellExecute = true, WindowStyle = ProcessWindowStyle.Hidden };
       start.ArgumentList.Add("resident-server");
       start.ArgumentList.Add("start");
@@ -82,7 +98,60 @@ public sealed class SandboxHub(string folder)
             throw new TimeoutException($"Gave up after {HowLongStartingMayTake} waiting for the sandbox's hub to announce its local API in {AnnouncementFile}. Its log is ~/.claude/resident-server.log.");
          Thread.Sleep(100);
       }
+
+      File.WriteAllText(StartedFile, new JsonObject { ["processId"] = RunningProcessId(), ["environment"] = TheEnvironmentItStartsIn() }.ToJsonString());
    }
+
+   /// <summary>
+   ///   Asks the hub to restart the sandbox Rider, through its local API's <c>POST /rider-restart</c>, as Claude Sessions
+   ///   asks for a button Magnus presses himself: <c>askedByMagnus</c>, so the hub shows him no prompt, whatever has the
+   ///   input focus. Returns once the hub has started the restart; <see cref="TheRiderRestart"/> tells how it goes.
+   /// </summary>
+   /// <remarks>
+   ///   Not as an agent asks, with <c>ClaudeTooling.exe rider restart</c>: that shows Magnus the prompt while a window of
+   ///   the sandbox Rider has the input focus, as it has once it has started.
+   /// </remarks>
+   public void AskToRestartRider(string why, string askedBy)
+   {
+      using var client = ClientOfTheHub() ?? throw new InvalidOperationException("The sandbox's hub doesn't run.");
+      using var answer = client.PostAsync("/rider-restart", JsonContent.Create(new { why, askedBy, askedByMagnus = true })).Result;
+      if(answer.StatusCode != HttpStatusCode.Accepted)
+         throw new InvalidOperationException($"The sandbox's hub answered the request to restart Rider with {(int)answer.StatusCode}: {answer.Content.ReadAsStringAsync().Result}");
+   }
+
+   /// <summary>
+   ///   The Rider restart under way, else the last one since the hub started, else null, as the hub's
+   ///   <c>GET /rider-restart</c> tells of it: its <c>stage</c>, <c>done</c> at the end, the <c>progress</c> of each step,
+   ///   and its <c>outcome</c>.
+   /// </summary>
+   public JsonNode? TheRiderRestart()
+   {
+      using var client = ClientOfTheHub() ?? throw new InvalidOperationException("The sandbox's hub doesn't run.");
+      return JsonNode.Parse(client.GetStringAsync("/rider-restart").Result)!["restart"];
+   }
+
+   /// <summary>
+   ///   Ends the hub that runs, if the copy didn't start it in the environment this process would start it in, or doesn't
+   ///   know: started with other <see cref="TheVariablesItServesBy"/>, it would serve the sandbox wrongly, and a hub
+   ///   outside <c>~/.claude/bin</c> with no folder of IDEs only rehearses a Rider restart, showing Magnus its prompt.
+   /// </summary>
+   void EndTheHubIfItRunsInAnotherEnvironment()
+   {
+      if(RunningProcessId() is not {} running) return;
+      var started = File.Exists(StartedFile) ? JsonNode.Parse(File.ReadAllText(StartedFile)) : null;
+      if(started?["processId"]?.GetValue<int>() == running && JsonNode.DeepEquals(started["environment"], TheEnvironmentItStartsIn())) return;
+
+      using var hub = Process.GetProcessById(running);
+      if(!hub.MainModule!.FileName.StartsWith(CopyFolder + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))
+         throw new InvalidOperationException($"The sandbox hub's announcement names process {running}, {hub.MainModule.FileName}, which isn't the sandbox's copy of the hub.");
+      hub.Kill();
+      hub.WaitForExit();
+   }
+
+   /// <summary>The process of the hub the announcement names, if it runs.</summary>
+   int? RunningProcessId() => Announcement()?["processId"]!.GetValue<int>() is {} processId && IsRunning(processId) ? processId : null;
+
+   static JsonObject TheEnvironmentItStartsIn() => new(TheVariablesItServesBy.Select(it => KeyValuePair.Create(it, (JsonNode?)Environment.GetEnvironmentVariable(it))));
 
    /// <summary>What the hub's announcement says, or null while it has none.</summary>
    public JsonNode? Announcement() => File.Exists(AnnouncementFile) ? JsonNode.Parse(File.ReadAllText(AnnouncementFile)) : null;
@@ -109,13 +178,32 @@ public sealed class SandboxHub(string folder)
       var hosts = JsonNode.Parse(client.GetStringAsync("/session-hosts").Result)!["sessionHosts"]!.AsArray();
       foreach(var host in hosts)
       {
-         using var answer = client.PostAsync($"/session-hosts/{host!["id"]!.GetValue<string>()}/end", content: null).Result;
-         if(answer.StatusCode is not (HttpStatusCode.NoContent or HttpStatusCode.NotFound))
-            throw new InvalidOperationException($"The sandbox's hub answered ending the session host {host["id"]} with {(int)answer.StatusCode}: {answer.Content.ReadAsStringAsync().Result}");
+         var id = host!["id"]!.GetValue<string>();
+         using var answer = client.PostAsync($"/session-hosts/{id}/end", content: null).Result;
+         if(answer.StatusCode is HttpStatusCode.NoContent or HttpStatusCode.NotFound) continue;
+         //todo: delete once the hub answers 204 or 404 for a session host that is already ending. Asked to end one whose tab
+         //   had just closed, it answered 500, "IOException: Pipe is broken" (2026-11-20; told the tooling owner). The host
+         //   was ending, so it is ended if the hub stops listing it.
+         if(answer.StatusCode == HttpStatusCode.InternalServerError && IsNoLongerListed(id)) continue;
+         throw new InvalidOperationException($"The sandbox's hub answered ending the session host {id} with {(int)answer.StatusCode}: {answer.Content.ReadAsStringAsync().Result}");
       }
 
       return hosts.Count;
+
+      bool IsNoLongerListed(string id)
+      {
+         var clock = Stopwatch.StartNew();
+         while(clock.Elapsed < HowLongEndingAHostMayTake)
+         {
+            if(SessionHosts().All(it => it!["id"]!.GetValue<string>() != id)) return true;
+            Thread.Sleep(100);
+         }
+
+         return false;
+      }
    }
+
+   static readonly TimeSpan HowLongEndingAHostMayTake = TimeSpan.FromSeconds(5);
 
    /// <summary>A client of the hub's local API, with its token, or null when no hub runs.</summary>
    HttpClient? ClientOfTheHub()
