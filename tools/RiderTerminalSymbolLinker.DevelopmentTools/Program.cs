@@ -61,6 +61,10 @@ static class Program
                                                       reloads it when he next switches to its window, or needs a restart
                           everyday deploy --dry-run   Builds the plugins and says what deploying them would do, changing
                                                       nothing in his IDEs: a line marked RESTART takes his go-ahead
+                          everyday deploy --into-running-ides
+                                                      Deploys as everyday deploy does, and also puts a build that needs a
+                                                      restart into an IDE that runs and reloads, which breaks the plugin
+                                                      in it until its restart: only when Magnus restarts it right after
                           everyday reload RiderTerminalSymbolLinker|ClaudeSessions [<IDE>]
                                                       Has his IDEs, or only the one named, such as Rider or
                                                       "IntelliJ IDEA", reload the build of the plugin they have, when he
@@ -141,6 +145,9 @@ static class Program
             break;
          case ["everyday", "deploy", "--dry-run"]:
             foreach(var line in EverydayIdes.Deploy(new GradleSandbox(), dryRun: true)) Console.WriteLine(line);
+            break;
+         case ["everyday", "deploy", "--into-running-ides"]:
+            foreach(var line in EverydayIdes.Deploy(new GradleSandbox(), intoRunningIdes: true)) Console.WriteLine(line);
             break;
          default:
             Console.Error.WriteLine(Usage);

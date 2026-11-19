@@ -20,8 +20,11 @@ static class EverydayIdes
    ///   warns about it as it starts.
    ///   <br/>With <paramref name="dryRun"/>, it builds the plugins and says what deploying them would do, changing
    ///   nothing in the IDEs: a deploy that takes a restart waits for Magnus's go-ahead.
+   ///   <br/>With <paramref name="intoRunningIdes"/>, it puts such a build into an IDE that runs and reloads too, for
+   ///   Magnus to restart it right after: the plugin is broken in it until he does. The restart loads the build, and
+   ///   Claude Sessions resumes the sessions it saved as its tabs were parked for the reload.
    /// </remarks>
-   public static IReadOnlyList<string> Deploy(GradleSandbox builds, bool dryRun = false)
+   public static IReadOnlyList<string> Deploy(GradleSandbox builds, bool dryRun = false, bool intoRunningIdes = false)
    {
       builds.Fill();
       var setAside = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "RiderTerminalSymbolLinkerDevelopment", "replaced-everyday-plugin-files");
@@ -30,7 +33,7 @@ static class EverydayIdes
          .. from plugin in OurPlugin.All
             from ide in plugin.RunsIn
             where ide.IsInstalled
-            from line in DeployTo(ide, plugin, builds.BuildOf(plugin), new FolderMirror(setAside), dryRun)
+            from line in DeployTo(ide, plugin, builds.BuildOf(plugin), new FolderMirror(setAside), dryRun, intoRunningIdes)
             select line
       ];
    }
@@ -60,7 +63,7 @@ static class EverydayIdes
       return $"{ide} reloads {plugin}, the build it has, when Magnus next switches to its window.";
    }
 
-   static IEnumerable<string> DeployTo(EverydayIde ide, OurPlugin plugin, string build, FolderMirror mirror, bool dryRun)
+   static IEnumerable<string> DeployTo(EverydayIde ide, OurPlugin plugin, string build, FolderMirror mirror, bool dryRun, bool intoRunningIdes)
    {
       var pluginFolder = Path.Combine(ide.PluginsFolder, plugin.Name);
       var effect = EffectOfDeploying(ide, build, pluginFolder);
@@ -70,8 +73,17 @@ static class EverydayIdes
          yield break;
       }
 
-      if(effect is not (Effect.Nothing or Effect.WouldBreakThePluginInTheRunningIde)) mirror.Mirror(build, pluginFolder);
-      yield return WhatDeployingDid(ide, plugin, effect);
+      if(effect == Effect.WouldBreakThePluginInTheRunningIde && intoRunningIdes)
+      {
+         mirror.Mirror(build, pluginFolder);
+         yield return $"DEPLOYED {plugin} INTO {ide}, WHICH RUNS: it reloads the build at once, with the registrations it read as it started, and the plugin is broken in it until Magnus restarts it.";
+      }
+      else
+      {
+         if(effect is not (Effect.Nothing or Effect.WouldBreakThePluginInTheRunningIde)) mirror.Mirror(build, pluginFolder);
+         yield return WhatDeployingDid(ide, plugin, effect);
+      }
+
       if(ide.PluginUpdateSources.NameTheMarketplaceUnlessASourceIsNamed(plugin))
          yield return $"{ide} gets updates of {plugin} from the Marketplace now, so it no longer warns, from its next start, that it can't tell where the plugin came from.";
    }

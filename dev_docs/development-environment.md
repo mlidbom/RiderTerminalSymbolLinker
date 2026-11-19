@@ -149,7 +149,9 @@ a Claude Sessions build whose action had moved to another package went into Ride
 within seconds, didn't find the action's old class, and the tool window broke as it opened, with Magnus's sessions left
 parked in the Terminal tool window. A build whose plugin.xml was again what they had read at their start fixed it, by a
 reload. Whether an IDE runs is told by the process its system folder's `.pid` names, such as
-`%LOCALAPPDATA%\JetBrains\Rider2026.3\.pid`, which the IDE leaves behind when it exits.
+`%LOCALAPPDATA%\JetBrains\Rider2026.3\.pid`, which the IDE leaves behind when it exits. `everyday deploy
+--into-running-ides` puts such a build into a running IDE all the same, for when Magnus restarts it right after: the
+plugin is broken in it until he does, and Claude Sessions resumes the sessions it saved as it parked their tabs.
 
 **`everyday reload <plugin> [<IDE>]` reloads the build an IDE has,** to see in Magnus's own IDEs what a reload does,
 such as whether his tabs come through it. It gives the plugin's jars the time of now, as `sandbox reload` does in the
