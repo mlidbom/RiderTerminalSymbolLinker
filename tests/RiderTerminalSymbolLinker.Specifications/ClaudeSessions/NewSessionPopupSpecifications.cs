@@ -18,6 +18,8 @@ public class When_a_session_is_started_from_the_new_session_popup_with_a_name(Wh
       public readonly SessionTab Tab;
       public readonly string TabName;
       public readonly NewSessionPopup PopupAfter;
+      public readonly TerminalSize? SizeTheClaudeCodeDrawsAt;
+      public readonly TerminalSize? SizeOfTheTab;
 
       public Story()
       {
@@ -27,12 +29,17 @@ public class When_a_session_is_started_from_the_new_session_popup_with_a_name(Wh
          Tab = view.PressEnterInTheNewSessionPopup();
          TabName = view.TabNames.Single();
          PopupAfter = view.NewSessionPopup;
+         SizeTheClaudeCodeDrawsAt = view.SizeTheClaudeCodeDrawsAtIn(0);
+         SizeOfTheTab = view.SizeOf(0);
       }
    }
 
    [XF] public void the_session_has_the_name() => story.Tab.SessionName.Must().Be(Story.Name);
    [XF] public void the_tab_is_named_after_it() => story.TabName.Must().Be(Story.Name);
    [XF] public void the_popup_closes() => story.PopupAfter.Shown.Must().BeFalse();
+
+   // Until 2026-11-19, often at 80 columns by 20 rows, the terminal's guess, until the tab was resized.
+   [XF] public void its_claude_code_draws_itself_at_the_size_of_the_tab() => story.SizeTheClaudeCodeDrawsAt.Must().Be(story.SizeOfTheTab);
 }
 
 public class When_a_session_is_started_from_the_new_session_popup_with_its_field_left_empty(When_a_session_is_started_from_the_new_session_popup_with_its_field_left_empty.Story story)

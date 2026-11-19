@@ -214,6 +214,18 @@ tooling-owner on 2026-11-17 (protocol 1):
   migration notices and tab persistence hear of an attached tab, which these tabs want none of.
 - **Its tab classes live in the content module `intellij.terminal.frontend`,** which a `<depends>` on
   `org.jetbrains.plugins.terminal` reaches, as the SDK says.
+- **A tab whose shell starts before the tab is laid out can keep 80 columns by 20 rows,** and Claude Code drawn at
+  that size, until the tab's size changes. With `deferSessionStartUntilUiShown(false)` the terminal starts the shell at
+  80 by 20, its guess; it drops a resize that comes before the shell has started, and sends none once it has. So a tab
+  shown at once, opened by the + or by the history picker, starts its shell only once it's laid out, at its size. A tab
+  resumed as the IDE starts starts its shell at once, so that its session runs though its tab is never shown, and gets
+  its size as it's first shown. The one the view selects then, shown at once when the tool window is, can keep 80 by
+  20: seen in the sandbox on 2026-11-19, and not fixed (the `bug:` at `ClaudeSessionsView.resume`). The same in Rider
+  2026.3 (263.7307) and in intellij-community's code on 2026-11-19.
+- **A banner above a tab takes rows from it without resizing its shell** in Rider 2026.3: the terminal resizes the
+  shell only as its whole panel's size changes. The MCP Server plugin shows one, asking to enable the IDE's MCP server,
+  when `claude` starts in a tab of an IDE whose MCP server isn't enabled: Claude Code then draws three rows taller than
+  the tab shows. intellij-community's code resizes the shell for it since.
 - **Closing a tab whose process runs asks the user to confirm,** both by its close button and by the API's `closeTab`,
   and so does exiting the IDE (`TerminalProcessesClosingNotifier`). The confirmation follows the IDE's "Process tabs:
   when closing with an active process" setting. Magnus's IDEs ask, as they do for `claude` in an ordinary terminal tab.

@@ -178,6 +178,8 @@ public class When_the_user_chooses_a_session_no_claude_code_runs(When_the_user_c
       public readonly SessionTranscript Session;
       public readonly HistoryPicker AfterChoosing;
       public readonly IReadOnlyList<SessionTab> Tabs;
+      public readonly TerminalSize? SizeTheClaudeCodeDrawsAt;
+      public readonly TerminalSize? SizeOfTheTab;
 
       public Story()
       {
@@ -190,6 +192,8 @@ public class When_the_user_chooses_a_session_no_claude_code_runs(When_the_user_c
          view.WaitUntil(() => view.Tabs is [{ ClaudeCode: not null } tab] && tab.SessionId == Session.Id, "a tab to resume the session");
          view.WaitUntil(() => view.Screen(0).Contains("> what was said elsewhere"), "the tab to show the session's conversation");
          Tabs = view.Tabs;
+         SizeTheClaudeCodeDrawsAt = view.SizeTheClaudeCodeDrawsAtIn(0);
+         SizeOfTheTab = view.SizeOf(0);
       }
    }
 
@@ -198,6 +202,8 @@ public class When_the_user_chooses_a_session_no_claude_code_runs(When_the_user_c
    [XF] public void a_new_tab_resumes_the_session() => story.Tabs.Single().SessionId.Must().Be(story.Session.Id);
 
    [XF] public void it_runs_in_the_projects_folder_where_a_new_session_starts() => Path.GetFullPath(story.Tabs.Single().WorkingDirectory!).Must().Be(story.ProjectFolder);
+
+   [XF] public void its_claude_code_draws_itself_at_the_size_of_the_tab() => story.SizeTheClaudeCodeDrawsAt.Must().Be(story.SizeOfTheTab);
 }
 
 /// <summary>A session ran in a tab, and its Claude Code exited there, leaving the shell at its prompt: the user chooses it.</summary>

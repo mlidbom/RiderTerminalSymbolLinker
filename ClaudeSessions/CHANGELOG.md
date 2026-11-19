@@ -35,3 +35,8 @@ All notable changes to Claude Sessions are documented here. The format follows
   the Terminal tool window, and come back as they were when it has, with the same tab selected, and the tool window
   shown as it was. That includes a tab whose Claude Code has exited. Should the plugin be uninstalled, they run on
   there.
+
+### Fixed
+- **A new session's tab shows Claude Code at the tab's size.** A tab opened by the **+**, or by the session history
+  picker, often showed Claude Code drawn 80 columns wide and 20 rows tall until the tool window was resized. A session
+  resumed as the IDE starts, in the tab selected then, may still be drawn so.
