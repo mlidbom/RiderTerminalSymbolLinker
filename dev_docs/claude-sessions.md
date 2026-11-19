@@ -5,7 +5,12 @@ Claude Sessions (plugin id `dev.magnus.claudesessions`, Kotlin package `dev.magn
 restarts. It runs in any JetBrains IDE: it uses only the platform and the terminal plugin. Magnus asked for it on
 2026-11-17: shutting down 3-8 IDEs with 1-4 Claude sessions each, and starting them all again by hand, was a real pain.
 
-It lives in this repository as a project of its own, so that it can move to a repository of its own.
+It lives in this repository as a project of its own. **Decided, not yet done (Magnus, 2026-11-19):** Claude Sessions and
+the symbol linker become one plugin, a Claude Code enhancement plugin, under the symbol linker's id,
+`dev.magnus.riderterminalsymbollinker`, with a new name, so that the symbol linker's users get it as an update. The
+symbol linking becomes an optional part, in a config file of its own that loads only when the .NET
+Analysis&Refactoring MCP plugin is installed, and the plugin runs in every JetBrains IDE. The name, and renaming the
+GitHub repository, are still Magnus's to choose. The merge comes after the chat view's first version (below).
 
 Its packages, below `dev.magnus.claudesessions`, which holds the tool window and its tabs:
 
@@ -175,7 +180,51 @@ Code 2.1.327's own code and five transcripts on 2026-11-18. It isn't documented,
     resume lost resident-server's session-only cron job on 2026-11-17. Whether a resume re-arms a /loop wake-up isn't
     known: 2.1.327 has code that rebuilds one from the transcript.
 
-## A chat view with the terminal hidden (researched, not built)
+## The chat view (being built)
+
+Magnus's go, 2026-11-19, for a first version to test. A tab shows its session as a chat of the plugin's own: the
+transcript in an editor pane, and an input box that is an editor too, with Claude Code's own UI, the TUI, hidden in the
+same tab, a key away. Why, in his words: "Text editing in claude code sucks ... Virtually NONE of the absolutely standard
+text editing stuff works", "Virtually all rider/idea shortcuts break in the tui", and "Normal search in the transcript
+sucks ... in both the search provided by rider and the search provided by claude code". The TUI stays for what the chat
+doesn't do: "I would have access to the full / command stuff etc, but all the every day back and forth talking would
+happen in a UI that does not make me want to scream".
+
+**What the first version does:**
+
+- **Two cards in each tab, in a `CardLayout`:** the chat and the terminal. The terminal's card is shown until its shell
+  has started, then the chat's (see the spikes below). A key and a button switch between them. The tab shows the
+  terminal by itself when Claude Code's record says `waiting`, as dialogs, permission prompts and pickers are drawn only
+  there, and the chat again when it says `busy` or `idle`, if it was the tab that switched.
+- **The transcript pane, a read-only editor:** Rider's own search, selection and shortcuts work in it. Its text is
+  markdown, highlighted as markdown where the bundled Markdown plugin is there (an optional dependency).
+  - **Shown:** Magnus's prompts; all of the assistant's text, the self-talk included ("The self talk tends to just be a
+    line or two"); each tool call as a fold, collapsed, with a one-line header such as `Bash: git status`, and its
+    result inside ("The tool output becomes a novel over a long running session").
+  - **Not shown:** entries that aren't the conversation: every `type` but `user` and `assistant`, `isMeta` and
+    `isSidechain` entries, attachments. A slash command shows as the command typed.
+  - **The whole session, across compactions,** which the TUI loses after one (Magnus: "LOVE that"); a compaction shows
+    as a divider. Rewinds branch the transcript: the conversation is the chain from the newest entry back, through
+    `parentUuid`, not the file's order.
+  - **Live:** the file is read in the background as the tab opens, then followed as Claude Code appends to it. The tab
+    follows its session when `/clear` or `/resume` changes it, as it does already.
+  - **Links:** every filter on the platform's `consoleFilterProvider` extension point runs over the pane's text, as in a
+    console. In Rider that brings the symbol linker's links, and in every IDE the platform's own.
+- **The input box, an editor:** every editing feature and shortcut of the IDE. Enter sends and Shift+Enter starts a new
+  line, as in Claude Code's box.
+  - **Ctrl+V of an image** on the clipboard puts it in the message, as it does in Claude Code's box, which is the only
+    way Magnus attaches images: "I've always used just Ctrl+v and it just works." The plugin saves it to a file and
+    hands Claude Code the file's path.
+  - **Sending,** as the spikes found: what Magnus typed is typed into Claude Code in pieces of about 200 characters, with
+    Ctrl+J between lines; what he pasted into the box goes as a bracketed paste of its own, so that Claude Code marks
+    it as pasted, as it would in its own box; each image's path as a bracketed paste of its own; then Enter. Claude
+    Code then queues it while busy, and runs hooks and slash commands, as for a prompt typed in its box.
+  - **A message that starts with `/`** is sent, and the tab shows the terminal, where the command shows what it does.
+  - **Esc** in the chat interrupts Claude Code, as in its box, and **Shift+Tab** changes its permission mode.
+- **A status line** above the input box: whether Claude Code is busy, waiting or idle, from its record, and how many
+  commands the turn has run.
+
+## The chat view: what the spikes found
 
 For the chat view Magnus asked about on 2026-11-19: the session's transcript, and an input box, of the plugin's own, with
 Claude Code's own UI hidden in the same tab. Two spikes in the sandbox that day, with Rider 2026.3 and Claude Code
