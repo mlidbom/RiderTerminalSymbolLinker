@@ -1,5 +1,4 @@
 <Solution>
-  <Project Path="FakeClaudeCode/FakeClaudeCode.csproj" />
   <Project Path="RiderTerminalSymbolLinker.DevelopmentTools/RiderTerminalSymbolLinker.DevelopmentTools.csproj" />
   <Project Path="../tests/RiderTerminalSymbolLinker.Specifications/RiderTerminalSymbolLinker.Specifications.csproj" />
 </Solution>

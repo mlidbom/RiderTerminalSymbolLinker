@@ -16,7 +16,7 @@ under "The tools you develop with are yours, as a product". Today they are:
 - the sandbox Rider, `dotnet run --project tools/RiderTerminalSymbolLinker.DevelopmentTools -- sandbox`, which lists
   its commands: a Rider of its own that runs this working tree's builds on
   `tests/RiderTerminalSymbolLinker.FixtureSolution`, with the .NET Analysis&Refactoring MCP build Magnus's Riders run
-  unless told to run the Marketplace's, and a fake Claude Code (`tools/FakeClaudeCode`). It reloads a new build in a
+  unless told to run the Marketplace's, and the tooling owner's stand-in for Claude Code. It reloads a new build in a
   second, and tells through each plugin's development observation channel what the plugin does;
 - the specifications that check that in the sandbox, `dotnet test tests/RiderTerminalSymbolLinker.Specifications`, in
   seconds once the sandbox runs;

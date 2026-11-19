@@ -10,7 +10,7 @@ namespace RiderTerminalSymbolLinker.Specifications.ClaudeSessions;
 
 /// <summary>
 ///   The Claude Sessions tool window in the sandbox Rider, as the specifications see and drive it through Claude
-///   Sessions' development observation channel. Its tabs run the sandbox's fake Claude Code, <c>tools/FakeClaudeCode</c>.
+///   Sessions' development observation channel. Its tabs run the sandbox's stand-in for Claude Code, the tooling owner's.
 /// </summary>
 /// <remarks>
 ///   It starts with no tabs, no session hosts, no sessions saved, its terminals running
@@ -23,7 +23,7 @@ public sealed class TheClaudeSessionsView
    /// <summary>The shell the view's terminals run as a story starts: Magnus's, PowerShell 7.</summary>
    public const string TheShellStoriesStartIn = "pwsh.exe";
 
-   /// <summary>How long the view may take to show a change: the keeper looks every two seconds, the fake starts in less.</summary>
+   /// <summary>How long the view may take to show a change: the keeper looks every two seconds, the stand-in starts in less.</summary>
    static readonly TimeSpan HowLongAChangeMayTake = TimeSpan.FromSeconds(15);
 
    readonly SandboxRider _sandbox = new(RiderInstallation.OfThisUser());
@@ -61,12 +61,12 @@ public sealed class TheClaudeSessionsView
    public string LocalApiAnnouncementsFolder => _sandbox.LocalApiAnnouncementsFolder;
 
    /// <summary>
-   ///   Runs the sandbox's fake Claude Code outside the view, as in a plain terminal, resuming <paramref name="session"/>
+   ///   Runs the sandbox's stand-in for Claude Code outside the view, as in a plain terminal, resuming <paramref name="session"/>
    ///   in <paramref name="folder"/>, and returns once the sandbox's hub has told the view of it.
    /// </summary>
    public ClaudeCodeOutsideTheView RunClaudeCodeOutsideTheView(string session, string folder)
    {
-      var start = new ProcessStartInfo(_sandbox.FakeClaudeCode, ["--resume", session])
+      var start = new ProcessStartInfo(_sandbox.StandInForClaudeCode, ["--resume", session])
       {
          WorkingDirectory = folder,
          UseShellExecute = false,
@@ -139,7 +139,7 @@ public sealed class TheClaudeSessionsView
 
    /// <summary>
    ///   Has the tabs opened from now on get the sandbox's hub behind their chats, as outside the sandbox, in place of the
-   ///   stand-in the stories drive: the chat then shows the conversation of the tab's fake Claude Code, as the hub reads
+   ///   stand-in the stories drive: the chat then shows the conversation of the tab's stand-in for Claude Code, as the hub reads
    ///   it from its transcript. Until the next story, which starts with stand-ins again.
    /// </summary>
    public void HaveTheHubBehindTheChats() => Channel.PutBehindTheChats(hub: true);
@@ -322,7 +322,7 @@ public sealed class TheClaudeSessionsView
    public void Type(int tab, string text) => Channel.Type(tab, text);
 
    /// <summary>
-   ///   Types <paramref name="line"/> into the tab's Claude Code, as a line of its conversation, and returns once the fake
+   ///   Types <paramref name="line"/> into the tab's Claude Code, as a line of its conversation, and returns once the stand-in
    ///   Claude Code shows it: it has then written it to the session's transcript.
    /// </summary>
    public void Say(int tab, string line)
@@ -362,7 +362,7 @@ public sealed class TheClaudeSessionsView
    public TerminalSize? SizeOf(int tab) => Channel.Screen(tab)["size"] is {} size ? new TerminalSize(size["columns"]!.GetValue<int>(), size["rows"]!.GetValue<int>()) : null;
 
    /// <summary>
-   ///   The size the tab's fake Claude Code last said its terminal has, the size Claude Code would draw itself at, once it
+   ///   The size the tab's stand-in for Claude Code last said its terminal has, the size Claude Code would draw itself at, once it
    ///   is the tab's size, or else whatever it is after <see cref="HowLongAChangeMayTake"/>: null if it said none.
    /// </summary>
    public TerminalSize? SizeTheClaudeCodeDrawsAtIn(int tab)
@@ -371,7 +371,7 @@ public sealed class TheClaudeSessionsView
       while(LastSaid() != SizeOf(tab) && stopwatch.Elapsed < HowLongAChangeMayTake) Thread.Sleep(250);
       return LastSaid();
 
-      TerminalSize? LastSaid() => TerminalSize.TheFakeClaudeCodeLastSaidIn(Screen(tab));
+      TerminalSize? LastSaid() => TerminalSize.TheStandInLastSaidIn(Screen(tab));
    }
 
    /// <summary>Waits until <paramref name="condition"/> holds, as the view takes in what happened.</summary>
@@ -454,12 +454,12 @@ public sealed record NewSessionPopup(bool Shown, string? Name)
 /// <summary>The size of a terminal's screen, in the characters across it and the lines down it.</summary>
 public sealed record TerminalSize(int Columns, int Rows)
 {
-   /// <summary>The line in which the fake Claude Code says the size of its terminal, as it starts and each time it changes.</summary>
-   static readonly Regex TheLineInWhichTheFakeClaudeCodeSaysItsSize = new(@"^The terminal is (?<columns>\d+) columns by (?<rows>\d+) rows$");
+   /// <summary>The line in which the stand-in for Claude Code says the size of its terminal, as it starts and each time it changes.</summary>
+   static readonly Regex TheLineInWhichTheStandInSaysItsSize = new(@"^The terminal is (?<columns>\d+) columns by (?<rows>\d+) rows$");
 
-   /// <summary>The size of its terminal that the fake Claude Code said last in <paramref name="lines"/>, or null if none says one.</summary>
-   public static TerminalSize? TheFakeClaudeCodeLastSaidIn(IEnumerable<string> lines) =>
-      lines.Select(line => TheLineInWhichTheFakeClaudeCodeSaysItsSize.Match(line)).LastOrDefault(it => it.Success) is {} said
+   /// <summary>The size of its terminal that the stand-in for Claude Code said last in <paramref name="lines"/>, or null if none says one.</summary>
+   public static TerminalSize? TheStandInLastSaidIn(IEnumerable<string> lines) =>
+      lines.Select(line => TheLineInWhichTheStandInSaysItsSize.Match(line)).LastOrDefault(it => it.Success) is {} said
          ? new TerminalSize(int.Parse(said.Groups["columns"].Value), int.Parse(said.Groups["rows"].Value))
          : null;
 }
@@ -467,7 +467,7 @@ public sealed record TerminalSize(int Columns, int Rows)
 /// <summary>The process of a Claude Code that runs in a tab, and the process it's a child of.</summary>
 public sealed record ClaudeCodeProcess(long ProcessId, long? ParentProcessId);
 
-/// <summary>A fake Claude Code that runs outside the view, as in a plain terminal: disposing it ends it.</summary>
+/// <summary>A stand-in for Claude Code that runs outside the view, as in a plain terminal: disposing it ends it.</summary>
 public sealed class ClaudeCodeOutsideTheView(Process process) : IDisposable
 {
    public Process Process { get; } = process;

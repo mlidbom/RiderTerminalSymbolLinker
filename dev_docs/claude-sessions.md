@@ -75,7 +75,7 @@ Windows PowerShell, cmd and POSIX shells were the plugin's until 2026-11-19, and
 notification says why.
 
 The specifications start a session named with each character some shell acts on in each of these four, with Git Bash
-for the POSIX one, and check that the fake Claude Code got the name as it was typed: the plugin and the hub, end to end.
+for the POSIX one, and check that the stand-in for Claude Code got the name as it was typed: the plugin and the hub, end to end.
 
 ## Which session a tab runs: the hub tells
 
@@ -349,16 +349,13 @@ The hub's side was built a step at a time, in the bundle's order of building, an
 2026-11-19: the records stream (above, "Which session a tab runs"); typing, the shell included; and the conversation of
 a session's whole line, across compactions and `/clear` (Magnus: "One session just restarted itself with /clear and
 the entire history disappeared for me. I would love to still have it there"). A story runs the chat end to end through
-the sandbox's hub (`When_the_hub_is_behind_a_tabs_chat`); the others keep the stand-in.
+the sandbox's hub (`When_the_hub_is_behind_a_tabs_chat`), the chat's messages typed into the input box of the
+tooling owner's stand-in for Claude Code, which the sandbox runs; the others keep the `StandInBehindTheChat`.
 
 - **The sessions on disk,** the hub's `GET /sessions`, for the history picker in place of its own reading of the
   transcripts: published by the hub, not used yet.
-- **One imitation of Claude Code, the hub's:** the tooling owner's stand-in for Claude Code, published as
-  `~/.claude/bin/stand-in-for-claude-code`, draws and takes an input box as Claude Code does, and grows what the
-  sandbox's fake does. The sandbox is to run it in place of `tools/FakeClaudeCode/bin/claude`, first on the `PATH`,
-  with `CLAUDE_CONFIG_DIR` set, and the fake then goes.
 - **Not tried with the real Claude Code:** the chat with the hub behind it; the real TUI drawn through hiding and showing
-  its card (only the fake's sizes were seen).
+  its card (only the stand-in's sizes were seen).
 
 ## The chat view: what the spikes found
 
@@ -370,7 +367,7 @@ Claude Code's own UI hidden in the same tab. Two spikes in the sandbox that day,
 component, the chat card shown.
 
 - **It's laid out while hidden:** a `CardLayout` gives every card the panel's bounds, so the hidden terminal knows its
-  grid, and follows the tool window's and the IDE window's resizes. The fake Claude Code was told of each, in columns
+  grid, and follows the tool window's and the IDE window's resizes. The sandbox's Claude Code was told of each, in columns
   and rows, while hidden.
 - **With `deferSessionStartUntilUiShown(true)`, its shell doesn't start while its card is hidden,** and starts at the
   right size once the card is shown. So: show the terminal's card until the shell has started, then the chat card.
@@ -380,7 +377,7 @@ component, the chat card shown.
   change of size does. A gap of 20 pixels at the top and bottom of the cards, taken away 300 ms later, sent two resizes,
   113 by 14 and then 113 by 16; taken away at once, it sent none. Since session hosts, every tab's attach client
   starts only once its terminal is shown, and the `bug:` the nudge might have fixed went.
-- **Not seen:** the real Claude Code's fullscreen drawing through a hide and a show; only the fake's sizes were.
+- **Not seen:** the real Claude Code's fullscreen drawing through a hide and a show; only the sandbox's stand-in's sizes were.
 
 **Sending into the real Claude Code:**
 
@@ -435,7 +432,7 @@ survive-IDE-restart built the hub's side; its contract is `the-hubs-local-api.md
     the user unticked passing it), then `TERM=xterm-256color`, `COLORTERM=truecolor`,
     `TERMINAL_EMULATOR=JetBrains-JediTerm`, a new `TERM_SESSION_ID`, then the user's own variables from the terminal's
     settings. The whole of it, because the sandbox IDE's environment holds what its shells need:
-    `CLAUDE_TOOLING_LOCAL_API_FOLDER`, `PATH` with the fake Claude Code first. Left out: the IDE launcher's variables
+    `CLAUDE_TOOLING_LOCAL_API_FOLDER`, `PATH` with the stand-in for Claude Code first. Left out: the IDE launcher's variables
     put back as they were (the platform's internal `EnvironmentRestorer`), and what other plugins' terminal customizers
     add. The hub sets `CLAUDE_CONFIG_DIR` to its own folder, or removes it for `~/.claude`'s hub. The setting's getter,
     `getEnvData()`, is a function of the terminal's Kotlin class, not a property, and its type is in the platform module

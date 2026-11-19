@@ -61,7 +61,7 @@ public class When_a_session_is_started_from_the_new_session_popup_with_its_field
       }
    }
 
-   // The name the fake Claude Code gives a session that wasn't given one, as Claude Code gives it one of its own.
+   // The name the stand-in for Claude Code gives a session that wasn't given one, as Claude Code gives it one of its own.
    [XF] public void the_session_is_given_no_name() => story.Tab.SessionName.Must().Be($"fake-{story.Tab.SessionId![..8]}");
    [XF] public void the_tab_is_named_claude() => story.TabName.Must().Be("Claude");
    [XF] public void the_popup_closes() => story.PopupAfter.Shown.Must().BeFalse();

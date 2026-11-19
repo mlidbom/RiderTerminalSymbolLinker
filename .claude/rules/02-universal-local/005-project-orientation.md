@@ -18,5 +18,4 @@ The documents:
 - **`dev_docs/development-environment.md`:** building, the sandbox Rider, the observation channels, the specifications,
   and deploying to Magnus's IDEs.
 - **`dev_docs/releasing.md`:** the symbol linker's versions, which Riders it supports, CI and the Marketplace.
-- **The rest:** `src/test` holds the symbol linker's Kotlin unit tests, `tools/` the C# development tools and the fake
-  Claude Code, and `tests/` the fixture solution and both plugins' sandbox specifications.
+- **The rest:** `src/test` holds the symbol linker's Kotlin unit tests, `tools/` the C# development tools, and `tests/` the fixture solution and both plugins' sandbox specifications.

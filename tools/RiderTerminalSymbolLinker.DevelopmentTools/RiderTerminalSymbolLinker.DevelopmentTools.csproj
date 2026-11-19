@@ -15,8 +15,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- Built with the tools, for the sandbox to run in place of Claude Code: see FakeClaudeCode's Program. -->
-    <ProjectReference Include="..\FakeClaudeCode\FakeClaudeCode.csproj" ReferenceOutputAssembly="false" />
   </ItemGroup>
 
 </Project>

@@ -78,26 +78,31 @@ public sealed class SandboxRider
    }
 
    /// <summary>
-   ///   Claude Code's folder in the sandbox, which <c>CLAUDE_CONFIG_DIR</c> names there: where the fake Claude Code
+   ///   Claude Code's folder in the sandbox, which <c>CLAUDE_CONFIG_DIR</c> names there: where the stand-in for Claude Code
    ///   records the sessions it runs, as Claude Code does in the user's.
    /// </summary>
    public string ClaudeCodeFolder => Path.Combine(_root, "claude-code");
 
-   /// <summary>Where the tools build the fake Claude Code, <c>tools/FakeClaudeCode</c>'s <c>claude.exe</c>.</summary>
-   static string FakeClaudeCodeBuild => Path.Combine(RepositoryRoot.Folder, "tools", "FakeClaudeCode", "bin", "claude");
+   /// <summary>
+   ///   Where the tooling owner publishes the stand-in for Claude Code, a <c>claude.exe</c> that runs a session as Claude
+   ///   Code does, keeps its record and transcript as Claude Code does, and draws and takes an input box as Claude Code
+   ///   does, for the hub to type into: the hub's specifications run it too. Its source is in
+   ///   <c>~/.claude/src/StandInForClaudeCode</c>.
+   /// </summary>
+   static string StandInForClaudeCodeBuild => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".claude", "bin", "stand-in-for-claude-code");
 
    /// <summary>
-   ///   The sandbox's copy of the <see cref="FakeClaudeCodeBuild"/>, first on its <c>PATH</c>, so that Claude Sessions
+   ///   The sandbox's copy of the <see cref="StandInForClaudeCodeBuild"/>, first on its <c>PATH</c>, so that Claude Sessions
    ///   runs it there in place of Claude Code. A copy, taken as the sandbox starts: the build's own <c>claude.exe</c>,
    ///   held open by the sandbox's tabs, kept the tools from building while the sandbox ran.
    /// </summary>
-   string FakeClaudeCodeFolder => Path.Combine(_root, "fake-claude-code");
+   string StandInForClaudeCodeFolder => Path.Combine(_root, "stand-in-for-claude-code");
 
    /// <summary>
-   ///   The sandbox's fake Claude Code itself, to run one outside Claude Sessions' tabs, as in a plain terminal: with
+   ///   The sandbox's stand-in for Claude Code itself, to run one outside Claude Sessions' tabs, as in a plain terminal: with
    ///   <c>CLAUDE_CONFIG_DIR</c> naming <see cref="ClaudeCodeFolder"/>, as the sandbox's own environment does.
    /// </summary>
-   public string FakeClaudeCode => Path.Combine(FakeClaudeCodeFolder, "claude.exe");
+   public string StandInForClaudeCode => Path.Combine(StandInForClaudeCodeFolder, "claude.exe");
 
    /// <summary>
    ///   Where the sandbox's Claude Sessions announces its local API to other tools, and finds other IDEs' announcements:
@@ -245,7 +250,7 @@ public sealed class SandboxRider
          new SandboxRiderSettings(Path.Combine(_root, "config")).Write(SolutionsFolder);
          WriteTheFoldersFile();
          WriteTheJvmOptionsFile();
-         TakeTheFakeClaudeCodeBuild();
+         TakeTheStandInForClaudeCodeBuild();
          var process = Launch(solution);
          File.WriteAllText(ProcessFile, $"{process.Id};{process.StartTime.Ticks}");
       } else if(solution is not null)
@@ -283,10 +288,11 @@ public sealed class SandboxRider
    }
 
    /// <summary>
-   ///   Copies the <see cref="FakeClaudeCodeBuild"/> into the sandbox, where the fake Claude Codes of sessions that outlive
+   ///   Copies the <see cref="StandInForClaudeCodeBuild"/> into the sandbox, where the stand-ins of sessions that outlive
    ///   the sandbox Rider may run: Windows lets a running executable be moved, not replaced.
    /// </summary>
-   void TakeTheFakeClaudeCodeBuild() => new FolderMirror(Path.Combine(_root, "replaced-fake-claude-code-files")).Mirror(FakeClaudeCodeBuild, FakeClaudeCodeFolder);
+   void TakeTheStandInForClaudeCodeBuild() =>
+      new FolderMirror(Path.Combine(_root, "replaced-stand-in-for-claude-code-files")).Mirror(StandInForClaudeCodeBuild, StandInForClaudeCodeFolder);
 
    /// <summary>
    ///   Stops the sandbox, as <see cref="Stop"/> does, and ends the sessions its Claude Sessions ran: they run in its hub's
@@ -504,7 +510,7 @@ public sealed class SandboxRider
       Environment.SetEnvironmentVariable("CLAUDE_CONFIG_DIR", ClaudeCodeFolder);
       Environment.SetEnvironmentVariable("CLAUDE_TOOLING_LOCAL_API_FOLDER", _hub.AnnouncementFolder);
       var path = Environment.GetEnvironmentVariable("PATH")!;
-      if(!path.StartsWith(FakeClaudeCodeFolder + Path.PathSeparator)) Environment.SetEnvironmentVariable("PATH", FakeClaudeCodeFolder + Path.PathSeparator + path);
+      if(!path.StartsWith(StandInForClaudeCodeFolder + Path.PathSeparator)) Environment.SetEnvironmentVariable("PATH", StandInForClaudeCodeFolder + Path.PathSeparator + path);
       // The sandbox is in the user's home folder, which is a git repository: without a ceiling, git takes the solutions in
       // the sandbox for part of it.
       Environment.SetEnvironmentVariable("GIT_CEILING_DIRECTORIES", _root);

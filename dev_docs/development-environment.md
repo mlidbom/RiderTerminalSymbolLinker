@@ -65,14 +65,18 @@ platform's and the terminal's, alike in every IDE.
   Code session sets variables for its children, `CLAUDE_CODE_CHILD_SESSION` and its session id among them. A Claude Code
   started in the sandbox then took itself for a child session, and neither recorded its session nor saved its
   transcript. So the sandbox starts without the `CLAUDE*` variables that aren't set for the user or the machine.
-- **A fake Claude Code:** `tools/FakeClaudeCode`, built with the tools as `claude.exe`, is copied into the sandbox's
-  folder as it starts, and first on its `PATH`: run from the build, it was held open by the sandbox's tabs, and the
-  tools couldn't build while the sandbox ran. The copy is a mirror that moves a file in use aside: a fake runs on in its
-  session host through a restart of the sandbox Rider. It has a `CLAUDE_CONFIG_DIR` of its own, `claude-code` in the sandbox's
-  folder, records its session and keeps its transcript where Claude Code does, and understands `--resume`, `/clear` and
-  `/exit`. It says the size of its terminal as it starts and each time it changes, the size Claude Code would draw
-  itself at. So Claude Sessions' specifications run in seconds, cost
-  nothing, and leave nothing in Magnus's `~/.claude`.
+- **A stand-in for Claude Code:** the tooling owner's, which the hub's own specifications run too, published as
+  `~/.claude/bin/stand-in-for-claude-code` (its source in `~/.claude/src/StandInForClaudeCode`), is copied into the
+  sandbox's folder as it starts, and first on its `PATH`. The copy is a mirror that moves a file in use aside: a
+  stand-in runs on in its session host through a restart of the sandbox Rider, and the tooling owner can publish anew
+  while the sandbox runs. It has a `CLAUDE_CONFIG_DIR` of its own, `claude-code` in the sandbox's folder, records its
+  session and keeps its transcript where Claude Code does, and understands `--name`, `--resume`, `/clear`, `/rename`
+  and `/exit`. It draws an input box, which takes keys as Claude Code's does, and which the hub types the chat's
+  messages into, and answers each prompt with `Heard: <the prompt>`; `Be busy for <n> seconds` keeps it busy. Above
+  the box it says which session it runs, each prompt as `> <the prompt>`, and the size of its terminal as it starts and
+  each time it changes, the size Claude Code would draw itself at. So Claude Sessions' specifications run in seconds,
+  cost nothing, and leave nothing in Magnus's `~/.claude`. Until 2026-11-19 the sandbox ran a fake of its own,
+  `tools/FakeClaudeCode`, with no input box.
 - **No MCP Server banner above a terminal tab:** the MCP Server plugin's banner, which asks to enable the IDE's MCP
   server when `claude` starts in a tab, is dismissed in the sandbox's settings (`SandboxRiderSettings`), as Magnus's
   Riders, with the server enabled, don't show it. It takes three rows from the tab without a resize of the shell, so
@@ -100,8 +104,8 @@ reload of the plugin, whose unloading stops the server on the EDT.
 ## The specifications
 
 `dotnet test tests/RiderTerminalSymbolLinker.Specifications` checks what the symbol linker links and what a click does,
-in the sandbox, against the fixture solution, and, in `ClaudeSessions/`, what Claude Sessions does with the fake Claude
-Code: a new session, `/clear`, an IDE restart, with the sessions running on in their session hosts or, as after a
+in the sandbox, against the fixture solution, and, in `ClaudeSessions/`, what Claude Sessions does with the stand-in for
+Claude Code: a new session, `/clear`, an IDE restart, with the sessions running on in their session hosts or, as after a
 reboot, without them, a plugin reload, closing a tab, and Claude Code exiting. Each story starts with no session
 hosts. A run starts a stopped sandbox, in about half a minute, and stops it again at its
 end: the sandbox holds about 4.6 GB of Magnus's memory, and he wants it off when it isn't in use (2026-11-17). A
@@ -139,15 +143,16 @@ re-highlights old output.
   `sandbox stop`, and the end of a specification run that started the sandbox, end them
   (`SandboxRider.StopAndEndItsSessions`), and so does a start that copies the fixture solution afresh, which their
   shells would hold. Their log is `session-hosts.log` in the sandbox's Claude Code folder.
-- **The fake Claude Code's record** says `idle`, with the time, and `interactive`: the hub leaves out a record with no
+- **The stand-in's record** says `idle` or `busy`, with the time, and `interactive`: the hub leaves out a record with no
   status. It has `procStart` too, the process's creation time as a Windows FILETIME, exact to the 100 nanoseconds as
   Claude Code writes it, which the hub checks against the running process from its step 2 on: a mismatch there drops
   the sandbox's records, and the specifications fail. The specifications wait for the hub to have told the view of a Claude Code (`RunningClaudeCodes`), which
   takes about a tenth of a second after it writes its record.
-- **The fake Claude Code** writes its transcripts in Claude Code's format, the entries Claude Sessions reads: a `user`
-  entry with its folder and a `last-prompt` for each line typed, an `ai-title` after the first, and a `custom-title`
-  for `/rename <name>`, and for `--name <name>` as it starts. `--resume` finds the transcript in any project's folder, as Claude Code does. The sandbox takes
-  a copy of its build as it starts, so a change to it takes a restart of the sandbox.
+- **The stand-in** writes its transcripts in Claude Code's format, the entries Claude Sessions and the hub read: a
+  `user` entry with its folder, Claude's reply and a `last-prompt` for each prompt, an `ai-title` after the first, and
+  a `custom-title` for `/rename <name>`, and for `--name <name>` as it starts. `--resume` finds the transcript in any
+  project's folder, as Claude Code does. The sandbox takes a copy of the published stand-in as it starts, so a new one
+  takes a restart of the sandbox.
 - **Each story starts with no history, and in PowerShell 7:** `TheClaudeSessionsView` deletes the sandbox's
   transcripts, and has the terminals run `pwsh.exe`, Magnus's shell, as a story may have chosen another. A story writes the
   transcripts it needs with `SessionTranscript`, dated as it likes.
