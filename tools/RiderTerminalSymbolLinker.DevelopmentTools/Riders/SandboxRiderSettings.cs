@@ -28,6 +28,8 @@ sealed class SandboxRiderSettings
          SetOption(component, "confirmExit", "false");
          // Claude Sessions' tabs run Claude Code, which the terminal would otherwise ask about as the sandbox exits.
          SetOption(component, "processCloseConfirmation", "TERMINATE");
+         // A solution handed to the running sandbox opens in a window of its own, as Rider would otherwise ask whether to.
+         SetOption(component, "confirmOpenNewProject2", "0");
       });
       Update("trusted-paths.xml", "Trusted.Paths.Settings", component => TrustEverythingUnder(component, trustedSolutionsFolder));
       Update("other.xml", "PropertyService", component => SetProperty(component, TheMcpServersTerminalBannerDismissed, "true"));

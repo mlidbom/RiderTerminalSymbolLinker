@@ -157,6 +157,13 @@ re-highlights old output.
 - **The sandbox's Claude Sessions announces its local API in a folder of its own,** which
   `dev.magnus.claudesessions.localApi.announcements` names in its `idea.properties`: so that Magnus's tools and IDEs
   don't take it for one of theirs, and a story can stand in another IDE there (`AnotherIdeStandIn`).
+- **A story can crash the sandbox Rider, or have it restart itself:** `SandboxRider.Kill` ends its process tree, as a
+  crash would, and `SandboxRider.FollowItsRestart` follows a restart Rider makes itself, through Claude Sessions'
+  `POST /restart`, to the process whose local API announces itself next.
+- **A story can open more solutions:** `SandboxRider.AnotherCopyOfTheFixtureSolution` copies the fixture solution into
+  a folder of its own, and `OpenAlso` hands it to the running sandbox, which opens it in a window of its own
+  (`confirmOpenNewProject2` is "new window" in its settings). Stop the sandbox before deleting the copies, or it opens
+  them again at its next start.
 
 ## Deploying to Magnus's IDEs
 

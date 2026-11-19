@@ -327,6 +327,40 @@ public sealed class SandboxRider
    }
 
    /// <summary>
+   ///   Follows the sandbox Rider through a restart it makes itself, as Claude Sessions' <c>POST /restart</c> has it do,
+   ///   from the process <paramref name="before"/> it ran as, which has just been asked to restart: waits until that one
+   ///   has exited, and the Rider it restarted as has announced Claude Sessions' local API, as it does once a project has
+   ///   opened, takes that one as the sandbox's, and returns once the MCP server answers with <paramref name="solution"/>
+   ///   loaded and indexed, as <see cref="Start"/> does.
+   /// </summary>
+   public void FollowItsRestart(int before, string solution)
+   {
+      // The Rider it restarts as starts once this one has exited, which takes seconds.
+      var askedAbout = DateTime.Now.AddSeconds(-1);
+      WaitUntil(() => Process.GetProcesses().All(it => it.Id != before), HowLongStoppingMayTake, $"the sandbox Rider, process {before}, to exit as it restarts");
+      Process? restarted = null;
+      WaitUntil(() => (restarted = TheRiderThatAnnouncedClaudeSessionsLocalApi(startedAfter: askedAbout)) is not null, HowLongStartingMayTake, "the restarted sandbox Rider to announce Claude Sessions' local API");
+      File.WriteAllText(ProcessFile, $"{restarted!.Id};{restarted.StartTime.Ticks}");
+      WaitUntil(() => FramesOf(restarted).Count > 0, HowLongStartingMayTake, "the restarted sandbox Rider to show a window");
+      WaitUntil(() => TheMcpServerHasIndexed(solution), HowLongStartingMayTake, $"the MCP server on port {McpPort} to answer with {solution} loaded and indexed");
+      PlaceWindows();
+   }
+
+   /// <summary>
+   ///   The Rider started after <paramref name="startedAfter"/> whose Claude Sessions announced its local API in the
+   ///   sandbox, or null while none has: an announcement a killed Rider left names a process that has exited, or, as
+   ///   Windows reuses process ids, another one.
+   /// </summary>
+   Process? TheRiderThatAnnouncedClaudeSessionsLocalApi(DateTime startedAfter) =>
+      !Directory.Exists(LocalApiAnnouncementsFolder)
+         ? null
+         : Directory.GetFiles(LocalApiAnnouncementsFolder, "*.json")
+                    .Select(it => int.TryParse(Path.GetFileNameWithoutExtension(it), out var id) ? id : (int?)null)
+                    .OfType<int>()
+                    .Select(id => Process.GetProcesses().FirstOrDefault(it => it.Id == id))
+                    .FirstOrDefault(it => it is { HasExited: false } && it.ProcessName.StartsWith("rider", StringComparison.OrdinalIgnoreCase) && it.StartTime > startedAfter);
+
+   /// <summary>
    ///   Kills the sandbox Rider, as a crash ends it: nothing of it saves anything as it goes. The sessions its Claude
    ///   Sessions ran run on in their session hosts, and the terminals that showed them end with it.
    /// </summary>
@@ -336,7 +370,10 @@ public sealed class SandboxRider
       if(running is null) return;
       running.Kill(entireProcessTree: true);
       running.WaitForExit();
+      EndTheLaunchersOfOtherSolutions();
       File.Delete(ProcessFile);
+      // Withdrawn as Claude Sessions would have withdrawn it: Windows reuses the process id it names.
+      File.Delete(Path.Combine(LocalApiAnnouncementsFolder, $"{running.Id}.json"));
    }
 
    /// <summary>
@@ -380,21 +417,55 @@ public sealed class SandboxRider
       if(Directory.Exists(copy)) DeleteWithItsReadOnlyFiles(copy);
       CopyFolder(RepositoryRoot.FixtureSolutionFolder, copy);
       File.WriteAllText(FixtureCopiedFromFile, TheFixtureSolutionsFingerprint());
+   }
 
-      static void DeleteWithItsReadOnlyFiles(string folder)
-      {
-         foreach(var file in new DirectoryInfo(folder).EnumerateFiles("*", new EnumerationOptions { RecurseSubdirectories = true, AttributesToSkip = 0 }))
-            file.Attributes &= ~FileAttributes.ReadOnly;
-         Directory.Delete(folder, recursive: true);
-      }
+   /// <summary>
+   ///   Makes a fresh copy of the fixture solution in a folder of its own, <paramref name="name"/>, beside the one the
+   ///   sandbox opens, for a story that has more than one solution open, and returns its solution file. Stop the sandbox
+   ///   before deleting it with <see cref="DeleteTheCopyOfTheFixtureSolution"/>.
+   /// </summary>
+   public string AnotherCopyOfTheFixtureSolution(string name)
+   {
+      var copy = Path.Combine(SolutionsFolder, name);
+      if(Directory.Exists(copy)) DeleteWithItsReadOnlyFiles(copy);
+      CopyFolder(RepositoryRoot.FixtureSolutionFolder, copy);
+      return Path.Combine(copy, RepositoryRoot.FixtureSolutionName + ".slnx");
+   }
 
-      static void CopyFolder(string source, string destination)
-      {
-         Directory.CreateDirectory(destination);
-         foreach(var file in Directory.GetFiles(source)) File.Copy(file, Path.Combine(destination, Path.GetFileName(file)));
-         foreach(var folder in Directory.GetDirectories(source).Where(it => Path.GetFileName(it) is not ("bin" or "obj")))
-            CopyFolder(folder, Path.Combine(destination, Path.GetFileName(folder)));
-      }
+   /// <summary>Deletes the copy of the fixture solution <see cref="AnotherCopyOfTheFixtureSolution"/> made as <paramref name="name"/>.</summary>
+   public void DeleteTheCopyOfTheFixtureSolution(string name) => DeleteWithItsReadOnlyFiles(Path.Combine(SolutionsFolder, name));
+
+   /// <summary>
+   ///   Opens <paramref name="solution"/> in the running sandbox, in a window of its own. The launcher hands it to the
+   ///   running Rider, and should exit then; one for a third solution stayed, and held the solutions folder
+   ///   (2026-11-19): end it with <see cref="EndTheLaunchersOfOtherSolutions"/> once the solution's window shows, and
+   ///   <see cref="Kill"/> ends those still running.
+   /// </summary>
+   public void OpenAlso(string solution) => _launchersOfOtherSolutions.Add(Launch(solution));
+
+   /// <summary>Ends the launchers <see cref="OpenAlso"/> started that still run, as they have handed their solutions on.</summary>
+   public void EndTheLaunchersOfOtherSolutions()
+   {
+      foreach(var launcher in _launchersOfOtherSolutions.Where(it => !it.HasExited)) launcher.Kill(entireProcessTree: true);
+      _launchersOfOtherSolutions.Clear();
+   }
+
+   /// <summary>The launchers <see cref="OpenAlso"/> started, which may still run.</summary>
+   readonly List<Process> _launchersOfOtherSolutions = [];
+
+   static void DeleteWithItsReadOnlyFiles(string folder)
+   {
+      foreach(var file in new DirectoryInfo(folder).EnumerateFiles("*", new EnumerationOptions { RecurseSubdirectories = true, AttributesToSkip = 0 }))
+         file.Attributes &= ~FileAttributes.ReadOnly;
+      Directory.Delete(folder, recursive: true);
+   }
+
+   static void CopyFolder(string source, string destination)
+   {
+      Directory.CreateDirectory(destination);
+      foreach(var file in Directory.GetFiles(source)) File.Copy(file, Path.Combine(destination, Path.GetFileName(file)));
+      foreach(var folder in Directory.GetDirectories(source).Where(it => Path.GetFileName(it) is not ("bin" or "obj")))
+         CopyFolder(folder, Path.Combine(destination, Path.GetFileName(folder)));
    }
 
    /// <summary>
