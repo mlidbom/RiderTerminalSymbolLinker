@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Text.Json.Nodes;
+using System.Text.RegularExpressions;
 using RiderTerminalSymbolLinker.DevelopmentTools.Plugin;
 using RiderTerminalSymbolLinker.DevelopmentTools.Riders;
 
@@ -248,6 +249,22 @@ public sealed class TheClaudeSessionsView
    /// <summary>The text the tab's terminal shows.</summary>
    public IReadOnlyList<string> Screen(int tab) => [.. Channel.Screen(tab)["lines"]!.AsArray().Select(it => it!.GetValue<string>())];
 
+   /// <summary>The size of the tab's terminal screen, or null while the tab hasn't been laid out.</summary>
+   public TerminalSize? SizeOf(int tab) => Channel.Screen(tab)["size"] is {} size ? new TerminalSize(size["columns"]!.GetValue<int>(), size["rows"]!.GetValue<int>()) : null;
+
+   /// <summary>
+   ///   The size the tab's fake Claude Code last said its terminal has, the size Claude Code would draw itself at, once it
+   ///   is the tab's size, or else whatever it is after <see cref="HowLongAChangeMayTake"/>: null if it said none.
+   /// </summary>
+   public TerminalSize? SizeTheClaudeCodeDrawsAtIn(int tab)
+   {
+      var stopwatch = Stopwatch.StartNew();
+      while(LastSaid() != SizeOf(tab) && stopwatch.Elapsed < HowLongAChangeMayTake) Thread.Sleep(250);
+      return LastSaid();
+
+      TerminalSize? LastSaid() => TerminalSize.TheFakeClaudeCodeLastSaidIn(Screen(tab));
+   }
+
    /// <summary>Waits until <paramref name="condition"/> holds, as the view takes in what happened.</summary>
    public void WaitUntil(Func<bool> condition, string whatItWaitsFor)
    {
@@ -286,6 +303,19 @@ public sealed record SessionTab(long? ShellProcessId, ClaudeCodeProcess? ClaudeC
 public sealed record NewSessionPopup(bool Shown, string? Name)
 {
    public static NewSessionPopup From(JsonNode popup) => new(popup["shown"]!.GetValue<bool>(), popup["name"]?.GetValue<string>());
+}
+
+/// <summary>The size of a terminal's screen, in the characters across it and the lines down it.</summary>
+public sealed record TerminalSize(int Columns, int Rows)
+{
+   /// <summary>The line in which the fake Claude Code says the size of its terminal, as it starts and each time it changes.</summary>
+   static readonly Regex TheLineInWhichTheFakeClaudeCodeSaysItsSize = new(@"^The terminal is (?<columns>\d+) columns by (?<rows>\d+) rows$");
+
+   /// <summary>The size of its terminal that the fake Claude Code said last in <paramref name="lines"/>, or null if none says one.</summary>
+   public static TerminalSize? TheFakeClaudeCodeLastSaidIn(IEnumerable<string> lines) =>
+      lines.Select(line => TheLineInWhichTheFakeClaudeCodeSaysItsSize.Match(line)).LastOrDefault(it => it.Success) is {} said
+         ? new TerminalSize(int.Parse(said.Groups["columns"].Value), int.Parse(said.Groups["rows"].Value))
+         : null;
 }
 
 /// <summary>The process of a Claude Code that runs in a tab, and the process it's a child of.</summary>

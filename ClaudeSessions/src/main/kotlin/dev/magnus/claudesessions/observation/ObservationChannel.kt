@@ -59,7 +59,8 @@ import org.jetbrains.plugins.terminal.TerminalToolWindowFactory
  *  - `POST /tabs/new-plain?project=` — opens a plain terminal tab in the view's tool window, not through the view, as
  *    a tab can come into it that the view didn't open, and answers with its place among the view's tabs.
  *  - `POST /tabs/select?project=&tab=` — selects the tab, and shows the tool window, as a click on the tab does.
- *  - `GET /tabs/screen?project=&tab=` — the text the tab's terminal shows, from the top of its screen.
+ *  - `GET /tabs/screen?project=&tab=` — the text the tab's terminal shows, from the top of its screen, and the size
+ *    of its screen, in columns and rows, once the tab has been laid out.
  *  - `POST /tabs/type?project=&tab=` with `{"text": …}` — types the text into the tab's terminal, and Enter.
  *  - `POST /tabs/close?project=&tab=` — closes the tab by ending its processes, as its shell's exit does: closing it
  *    as its close button does asks the user to confirm, and that dialog would wait for a human.
@@ -251,8 +252,12 @@ class ObservationChannel : Disposable {
     }
 
     private fun screen(project: Project, tab: Int): Map<String, Any?> = onTheEdt {
-        val output = ClaudeSessionsView.getInstance(project).tabs[tab].terminal.view.outputModels.active.value
-        mapOf("lines" to output.getText(output.screenTopOffset, output.endOffset).toString().lines())
+        val view = ClaudeSessionsView.getInstance(project).tabs[tab].terminal.view
+        val output = view.outputModels.active.value
+        mapOf(
+            "lines" to output.getText(output.screenTopOffset, output.endOffset).toString().lines(),
+            "size" to view.gridSize?.let { mapOf("columns" to it.columns, "rows" to it.rows) },
+        )
     }
 
     private fun close(project: Project, tab: Int): Map<String, Any?> {

@@ -13,9 +13,11 @@ namespace FakeClaudeCode;
 /// <remarks>
 ///   <c>claude</c> starts a new session, <c>claude --name &lt;name&gt;</c> starts one with a name, as <c>/rename</c>
 ///   gives it, and <c>claude --resume &lt;id&gt;</c> resumes one, from whichever folder it ran in before; each says
-///   which it did, with the session's id, and then the lines its conversation had. Typed lines are
-///   its conversation: <c>/clear</c> starts a new session, as Claude Code's does, <c>/rename &lt;name&gt;</c> names it,
-///   and <c>/exit</c> ends it, deleting its record.
+///   which it did, with the session's id, then the size of the terminal it runs in, when it runs in one, and then the
+///   lines its conversation had. It says the size again each time it changes: Claude Code draws itself at the
+///   terminal's size, and again as it's resized, so the last size it said is the one Claude Code would draw at.
+///   <br/>Typed lines are its conversation: <c>/clear</c> starts a new session, as Claude Code's does,
+///   <c>/rename &lt;name&gt;</c> names it, and <c>/exit</c> ends it, deleting its record.
 ///   <br/>It keeps each session's transcript where Claude Code does, as <c>projects/&lt;a name made from the folder it
 ///   started in&gt;/&lt;session id&gt;.jsonl</c> in the same folder, and in Claude Code's format, the entries Claude
 ///   Sessions reads: for each line typed, a <c>user</c> entry with the folder it runs in, and a <c>last-prompt</c>; after
@@ -35,6 +37,7 @@ static class Program
    {
       var session = arguments is ["--resume", var id] ? id : NewSession();
       Console.WriteLine(arguments is ["--resume", _] ? $"Resumed session {session}" : $"New session {session}");
+      if(!Console.IsOutputRedirected) SayTheTerminalsSizeNowAndAsItChanges();
       foreach(var line in ConversationOf(session)) Console.WriteLine($"> {line}");
       if(arguments is ["--name", var given]) Rename(session, given);
       var name = NameOf(session);
@@ -70,6 +73,27 @@ static class Program
    }
 
    static string NewSession() => Guid.NewGuid().ToString();
+
+   /// <summary>Says the size of the terminal it runs in, and again, from a thread of its own, each time it changes.</summary>
+   static void SayTheTerminalsSizeNowAndAsItChanges()
+   {
+      var said = TerminalsSize();
+      SayTheSize(said);
+      new Thread(() =>
+      {
+         while(true)
+         {
+            Thread.Sleep(TimeSpan.FromMilliseconds(100));
+            var now = TerminalsSize();
+            if(now == said) continue;
+            said = now;
+            SayTheSize(said);
+         }
+      }) { IsBackground = true }.Start();
+
+      static (int Columns, int Rows) TerminalsSize() => (Console.WindowWidth, Console.WindowHeight);
+      static void SayTheSize((int Columns, int Rows) size) => Console.WriteLine($"The terminal is {size.Columns} columns by {size.Rows} rows");
+   }
 
    /// <summary>Names the session, as Claude Code's <c>/rename</c> does: with a <c>custom-title</c> in its transcript.</summary>
    static void Rename(string session, string name)
