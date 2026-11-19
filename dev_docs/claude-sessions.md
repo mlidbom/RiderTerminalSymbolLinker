@@ -102,7 +102,7 @@ tells of in the tab's session host, by the `sessionHost` of its running session 
 - **No hub, no Claude Code:** every Claude Code session's SessionStart hook starts the hub, which stops only once no
   session has run for 5 minutes. But a tab's shell must have Claude Code typed into it first, as when the IDE resumes
   its sessions after a reboot: then the plugin starts the published hub, with `~/.claude/bin/ClaudeTooling.exe
-  resident-server start` (`ThePublishedHub`), and waits for it to announce itself. A hub tried out apart from the
+  hub start` (`ThePublishedHub`), and waits for it to announce itself. A hub tried out apart from the
   published one, as the sandbox's, is started by whoever tries it.
 - **Typing through the hub** (`TypingIntoClaudeCode`): each request is answered once typed, which may take minutes
   while the tooling's own typing has the session's turn, or refused with why. At a publish, a request whose hub stops

@@ -22,16 +22,16 @@ internal object ThePublishedHub {
     val isTheOneThisIdeFollows: Boolean get() = !HubAnnouncement.isOfATrialHub
 
     /**
-     * Starts the hub, as `ClaudeTooling.exe resident-server start` does, which returns once it has started the hub's
-     * server: detached, and out of the IDE's job object, so that the server outlives the IDE. The hub then announces
-     * itself, which [HubAnnouncement.read] reads.
+     * Starts the hub, as `ClaudeTooling.exe hub start` does, which returns once it has started the hub: detached, and
+     * out of the IDE's job object, so that the hub outlives the IDE. The hub then announces itself, which
+     * [HubAnnouncement.read] reads.
      */
     fun start() {
         if (!Files.exists(client)) return LOG.warn("No Claude tooling hub runs, and none can be started: $client isn't there.")
-        LOG.info("No Claude tooling hub runs: starting one, with $client resident-server start.")
-        val starting = ProcessBuilder(client.toString(), "resident-server", "start")
+        LOG.info("No Claude tooling hub runs: starting one, with $client hub start.")
+        val starting = ProcessBuilder(client.toString(), "hub", "start")
             .redirectOutput(ProcessBuilder.Redirect.DISCARD).redirectError(ProcessBuilder.Redirect.DISCARD).start()
-        if (!starting.waitFor(STARTING_MAY_TAKE_SECONDS, TimeUnit.SECONDS)) LOG.warn("$client resident-server start didn't exit within $STARTING_MAY_TAKE_SECONDS seconds.")
+        if (!starting.waitFor(STARTING_MAY_TAKE_SECONDS, TimeUnit.SECONDS)) LOG.warn("$client hub start didn't exit within $STARTING_MAY_TAKE_SECONDS seconds.")
     }
 
     private const val STARTING_MAY_TAKE_SECONDS = 30L

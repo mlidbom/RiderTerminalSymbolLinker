@@ -32,9 +32,10 @@ import org.junit.jupiter.api.assertThrows
 /**
  * Whether the plugin reads the hub's local API as the hub answers it, and asks as the hub reads it: on copies of the
  * samples of its answers that the hub's own specifications compare its answers with, in
- * `~/.claude/src/ClaudeTooling.Specifications/ResidentServer/LocalApi/Samples`, copied on 2026-11-19 from the tooling's
+ * `~/.claude/src/ClaudeTooling.Specifications/Hub/LocalApi/Samples`, copied on 2026-11-19 from the tooling's
  * commits cc7853b, for typing 1d16ff3, and for session hosts eff80d7, and message-sent.http and the conversation's,
- * conversation-stream.http and no-such-session.http, from 7b23e8a, and on the examples of its contract,
+ * conversation-stream.http and no-such-session.http, from 7b23e8a, and still the same on 2026-11-20, and on the
+ * examples of its contract,
  * `~/.claude/dev_docs/the-hubs-local-api.md`.
  * When the samples change, as the contract changes, copy them again.
  */
