@@ -327,6 +327,19 @@ public sealed class SandboxRider
    }
 
    /// <summary>
+   ///   Kills the sandbox Rider, as a crash ends it: nothing of it saves anything as it goes. The sessions its Claude
+   ///   Sessions ran run on in their session hosts, and the terminals that showed them end with it.
+   /// </summary>
+   public void Kill()
+   {
+      var running = RunningProcess();
+      if(running is null) return;
+      running.Kill(entireProcessTree: true);
+      running.WaitForExit();
+      File.Delete(ProcessFile);
+   }
+
+   /// <summary>
    ///   Whether the sandbox runs, where its windows are next to the development IDEA's, and what the MCP server's health
    ///   endpoint answers.
    /// </summary>

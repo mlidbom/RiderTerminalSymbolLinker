@@ -144,4 +144,8 @@ public sealed class ClaudeSessionsObservationChannel(int port) : ObservationChan
    /// <summary>Opens the conversation's fold <paramref name="fold"/>, by its place, or closes it when not <paramref name="open"/>.</summary>
    public JsonNode OpenTheFoldInTheChat(int tab, int fold, bool open = true, string? project = null) =>
       Post("tabs/chat/fold", project, new { }, $"tab={tab}&fold={fold}&open={(open ? "true" : "false")}");
+
+   /// <summary>Scrolls the conversation so that the item <paramref name="item"/>, by its id, is at the top, as the user would.</summary>
+   public JsonNode ScrollTheTranscriptInTheChat(int tab, string item, string? project = null) =>
+      Post("tabs/chat/scroll", project, new { }, $"tab={tab}&item={Uri.EscapeDataString(item)}");
 }
