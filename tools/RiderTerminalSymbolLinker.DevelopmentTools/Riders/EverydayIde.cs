@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Text.Json;
 
 namespace RiderTerminalSymbolLinker.DevelopmentTools.Riders;
@@ -26,14 +27,47 @@ public sealed record EverydayIde(string Name, string InstallationFolderName)
    public bool IsInstalled => File.Exists(Path.Combine(InstallationFolder, "product-info.json"));
 
    /// <summary>The settings folder of the installed version, such as <c>%APPDATA%\JetBrains\Rider2026.3</c>.</summary>
-   string SettingsFolder
+   string SettingsFolder => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "JetBrains", DataDirectoryName);
+
+   /// <summary>The system folder of the installed version, its caches and logs, such as <c>%LOCALAPPDATA%\JetBrains\Rider2026.3</c>.</summary>
+   string SystemFolder => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "JetBrains", DataDirectoryName);
+
+   /// <summary>What the installed version names its settings and system folders, such as <c>Rider2026.3</c>.</summary>
+   string DataDirectoryName =>
+      ProductInformation().GetProperty("dataDirectoryName").GetString()
+   ?? throw new InvalidOperationException($"{InstallationFolder}\\product-info.json has no dataDirectoryName.");
+
+   /// <summary>The name of the process the IDE runs as on Windows, its launcher's, such as <c>rider64</c>.</summary>
+   string ProcessName =>
+      Path.GetFileNameWithoutExtension(ProductInformation().GetProperty("launch").EnumerateArray()
+                                                           .First(it => it.GetProperty("os").GetString() == "Windows")
+                                                           .GetProperty("launcherPath").GetString()!);
+
+   JsonElement ProductInformation()
+   {
+      using var productInformation = JsonDocument.Parse(File.ReadAllText(Path.Combine(InstallationFolder, "product-info.json")));
+      return productInformation.RootElement.Clone();
+   }
+
+   /// <summary>
+   ///   Whether the IDE runs now: the process its system folder's <c>.pid</c> names is alive, and is the IDE's. The IDE
+   ///   writes the file as it starts, and leaves it behind when it exits, for a later process to get the same id.
+   /// </summary>
+   public bool IsRunning
    {
       get
       {
-         using var productInformation = JsonDocument.Parse(File.ReadAllText(Path.Combine(InstallationFolder, "product-info.json")));
-         var name = productInformation.RootElement.GetProperty("dataDirectoryName").GetString()
-                 ?? throw new InvalidOperationException($"{InstallationFolder}\\product-info.json has no dataDirectoryName.");
-         return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "JetBrains", name);
+         var pidFile = Path.Combine(SystemFolder, ".pid");
+         if(!File.Exists(pidFile) || !int.TryParse(File.ReadAllText(pidFile).Trim(), out var processId)) return false;
+         try
+         {
+            using var process = Process.GetProcessById(processId);
+            return !process.HasExited && process.ProcessName.Equals(ProcessName, StringComparison.OrdinalIgnoreCase);
+         }
+         catch(ArgumentException) // No process runs with the id: the IDE that wrote the file has exited.
+         {
+            return false;
+         }
       }
    }
 

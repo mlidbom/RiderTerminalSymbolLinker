@@ -142,6 +142,15 @@ one's folder under `%APPDATA%\JetBrains` (Rider since 2026-11-17, IDEA and PyCha
 each reloads a plugin without a restart when it next looks at its plugins folder, expected when he switches to its
 window. The deploy says for each IDE whether it does, or needs a restart: a plugin new to an IDE always does.
 
+**A build that needs a restart isn't put into a running IDE that reloads,** and the deploy says `DIDN'T DEPLOY`, and
+`--dry-run` says `CLOSE <IDE> FIRST`. Such a build adds or removes a file, or changes what its plugin.xml registers, and
+the IDE reloads it as it does any changed jar, at once, but keeps the registrations it read as it started. On 2026-11-19
+a Claude Sessions build whose action had moved to another package went into Rider and IntelliJ IDEA so: both reloaded it
+within seconds, didn't find the action's old class, and the tool window broke as it opened, with Magnus's sessions left
+parked in the Terminal tool window. A build whose plugin.xml was again what they had read at their start fixed it, by a
+reload. Whether an IDE runs is told by the process its system folder's `.pid` names, such as
+`%LOCALAPPDATA%\JetBrains\Rider2026.3\.pid`, which the IDE leaves behind when it exits.
+
 **`everyday reload <plugin> [<IDE>]` reloads the build an IDE has,** to see in Magnus's own IDEs what a reload does,
 such as whether his tabs come through it. It gives the plugin's jars the time of now, as `sandbox reload` does in the
 sandbox, which the IDE takes for a new build. On 2026-11-18 his Rider reloaded within 13 seconds, both times. The next

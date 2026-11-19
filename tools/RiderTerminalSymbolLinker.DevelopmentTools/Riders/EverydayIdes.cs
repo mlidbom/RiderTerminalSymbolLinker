@@ -13,7 +13,8 @@ static class EverydayIdes
    ///   An IDE with <see cref="EverydayIde.ReloadsChangedPlugins"/> reloads a plugin whose files changed when Magnus next
    ///   switches to its window. A build that adds or removes a file of the plugin's, or changes what its plugin.xml
    ///   registers, takes a restart all the same: a reload would run its classes with the registrations the IDE read when it
-   ///   started. A plugin new to an IDE always does.
+   ///   started. So such a build isn't put into an IDE that runs and reloads changed plugins, as it would reload it at once,
+   ///   broken: Magnus closes the IDE, and the deploy is run again. A plugin new to an IDE always takes a restart.
    ///   <br/>It also names the Marketplace as where the plugin gets its updates from, in the IDE's
    ///   <see cref="PluginUpdateSources"/>, where no source is named: a plugin installed from disk has none, and the IDE
    ///   warns about it as it starts.
@@ -69,7 +70,7 @@ static class EverydayIdes
          yield break;
       }
 
-      if(effect != Effect.Nothing) mirror.Mirror(build, pluginFolder);
+      if(effect is not (Effect.Nothing or Effect.WouldBreakThePluginInTheRunningIde)) mirror.Mirror(build, pluginFolder);
       yield return WhatDeployingDid(ide, plugin, effect);
       if(ide.PluginUpdateSources.NameTheMarketplaceUnlessASourceIsNamed(plugin))
          yield return $"{ide} gets updates of {plugin} from the Marketplace now, so it no longer warns, from its next start, that it can't tell where the plugin came from.";
@@ -81,7 +82,8 @@ static class EverydayIdes
       if(FolderMirror.HoldTheSame(build, pluginFolder)) return Effect.Nothing;
       var registeredBefore = PluginRegistrations.InPluginFolder(pluginFolder);
       if(registeredBefore is null) return Effect.LoadedAtTheNextStart;
-      if(FolderMirror.WouldAddOrRemoveAFile(build, pluginFolder) || PluginRegistrations.InPluginFolder(build) != registeredBefore) return Effect.TakesARestart;
+      if(FolderMirror.WouldAddOrRemoveAFile(build, pluginFolder) || PluginRegistrations.InPluginFolder(build) != registeredBefore)
+         return ide.ReloadsChangedPlugins && ide.IsRunning ? Effect.WouldBreakThePluginInTheRunningIde : Effect.TakesARestart;
       return ide.ReloadsChangedPlugins ? Effect.Reload : Effect.LoadedAtTheNextStartAsTheIdeDoesNotReload;
    }
 
@@ -89,7 +91,8 @@ static class EverydayIdes
    {
       Effect.Nothing => $"{ide} has this build of {plugin} already.",
       Effect.LoadedAtTheNextStart => $"{ide} has {plugin} now, which it loads when Magnus next restarts it.",
-      Effect.TakesARestart => $"Deployed {plugin} to {ide}. The build adds or removes a file of the plugin's, or changes what its plugin.xml registers, which a reload doesn't take: Magnus must restart it.",
+      Effect.TakesARestart => $"Deployed {plugin} to {ide}. The build adds or removes a file of the plugin's, or changes what its plugin.xml registers, which a reload doesn't take: {ide} loads it as it next starts.",
+      Effect.WouldBreakThePluginInTheRunningIde => $"DIDN'T DEPLOY {plugin} to {ide}: {WhyItWouldBreakThePluginIn(ide)} Close {ide}, and deploy again.",
       Effect.Reload => $"Deployed {plugin} to {ide}, which reloads it, without a restart, when Magnus next switches to its window.",
       Effect.LoadedAtTheNextStartAsTheIdeDoesNotReload => $"Deployed {plugin} to {ide}, which loads it when Magnus next restarts it: it doesn't run with -Didea.auto.reload.plugins=true.",
       _ => throw new ArgumentOutOfRangeException(nameof(effect), effect, null)
@@ -100,10 +103,14 @@ static class EverydayIdes
       Effect.Nothing => $"{ide} has this build of {plugin} already.",
       Effect.LoadedAtTheNextStart => $"RESTART: {ide} doesn't have {plugin}, and would load it only when Magnus next restarts it.",
       Effect.TakesARestart => $"RESTART: {plugin} in {ide} would need a restart: the build adds or removes a file of the plugin's, or changes what its plugin.xml registers, which a reload doesn't take.",
+      Effect.WouldBreakThePluginInTheRunningIde => $"CLOSE {ide} FIRST: the deploy wouldn't put {plugin} in it while it runs. {WhyItWouldBreakThePluginIn(ide)}",
       Effect.Reload => $"{ide} would reload {plugin}, without a restart, when Magnus next switches to its window.",
       Effect.LoadedAtTheNextStartAsTheIdeDoesNotReload => $"RESTART: {ide} would load {plugin} only when Magnus next restarts it: it doesn't run with -Didea.auto.reload.plugins=true.",
       _ => throw new ArgumentOutOfRangeException(nameof(effect), effect, null)
    };
+
+   static string WhyItWouldBreakThePluginIn(EverydayIde ide) =>
+      $"The build adds or removes a file of the plugin's, or changes what its plugin.xml registers, and {ide} runs, and reloads changed plugins: it would reload the build at once, with the registrations it read as it started, and the plugin would break, as Claude Sessions did on 2026-11-19.";
 
    /// <summary>What deploying a build of a plugin does in an IDE.</summary>
    enum Effect
@@ -117,8 +124,23 @@ static class EverydayIdes
       /// <summary>The IDE doesn't have the plugin, and loads it when it next starts.</summary>
       LoadedAtTheNextStart,
 
-      /// <summary>The build adds or removes a file, or registers something else: the IDE must restart to take it.</summary>
+      /// <summary>
+      ///   The build adds or removes a file, or registers something else, and the IDE doesn't run, or doesn't reload changed
+      ///   plugins: it takes the build as it next starts.
+      /// </summary>
       TakesARestart,
+
+      /// <summary>
+      ///   The build adds or removes a file, or registers something else, and the IDE runs, and reloads changed plugins:
+      ///   it would reload the build at once, its new classes with the registrations it read as it started, which breaks
+      ///   the plugin. So it isn't deployed: the IDE must be closed first.
+      /// </summary>
+      /// <remarks>
+      ///   On 2026-11-19 a build of Claude Sessions whose action had moved to another package was deployed so. Rider and
+      ///   IntelliJ IDEA reloaded it within seconds, the action's old class wasn't found, and the tool window broke as it
+      ///   opened, with Magnus's sessions parked in the Terminal tool window.
+      /// </remarks>
+      WouldBreakThePluginInTheRunningIde,
 
       /// <summary>The IDE doesn't reload changed plugins, and loads the build when it next starts.</summary>
       LoadedAtTheNextStartAsTheIdeDoesNotReload
