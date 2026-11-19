@@ -64,12 +64,16 @@ public sealed class SandboxRider
    /// </summary>
    readonly McpToolsBuilds _mcpTools;
 
+   /// <summary>The hub the sandbox's Claude Sessions follows, which serves the sandbox's <see cref="ClaudeCodeFolder"/>.</summary>
+   readonly SandboxHub _hub;
+
    public SandboxRider(RiderInstallation rider)
    {
       _rider = rider;
       _plugins = new GradleSandbox();
       _everyday = new EverydayRider(rider);
       _mcpTools = new McpToolsBuilds(Path.Combine(_root, "mcp-tools"));
+      _hub = new SandboxHub(Path.Combine(_root, "hub"));
    }
 
    /// <summary>
@@ -132,11 +136,14 @@ public sealed class SandboxRider
    ///   sandbox is stopped first when the plugin is to change, and started again afterwards. Its
    ///   <see cref="McpToolsBuilds"/> it swaps to at its next call.<br/>
    ///   A running sandbox is restarted too when the fixture solution changed since it copied it, so that it opens a
-   ///   fresh copy.
+   ///   fresh copy.<br/>
+   ///   A running sandbox's <see cref="SandboxHub"/> is made to run on the published hub's build, as a new one may have
+   ///   been published since.
    /// </remarks>
    public string Install(McpBuild mcp = McpBuild.Everyday)
    {
       _plugins.Fill();
+      if(IsRunning) RunTheHub();
       var mcpPlugin = TheMcpPlugin(mcp);
       var whyItRestarts = IsRunning ? WhyTheRunningSandboxMustRestart(mcpPlugin) : null;
       if(whyItRestarts is not null) Stop();
@@ -235,6 +242,7 @@ public sealed class SandboxRider
          WriteTheFoldersFile();
          WriteTheJvmOptionsFile();
          TakeTheFakeClaudeCodeBuild();
+         RunTheHub();
          var process = Launch(solution);
          File.WriteAllText(ProcessFile, $"{process.Id};{process.StartTime.Ticks}");
       } else if(solution is not null)
@@ -262,6 +270,13 @@ public sealed class SandboxRider
       plugin.MakeItLookChangedIn(PluginsFolder);
       observation.RefreshThePluginsFolder();
       observation.WaitUntilReloaded(startedBefore, TimeSpan.FromMinutes(1));
+   }
+
+   /// <summary>Has the <see cref="SandboxHub"/> run, in the sandbox's environment, as Claude Sessions there needs it.</summary>
+   void RunTheHub()
+   {
+      TakeTheSandboxsEnvironment();
+      _hub.Run();
    }
 
    void TakeTheFakeClaudeCodeBuild()
@@ -303,7 +318,8 @@ public sealed class SandboxRider
                                  $"The sandbox Rider runs as process {running.Id}.",
                                  .. FramesOf(running).Select(it => "  sandbox window: " + it.Description),
                                  "  development IDEA window: " + (SandboxWindowPlacement.TheDevelopmentIdeaWindow()?.Description ?? "none open"),
-                                 "  MCP health: " + (TheMcpServersHealth() ?? "nothing listens on port " + McpPort)
+                                 "  MCP health: " + (TheMcpServersHealth() ?? "nothing listens on port " + McpPort),
+                                 "  hub: " + (_hub.Announcement()?.ToJsonString() ?? "none announced in " + _hub.AnnouncementFolder)
                               ]);
    }
 
@@ -352,13 +368,27 @@ public sealed class SandboxRider
    ///   Through the shell, so Rider gets none of this process's handles. Started directly, it inherited the console
    ///   handles: Rider's output came out in the tool's, and a pipe the tool's output went into stayed open as long as
    ///   Rider ran. The shell can't take environment variables for the one start, so they're set on this process, whose
-   ///   environment the started one inherits.
+   ///   environment the started one inherits: see <see cref="TakeTheSandboxsEnvironment"/>.
    /// </remarks>
    Process Launch(string solution)
    {
+      TakeTheSandboxsEnvironment();
+      var startInformation = new ProcessStartInfo(_rider.Launcher) { UseShellExecute = true };
+      startInformation.ArgumentList.Add(solution);
+      return Process.Start(startInformation) ?? throw new InvalidOperationException($"Could not start {_rider.Launcher}.");
+   }
+
+   /// <summary>
+   ///   Gives this process the environment the sandbox's processes start in, as they're started through the shell, which
+   ///   can't take environment variables for one start: the sandbox Rider, and its <see cref="SandboxHub"/>.
+   /// </summary>
+   void TakeTheSandboxsEnvironment()
+   {
       LeaveOutTheClaudeCodeSessionThisRunsIn();
       Environment.SetEnvironmentVariable("CLAUDE_CONFIG_DIR", ClaudeCodeFolder);
-      Environment.SetEnvironmentVariable("PATH", FakeClaudeCodeFolder + Path.PathSeparator + Environment.GetEnvironmentVariable("PATH"));
+      Environment.SetEnvironmentVariable("CLAUDE_TOOLING_LOCAL_API_FOLDER", _hub.AnnouncementFolder);
+      var path = Environment.GetEnvironmentVariable("PATH")!;
+      if(!path.StartsWith(FakeClaudeCodeFolder + Path.PathSeparator)) Environment.SetEnvironmentVariable("PATH", FakeClaudeCodeFolder + Path.PathSeparator + path);
       // The sandbox is in the user's home folder, which is a git repository: without a ceiling, git takes the solutions in
       // the sandbox for part of it.
       Environment.SetEnvironmentVariable("GIT_CEILING_DIRECTORIES", _root);
@@ -366,9 +396,6 @@ public sealed class SandboxRider
       Environment.SetEnvironmentVariable("RIDER_VM_OPTIONS", JvmOptionsFile);
       Environment.SetEnvironmentVariable("DOTNET_ANALYSIS_AND_REFACTORING_MCP_PORT", McpPort.ToString());
       Environment.SetEnvironmentVariable("DOTNET_ANALYSIS_AND_REFACTORING_MCP_TOOLS", _mcpTools.Folder);
-      var startInformation = new ProcessStartInfo(_rider.Launcher) { UseShellExecute = true };
-      startInformation.ArgumentList.Add(solution);
-      return Process.Start(startInformation) ?? throw new InvalidOperationException($"Could not start {_rider.Launcher}.");
    }
 
    /// <summary>

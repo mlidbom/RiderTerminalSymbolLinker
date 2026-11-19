@@ -6,7 +6,8 @@ namespace FakeClaudeCode;
 /// <summary>
 ///   A stand-in for Claude Code, the <c>claude</c> command, that the sandbox's Claude Sessions runs instead of it: it
 ///   records its session as Claude Code does, as <c>sessions/&lt;process id&gt;.json</c> in the folder
-///   <c>CLAUDE_CONFIG_DIR</c> names, and keeps its transcript as Claude Code does, and does nothing else. So the
+///   <c>CLAUDE_CONFIG_DIR</c> names, where the sandbox's hub reads it for Claude Sessions, and keeps its transcript as
+///   Claude Code does, and does nothing else. So the
 ///   specifications of Claude Sessions run in seconds, cost nothing, and leave nothing in the user's own Claude Code
 ///   folder.
 /// </summary>
@@ -101,7 +102,11 @@ static class Program
       AddToTheTranscript(session, new JsonObject { ["type"] = "custom-title", ["customTitle"] = name, ["sessionId"] = session });
    }
 
-   /// <summary>Writes the session's record as Claude Code does, the parts Claude Sessions reads.</summary>
+   /// <summary>
+   ///   Writes the session's record as Claude Code does, the parts the sandbox's hub reads, for Claude Sessions: an
+   ///   interactive session's, always idle, as the fake does nothing on its own. The hub leaves out a record with no
+   ///   status, as Claude Code writes one as it starts.
+   /// </summary>
    static void Record(string session, string? name)
    {
       Directory.CreateDirectory(Path.GetDirectoryName(RecordFile)!);
@@ -112,7 +117,10 @@ static class Program
                            ["startedAt"] = new DateTimeOffset(System.Diagnostics.Process.GetCurrentProcess().StartTime).ToUnixTimeMilliseconds(),
                            ["sessionId"] = session,
                            ["cwd"] = Environment.CurrentDirectory,
-                           ["name"] = name ?? "fake-" + session[..8]
+                           ["kind"] = "interactive",
+                           ["name"] = name ?? "fake-" + session[..8],
+                           ["status"] = "idle",
+                           ["statusUpdatedAt"] = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
                         }));
    }
 

@@ -124,6 +124,17 @@ re-highlights old output.
 
 ## The sandbox's Claude Code, git and local API
 
+- **The sandbox's hub** (`SandboxHub`), which Claude Sessions there follows for the Claude Codes that run: a copy of
+  the published hub's build, `ClaudeTooling.exe` and `ClaudeTooling.Server.exe` from `~/.claude/bin`, in `hub` in the
+  sandbox's folder, started with the sandbox's `CLAUDE_CONFIG_DIR` and with `CLAUDE_TOOLING_LOCAL_API_FOLDER` naming a
+  folder of its own for its announcement, which the sandbox Rider gets too, as the hub's contract says. It's run as the
+  sandbox starts, and before each install into a running one, taking the published build anew when there is a newer
+  one. The copy's server is given a write time of its own: the hub's pipe is named after it, and with the published
+  one's, the copy's client would hand its commands to Magnus's hub. It stops 5 minutes after the sandbox Rider's stream
+  of it closes. `sandbox status` shows its announcement.
+- **The fake Claude Code's record** says `idle`, with the time, and `interactive`: the hub leaves out a record with no
+  status. The specifications wait for the hub to have told the view of a Claude Code (`RunningClaudeCodes`), which
+  takes about a tenth of a second after it writes its record.
 - **The fake Claude Code** writes its transcripts in Claude Code's format, the entries Claude Sessions reads: a `user`
   entry with its folder and a `last-prompt` for each line typed, an `ai-title` after the first, and a `custom-title`
   for `/rename <name>`, and for `--name <name>` as it starts. `--resume` finds the transcript in any project's folder, as Claude Code does. The sandbox takes
