@@ -299,8 +299,13 @@ other IDE no provider gives a tab one, and it shows its terminal alone, as befor
   session's whole line, across compactions and `/clear` (Magnus: "One
   session just restarted itself with /clear and the entire history disappeared for me. I would love to still have it
   there"); then the sessions on disk. Then the stand-in stays for the chat's specifications, and new ones run end to end
-  with the fake Claude Code, which must then read raw console input (bracketed pastes, Ctrl+J, Escape, back-tab) and
-  write the real transcript format.
+  through the hub.
+- **One imitation of Claude Code, the hub's:** the hub's own specifications run a stand-in for Claude Code
+  (`~/.claude/src/StandInForClaudeCode`) that draws and takes an input box as Claude Code does. Asked of the tooling
+  owner on 2026-11-19: it grows what the sandbox's fake does (records, transcripts, `--name`, `--resume`, `/clear`,
+  `/rename`, `/exit`, the conversation and the terminal's size on its screen), and a busy state and a mode line for the
+  chat's specifications, and is published as a built `claude.exe`. The sandbox then runs it, and `tools/FakeClaudeCode`
+  goes. Until then the fake has no input box, and nothing types into it through the hub but the shell's line.
 - **Not tried with the real Claude Code:** the chat with a hub behind it; the real TUI drawn through hiding and showing
   its card (only the fake's sizes were seen).
 
