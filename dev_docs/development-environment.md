@@ -133,7 +133,9 @@ re-highlights old output.
   one's, the copy's client would hand its commands to Magnus's hub. It stops 5 minutes after the sandbox Rider's stream
   of it closes. `sandbox status` shows its announcement.
 - **The fake Claude Code's record** says `idle`, with the time, and `interactive`: the hub leaves out a record with no
-  status. The specifications wait for the hub to have told the view of a Claude Code (`RunningClaudeCodes`), which
+  status. It has `procStart` too, the process's creation time as a Windows FILETIME, exact to the 100 nanoseconds as
+  Claude Code writes it, which the hub checks against the running process from its step 2 on: a mismatch there drops
+  the sandbox's records, and the specifications fail. The specifications wait for the hub to have told the view of a Claude Code (`RunningClaudeCodes`), which
   takes about a tenth of a second after it writes its record.
 - **The fake Claude Code** writes its transcripts in Claude Code's format, the entries Claude Sessions reads: a `user`
   entry with its folder and a `last-prompt` for each line typed, an `ai-title` after the first, and a `custom-title`

@@ -107,14 +107,22 @@ static class Program
    ///   interactive session's, always idle, as the fake does nothing on its own. The hub leaves out a record with no
    ///   status, as Claude Code writes one as it starts.
    /// </summary>
+   /// <remarks>
+   ///   <c>procStart</c> is the process's creation time as Windows gives it, a FILETIME, as a decimal string: the hub
+   ///   keeps a record that has one only while the process of its <c>pid</c> was created at exactly that time, so a
+   ///   record a killed Claude Code left behind doesn't name a later process that got its number.
+   ///   <see cref="System.Diagnostics.Process.StartTime"/> is that time, to the 100 nanoseconds.
+   /// </remarks>
    static void Record(string session, string? name)
    {
+      var process = System.Diagnostics.Process.GetCurrentProcess();
       Directory.CreateDirectory(Path.GetDirectoryName(RecordFile)!);
       File.WriteAllText(RecordFile,
                         JsonSerializer.Serialize(new Dictionary<string, object?>
                         {
                            ["pid"] = Environment.ProcessId,
-                           ["startedAt"] = new DateTimeOffset(System.Diagnostics.Process.GetCurrentProcess().StartTime).ToUnixTimeMilliseconds(),
+                           ["procStart"] = process.StartTime.ToFileTimeUtc().ToString(System.Globalization.CultureInfo.InvariantCulture),
+                           ["startedAt"] = new DateTimeOffset(process.StartTime).ToUnixTimeMilliseconds(),
                            ["sessionId"] = session,
                            ["cwd"] = Environment.CurrentDirectory,
                            ["kind"] = "interactive",
