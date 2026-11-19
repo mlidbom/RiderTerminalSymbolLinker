@@ -86,8 +86,9 @@ reload of the plugin, whose unloading stops the server on the EDT.
   which rows a picker shows. The links report what a click did through `LinkClickOutcomes`, which nothing listens to
   outside the sandbox. The `sandbox state|links|click|picker` commands call it.
 - **Claude Sessions',** `dev.magnus.claudesessions.observation.ObservationChannel` on 23872, tells the view's tabs, the
-  process and session each runs, the saved sessions, and the Terminal tool window's tabs; it starts sessions, types into
-  a tab, shows what a tab's terminal shows, and closes tabs. It closes a tab by ending its process, as Claude Code's exit
+  process and session each runs, the saved sessions, and the Terminal tool window's tabs; it starts sessions, drives the
+  New Claude Session popup and the session history picker, chooses the shell the terminals run, types into a tab, shows
+  what a tab's terminal shows, and closes tabs. It closes a tab by ending its process, as Claude Code's exit
   does: the close button, and the terminal API's `closeTab`, ask the user to confirm. The `sandbox sessions` commands
   call it.
 
@@ -120,9 +121,10 @@ re-highlights old output.
 
 - **The fake Claude Code** writes its transcripts in Claude Code's format, the entries Claude Sessions reads: a `user`
   entry with its folder and a `last-prompt` for each line typed, an `ai-title` after the first, and a `custom-title`
-  for `/rename <name>`. `--resume` finds the transcript in any project's folder, as Claude Code does. The sandbox takes
+  for `/rename <name>`, and for `--name <name>` as it starts. `--resume` finds the transcript in any project's folder, as Claude Code does. The sandbox takes
   a copy of its build as it starts, so a change to it takes a restart of the sandbox.
-- **Each story starts with no history:** `TheClaudeSessionsView` deletes the sandbox's transcripts. A story writes the
+- **Each story starts with no history, and in PowerShell 7:** `TheClaudeSessionsView` deletes the sandbox's
+  transcripts, and has the terminals run `pwsh.exe`, Magnus's shell, as a story may have chosen another. A story writes the
   transcripts it needs with `SessionTranscript`, dated as it likes.
 - **`GIT_CEILING_DIRECTORIES` is the sandbox's folder:** the sandbox is in Magnus's home folder, a git repository, which
   git would otherwise take the fixture solution for part of. A story that needs git makes the solution a repository of

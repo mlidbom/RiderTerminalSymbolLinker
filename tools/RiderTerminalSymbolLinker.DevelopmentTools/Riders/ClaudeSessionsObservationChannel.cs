@@ -15,8 +15,32 @@ public sealed class ClaudeSessionsObservationChannel(int port) : ObservationChan
    /// <summary>Has the IDE give the Claude Sessions tool window its content, as showing it would, and tells its tabs.</summary>
    public JsonNode OpenTheView(string? project = null) => Post("view/open", project, new { });
 
-   /// <summary>Starts a new Claude Code session in a tab, as the New Claude Session action does.</summary>
+   /// <summary>Starts a new Claude Code session in a tab, without a name, as the New Claude Session popup does with its field left empty.</summary>
    public JsonNode StartANewSession(string? project = null) => Post("sessions/new", project, new { });
+
+   /// <summary>Opens the New Claude Session popup, as the New Claude Session action does, and answers as <see cref="TheNewSessionPopup"/>.</summary>
+   public JsonNode OpenTheNewSessionPopup(string? project = null) => Post("new-session-popup/open", project, new { });
+
+   /// <summary>Whether the New Claude Session popup shows in the project's window, and the name typed into it.</summary>
+   public JsonNode TheNewSessionPopup(string? project = null) => Get("new-session-popup", project);
+
+   /// <summary>Types <paramref name="text"/> into the New Claude Session popup's field, for the name.</summary>
+   public JsonNode NameInTheNewSessionPopup(string text, string? project = null) => Post("new-session-popup/name", project, new { text });
+
+   /// <summary>
+   ///   Has the New Claude Session popup's field take Enter, which starts the session, and answers with the place of its
+   ///   tab among the view's tabs.
+   /// </summary>
+   public JsonNode PressEnterInTheNewSessionPopup(string? project = null) => Post("new-session-popup/enter", project, new { });
+
+   /// <summary>Closes the New Claude Session popup, as Escape does.</summary>
+   public JsonNode CloseTheNewSessionPopup(string? project = null) => Post("new-session-popup/close", project, new { });
+
+   /// <summary>
+   ///   Has the project's terminals run the shell <paramref name="path"/> from now on, such as <c>cmd.exe</c>, as its
+   ///   setting in the IDE's terminal settings does, and answers with the one they ran before.
+   /// </summary>
+   public JsonNode RunTheShell(string path, string? project = null) => Post("terminal/shell", project, new { }, $"path={Uri.EscapeDataString(path)}");
 
    /// <summary>The text the terminal of tab <paramref name="tab"/> shows, from the top of its screen.</summary>
    public JsonNode Screen(int tab, string? project = null) => Get("tabs/screen", project, $"tab={tab}");

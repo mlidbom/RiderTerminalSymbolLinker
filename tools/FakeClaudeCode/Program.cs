@@ -11,8 +11,9 @@ namespace FakeClaudeCode;
 ///   folder.
 /// </summary>
 /// <remarks>
-///   <c>claude</c> starts a new session, and <c>claude --resume &lt;id&gt;</c> resumes one, from whichever folder it ran
-///   in before; each says which it did, with the session's id, and then the lines its conversation had. Typed lines are
+///   <c>claude</c> starts a new session, <c>claude --name &lt;name&gt;</c> starts one with a name, as <c>/rename</c>
+///   gives it, and <c>claude --resume &lt;id&gt;</c> resumes one, from whichever folder it ran in before; each says
+///   which it did, with the session's id, and then the lines its conversation had. Typed lines are
 ///   its conversation: <c>/clear</c> starts a new session, as Claude Code's does, <c>/rename &lt;name&gt;</c> names it,
 ///   and <c>/exit</c> ends it, deleting its record.
 ///   <br/>It keeps each session's transcript where Claude Code does, as <c>projects/&lt;a name made from the folder it
@@ -35,6 +36,7 @@ static class Program
       var session = arguments is ["--resume", var id] ? id : NewSession();
       Console.WriteLine(arguments is ["--resume", _] ? $"Resumed session {session}" : $"New session {session}");
       foreach(var line in ConversationOf(session)) Console.WriteLine($"> {line}");
+      if(arguments is ["--name", var given]) Rename(session, given);
       var name = NameOf(session);
       Record(session, name);
 
@@ -53,7 +55,7 @@ static class Program
                break;
             case var command when command.StartsWith("/rename "):
                name = command["/rename ".Length..].Trim();
-               AddToTheTranscript(session, new JsonObject { ["type"] = "custom-title", ["customTitle"] = name, ["sessionId"] = session });
+               Rename(session, name);
                Record(session, name);
                Console.WriteLine($"Renamed to {name}");
                break;
@@ -68,6 +70,12 @@ static class Program
    }
 
    static string NewSession() => Guid.NewGuid().ToString();
+
+   /// <summary>Names the session, as Claude Code's <c>/rename</c> does: with a <c>custom-title</c> in its transcript.</summary>
+   static void Rename(string session, string name)
+   {
+      AddToTheTranscript(session, new JsonObject { ["type"] = "custom-title", ["customTitle"] = name, ["sessionId"] = session });
+   }
 
    /// <summary>Writes the session's record as Claude Code does, the parts Claude Sessions reads.</summary>
    static void Record(string session, string? name)
