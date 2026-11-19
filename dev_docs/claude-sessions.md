@@ -321,6 +321,20 @@ other IDE no provider gives a tab one, and it shows its terminal alone, as befor
   goes. Until then the fake has no input box, and nothing types into it through the hub but the shell's line.
 - **Not tried with the real Claude Code:** the chat with a hub behind it; the real TUI drawn through hiding and showing
   its card (only the fake's sizes were seen).
+- **What a restart loses of the chat:** the box's draft is an in-memory document. A restart, a crash and a plugin reload
+  each lose it, and the messages that wait in `TypingFromTheChat` to be typed. Proposed to Magnus on 2026-11-19, and not
+  yet agreed:
+  - save each box's draft as it's typed, beside `SavedClaudeSessions`' file, found by the tab's session host or else
+    its session;
+  - put the waiting messages back into the box after the restart, marked as not sent, and never resend them by
+    themselves;
+  - keep the card the user chose;
+  - perhaps later, the transcript's scroll position and unfolded tool calls.
+
+  Asked of survive-IDE-restart: whether the hub finishes typing a line when the IDE's connection drops mid-request.
+- **A command that makes the IDE restart itself,** in the plugin's local API, for the tooling owner's Rider restart tool
+  (`~/.claude/dev_docs/restarting-rider.md`). The tool hasn't started and waits for Magnus's go. The tooling owner sends
+  the request's shape when it starts.
 
 ## The chat view: what the spikes found
 
