@@ -1,5 +1,7 @@
 using System.Diagnostics;
 using System.Globalization;
+using System.Net;
+using System.Net.Http.Headers;
 using System.Text.Json.Nodes;
 
 namespace RiderTerminalSymbolLinker.DevelopmentTools.Riders;
@@ -8,7 +10,7 @@ namespace RiderTerminalSymbolLinker.DevelopmentTools.Riders;
 ///   The sandbox's own hub: the Claude tooling's hub, ClaudeTooling's resident server, serving the sandbox's Claude Code
 ///   folder to the sandbox Rider's Claude Sessions, as the published hub serves Magnus's to his IDEs. A copy of the
 ///   published hub's build, from <c>~/.claude/bin</c>, so that the sandbox tries the plugin with the hub Magnus's IDEs
-///   talk to.
+///   talk to. Its session hosts, in which the sandbox's tabs run their sessions, are started from the copy too.
 /// </summary>
 /// <remarks>
 ///   The hub's contract, <c>~/.claude/dev_docs/the-hubs-local-api.md</c>, says how a sandbox runs one: started with
@@ -22,8 +24,11 @@ namespace RiderTerminalSymbolLinker.DevelopmentTools.Riders;
 /// </remarks>
 public sealed class SandboxHub(string folder)
 {
-   /// <summary>The executables the hub is: its client, which starts its server when none runs, and its server.</summary>
-   static readonly string[] Executables = ["ClaudeTooling.Server.exe", "ClaudeTooling.exe"];
+   /// <summary>
+   ///   The executables the hub is: its server, its client, which starts its server when none runs, and its session host,
+   ///   which the server starts from beside itself, and whose attach client the sandbox's tabs run.
+   /// </summary>
+   static readonly string[] Executables = ["ClaudeTooling.Server.exe", "ClaudeTooling.exe", "ClaudeTooling.SessionHost.exe"];
 
    static readonly TimeSpan HowLongStartingMayTake = TimeSpan.FromSeconds(30);
 
@@ -74,15 +79,54 @@ public sealed class SandboxHub(string folder)
    /// <summary>What the hub's announcement says, or null while it has none.</summary>
    public JsonNode? Announcement() => File.Exists(AnnouncementFile) ? JsonNode.Parse(File.ReadAllText(AnnouncementFile)) : null;
 
+   /// <summary>
+   ///   The session hosts of the sandbox's Claude Code folder that run, as the hub's <c>GET /session-hosts</c> lists them:
+   ///   none when no hub runs, as none would have started one.
+   /// </summary>
+   public JsonArray SessionHosts()
+   {
+      using var client = ClientOfTheHub();
+      return client is null ? [] : JsonNode.Parse(client.GetStringAsync("/session-hosts").Result)!["sessionHosts"]!.AsArray();
+   }
+
+   /// <summary>
+   ///   Ends every session host of the sandbox's Claude Code folder, as closing its tab does, and returns how many it
+   ///   ended: they outlive the sandbox Rider, as the sessions of Magnus's IDEs outlive his, and would run on after the
+   ///   sandbox stops.
+   /// </summary>
+   public int EndItsSessionHosts()
+   {
+      using var client = ClientOfTheHub();
+      if(client is null) return 0;
+      var hosts = JsonNode.Parse(client.GetStringAsync("/session-hosts").Result)!["sessionHosts"]!.AsArray();
+      foreach(var host in hosts)
+      {
+         using var answer = client.PostAsync($"/session-hosts/{host!["id"]!.GetValue<string>()}/end", content: null).Result;
+         if(answer.StatusCode is not (HttpStatusCode.NoContent or HttpStatusCode.NotFound))
+            throw new InvalidOperationException($"The sandbox's hub answered ending the session host {host["id"]} with {(int)answer.StatusCode}: {answer.Content.ReadAsStringAsync().Result}");
+      }
+
+      return hosts.Count;
+   }
+
+   /// <summary>A client of the hub's local API, with its token, or null when no hub runs.</summary>
+   HttpClient? ClientOfTheHub()
+   {
+      if(Announcement() is not {} announcement || !IsRunning(announcement["processId"]!.GetValue<int>())) return null;
+      var client = new HttpClient { BaseAddress = new Uri($"http://127.0.0.1:{announcement["port"]!.GetValue<int>()}"), Timeout = TimeSpan.FromSeconds(30) };
+      client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", announcement["token"]!.GetValue<string>());
+      return client;
+   }
+
    /// <summary>Whether the announcement names a hub that runs, of the build copied.</summary>
    bool AnnouncesTheBuildCopied()
    {
       if(Announcement() is not {} announcement) return false;
       var build = DateTime.Parse(announcement["build"]!.GetValue<string>(), CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind);
       return build == File.GetLastWriteTimeUtc(Server) && IsRunning(announcement["processId"]!.GetValue<int>());
-
-      static bool IsRunning(int processId) => Process.GetProcesses().Any(it => it.Id == processId);
    }
+
+   static bool IsRunning(int processId) => Process.GetProcesses().Any(it => it.Id == processId);
 
    /// <summary>Copies the published hub's build, unless the copy is of it already.</summary>
    void TakeThePublishedBuild()

@@ -22,7 +22,7 @@ static class EverydayIdes
    ///   nothing in the IDEs: a deploy that takes a restart waits for Magnus's go-ahead.
    ///   <br/>With <paramref name="intoRunningIdes"/>, it puts such a build into an IDE that runs and reloads too, for
    ///   Magnus to restart it right after: the plugin is broken in it until he does. The restart loads the build, and
-   ///   Claude Sessions resumes the sessions it saved as its tabs were parked for the reload.
+   ///   Claude Sessions brings back the tabs it saved.
    /// </remarks>
    public static IReadOnlyList<string> Deploy(GradleSandbox builds, bool dryRun = false, bool intoRunningIdes = false)
    {

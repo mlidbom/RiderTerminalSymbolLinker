@@ -67,7 +67,8 @@ platform's and the terminal's, alike in every IDE.
   transcript. So the sandbox starts without the `CLAUDE*` variables that aren't set for the user or the machine.
 - **A fake Claude Code:** `tools/FakeClaudeCode`, built with the tools as `claude.exe`, is copied into the sandbox's
   folder as it starts, and first on its `PATH`: run from the build, it was held open by the sandbox's tabs, and the
-  tools couldn't build while the sandbox ran. It has a `CLAUDE_CONFIG_DIR` of its own, `claude-code` in the sandbox's
+  tools couldn't build while the sandbox ran. The copy is a mirror that moves a file in use aside: a fake runs on in its
+  session host through a restart of the sandbox Rider. It has a `CLAUDE_CONFIG_DIR` of its own, `claude-code` in the sandbox's
   folder, records its session and keeps its transcript where Claude Code does, and understands `--resume`, `/clear` and
   `/exit`. It says the size of its terminal as it starts and each time it changes, the size Claude Code would draw
   itself at. So Claude Sessions' specifications run in seconds, cost
@@ -91,17 +92,18 @@ reload of the plugin, whose unloading stops the server on the EDT.
   which rows a picker shows. The links report what a click did through `LinkClickOutcomes`, which nothing listens to
   outside the sandbox. The `sandbox state|links|click|picker` commands call it.
 - **Claude Sessions',** `dev.magnus.claudesessions.observation.ObservationChannel` on 23872, tells the view's tabs, the
-  process and session each runs, the saved sessions, and the Terminal tool window's tabs; it starts sessions, drives the
-  New Claude Session popup and the session history picker, chooses the shell the terminals run, types into a tab, shows
-  what a tab's terminal shows, and closes tabs. It closes a tab by ending its process, as Claude Code's exit
-  does: the close button, and the terminal API's `closeTab`, ask the user to confirm. The `sandbox sessions` commands
-  call it.
+  session host, shell and session each runs, and the saved tabs; it starts sessions, drives the New Claude Session popup
+  and the session history picker, chooses the shell the terminals run, types into a tab, shows what a tab's terminal
+  shows, and closes tabs, as their close button does, which ends their sessions. The `sandbox sessions` commands call
+  it.
 
 ## The specifications
 
 `dotnet test tests/RiderTerminalSymbolLinker.Specifications` checks what the symbol linker links and what a click does,
 in the sandbox, against the fixture solution, and, in `ClaudeSessions/`, what Claude Sessions does with the fake Claude
-Code: a new session, `/clear`, an IDE restart, a plugin reload, and Claude Code exiting. A run starts a stopped sandbox, in about half a minute, and stops it again at its
+Code: a new session, `/clear`, an IDE restart, with the sessions running on in their session hosts or, as after a
+reboot, without them, a plugin reload, closing a tab, and Claude Code exiting. Each story starts with no session
+hosts. A run starts a stopped sandbox, in about half a minute, and stops it again at its
 end: the sandbox holds about 4.6 GB of Magnus's memory, and he wants it off when it isn't in use (2026-11-17). A
 sandbox that `sandbox start` started is left running, and gets the working tree's build reloaded, so a run takes
 seconds: start it so for a stretch of work, and `sandbox stop` it when the work is done. Every click starts with no
@@ -124,14 +126,19 @@ re-highlights old output.
 
 ## The sandbox's Claude Code, git and local API
 
-- **The sandbox's hub** (`SandboxHub`), which Claude Sessions there follows for the Claude Codes that run: a copy of
-  the published hub's build, `ClaudeTooling.exe` and `ClaudeTooling.Server.exe` from `~/.claude/bin`, in `hub` in the
-  sandbox's folder, started with the sandbox's `CLAUDE_CONFIG_DIR` and with `CLAUDE_TOOLING_LOCAL_API_FOLDER` naming a
+- **The sandbox's hub** (`SandboxHub`), which Claude Sessions there follows for the Claude Codes that run, and which
+  starts the session hosts its tabs' sessions run in: a copy of the published hub's build, `ClaudeTooling.exe`,
+  `ClaudeTooling.Server.exe` and `ClaudeTooling.SessionHost.exe` from `~/.claude/bin`, in `hub` in the sandbox's
+  folder, started with the sandbox's `CLAUDE_CONFIG_DIR` and with `CLAUDE_TOOLING_LOCAL_API_FOLDER` naming a
   folder of its own for its announcement, which the sandbox Rider gets too, as the hub's contract says. It's run as the
   sandbox starts, and before each install into a running one, taking the published build anew when there is a newer
   one. The copy's server is given a write time of its own: the hub's pipe is named after it, and with the published
   one's, the copy's client would hand its commands to Magnus's hub. It stops 5 minutes after the sandbox Rider's stream
   of it closes. `sandbox status` shows its announcement.
+- **The sandbox's session hosts outlive it,** as Magnus's do his IDEs, their shells in the fixture solution's copy:
+  `sandbox stop`, and the end of a specification run that started the sandbox, end them
+  (`SandboxRider.StopAndEndItsSessions`), and so does a start that copies the fixture solution afresh, which their
+  shells would hold. Their log is `session-hosts.log` in the sandbox's Claude Code folder.
 - **The fake Claude Code's record** says `idle`, with the time, and `interactive`: the hub leaves out a record with no
   status. It has `procStart` too, the process's creation time as a Windows FILETIME, exact to the 100 nanoseconds as
   Claude Code writes it, which the hub checks against the running process from its step 2 on: a mismatch there drops
@@ -169,7 +176,9 @@ parked in the Terminal tool window. A build whose plugin.xml was again what they
 reload. Whether an IDE runs is told by the process its system folder's `.pid` names, such as
 `%LOCALAPPDATA%\JetBrains\Rider2026.3\.pid`, which the IDE leaves behind when it exits. `everyday deploy
 --into-running-ides` puts such a build into a running IDE all the same, for when Magnus restarts it right after: the
-plugin is broken in it until he does, and Claude Sessions resumes the sessions it saved as it parked their tabs.
+plugin is broken in it until he does, and Claude Sessions brings back the tabs it saved. Not for the first build with
+session hosts: the running IDE's old build parks its tabs as it unloads, and the new one, finding no host for them,
+resumes their sessions in new ones while the parked tabs still run them. Close the IDE first.
 
 **`everyday reload <plugin> [<IDE>]` reloads the build an IDE has,** to see in Magnus's own IDEs what a reload does,
 such as whether his tabs come through it. It gives the plugin's jars the time of now, as `sandbox reload` does in the

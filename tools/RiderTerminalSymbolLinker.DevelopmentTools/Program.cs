@@ -22,7 +22,8 @@ static class Program
                                                       Riders run, its plugin and its deployed tools builds; or the
                                                       Marketplace's. A running sandbox restarts when the MCP's plugin
                                                       changes, and swaps to new tools builds at its next call.
-                          sandbox stop                Closes the sandbox Rider
+                          sandbox stop                Closes the sandbox Rider, and ends the sessions its Claude Sessions
+                                                      ran, which run on in their session hosts outside it
                           sandbox place               Puts the sandbox's windows in their place again
                           sandbox status              Whether it runs, where its windows are, what the MCP server answers
 
@@ -51,7 +52,7 @@ static class Program
                           sandbox sessions type <tab> <text>
                                                       Types the text into tab <tab>'s terminal, counting from 0, and Enter
                           sandbox sessions close <tab>
-                                                      Closes tab <tab> by ending its process, as Claude Code's exit does
+                                                      Closes tab <tab>, as its close button does: its session ends
 
                         Magnus's IDEs:
 
@@ -93,7 +94,7 @@ static class Program
             using(sandbox.TakeTheTurn("`sandbox install`")) Console.WriteLine(sandbox.Install(Enum.Parse<McpBuild>(mcp, ignoreCase: true)));
             break;
          case ["sandbox", "stop"]:
-            using(sandbox.TakeTheTurn("`sandbox stop`")) sandbox.Stop();
+            using(sandbox.TakeTheTurn("`sandbox stop`")) Console.WriteLine($"Stopped the sandbox, and ended the {sandbox.StopAndEndItsSessions()} sessions its Claude Sessions ran.");
             break;
          case ["sandbox", "place"]:
             sandbox.PlaceWindows();

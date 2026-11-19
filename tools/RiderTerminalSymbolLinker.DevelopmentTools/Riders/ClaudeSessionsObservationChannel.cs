@@ -54,13 +54,10 @@ public sealed class ClaudeSessionsObservationChannel(int port) : ObservationChan
    /// <summary>Types <paramref name="text"/> into the tab's terminal, and Enter.</summary>
    public JsonNode Type(int tab, string text, string? project = null) => Post("tabs/type", project, new { text }, $"tab={tab}");
 
-   /// <summary>Closes every tab by ending its process, as Claude Code's exit does, so that a specification starts with none.</summary>
+   /// <summary>Closes every tab, as its close button does, ending its session, so that a specification starts with none.</summary>
    public JsonNode CloseEveryTab(string? project = null) => Post("tabs/close-all", project, new { });
 
-   /// <summary>
-   ///   Closes tab <paramref name="tab"/> by ending its process, as Claude Code's exit does: its close button asks the user
-   ///   to confirm, and that dialog would wait for a human.
-   /// </summary>
+   /// <summary>Closes tab <paramref name="tab"/>, as its close button does: its session ends with it.</summary>
    public JsonNode Close(int tab, string? project = null) => Post("tabs/close", project, new { }, $"tab={tab}");
 
    /// <summary>Opens the session history picker, as the Resume a Claude Session action does, and answers as <see cref="ThePicker"/> once it shows.</summary>

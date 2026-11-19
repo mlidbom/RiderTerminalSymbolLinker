@@ -54,7 +54,7 @@ public sealed class TheSandboxWithTheFixtureSolution : IDisposable
    {
       try
       {
-         if(_theRunStartedTheSandbox) _sandbox.Stop();
+         if(_theRunStartedTheSandbox) _sandbox.StopAndEndItsSessions();
       }
       finally
       {

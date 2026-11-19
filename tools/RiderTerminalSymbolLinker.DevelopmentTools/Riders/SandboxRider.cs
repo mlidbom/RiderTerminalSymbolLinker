@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using RiderTerminalSymbolLinker.DevelopmentTools.Plugin;
 using RiderTerminalSymbolLinker.DevelopmentTools.Screen;
 
@@ -225,15 +226,18 @@ public sealed class SandboxRider
    /// <summary>
    ///   Starts the sandbox unless it's running, and places its windows. It opens <paramref name="solution"/>, or a fresh
    ///   copy of the fixture solution when it starts without one, and returns once the MCP server on
-   ///   <see cref="McpPort"/> answers with the solution loaded and indexed.
+   ///   <see cref="McpPort"/> answers with the solution loaded and indexed. A fresh copy ends the sessions that ran in the
+   ///   one it replaces, which outlive the sandbox Rider in their session hosts, their shells in its folder.
    /// </summary>
    public void Start(string? solution = null)
    {
       if(RunningProcess() is null)
       {
          if(!HasEveryPlugin) Install();
+         RunTheHub();
          if(solution is null)
          {
+            EndItsSessions();
             CopyTheFixtureSolution();
             solution = FixtureSolution;
          }
@@ -242,7 +246,6 @@ public sealed class SandboxRider
          WriteTheFoldersFile();
          WriteTheJvmOptionsFile();
          TakeTheFakeClaudeCodeBuild();
-         RunTheHub();
          var process = Launch(solution);
          File.WriteAllText(ProcessFile, $"{process.Id};{process.StartTime.Ticks}");
       } else if(solution is not null)
@@ -279,14 +282,32 @@ public sealed class SandboxRider
       _hub.Run();
    }
 
-   void TakeTheFakeClaudeCodeBuild()
+   /// <summary>
+   ///   Copies the <see cref="FakeClaudeCodeBuild"/> into the sandbox, where the fake Claude Codes of sessions that outlive
+   ///   the sandbox Rider may run: Windows lets a running executable be moved, not replaced.
+   /// </summary>
+   void TakeTheFakeClaudeCodeBuild() => new FolderMirror(Path.Combine(_root, "replaced-fake-claude-code-files")).Mirror(FakeClaudeCodeBuild, FakeClaudeCodeFolder);
+
+   /// <summary>
+   ///   Stops the sandbox, as <see cref="Stop"/> does, and ends the sessions its Claude Sessions ran: they run in its hub's
+   ///   session hosts, which outlive the sandbox Rider as they do Magnus's IDEs. Returns how many it ended.
+   /// </summary>
+   public int StopAndEndItsSessions()
    {
-      if(Directory.Exists(FakeClaudeCodeFolder)) Directory.Delete(FakeClaudeCodeFolder, recursive: true);
-      Directory.CreateDirectory(FakeClaudeCodeFolder);
-      foreach(var file in Directory.GetFiles(FakeClaudeCodeBuild)) File.Copy(file, Path.Combine(FakeClaudeCodeFolder, Path.GetFileName(file)));
+      Stop();
+      return EndItsSessions();
    }
 
-   /// <summary>Closes the sandbox's windows until it exits, as a human closing them would.</summary>
+   /// <summary>Ends the sessions the sandbox's Claude Sessions ran, in its hub's session hosts, and returns how many it ended.</summary>
+   public int EndItsSessions() => _hub.EndItsSessionHosts();
+
+   /// <summary>The session hosts the sandbox's sessions run in, as its hub's <c>GET /session-hosts</c> lists them.</summary>
+   public JsonArray SessionHosts() => _hub.SessionHosts();
+
+   /// <summary>
+   ///   Closes the sandbox's windows until it exits, as a human closing them would. The sessions its Claude Sessions ran
+   ///   run on in their session hosts, as Magnus's do when his IDE exits: <see cref="StopAndEndItsSessions"/> ends them.
+   /// </summary>
    public void Stop()
    {
       var running = RunningProcess();
