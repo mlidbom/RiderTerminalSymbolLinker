@@ -331,7 +331,11 @@ other IDE no provider gives a tab one, and it shows its terminal alone, as befor
   - keep the card the user chose;
   - perhaps later, the transcript's scroll position and unfolded tool calls.
 
-  Asked of survive-IDE-restart: whether the hub finishes typing a line when the IDE's connection drops mid-request.
+  The message being typed as the IDE goes: survive-IDE-restart, from the hub's code at a60fa14, says the hub finishes
+  typing it once it has the console's turn, so it's almost always sent. One that was still waiting for the turn isn't
+  typed at all; one the hub's checks refused stays in Claude Code's own input box. So it comes back into the chat's box
+  only if the session's conversation after the restart doesn't show it. Typing is the tooling owner's, and changed that
+  day: check with it that this still holds before building on it.
 - **A command that makes the IDE restart itself,** in the plugin's local API, for the tooling owner's Rider restart tool
   (`~/.claude/dev_docs/restarting-rider.md`). The tool hasn't started and waits for Magnus's go. The tooling owner sends
   the request's shape when it starts.
