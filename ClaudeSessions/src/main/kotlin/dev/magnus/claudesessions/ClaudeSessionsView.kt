@@ -82,13 +82,13 @@ class ClaudeSessionsView(val project: Project) {
     /** The project's folder, where a new session starts. */
     private val projectFolder: Path get() = Path.of(project.basePath!!)
 
-    /** Opens a tab that starts a new session in the project's folder, and shows it. */
-    fun startNewSession(): ClaudeSessionTab =
-        openTab(ClaudeCodeCommand.startingANewSession(), projectFolder, resuming = null).also(::show)
+    /** Opens a tab that starts a new session in the project's folder, named [name] unless that's null, and shows it. */
+    fun startNewSession(name: String?): ClaudeSessionTab =
+        openTab(ClaudeCodeCommand.startingANewSession(name), projectFolder, resuming = null, tabName = name).also(::show)
 
     /** Opens a tab that resumes [session] in its folder, as after a restart. */
     fun resume(session: ClaudeSession): ClaudeSessionTab =
-        openTab(ClaudeCodeCommand.resuming(session), session.workingDirectory, resuming = session)
+        openTab(ClaudeCodeCommand.resuming(session), session.workingDirectory, resuming = session, tabName = session.name)
 
     /**
      * Opens a tab that resumes [session] in the project's folder, where a new session starts, whichever folder the session
@@ -96,7 +96,7 @@ class ClaudeSessionsView(val project: Project) {
      * any project's folder, and goes on with it in the folder it runs in.
      */
     fun resumeInTheProjectsFolder(session: ClaudeSession): ClaudeSessionTab =
-        openTab(ClaudeCodeCommand.resuming(session), projectFolder, resuming = session).also(::show)
+        openTab(ClaudeCodeCommand.resuming(session), projectFolder, resuming = session, tabName = session.name).also(::show)
 
     /** Resumes [session] in [tab], whose Claude Code has exited, and brings the tab forward. */
     fun resumeIn(tab: ClaudeSessionTab, session: ClaudeSession) {
@@ -135,22 +135,22 @@ class ClaudeSessionsView(val project: Project) {
     }
 
     /**
-     * Opens a tab whose terminal runs the user's shell in [workingDirectory], and types [command] into it. The terminal
-     * plugin neither restores the tab nor saves it: the [ClaudeSessionKeeper] does.
+     * Opens a tab named [tabName], or else "Claude", whose terminal runs the user's shell in [workingDirectory], and has
+     * the shell run [command]. The terminal plugin neither restores the tab nor saves it: the [ClaudeSessionKeeper] does.
      */
-    private fun openTab(command: String, workingDirectory: Path, resuming: ClaudeSession?): ClaudeSessionTab {
+    private fun openTab(command: ClaudeCodeCommand, workingDirectory: Path, resuming: ClaudeSession?, tabName: String?): ClaudeSessionTab {
         val terminal = TerminalToolWindowTabsManager.getInstance(project).createTabBuilder()
             .workingDirectory(workingDirectory.toString())
-            .tabName(resuming?.name ?: "Claude")
+            .tabName(tabName ?: "Claude")
             .contentManager(toolWindow!!.contentManager)
             .closeOnProcessTermination(true)
             .restoreOnProjectReopen(false)
             .deferSessionStartUntilUiShown(false)
             .requestFocus(false)
             .createTab()
-        terminal.view.createSendTextBuilder().shouldExecute().send(command)
         val tab = ClaudeSessionTab(terminal, resuming)
         tabsByContent[tab.content] = tab
+        tab.run(command)
         return tab
     }
 

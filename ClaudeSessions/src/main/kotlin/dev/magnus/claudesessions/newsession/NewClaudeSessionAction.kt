@@ -1,11 +1,14 @@
-package dev.magnus.claudesessions
+package dev.magnus.claudesessions.newsession
 
 import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.project.DumbAware
 
-/** Starts a new Claude Code session in a tab of the [ClaudeSessionsView], in the project's folder. */
+/**
+ * Opens the [NewClaudeSessionPopup], below the button clicked, to start a new Claude Code session, named or not, in a tab
+ * of the Claude Sessions tool window, in the project's folder.
+ */
 class NewClaudeSessionAction : AnAction(), DumbAware {
     override fun getActionUpdateThread(): ActionUpdateThread = ActionUpdateThread.BGT
 
@@ -14,7 +17,7 @@ class NewClaudeSessionAction : AnAction(), DumbAware {
     }
 
     override fun actionPerformed(event: AnActionEvent) {
-        ClaudeSessionsView.openIn(event.project ?: return).startNewSession()
+        NewClaudeSessionPopup.open(event.project ?: return, event.inputEvent?.component)
     }
 
     companion object {

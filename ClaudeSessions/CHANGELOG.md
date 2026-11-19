@@ -8,7 +8,10 @@ All notable changes to Claude Sessions are documented here. The format follows
 
 ### Added
 - **The Claude Sessions tool window.** Each of its tabs runs a Claude Code session in your terminal shell: the **+** in
-  its title bar starts a new one in the project's folder. When Claude Code exits, the tab stays at the shell's prompt,
+  its title bar asks for the new session's name, and Enter starts it in the project's folder, with that name, and its
+  tab named after it. Left empty, the session starts without a name; Escape starts none. The name may have any
+  characters, in PowerShell, Windows PowerShell, cmd or a POSIX shell such as bash, but cmd puts a variable's value in
+  place of a `%NAME%` in it. When Claude Code exits, the tab stays at the shell's prompt,
   and keeps the session: `claude --resume <id>` typed there continues it in the same tab, as tooling that reloads
   sessions does. The tab closes when the shell exits. A terminal tab that comes into the tool window some other way is
   kept like the others. The tool window is shown again when the IDE starts, if it was

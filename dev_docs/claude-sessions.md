@@ -10,8 +10,8 @@ It lives in this repository as a project of its own, so that it can move to a re
 ## A tab runs a shell, and Claude Code in it
 
 Each tab of the view (`ClaudeSessionsView`) is a reworked-terminal tab, made with the terminal's public
-`TerminalToolWindowTabsManager.createTabBuilder()`, that runs the user's shell, into which the tab types `claude`, or
-`claude --resume <id>` (`ClaudeCodeCommand`). When Claude Code exits, the shell is left at its prompt, and the tab keeps
+`TerminalToolWindowTabsManager.createTabBuilder()`, that runs the user's shell, into which the tab types `claude`,
+`claude --name <name>`, or `claude --resume <id>` (`ClaudeCodeCommand`). When Claude Code exits, the shell is left at its prompt, and the tab keeps
 the session that ran in it last; the tab closes when the shell exits. The terminal plugin neither saves nor restores
 these tabs: `restoreOnProjectReopen(false)`.
 
@@ -27,6 +27,31 @@ these tabs: `restoreOnProjectReopen(false)`.
   any other as it comes across it, by the terminal's `TerminalToolWindowTab.KEY` on the content. A tab the view hadn't
   opened ran Magnus's resident-server session on 2026-11-17, and was neither saved nor kept through a reload. How it
   came into the tool window wasn't found: the terminal's New Tab action is disabled outside the Terminal tool window.
+
+## Starting a new session, named or not
+
+The **+** in the tool window's title bar (`NewClaudeSessionAction`) opens `NewClaudeSessionPopup` below it: a text field
+for the session's name, as Magnus asked on 2026-11-19. Enter starts the session in a new tab, in the project's folder,
+with `claude --name <name>`, which Claude Code (2.1.328) shows in its prompt box, its `/resume` picker and the terminal's
+title, and the tab is named after it. With the field left empty, Enter starts it with plain `claude`, and the tab is
+named "Claude". Escape, or a click outside, starts none.
+
+**The tab types the name as its shell reads it** (`Shell`): any characters may be in a name, and each shell quotes
+differently. The tab waits until its shell has started, and the terminal's startup options say which shell runs, before
+it types. A word no shell treats specially, such as a session's id, is typed as it is.
+
+- **PowerShell 7, `pwsh`,** Magnus's: single quotes, each single quote doubled, the typographic ones too.
+- **Windows PowerShell, `powershell`:** single quotes too, but it hands a word with whitespace on to a program in double
+  quotes without escaping a `"` in it, or a backslash before the closing one: the tab escapes them first, as Windows'
+  C runtime reads them.
+- **`cmd`:** double quotes, as Windows' C runtime reads them, and a `^` before each of cmd's own characters outside what
+  it takes as quoted. cmd still puts a variable's value in place of `%NAME%`, and has no escape for that on its command
+  line.
+- **Any other shell** is taken for a POSIX one, such as bash: single quotes, each single quote ended, escaped and begun
+  again.
+
+The specifications start a session named with each character some shell acts on in each of these four, with Git Bash
+for the POSIX one, and check that the fake Claude Code got the name as it was typed.
 
 ## Which session a tab runs
 

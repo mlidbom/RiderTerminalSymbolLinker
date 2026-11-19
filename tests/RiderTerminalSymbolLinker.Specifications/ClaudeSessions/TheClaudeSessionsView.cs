@@ -9,9 +9,15 @@ namespace RiderTerminalSymbolLinker.Specifications.ClaudeSessions;
 ///   The Claude Sessions tool window in the sandbox Rider, as the specifications see and drive it through Claude
 ///   Sessions' development observation channel. Its tabs run the sandbox's fake Claude Code, <c>tools/FakeClaudeCode</c>.
 /// </summary>
-/// <remarks>It starts with no tabs, and no sessions saved: every story starts from there.</remarks>
+/// <remarks>
+///   It starts with no tabs, no sessions saved, and its terminals running <see cref="TheShellStoriesStartIn"/>: every
+///   story starts from there.
+/// </remarks>
 public sealed class TheClaudeSessionsView
 {
+   /// <summary>The shell the view's terminals run as a story starts: Magnus's, PowerShell 7.</summary>
+   public const string TheShellStoriesStartIn = "pwsh.exe";
+
    /// <summary>How long the view may take to show a change: the keeper looks every two seconds, the fake starts in less.</summary>
    static readonly TimeSpan HowLongAChangeMayTake = TimeSpan.FromSeconds(15);
 
@@ -23,6 +29,8 @@ public sealed class TheClaudeSessionsView
    {
       Channel.OpenTheView();
       if(Picker.Shown) CloseThePicker();
+      if(NewSessionPopup.Shown) CloseTheNewSessionPopup();
+      RunTheShell(TheShellStoriesStartIn);
       Channel.CloseEveryTab();
       WaitUntil(() => Tabs.Count == 0 && SavedSessions.Count == 0, "the view to have no tabs, and no sessions saved");
       ForgetTheHistory();
@@ -88,6 +96,24 @@ public sealed class TheClaudeSessionsView
    /// <summary>Double-clicks the picker's entry <paramref name="entry"/>, by its place.</summary>
    public HistoryPicker DoubleClickInThePicker(int entry) => HistoryPicker.From(Channel.DoubleClickInThePicker(entry));
 
+   /// <summary>The New Claude Session popup shown in the project's window.</summary>
+   public NewSessionPopup NewSessionPopup => NewSessionPopup.From(Channel.TheNewSessionPopup());
+
+   /// <summary>Opens the New Claude Session popup, as the New Claude Session action does.</summary>
+   public NewSessionPopup OpenTheNewSessionPopup() => NewSessionPopup.From(Channel.OpenTheNewSessionPopup());
+
+   /// <summary>Types <paramref name="name"/> into the New Claude Session popup's field.</summary>
+   public NewSessionPopup NameInTheNewSessionPopup(string name) => NewSessionPopup.From(Channel.NameInTheNewSessionPopup(name));
+
+   /// <summary>Presses Enter in the New Claude Session popup's field, and returns the tab it started the session in, once the session runs.</summary>
+   public SessionTab PressEnterInTheNewSessionPopup() => TabOnceItRunsASession(Channel.PressEnterInTheNewSessionPopup()["tab"]!.GetValue<int>());
+
+   /// <summary>Closes the New Claude Session popup, as Escape does.</summary>
+   public NewSessionPopup CloseTheNewSessionPopup() => NewSessionPopup.From(Channel.CloseTheNewSessionPopup());
+
+   /// <summary>Has the view's terminals run the shell <paramref name="path"/> from now on, such as <c>cmd.exe</c>.</summary>
+   public void RunTheShell(string path) => Channel.RunTheShell(path);
+
    /// <summary>The actions the sandbox's active keymap binds <paramref name="keystroke"/> to, such as <c>ctrl alt shift H</c>.</summary>
    public IReadOnlyList<string> ActionsBoundTo(string keystroke) => [.. Channel.ActionsBoundTo(keystroke)["actions"]!.AsArray().Select(it => it!.GetValue<string>())];
 
@@ -148,8 +174,12 @@ public sealed class TheClaudeSessionsView
                                                                                                        claudeCode["parentProcessId"]?.GetValue<long>())
                                                                                : null,
                                                                             tab["session"]?["id"]!.GetValue<string>(),
-                                                                            tab["session"]?["workingDirectory"]!.GetValue<string>()))
+                                                                            tab["session"]?["workingDirectory"]!.GetValue<string>(),
+                                                                            tab["session"]?["name"]?.GetValue<string>()))
    ];
+
+   /// <summary>The names the view shows its tabs by, in their order.</summary>
+   public IReadOnlyList<string> TabNames => [.. Project()["view"]!["tabs"]!.AsArray().Select(tab => tab!["name"]!.GetValue<string>())];
 
    /// <summary>The ids of the sessions saved for the next start, in the order of the tabs that ran them.</summary>
    public IReadOnlyList<string> SavedSessions => [.. Project()["saved"]!["sessions"]!.AsArray().Select(it => it!["id"]!.GetValue<string>())];
@@ -160,10 +190,14 @@ public sealed class TheClaudeSessionsView
    /// </summary>
    public IReadOnlyList<long?> TerminalToolWindowProcesses => [.. Project()["terminalToolWindow"]!["tabs"]!.AsArray().Select(it => it!["processId"]?.GetValue<long>())];
 
-   /// <summary>Starts a new session, as the New Claude Session action does, and returns its tab once the session runs.</summary>
-   public SessionTab StartANewSession()
+   /// <summary>
+   ///   Starts a new session, without a name, as the New Claude Session popup does with its field left empty, and returns
+   ///   its tab once the session runs.
+   /// </summary>
+   public SessionTab StartANewSession() => TabOnceItRunsASession(Channel.StartANewSession()["tab"]!.GetValue<int>());
+
+   SessionTab TabOnceItRunsASession(int tab)
    {
-      var tab = Channel.StartANewSession()["tab"]!.GetValue<int>();
       WaitUntil(() => Tabs.Count > tab && Tabs[tab].SessionId is not null, "the new tab to run a session");
       return Tabs[tab];
    }
@@ -244,9 +278,15 @@ public sealed class TheClaudeSessionsView
 
 /// <summary>
 ///   A tab of the view: the process its terminal runs, its shell; the Claude Code that runs below it, while one does; and
-///   the session that runs in it, or ran in it last.
+///   the session that runs in it, or ran in it last, with the folder it runs in and its name.
 /// </summary>
-public sealed record SessionTab(long? ShellProcessId, ClaudeCodeProcess? ClaudeCode, string? SessionId, string? WorkingDirectory);
+public sealed record SessionTab(long? ShellProcessId, ClaudeCodeProcess? ClaudeCode, string? SessionId, string? WorkingDirectory, string? SessionName);
+
+/// <summary>The New Claude Session popup, as the observation channel tells of it: whether it's shown, and the name typed into it.</summary>
+public sealed record NewSessionPopup(bool Shown, string? Name)
+{
+   public static NewSessionPopup From(JsonNode popup) => new(popup["shown"]!.GetValue<bool>(), popup["name"]?.GetValue<string>());
+}
 
 /// <summary>The process of a Claude Code that runs in a tab, and the process it's a child of.</summary>
 public sealed record ClaudeCodeProcess(long ProcessId, long? ParentProcessId);

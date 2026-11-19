@@ -1,8 +1,11 @@
 package dev.magnus.claudesessions
 
+import com.intellij.openapi.application.EDT
 import com.intellij.terminal.frontend.toolwindow.TerminalToolWindowTab
 import com.intellij.ui.content.Content
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.launch
 
 /**
  * A tab of the [ClaudeSessionsView]: a terminal whose shell runs Claude Code, which the tab types the command for as it
@@ -43,9 +46,20 @@ class ClaudeSessionTab(
         return session
     }
 
-    /** Types the command that resumes [session] into the tab's shell, at its prompt since the tab's Claude Code exited. */
+    /**
+     * Has the tab's shell run [command]: types it, as that [Shell] reads it, once the shell has started and it's known
+     * which one runs.
+     */
+    fun run(command: ClaudeCodeCommand) {
+        terminal.view.coroutineScope.launch(Dispatchers.EDT) {
+            val shell = Shell.runBy(terminal.view.startupOptionsDeferred.await().shellCommand)
+            terminal.view.createSendTextBuilder().shouldExecute().send(shell.lineThatRuns(command))
+        }
+    }
+
+    /** Has the tab's shell, at its prompt since the tab's Claude Code exited, resume [session]. */
     fun resume(session: ClaudeSession) {
-        terminal.view.createSendTextBuilder().shouldExecute().send(ClaudeCodeCommand.resuming(session))
+        run(ClaudeCodeCommand.resuming(session))
         this.session = session
     }
 

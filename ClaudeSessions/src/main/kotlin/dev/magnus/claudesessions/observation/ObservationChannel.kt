@@ -23,9 +23,11 @@ import dev.magnus.claudesessions.SavedClaudeSessions
 import dev.magnus.claudesessions.history.ClaudeSessionHistoryPicker
 import dev.magnus.claudesessions.history.ClaudeSessionHistoryScope
 import dev.magnus.claudesessions.history.WhereTheSessionIs
+import dev.magnus.claudesessions.newsession.NewClaudeSessionPopup
 import com.intellij.openapi.keymap.KeymapManager
 import javax.swing.KeyStroke
 import java.awt.event.KeyEvent
+import org.jetbrains.plugins.terminal.TerminalProjectOptionsProvider
 import org.jetbrains.plugins.terminal.TerminalToolWindowFactory
 import java.net.InetAddress
 import java.net.InetSocketAddress
@@ -43,7 +45,17 @@ import java.util.concurrent.Executors
  *    shell, the Claude Code that runs below it and that one's parent process, and its session, the
  *    [SavedClaudeSessions], and whether the [ClaudeSessionKeeper] keeps them.
  *  - `POST /view/open?project=` — has the IDE give the view its content, as showing the tool window would.
- *  - `POST /sessions/new?project=` — starts a new session in a tab, as the New Claude Session action does.
+ *  - `POST /sessions/new?project=` — starts a new session in a tab, without a name, as the New Claude Session popup
+ *    does with its field left empty.
+ *  - `POST /new-session-popup/open?project=` — opens the New Claude Session popup, as the New Claude Session action
+ *    does, and answers as `GET /new-session-popup`.
+ *  - `GET /new-session-popup?project=` — whether the popup shows in the project's window, and the name typed into it.
+ *  - `POST /new-session-popup/name?project=` with `{"text": …}` — types the name into the popup's field.
+ *  - `POST /new-session-popup/enter?project=` — has the popup's field take Enter, which starts the session, and
+ *    answers with its tab's place among the view's tabs, as `/sessions/new` does.
+ *  - `POST /new-session-popup/close?project=` — closes the popup, as Escape does.
+ *  - `POST /terminal/shell?project=&path=` — has the project's terminals run the shell `path` from now on, as its
+ *    setting in the IDE's terminal settings does, such as `cmd.exe`, and answers with the one they ran.
  *  - `POST /tabs/new-plain?project=` — opens a plain terminal tab in the view's tool window, not through the view, as
  *    a tab can come into it that the view didn't open, and answers with its place among the view's tabs.
  *  - `POST /tabs/select?project=&tab=` — selects the tab, and shows the tool window, as a click on the tab does.
@@ -87,6 +99,14 @@ class ObservationChannel : Disposable {
             createContext("/state") { exchange -> answer(exchange) { state() } }
             createContext("/view/open") { exchange -> answer(exchange) { openTheView(projectOf(exchange)) } }
             createContext("/sessions/new") { exchange -> answer(exchange) { startANewSession(projectOf(exchange)) } }
+            createContext("/new-session-popup/open") { exchange -> answer(exchange) { openTheNewSessionPopup(projectOf(exchange)) } }
+            createContext("/new-session-popup/name") { exchange ->
+                answer(exchange) { inTheNewSessionPopup(projectOf(exchange)) { it.name = request<TextRequest>(exchange).text } }
+            }
+            createContext("/new-session-popup/enter") { exchange -> answer(exchange) { pressEnterInTheNewSessionPopup(projectOf(exchange)) } }
+            createContext("/new-session-popup/close") { exchange -> answer(exchange) { inTheNewSessionPopup(projectOf(exchange)) { it.close() } } }
+            createContext("/new-session-popup") { exchange -> answer(exchange) { onTheEdt { describeTheNewSessionPopupIn(projectOf(exchange)) } } }
+            createContext("/terminal/shell") { exchange -> answer(exchange) { runTheShell(projectOf(exchange), query(exchange, "path")!!) } }
             createContext("/tabs/type") { exchange ->
                 answer(exchange) { type(projectOf(exchange), query(exchange, "tab")!!.toInt(), request<TextRequest>(exchange).text) }
             }
@@ -175,8 +195,39 @@ class ObservationChannel : Disposable {
     private fun startANewSession(project: Project): Map<String, Any?> = onTheEdt {
         ClaudeSessionsView.toolWindowOf(project)!!.contentManager
         val view = ClaudeSessionsView.getInstance(project)
-        val tab = view.startNewSession()
+        val tab = view.startNewSession(name = null)
         mapOf("tab" to view.tabs.indexOf(tab))
+    }
+
+    private fun openTheNewSessionPopup(project: Project): Map<String, Any?> = onTheEdt {
+        NewClaudeSessionPopup.open(project, button = null)
+        describeTheNewSessionPopupIn(project)
+    }
+
+    /** Does [action] to the New Claude Session popup shown in [project]'s window, and answers as `GET /new-session-popup` then. */
+    private fun inTheNewSessionPopup(project: Project, action: (NewClaudeSessionPopup) -> Unit): Map<String, Any?> = onTheEdt {
+        action(NewClaudeSessionPopup.shownIn(project)!!)
+        describeTheNewSessionPopupIn(project)
+    }
+
+    /** Has the popup's field take Enter, and answers with the place of the tab it started the session in: the tab the view shows. */
+    private fun pressEnterInTheNewSessionPopup(project: Project): Map<String, Any?> = onTheEdt {
+        NewClaudeSessionPopup.shownIn(project)!!.pressEnter()
+        val view = ClaudeSessionsView.getInstance(project)
+        mapOf("tab" to view.tabs.indexOf(view.selectedTab!!))
+    }
+
+    private fun describeTheNewSessionPopupIn(project: Project): Map<String, Any?> {
+        val popup = NewClaudeSessionPopup.shownIn(project) ?: return mapOf("shown" to false)
+        return mapOf("shown" to true, "name" to popup.name)
+    }
+
+    /** Off the EDT: the terminal's settings look for the default shell, if they need it, on the calling thread, and wait. */
+    private fun runTheShell(project: Project, path: String): Map<String, Any?> {
+        val options = TerminalProjectOptionsProvider.getInstance(project)
+        val before = options.shellPath
+        options.shellPath = path
+        return mapOf("before" to before, "now" to options.shellPath)
     }
 
     private fun openAPlainTerminalTab(project: Project): Map<String, Any?> = onTheEdt {
