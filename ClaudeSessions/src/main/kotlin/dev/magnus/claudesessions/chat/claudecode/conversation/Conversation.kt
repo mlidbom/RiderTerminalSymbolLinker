@@ -8,9 +8,4 @@ package dev.magnus.claudesessions.chat.claudecode.conversation
 data class Conversation(val items: List<ConversationItem>) {
     /** The tool calls made since the last prompt: the commands the turn has run, or runs. */
     val toolCallsOfTheLastTurn: Int get() = items.takeLastWhile { it !is Prompt }.count { it is ToolCall }
-
-    companion object {
-        /** No conversation yet. */
-        val NONE = Conversation(emptyList())
-    }
 }

@@ -15,6 +15,7 @@ import com.intellij.terminal.frontend.toolwindow.TerminalToolWindowTabsManager
 import com.intellij.ui.content.Content
 import com.intellij.ui.content.ContentManagerEvent
 import com.intellij.ui.content.ContentManagerListener
+import dev.magnus.claudesessions.chat.saving.SavedChats
 import dev.magnus.claudesessions.claudecode.ClaudeCodeCommand
 import dev.magnus.claudesessions.claudecode.ClaudeSession
 import dev.magnus.claudesessions.hub.ClaudeToolingHub
@@ -23,6 +24,7 @@ import dev.magnus.claudesessions.saving.ClaudeSessionKeeper
 import dev.magnus.claudesessions.saving.SavedClaudeSessions
 import dev.magnus.claudesessions.saving.SavedTab
 import dev.magnus.claudesessions.sessionhosts.SessionHost
+import dev.magnus.claudesessions.sessionhosts.SessionHostId
 import dev.magnus.claudesessions.sessionhosts.SessionHostLabel
 import dev.magnus.claudesessions.sessionhosts.TheTerminalsShell
 import java.nio.file.Path
@@ -52,6 +54,9 @@ class ClaudeSessionsView(val project: Project, private val scope: CoroutineScope
 
     /** Whether the tabs are going with the view, and not closed by the user: their sessions then run on in their hosts. */
     private var detaching = false
+
+    /** The tabs' chats, as their keepers saved them. */
+    private val savedChats = SavedChats(project)
 
     private val hub: ClaudeToolingHub get() = ClaudeToolingHub.getInstance()
 
@@ -112,18 +117,23 @@ class ClaudeSessionsView(val project: Project, private val scope: CoroutineScope
         val claimed = tabs.mapNotNull { it.sessionHost?.id }.toSet()
         val label = SessionHostLabel.ofTheViewOf(project)
         running.filter { it.id !in claimed && !it.attached && SessionHostLabel.of(it.label) == label }.forEach { tabs += openTab(it, resuming = null, tabName = null, projectFolder) }
+        savedChats.deleteAllBut(tabs.mapNotNull { it.sessionHost?.id }.toSet())
         thisLogger().info("Brought back ${tabs.size} tabs of ${project.name}: ${tabs.joinToString { "'${it.content.displayName}' (session host ${it.sessionHost?.id?.value}, session ${it.session?.id?.value})" }}")
         tabs.firstOrNull { it.session?.id == saved.selected }?.let { toolWindow!!.contentManager.setSelectedContent(it.content, false) }
         ClaudeSessionKeeper.getInstance(project).startKeeping()
     }
 
-    /** Brings back the tab [saved] says, if it can come back, from among the [running] session hosts. */
+    /**
+     * Brings back the tab [saved] says, if it can come back, from among the [running] session hosts, with its chat as it
+     * was saved: by its host, the one it attaches to again, or the one its session ran in, before it's resumed in a new
+     * one.
+     */
     private suspend fun bringBack(saved: SavedTab, running: List<SessionHost>): ClaudeSessionTab? {
         val host = running.firstOrNull { it.id == saved.sessionHost }
         val session = saved.session
         return when {
             host != null -> openTab(host, session, session?.name, session?.workingDirectory ?: projectFolder)
-            session != null && withContext(Dispatchers.IO) { session.canBeResumed } -> openTabInANewHost(ClaudeCodeCommand.Resuming(session), session.workingDirectory, session, session.name)
+            session != null && withContext(Dispatchers.IO) { session.canBeResumed } -> openTabInANewHost(ClaudeCodeCommand.Resuming(session), session.workingDirectory, session, session.name, chatSavedAs = saved.sessionHost)
             else -> null
         }
     }
@@ -132,24 +142,25 @@ class ClaudeSessionsView(val project: Project, private val scope: CoroutineScope
      * Detaches the tabs from their session hosts as the view goes, though the user didn't close them: the IDE exits, the
      * project closes, or this plugin unloads, as for an update. Their sessions run on, and the view attaches to them again
      * when it next opens. The [ClaudeSessionKeeper] saves the tabs one last time first, and stops, so that it doesn't save
-     * the view as it empties. Each tab's chat is taken away while the tool window is still there, giving its content its
-     * terminal back: disposed with this view, after the tool window, a chat gave its terminal to a content whose tool
-     * window had no UI any more, and the IDE reported the failure.
+     * the view as it empties. Each tab's chat is saved, and taken away while the tool window is still there, giving its
+     * content its terminal back: disposed with this view, after the tool window, a chat gave its terminal to a content
+     * whose tool window had no UI any more, and the IDE reported the failure.
      */
     fun detachTheTabs() {
         ClaudeSessionKeeper.getInstance(project).saveOneLastTimeAndStop()
         detaching = true
-        tabs.forEach(ClaudeSessionTab::takeAwayItsChat)
+        tabs.forEach(ClaudeSessionTab::detachItsChat)
     }
 
     /**
-     * [tab] has closed: its chat goes, and its session ends with it, when the user closed it: neither did its attach
-     * client end by itself, nor is the view going.
+     * [tab] has closed, unless the view is going: its chat goes, forgotten, and its session ends with it, when the user
+     * closed it, and its attach client didn't end by itself.
      */
     private fun closed(tab: ClaudeSessionTab) {
-        tab.takeAwayItsChat()
+        if (detaching) return
+        tab.closeItsChat()
         val host = tab.sessionHost ?: return
-        if (detaching || tab.closedAsItsAttachClientEnded) return
+        if (tab.closedAsItsAttachClientEnded) return
         scope.launch {
             val answer = hub.sessionHosts.end(host.id)
             if (answer is SessionHostsAnswer.NotDone) tell("The session of the tab ${tab.content.displayName} may run on", answer.why)
@@ -208,11 +219,18 @@ class ClaudeSessionsView(val project: Project, private val scope: CoroutineScope
 
     /**
      * Starts a session host for a tab whose session runs in [workingDirectory], and opens the tab, named [tabName], or else
-     * "Claude", on it, and has its shell run [command]. Null when the host didn't start, which the user is told.
+     * "Claude", on it, and has its shell run [command]. The tab's chat comes back as it was saved as the chat of the
+     * session host [chatSavedAs], if it was. Null when the host didn't start, which the user is told.
      */
-    private suspend fun openTabInANewHost(command: ClaudeCodeCommand, workingDirectory: Path, resuming: ClaudeSession?, tabName: String?): ClaudeSessionTab? {
+    private suspend fun openTabInANewHost(command: ClaudeCodeCommand, workingDirectory: Path, resuming: ClaudeSession?, tabName: String?, chatSavedAs: SessionHostId? = null): ClaudeSessionTab? {
+        //bug: a host the hub starts as the view goes is left without a tab: the view's scope is cancelled while the hub
+        //   starts it, so no tab opens on it, and the next view takes it on as a tab of its own, named "Claude", whose shell
+        //   runs no Claude Code, beside the tab that resumes the session again in another host. Seen in the sandbox on
+        //   2026-11-19, as the IDE reloaded the plugin twice within a second, having seen its jar change twice, while the
+        //   view brought back a plain tab's session; the same comes of a reload while the view resumes sessions after a
+        //   reboot. A fix: end the host when the view went while it started.
         val host = startASessionHost(workingDirectory) ?: return null
-        return openTab(host, resuming, tabName, workingDirectory).also { it.runInItsNewShell(command) }
+        return openTab(host, resuming, tabName, workingDirectory, chatSavedAs ?: host.id).also { it.runInItsNewShell(command) }
     }
 
     /**
@@ -238,8 +256,11 @@ class ClaudeSessionsView(val project: Project, private val scope: CoroutineScope
      * Until 2026-11-19, when a tab's terminal ran its shell itself, a tab whose shell started before it was laid out could
      * keep the terminal's guess, 80 columns by 20 rows: the terminal drops a resize that comes before its process has
      * started.
+     *
+     * Its chat comes back as it was saved as the chat of the session host [chatSavedAs], if it was: [host], or the one
+     * the session ran in before it was resumed in [host].
      */
-    private fun openTab(host: SessionHost, resuming: ClaudeSession?, tabName: String?, workingDirectory: Path): ClaudeSessionTab {
+    private fun openTab(host: SessionHost, resuming: ClaudeSession?, tabName: String?, workingDirectory: Path, chatSavedAs: SessionHostId = host.id): ClaudeSessionTab {
         val toolWindow = toolWindow!!
         val terminal = TerminalToolWindowTabsManager.getInstance(project).createTabBuilder()
             .workingDirectory(workingDirectory.toString())
@@ -253,7 +274,7 @@ class ClaudeSessionsView(val project: Project, private val scope: CoroutineScope
             .createTab()
         val tab = ClaudeSessionTab(project, terminal, resuming, host)
         tabsByContent[tab.content] = tab
-        tab.giveItAChat(this)
+        tab.giveItAChat(this, savedChats, savedChats.read(chatSavedAs))
         tab.closeAsItsAttachClientEnds { toolWindow.contentManager.removeContent(tab.content, true) }
         return tab
     }

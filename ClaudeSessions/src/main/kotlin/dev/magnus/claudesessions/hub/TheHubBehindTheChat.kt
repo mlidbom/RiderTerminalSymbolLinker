@@ -32,7 +32,7 @@ class TheHubBehindTheChat(private val tab: ClaudeSessionTab) : ClaudeCodeBehindT
     private val hub = ClaudeToolingHub.getInstance()
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
-    override val conversation: StateFlow<Conversation> = MutableStateFlow(Conversation.NONE).asStateFlow()
+    override val conversation: StateFlow<Conversation?> = MutableStateFlow<Conversation?>(null).asStateFlow()
 
     override val status: StateFlow<ClaudeCodeStatus> =
         hub.runningClaudeCodes.map(::statusInTheTab).stateIn(scope, SharingStarted.Eagerly, statusInTheTab(hub.runningClaudeCodes.value))

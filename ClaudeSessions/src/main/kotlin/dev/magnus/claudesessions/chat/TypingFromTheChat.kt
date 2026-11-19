@@ -20,37 +20,61 @@ import kotlinx.coroutines.launch
  * are handed back with it, and the keys waiting among them are dropped, as they were meant for what the messages would
  * have started. A message left unsent in Claude Code's own input box isn't handed back: it is there.
  *
+ * [whenWhatWaitsChanges] is told whenever [messagesNotYetGiven] or [messageBeingGiven] change, so that they're saved,
+ * and come back as the IDE starts again.
+ *
  * Runs in [scope], on the EDT.
  */
 class TypingFromTheChat(
     private val claudeCode: ClaudeCodeBehindTheChat,
     scope: CoroutineScope,
     private val afterEach: (outcome: TypingOutcome, messagesClaudeCodeDidNotGet: List<Message>) -> Unit,
+    private val whenWhatWaitsChanges: () -> Unit,
 ) {
-    private val waiting = Channel<Typing>(Channel.UNLIMITED)
+    /** What the user gave, waiting to be given to Claude Code, in its order. */
+    private val waiting = ArrayDeque<Typing>()
+
+    /** Tells the giving that something waits. */
+    private val somethingWaits = Channel<Unit>(Channel.CONFLATED)
+
+    /** The message being given to Claude Code now, which it may or may not have got yet, or null while none is. */
+    var messageBeingGiven: MessageMaybeSent? = null
+        private set
+
+    /** The messages the user sent that wait to be given to Claude Code, in their order. */
+    val messagesNotYetGiven: List<Message> get() = waiting.filterIsInstance<Typing.Sending>().map { it.message }
 
     init {
-        scope.launch { for (typing in waiting) give(typing) }
+        scope.launch {
+            while (true) {
+                somethingWaits.receive()
+                while (true) give(waiting.removeFirstOrNull() ?: break)
+            }
+        }
     }
 
     /** Sends [message] to Claude Code once what the user gave it before is given. */
-    fun send(message: Message) {
-        waiting.trySend(Typing.Sending(message))
-    }
+    fun send(message: Message) = wait(Typing.Sending(message))
 
     /** Interrupts Claude Code once what the user gave it before is given. */
-    fun interrupt() {
-        waiting.trySend(Typing.Interrupting)
-    }
+    fun interrupt() = wait(Typing.Interrupting)
 
     /** Changes Claude Code's permission mode once what the user gave it before is given. */
-    fun changeThePermissionMode() {
-        waiting.trySend(Typing.ChangingThePermissionMode)
+    fun changeThePermissionMode() = wait(Typing.ChangingThePermissionMode)
+
+    private fun wait(typing: Typing) {
+        waiting.addLast(typing)
+        somethingWaits.trySend(Unit)
+        whenWhatWaitsChanges()
     }
 
     private suspend fun give(typing: Typing) {
+        messageBeingGiven = (typing as? Typing.Sending)?.let { MessageMaybeSent(it.message, claudeCode.conversation.value?.items?.lastOrNull()?.id) }
+        whenWhatWaitsChanges()
         val outcome = outcomeOfGiving(typing)
+        messageBeingGiven = null
         afterEach(outcome, if (outcome == TypingOutcome.Typed || typing !is Typing.Sending) emptyList() else messagesHandedBackAfterRefusing(typing.message, outcome))
+        whenWhatWaitsChanges()
     }
 
     /**
@@ -68,11 +92,11 @@ class TypingFromTheChat(
         }
 
     private fun messagesHandedBackAfterRefusing(refused: Message, outcome: TypingOutcome): List<Message> =
-        listOfNotNull(refused.takeIf { outcome is TypingOutcome.NothingTyped }) + messagesWaiting()
+        listOfNotNull(refused.takeIf { outcome is TypingOutcome.NothingTyped }) + takeTheMessagesWaiting()
 
     /** The messages waiting to be given, taken out of the waiting, which is then empty. */
-    private fun messagesWaiting(): List<Message> =
-        generateSequence { waiting.tryReceive().getOrNull() }.filterIsInstance<Typing.Sending>().map { it.message }.toList()
+    private fun takeTheMessagesWaiting(): List<Message> =
+        messagesNotYetGiven.also { waiting.clear() }
 
     /** A message or a key the user gave Claude Code from the chat, waiting to be given to it. */
     private sealed interface Typing {

@@ -46,6 +46,9 @@ public sealed class TheChat(ClaudeSessionsObservationChannel channel, int tab)
    /// <summary>Opens the conversation's fold <paramref name="fold"/>, by its place among the folds.</summary>
    public ChatSeen OpenTheFold(int fold) => ChatSeen.From(channel.OpenTheFoldInTheChat(tab, fold));
 
+   /// <summary>Scrolls the conversation so that the item <paramref name="item"/>, by its id, is at the top, as the user would.</summary>
+   public ChatSeen ScrollTheTranscriptTo(string item) => ChatSeen.From(channel.ScrollTheTranscriptInTheChat(tab, item));
+
    /// <summary>Has the stand-in refuse what the chat gives it from then on, nothing of it typed, for <paramref name="why"/>, shown in the terminal when <paramref name="theTerminalShowsWhy"/>.</summary>
    public ChatSeen HaveClaudeCodeGetNothingOfIt(string why, bool theTerminalShowsWhy) =>
       ChatSeen.From(channel.AnswerWhatTheChatTypesWith(tab, new { outcome = "nothingTyped", why, theTerminalShowsWhy }));
@@ -107,22 +110,39 @@ public sealed class TheChat(ClaudeSessionsObservationChannel channel, int tab)
 
 /// <summary>
 ///   A tab's chat as the observation channel tells of it: the card the tab shows, <c>CHAT</c> or <c>TERMINAL</c>, or
-///   null when the tab has no chat; the conversation's text, its folds and the texts its links cover; the status line,
-///   and why Claude Code didn't get what the chat last gave it, or null; the text in the input box; and the switch
-///   button's text.
+///   null when the tab has no chat, and the card the user chose, or null when the tab chose it; the conversation's text,
+///   its folds, the texts its links cover, and the id of the item at the top of the pane; the status line, and why
+///   Claude Code didn't get what the chat last gave it, or null; the text in the input box, its parts and its caret;
+///   and the switch button's text.
 /// </summary>
-public sealed record ChatSeen(string? Card, string Transcript, IReadOnlyList<FoldSeen> Folds, IReadOnlyList<string> Links, string? StatusLine, string? WhyNotTyped, string? MessageBox, string? Button)
+public sealed record ChatSeen(
+   string? Card,
+   string? CardTheUserChose,
+   string Transcript,
+   IReadOnlyList<FoldSeen> Folds,
+   IReadOnlyList<string> Links,
+   string? ItemAtTheTop,
+   string? StatusLine,
+   string? WhyNotTyped,
+   string? MessageBox,
+   IReadOnlyList<MessagePartSeen> MessageBoxParts,
+   int Caret,
+   string? Button)
 {
    public static ChatSeen From(JsonNode chat) =>
       chat["card"] is null
-         ? new ChatSeen(null, "", [], [], null, null, null, null)
+         ? new ChatSeen(null, null, "", [], [], null, null, null, null, [], 0, null)
          : new ChatSeen(chat["card"]!.GetValue<string>(),
+                        chat["cardTheUserChose"]?.GetValue<string>(),
                         chat["transcript"]!.GetValue<string>(),
                         [.. chat["folds"]!.AsArray().Select(it => new FoldSeen(it!["header"]!.GetValue<string>(), it["folded"]!.GetValue<string>(), it["open"]!.GetValue<bool>()))],
                         [.. chat["links"]!.AsArray().Select(it => it!.GetValue<string>())],
+                        chat["itemAtTheTop"]?.GetValue<string>(),
                         chat["statusLine"]!.GetValue<string>(),
                         chat["whyNotTyped"]?.GetValue<string>(),
                         chat["messageBox"]!.GetValue<string>(),
+                        [.. chat["messageBoxParts"]!.AsArray().Select(it => MessagePartSeen.From(it!))],
+                        chat["caret"]!.GetValue<int>(),
                         chat["button"]?.GetValue<string>());
 }
 

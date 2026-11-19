@@ -27,8 +27,8 @@ Its packages, below `dev.magnus.claudesessions`, which holds the tool window and
 - **`api`:** the local API through which other tools, and other IDEs, show a session's tab.
 - **`chat`:** the chat view: a tab's two cards, the chat and the terminal, the chat itself, and the switch between
   them. Below it, `chat.transcript`, the pane that shows the conversation; `chat.messagebox`, the box the user writes
-  in; and `chat.claudecode`, what the chat needs of the Claude Code behind it, with `chat.claudecode.conversation`, the
-  conversation as the chat shows it.
+  in; `chat.claudecode`, what the chat needs of the Claude Code behind it, with `chat.claudecode.conversation`, the
+  conversation as the chat shows it; and `chat.saving`, each tab's chat saved as it changes, to come back as it was.
 - **`observation`:** the development observation channel, which only the sandbox IDE runs.
 
 ## A tab runs a shell, and Claude Code in it
@@ -302,6 +302,30 @@ other IDE no provider gives a tab one, and it shows its terminal alone, as befor
     `notSentByEnter`) isn't put back: the terminal shows it there.
 - **A status line** above the input box: whether Claude is busy, idle or waiting in the terminal, and how many commands
   the turn has run, counted from the conversation.
+- **Nothing the user wrote is lost when the IDE goes, and the chat comes back where it was,** after a restart, a crash
+  or a plugin reload. Magnus asked for it on 2026-11-19, for the Rider restart tool: "make sure that anything that I had
+  typed into one of the chat input boxes it has built will survive this restart".
+  - **What is saved,** a `SavedChat`: the box's `Draft` (each part as it came in, and the caret); the messages sent that
+    waited in `TypingFromTheChat` to be given to Claude Code; the one being given, a `MessageMaybeSent`, with the
+    conversation's last item as it began; the transcript's `TranscriptPosition` (the item at the top, lines into it,
+    and the open folds, by item id); and the card the user chose, if they chose one.
+  - **When,** by the tab's `ChatKeeper`: half a second after the chat last changed, so a crash loses at most that, and
+    at once as the view detaches the tabs. Written on a thread of its own, in order, by an atomic move.
+  - **Where,** by `SavedChats`: `claude-sessions/chats/<the project's location hash>/<session host id>.json` in the
+    IDE's system folder. A tab that comes back attached to its host finds its chat by the host; one resumed in a new
+    host, after a reboot, by the host it had, and saves it under the new one. Closing a tab forgets its chat; the view
+    deletes the chats of tabs that didn't come back once it has brought them back. An image whose file is gone (kept a
+    week) comes back as its place-holder's text.
+  - **The messages that waited** come back into the box at once, ahead of the draft, and the status line says they
+    weren't sent. They're never sent again by themselves.
+  - **The message being given** comes back too, ahead of them, once the conversation is known and shows no prompt of its
+    text after the item it was given after: the hub goes on typing a message once it has the console's turn, whatever
+    becomes of the IDE, so it's almost always sent; one still waiting for the turn isn't typed (survive-IDE-restart, from
+    the hub's code at a60fa14, confirmed by the tooling owner). A message Claude Code queued is in the conversation
+    already, as the hub tells of it. So `ClaudeCodeBehindTheChat.conversation` is null until known: an empty one would
+    say it wasn't sent.
+  - **The transcript** scrolls to where it was once it shows the item and is first shown on screen, without the
+    editor's animation: animated, it was where it had been for a moment after. Its folds open as their items show.
 
 ### What's left for the first version
 
@@ -321,24 +345,9 @@ other IDE no provider gives a tab one, and it shows its terminal alone, as befor
   goes. Until then the fake has no input box, and nothing types into it through the hub but the shell's line.
 - **Not tried with the real Claude Code:** the chat with a hub behind it; the real TUI drawn through hiding and showing
   its card (only the fake's sizes were seen).
-- **What a restart loses of the chat:** the box's draft is an in-memory document. A restart, a crash and a plugin reload
-  each lose it, and the messages that wait in `TypingFromTheChat` to be typed. Proposed to Magnus on 2026-11-19, and not
-  yet agreed:
-  - save each box's draft as it's typed, beside `SavedClaudeSessions`' file, found by the tab's session host or else
-    its session;
-  - put the waiting messages back into the box after the restart, marked as not sent, and never resend them by
-    themselves;
-  - keep the card the user chose;
-  - perhaps later, the transcript's scroll position and unfolded tool calls.
-
-  The message being typed as the IDE goes: survive-IDE-restart, from the hub's code at a60fa14, says the hub finishes
-  typing it once it has the console's turn, so it's almost always sent. One that was still waiting for the turn isn't
-  typed at all; one the hub's checks refused stays in Claude Code's own input box. So it comes back into the chat's box
-  only if the session's conversation after the restart doesn't show it. Typing is the tooling owner's, and changed that
-  day: check with it that this still holds before building on it.
 - **A command that makes the IDE restart itself,** in the plugin's local API, for the tooling owner's Rider restart tool
-  (`~/.claude/dev_docs/restarting-rider.md`). The tool hasn't started and waits for Magnus's go. The tooling owner sends
-  the request's shape when it starts.
+  (`~/.claude/dev_docs/restarting-rider.md`), agreed with the tooling owner on 2026-11-19: a token in the announcement,
+  `GET /windows`, `POST /restart`, and the plugin putting its frames back on their virtual desktops.
 
 ## The chat view: what the spikes found
 

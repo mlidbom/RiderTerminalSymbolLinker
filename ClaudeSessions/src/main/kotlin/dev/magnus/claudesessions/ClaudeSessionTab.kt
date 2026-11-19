@@ -10,6 +10,8 @@ import com.intellij.terminal.frontend.toolwindow.TerminalToolWindowTab
 import com.intellij.ui.content.Content
 import dev.magnus.claudesessions.chat.ChatAndTerminalCards
 import dev.magnus.claudesessions.chat.claudecode.ClaudeCodeBehindTheChatProvider
+import dev.magnus.claudesessions.chat.saving.SavedChat
+import dev.magnus.claudesessions.chat.saving.SavedChats
 import dev.magnus.claudesessions.claudecode.ClaudeCodeCommand
 import dev.magnus.claudesessions.claudecode.ClaudeSession
 import dev.magnus.claudesessions.claudecode.RunningClaudeCode
@@ -64,20 +66,33 @@ class ClaudeSessionTab(
         private set
 
     /**
-     * Gives the tab a chat, if a [ClaudeCodeBehindTheChatProvider] has a Claude Code behind one for it, kept until
-     * [takeAwayItsChat], or until [parent] is disposed. On the EDT.
+     * Gives the tab, which has a session host, a chat, if a [ClaudeCodeBehindTheChatProvider] has a Claude Code behind
+     * one for it, kept until [detachItsChat] or [closeItsChat], or until [parent] is disposed. The chat comes back as it
+     * was saved, [asItWas], if it was, and is saved in [savedChats] as it changes. On the EDT.
      */
-    fun giveItAChat(parent: Disposable) {
+    fun giveItAChat(parent: Disposable, savedChats: SavedChats, asItWas: SavedChat?) {
         if (cards != null) return
+        val host = checkNotNull(sessionHost) { "Only a tab whose session runs in a session host has a chat." }
         val claudeCode = ClaudeCodeBehindTheChatProvider.behindTheChatOf(this) ?: return
-        cards = ChatAndTerminalCards(project, content, claudeCode).also { Disposer.register(parent, it) }
+        cards = ChatAndTerminalCards(project, content, claudeCode, savedChats, host.id, asItWas).also { Disposer.register(parent, it) }
     }
 
     /**
-     * Takes the tab's chat away, if it has one, giving its content its terminal back, as before: as the tab closes. On
-     * the EDT.
+     * Saves the tab's chat, if it has one, and takes it away, giving its content its terminal back, as before: as the
+     * view goes, and the tab's session runs on, to come back with its chat as it was. On the EDT.
      */
-    fun takeAwayItsChat() {
+    fun detachItsChat() {
+        cards?.saveNow()
+        takeAwayItsChat()
+    }
+
+    /** Takes the tab's chat away, if it has one, and forgets it, as the tab closes, and its session ends. On the EDT. */
+    fun closeItsChat() {
+        cards?.forgetTheSavedChat()
+        takeAwayItsChat()
+    }
+
+    private fun takeAwayItsChat() {
         cards?.let(Disposer::dispose)
         cards = null
     }

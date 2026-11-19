@@ -308,6 +308,17 @@ public sealed class TheClaudeSessionsView
    }
 
    /// <summary>
+   ///   Kills the sandbox Rider, as a crash ends it, and starts it again, and returns once the view has its tabs back, each
+   ///   with its session: the sessions run on in their session hosts meanwhile.
+   /// </summary>
+   public void CrashTheIdeAndStartItAgain(int tabsToComeBack)
+   {
+      _sandbox.Kill();
+      _sandbox.Start(_sandbox.FixtureSolution);
+      WaitUntil(() => Tabs.Count == tabsToComeBack && Tabs.All(it => it.SessionId is not null), $"{tabsToComeBack} tabs to be back with their sessions");
+   }
+
+   /// <summary>
    ///   Closes the sandbox Rider as a user would, ends the session hosts its sessions ran in, as a reboot does, and starts
    ///   it again, and returns once the view has its tabs, each with its Claude Code running.
    /// </summary>

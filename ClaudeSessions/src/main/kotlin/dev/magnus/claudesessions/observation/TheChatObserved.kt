@@ -56,16 +56,23 @@ class TheChatObserved(private val project: Project, private val tab: Int) {
     private val standIn: StandInBehindTheChat get() = cards.chat.claudeCode as StandInBehindTheChat
 
     /**
-     * The tab's chat: the card shown, or null when the tab has no chat; the conversation's text, each fold of it with
-     * its header line, its folded text and whether it is open, and the texts the links cover; the status line, and why
-     * Claude Code didn't get what the chat last gave it, or null; the text in the input box; and the button's text.
+     * The tab's chat: the card shown, or null when the tab has no chat, and the card the user chose, or null; the
+     * conversation's text, each fold of it with its header line, its folded text and whether it is open, the texts the
+     * links cover, and the id of the item at the top of the pane; the status line, and why Claude Code didn't get what
+     * the chat last gave it, or null; the text in the input box, its parts, each with its kind, and its caret; and the
+     * button's text.
      */
     fun describe(): Map<String, Any?> {
         val cards = sessionTab.cards ?: return mapOf("card" to null)
         val transcript = cards.chat.transcript
         val document = transcript.editor.document
+        val draft = cards.chat.messageBox.draft
         return mapOf(
             "card" to cards.shown.name,
+            "cardTheUserChose" to cards.cardTheUserChose?.name,
+            "itemAtTheTop" to transcript.itemAtTheTop,
+            "messageBoxParts" to describe(draft.message)["parts"],
+            "caret" to draft.caret,
             "transcript" to transcript.text,
             "folds" to transcript.folds.map { fold ->
                 val line = document.getLineNumber(fold.startOffset)
@@ -170,6 +177,12 @@ class TheChatObserved(private val project: Project, private val tab: Int) {
     fun openTheFold(fold: Int, open: Boolean): Map<String, Any?> {
         val editor = cards.chat.transcript.editor
         editor.foldingModel.runBatchFoldingOperation { cards.chat.transcript.folds[fold].isExpanded = open }
+        return describe()
+    }
+
+    /** Scrolls the conversation so that the item [item], by its id, is at the top of the pane, as the user would. */
+    fun scrollTheTranscriptTo(item: String): Map<String, Any?> {
+        cards.chat.transcript.showAtTheTop(item, linesIntoIt = 0)
         return describe()
     }
 

@@ -88,8 +88,9 @@ import org.jetbrains.plugins.terminal.TerminalProjectOptionsProvider
  *    channel started.
  *
  * A tab's chat, through [TheChatObserved], each answering as `GET /tabs/chat` does:
- *  - `GET /tabs/chat?project=&tab=` — the card shown, or null for a tab without a chat; the conversation's text, its
- *    folds and its links; the status line; the text in the input box; and the switch button's text.
+ *  - `GET /tabs/chat?project=&tab=` — the card shown, or null for a tab without a chat, and the card the user chose; the
+ *    conversation's text, its folds, its links, and the item at the top of the pane; the status line; the text in the
+ *    input box, part by part, and its caret; and the switch button's text.
  *  - `POST /tabs/chat/conversation?project=&tab=` with `{"items": [...]}` — has the tab's stand-in give the chat that
  *    conversation: see [TheChatObserved.giveTheConversation].
  *  - `POST /tabs/chat/status?project=&tab=&status=` — has the stand-in say Claude Code's status, such as `IDLE`.
@@ -103,6 +104,7 @@ import org.jetbrains.plugins.terminal.TerminalProjectOptionsProvider
  *  - `POST /tabs/chat/press?project=&tab=&key=` — presses `ENTER`, `SHIFT_ENTER`, `ESCAPE` or `SHIFT_TAB` in it.
  *  - `POST /tabs/chat/switch?project=&tab=` — switches between the chat and the terminal, as the button does.
  *  - `POST /tabs/chat/fold?project=&tab=&fold=&open=` — opens a fold of the conversation, by its place, or closes it.
+ *  - `POST /tabs/chat/scroll?project=&tab=&item=` — scrolls the conversation so that the item, by its id, is at the top.
  */
 @Service(Service.Level.APP)
 class ObservationChannel : Disposable {
@@ -195,6 +197,7 @@ class ObservationChannel : Disposable {
             createContext("/tabs/chat/fold") { exchange ->
                 answer(exchange) { inTheChat(exchange) { it.openTheFold(query(exchange, "fold")!!.toInt(), query(exchange, "open") != "false") } }
             }
+            createContext("/tabs/chat/scroll") { exchange -> answer(exchange) { inTheChat(exchange) { it.scrollTheTranscriptTo(query(exchange, "item")!!) } } }
             createContext("/tabs/chat") { exchange -> answer(exchange) { inTheChat(exchange) { it.describe() } } }
             start()
         }

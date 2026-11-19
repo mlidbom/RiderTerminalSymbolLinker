@@ -23,9 +23,10 @@ import kotlinx.coroutines.flow.StateFlow
 interface ClaudeCodeBehindTheChat : Disposable {
     /**
      * The conversation, as it is now, and as it changes: the whole of the tab's session, as the chat shows it. A
-     * new value replaces the one before it.
+     * new value replaces the one before it. Null until it's known, as while the hub reads it: the chat then knows not
+     * to take an empty conversation for one in which a message wasn't sent.
      */
-    val conversation: StateFlow<Conversation>
+    val conversation: StateFlow<Conversation?>
 
     /** Whether Claude Code runs in the tab, and if so, whether it is busy, waiting for the user, or idle. */
     val status: StateFlow<ClaudeCodeStatus>

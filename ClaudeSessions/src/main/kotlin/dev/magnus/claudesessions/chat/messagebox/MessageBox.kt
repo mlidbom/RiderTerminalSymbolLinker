@@ -10,6 +10,10 @@ import com.intellij.openapi.editor.EditorFactory
 import com.intellij.openapi.editor.EditorKind
 import com.intellij.openapi.editor.RangeMarker
 import com.intellij.openapi.editor.ScrollType
+import com.intellij.openapi.editor.event.CaretEvent
+import com.intellij.openapi.editor.event.CaretListener
+import com.intellij.openapi.editor.event.DocumentEvent
+import com.intellij.openapi.editor.event.DocumentListener
 import com.intellij.openapi.editor.ex.EditorEx
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.fileTypes.PlainTextFileType
@@ -44,6 +48,9 @@ import javax.swing.KeyStroke
  * shortcut of the IDE's paste, goes through [paste], by way of the [MessageBoxPasteHandler]. An image on the clipboard,
  * with no text on it, is saved to a file by [PastedImages], and the box shows a place-holder for it, such as
  * `[Image #1]`: Claude Code attaches an image whose file's path is pasted into its box by itself.
+ *
+ * What it holds unsent, its [draft], is saved as it changes, and comes back as the IDE starts again: see
+ * [dev.magnus.claudesessions.chat.saving.ChatKeeper].
  *
  * Its methods run on the EDT.
  */
@@ -90,6 +97,26 @@ class MessageBox(
 
     /** The message's text, as the box shows it. */
     val text: String get() = document.text
+
+    /** What the box holds, unsent, with where its caret is. */
+    val draft: Draft get() = Draft(message(), editor.caretModel.offset)
+
+    /** Has the box, which is empty, hold [draft] again, as after the IDE restarted: each part marked as it came in. */
+    fun restore(draft: Draft) {
+        check(document.textLength == 0) { "A draft is restored into an empty box." }
+        putBack(listOf(draft.message).filter { it.parts.isNotEmpty() })
+        editor.caretModel.moveToOffset(draft.caret.coerceAtMost(document.textLength))
+    }
+
+    /** Has [action] run whenever what the box holds, or its caret, changes, until the box goes. */
+    fun whenItChanges(action: () -> Unit) {
+        document.addDocumentListener(object : DocumentListener {
+            override fun documentChanged(event: DocumentEvent) = action()
+        }, this)
+        editor.caretModel.addCaretListener(object : CaretListener {
+            override fun caretPositionChanged(event: CaretEvent) = action()
+        }, this)
+    }
 
     /**
      * Pastes [contents], a clipboard's, at the caret, in place of what is selected: its text, marked as pasted, or else

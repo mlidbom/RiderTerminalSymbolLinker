@@ -10,16 +10,20 @@ import com.intellij.openapi.command.undo.UndoUtil
 import com.intellij.openapi.editor.EditorFactory
 import com.intellij.openapi.editor.EditorKind
 import com.intellij.openapi.editor.FoldRegion
+import com.intellij.openapi.editor.LogicalPosition
 import com.intellij.openapi.editor.RangeMarker
 import com.intellij.openapi.editor.ScrollType
 import com.intellij.openapi.editor.ex.EditorEx
+import com.intellij.openapi.editor.ex.FoldingListener
 import com.intellij.openapi.editor.highlighter.EditorHighlighterFactory
 import com.intellij.openapi.fileTypes.FileTypeManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.util.Expirable
+import com.intellij.util.ui.update.UiNotifyConnector
 import dev.magnus.claudesessions.chat.claudecode.conversation.Conversation
 import dev.magnus.claudesessions.chat.claudecode.conversation.ConversationItem
+import java.awt.Point
 import javax.swing.JComponent
 
 /**
@@ -34,6 +38,9 @@ import javax.swing.JComponent
  * When the conversation changes, it shows anew only from the first item that differs, so that what the user has
  * scrolled to, selected or opened above stays as it was: as when a tool call's result comes, or Claude says more. It
  * follows the end of the conversation while it's scrolled to the end.
+ *
+ * Where the user is in it, its [position], is saved as it changes, and comes back as the IDE starts again: see
+ * [restore].
  *
  * Its methods run on the EDT.
  */
@@ -92,6 +99,60 @@ class TranscriptPane(private val project: Project, parent: Disposable) : Disposa
     val linkedTexts: List<String>
         get() = editor.markupModel.allHighlighters.filter { it.isValid && EditorHyperlinkSupport.getHyperlinkInfo(it) != null }.sortedBy { it.startOffset }.map { document.getText(it.textRange) }
 
+    /** The id of the item at the top of the pane, or null when it shows none. For the development observation channel. */
+    val itemAtTheTop: String? get() = shownAtTheTop()?.item?.id
+
+    /**
+     * Where the user is in the conversation: see [TranscriptPosition]. Until the pane has shown the position it was to
+     * [restore], that one.
+     */
+    val position: TranscriptPosition
+        get() {
+            val openFolds = shown.filter { it.fold?.isExpanded == true }.map { it.item.id }.toSet() + foldsToOpen
+            positionToScrollTo?.let { return it.copy(openFolds = openFolds) }
+            val top = shownAtTheTop()?.takeUnless { isScrolledToTheEnd() } ?: return TranscriptPosition(topItem = null, linesIntoIt = 0, openFolds)
+            return TranscriptPosition(top.item.id, linesIntoIt = lineAtTheTop() - document.getLineNumber(top.range.startOffset), openFolds)
+        }
+
+    /** The folds to open once the pane shows their items: those [restore] was told of that it doesn't show yet. */
+    private var foldsToOpen = emptySet<String>()
+
+    /** Where to scroll to once the pane shows its item, as [restore] was told, or null when nowhere. */
+    private var positionToScrollTo: TranscriptPosition? = null
+
+    /**
+     * Has the pane show the conversation where [position] says, as the user left it before the IDE restarted: each
+     * fold open, and scrolled there, once it shows their items.
+     */
+    fun restore(position: TranscriptPosition) {
+        foldsToOpen = position.openFolds
+        positionToScrollTo = position.takeIf { it.topItem != null }
+        scrollToThePositionRestored()
+    }
+
+    /** Has [action] run whenever the pane is scrolled, or a fold opened or closed, until the pane goes. */
+    fun whenItChanges(action: () -> Unit) {
+        editor.scrollingModel.addVisibleAreaListener({ action() }, this)
+        editor.foldingModel.addListener(object : FoldingListener {
+            override fun onFoldRegionStateChange(region: FoldRegion) = action()
+        }, this)
+    }
+
+    /**
+     * Scrolls the pane so that the line [linesIntoIt] of the item [item] is at its top, at once: the editor's scrolling
+     * is otherwise animated, and is where it was for a moment after.
+     */
+    fun showAtTheTop(item: String, linesIntoIt: Int) {
+        val shownItem = shown.single { it.item.id == item }
+        val line = (document.getLineNumber(shownItem.range.startOffset) + linesIntoIt).coerceAtMost(document.lineCount - 1)
+        editor.scrollingModel.disableAnimation()
+        try {
+            editor.scrollingModel.scrollVertically(editor.logicalPositionToXY(LogicalPosition(line, 0)).y)
+        } finally {
+            editor.scrollingModel.enableAnimation()
+        }
+    }
+
     /** Shows [conversation] in place of the one shown: anew from the first item that differs. */
     fun show(conversation: Conversation) {
         val items = conversation.items
@@ -101,10 +162,37 @@ class TranscriptPane(private val project: Project, parent: Disposable) : Disposa
         val opened = shown.drop(firstThatDiffers).filter { it.fold?.isExpanded == true }.map { it.item.id }.toSet()
         removeFrom(firstThatDiffers)
         val appendedFrom = document.textLength
-        append(items.drop(firstThatDiffers), after = items.getOrNull(firstThatDiffers - 1), opened)
+        append(items.drop(firstThatDiffers), after = items.getOrNull(firstThatDiffers - 1), opened + foldsToOpen)
+        foldsToOpen = foldsToOpen - shown.map { it.item.id }.toSet()
         findLinksIn(appendedFrom)
         if (wasAtTheEnd) editor.scrollingModel.scrollTo(editor.offsetToLogicalPosition(document.textLength), ScrollType.MAKE_VISIBLE)
+        scrollToThePositionRestored()
     }
+
+    /**
+     * Scrolls to the position [restore] was told of, once the pane shows its item, and once it's shown on the screen:
+     * until then it has no height to scroll in.
+     */
+    private fun scrollToThePositionRestored() {
+        val position = positionToScrollTo ?: return
+        val item = position.topItem!!
+        if (shown.none { it.item.id == item }) return
+        UiNotifyConnector.doWhenFirstShown(editor.component) {
+            if (positionToScrollTo != position) return@doWhenFirstShown
+            positionToScrollTo = null
+            if (shown.any { it.item.id == item }) showAtTheTop(item, position.linesIntoIt)
+        }
+    }
+
+    /** The item at the top of the pane, or null when it shows none. */
+    private fun shownAtTheTop(): ShownItem? {
+        if (shown.isEmpty()) return null
+        val offset = document.getLineStartOffset(lineAtTheTop())
+        return shown.firstOrNull { offset < it.range.endOffset } ?: shown.last()
+    }
+
+    /** The line of the conversation at the top of the pane. */
+    private fun lineAtTheTop(): Int = editor.xyToLogicalPosition(Point(0, editor.scrollingModel.verticalScrollOffset)).line.coerceAtMost(maxOf(document.lineCount - 1, 0))
 
     /** Takes the items from [first] on away, with their text, folds, and the links over it, which go with their text. */
     private fun removeFrom(first: Int) {

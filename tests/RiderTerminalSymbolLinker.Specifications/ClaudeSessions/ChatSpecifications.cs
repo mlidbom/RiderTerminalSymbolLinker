@@ -361,6 +361,7 @@ public class When_the_plugin_reloads_with_chats_shown(When_the_plugin_reloads_wi
          chat.SayTheStatus("IDLE");
          chat.Give(Item.Prompt("p1", "Hello"));
          chat.SeenOnce(it => it.Card == "CHAT", "the tab to show the chat");
+         chat.Type("Written before the reload");
          Before = view.Tabs;
          view.ReloadThePlugin();
          view.WaitUntil(() => view.Tabs.Count == 1, "the tab to be back in the view");
@@ -373,5 +374,165 @@ public class When_the_plugin_reloads_with_chats_shown(When_the_plugin_reloads_wi
 
    [XF] public void the_tab_comes_back_with_its_processes_and_session() => story.After.Must().Satisfy(it => it.SequenceEqual(story.Before));
    [XF] public void with_a_chat_of_the_reloaded_plugins() => story.ChatAfter.Card.Must().NotBeNull();
+   [XF] public void with_what_its_box_held() => story.ChatAfter.MessageBox.Must().Be("Written before the reload");
    [XF] public void and_its_terminal_still_takes_what_is_typed() => story.ScreenAfter.Must().Contain("> a line after the reload");
+}
+
+public class When_the_ide_restarts_with_a_message_written_in_a_chat(When_the_ide_restarts_with_a_message_written_in_a_chat.Story story)
+   : IClassFixture<When_the_ide_restarts_with_a_message_written_in_a_chat.Story>
+{
+   public sealed class Story
+   {
+      public readonly ChatSeen Before;
+      public readonly ChatSeen After;
+      public readonly SentToClaudeCode SentAfter;
+
+      public Story()
+      {
+         var view = new TheClaudeSessionsView();
+         view.StartANewSession();
+         var chat = view.ChatOf(0);
+         chat.SayTheStatus("IDLE");
+         chat.SeenOnce(it => it.Card == "CHAT", "the tab to show the chat");
+         chat.Type("Look at ");
+         chat.Paste("pasted\ntext");
+         chat.Type(" and ");
+         Before = chat.PasteAnImage();
+         view.RestartTheIde(tabsToComeBack: 1);
+         chat = view.ChatOf(0);
+         After = chat.SeenOnce(it => it.MessageBox != "", "the box to hold what it held");
+         chat.SayTheStatus("IDLE");
+         chat.Press("ENTER");
+         SentAfter = chat.SentOnce(it => it.Messages.Count == 1, "Claude Code to get the message");
+      }
+   }
+
+   [XF] public void the_box_holds_what_it_held() => story.After.MessageBox.Must().Be("Look at pasted\ntext and [Image #1]");
+   [XF] public void each_part_as_it_came_into_the_box() => story.After.MessageBoxParts.Must().Satisfy(it => it.SequenceEqual(story.Before.MessageBoxParts));
+   [XF] public void with_its_caret_where_it_was() => story.After.Caret.Must().Be(story.Before.Caret);
+
+   [XF] public void sent_each_part_is_what_it_came_into_the_box_as() =>
+      story.SentAfter.Messages.Single().Select(it => (it.Kind, it.Text)).Must().Satisfy(it => it.SequenceEqual([("typed", "Look at "), ("pasted", "pasted\ntext"), ("typed", " and "), ("image", "[Image #1]")]));
+
+   [XF] public void the_image_still_its_file() => story.SentAfter.Messages.Single()[^1].FileExists.Must().BeTrue();
+}
+
+public class When_the_ide_crashes_with_a_message_written_in_a_chat(When_the_ide_crashes_with_a_message_written_in_a_chat.Story story)
+   : IClassFixture<When_the_ide_crashes_with_a_message_written_in_a_chat.Story>
+{
+   public sealed class Story
+   {
+      public readonly ChatSeen After;
+
+      public Story()
+      {
+         var view = new TheClaudeSessionsView();
+         view.StartANewSession();
+         var chat = view.ChatOf(0);
+         chat.SayTheStatus("IDLE");
+         chat.SeenOnce(it => it.Card == "CHAT", "the tab to show the chat");
+         chat.Type("Written before the crash");
+         Thread.Sleep(2500); // The chat is saved half a second after it last changed, the tabs every two seconds.
+         view.CrashTheIdeAndStartItAgain(tabsToComeBack: 1);
+         After = view.ChatOf(0).SeenOnce(it => it.MessageBox != "", "the box to hold what it held");
+      }
+   }
+
+   [XF] public void the_box_holds_what_it_held_half_a_second_before() => story.After.MessageBox.Must().Be("Written before the crash");
+}
+
+public class When_the_ide_restarts_with_messages_waiting_to_be_given_to_claude_code(When_the_ide_restarts_with_messages_waiting_to_be_given_to_claude_code.Story story)
+   : IClassFixture<When_the_ide_restarts_with_messages_waiting_to_be_given_to_claude_code.Story>
+{
+   public sealed class Story
+   {
+      public readonly ChatSeen BeforeTheConversationIsKnown;
+      public readonly ChatSeen WhenClaudeCodeDidNotGetTheOneBeingGiven;
+      public readonly ChatSeen WhenClaudeCodeGotIt;
+
+      public Story()
+      {
+         var view = new TheClaudeSessionsView();
+         foreach(var tab in new[] { 0, 1 })
+         {
+            view.StartANewSession();
+            var chat = view.ChatOf(tab);
+            chat.SayTheStatus("BUSY");
+            chat.Give(Item.Prompt("p1", "Hello"));
+            chat.SeenOnce(it => it.Card == "CHAT", "the tab to show the chat");
+            chat.Hold();
+            chat.Type("Being given");
+            chat.Press("ENTER");
+            chat.Type("Waiting");
+            chat.Press("ENTER");
+            chat.Type("Written since");
+         }
+         view.RestartTheIde(tabsToComeBack: 2);
+         var didNotGetIt = view.ChatOf(0);
+         var gotIt = view.ChatOf(1);
+         BeforeTheConversationIsKnown = didNotGetIt.SeenOnce(it => it.MessageBox != "", "the box to hold what it held");
+         didNotGetIt.Give(Item.Prompt("p1", "Hello"));
+         WhenClaudeCodeDidNotGetTheOneBeingGiven = didNotGetIt.SeenOnce(it => it.MessageBox!.StartsWith("Being given"), "the message being given to come back");
+         gotIt.Give(Item.Prompt("p1", "Hello"), Item.Prompt("p2", "Being given"));
+         Thread.Sleep(500); // Time for it to come back, were it to.
+         WhenClaudeCodeGotIt = gotIt.Seen;
+      }
+   }
+
+   [XF] public void what_waited_comes_back_into_the_box_at_once_ahead_of_what_was_written_since() => story.BeforeTheConversationIsKnown.MessageBox.Must().Be("Waiting\nWritten since");
+   [XF] public void the_chat_says_it_wasnt_sent() => story.BeforeTheConversationIsKnown.WhyNotTyped.Must().Be("Not sent: the IDE closed before Claude Code got this message.");
+
+   [XF] public void the_message_being_given_comes_back_ahead_of_them_when_the_conversation_shows_claude_code_didnt_get_it() =>
+      story.WhenClaudeCodeDidNotGetTheOneBeingGiven.MessageBox.Must().Be("Being given\nWaiting\nWritten since");
+
+   [XF] public void and_not_when_it_shows_claude_code_got_it() => story.WhenClaudeCodeGotIt.MessageBox.Must().Be("Waiting\nWritten since");
+}
+
+public class When_the_ide_restarts_with_a_chat_scrolled_up_and_the_terminal_chosen(When_the_ide_restarts_with_a_chat_scrolled_up_and_the_terminal_chosen.Story story)
+   : IClassFixture<When_the_ide_restarts_with_a_chat_scrolled_up_and_the_terminal_chosen.Story>
+{
+   public sealed class Story
+   {
+      public readonly ChatSeen Before;
+      public readonly ChatSeen After;
+      public readonly ChatSeen ShownAfter;
+
+      public Story()
+      {
+         var view = new TheClaudeSessionsView();
+         view.StartANewSession();
+         var chat = view.ChatOf(0);
+         chat.SayTheStatus("IDLE");
+         chat.Give(Conversation());
+         chat.SeenOnce(it => it.Card == "CHAT", "the tab to show the chat");
+         chat.OpenTheFold(1);
+         chat.ScrollTheTranscriptTo("a20");
+         Before = chat.Switch();
+         view.RestartTheIde(tabsToComeBack: 1);
+         chat = view.ChatOf(0);
+         chat.SayTheStatus("IDLE");
+         chat.Give(Conversation());
+         Thread.Sleep(500); // Time for the tab to show the chat, were it to.
+         After = chat.Seen;
+         chat.Switch();
+         ShownAfter = chat.SeenOnce(it => it.ItemAtTheTop == "a20", "the conversation to be scrolled to where it was");
+      }
+
+      /// <summary>A conversation longer than the pane, each turn with a tool call.</summary>
+      static object[] Conversation() =>
+      [
+         .. Enumerable.Range(1, 30).SelectMany(turn => new[]
+         {
+            Item.Prompt($"p{turn}", $"Prompt {turn}"),
+            Item.ToolCall($"t{turn}", "Bash", new Dictionary<string, string> { ["command"] = $"echo {turn}" }, $"{turn}"),
+            Item.AssistantText($"a{turn}", $"Answer {turn}\nover two lines.")
+         })
+      ];
+   }
+
+   [XF] public void before_it_was_scrolled_to_the_item() => story.Before.ItemAtTheTop.Must().Be("a20");
+   [XF] public void the_terminal_the_user_chose_is_shown_again() => (story.Before.Card, story.After.Card).Must().Be(("TERMINAL", "TERMINAL"));
+   [XF] public void as_the_users_choice() => story.After.CardTheUserChose.Must().Be("TERMINAL");
+   [XF] public void the_chat_shows_the_conversation_scrolled_to_where_it_was() => story.ShownAfter.ItemAtTheTop.Must().Be("a20");
+   [XF] public void with_the_fold_the_user_opened_open() => story.ShownAfter.Folds.Select(it => it.Open).Take(3).Must().Satisfy(it => it.SequenceEqual([false, true, false]));
 }

@@ -16,10 +16,11 @@ import kotlinx.coroutines.flow.first
  * what comes of what the chat gives it. So they specify the chat itself, whatever comes to provide it the conversation,
  * and type for it.
  *
- * Until set, it says no Claude Code runs, so the tab shows its terminal, as a tab without a chat does.
+ * Until set, it says no Claude Code runs, so the tab shows its terminal, as a tab without a chat does, and the
+ * conversation isn't known yet, as while the hub reads it.
  */
 class StandInBehindTheChat : ClaudeCodeBehindTheChat {
-    override val conversation = MutableStateFlow(Conversation.NONE)
+    override val conversation = MutableStateFlow<Conversation?>(null)
     override val status = MutableStateFlow(ClaudeCodeStatus.NOT_RUNNING)
 
     /** The messages Claude Code got from the chat, in their order. */
