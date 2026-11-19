@@ -76,8 +76,16 @@ public abstract class ObservationChannel
       return $"http://127.0.0.1:{_port}/{endpoint}?{string.Join('&', parameters)}";
    }
 
-   /// <summary>The channel's answer, which for a failure inside the plugin holds the failure, so a 500 is answered too.</summary>
-   static JsonNode Parse(HttpResponseMessage response) =>
-      JsonNode.Parse(response.Content.ReadAsStringAsync().GetAwaiter().GetResult())
-   ?? throw new InvalidOperationException($"The observation channel answered {(int)response.StatusCode} with no JSON.");
+   /// <summary>
+   ///   The channel's answer. A failure inside the plugin is answered with a 500 whose JSON holds the failure and its
+   ///   stack: thrown here, with both, so that the caller doesn't read the failure for an answer.
+   /// </summary>
+   static JsonNode Parse(HttpResponseMessage response)
+   {
+      var answer = JsonNode.Parse(response.Content.ReadAsStringAsync().GetAwaiter().GetResult())
+                ?? throw new InvalidOperationException($"The observation channel answered {(int)response.StatusCode} with no JSON.");
+      if(response.IsSuccessStatusCode) return answer;
+      throw new InvalidOperationException($"The plugin failed in its observation channel's {response.RequestMessage?.RequestUri?.PathAndQuery}, which answered {(int)response.StatusCode}:"
+                                        + $"{Environment.NewLine}{answer["error"]}{Environment.NewLine}   at {string.Join(Environment.NewLine + "   at ", answer["stackTrace"]?.AsArray().Select(it => (string?)it) ?? [])}");
+   }
 }

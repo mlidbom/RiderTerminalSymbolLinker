@@ -335,13 +335,24 @@ public sealed class SandboxRider
    /// </summary>
    string FixtureCopiedFromFile => Path.Combine(_root, "fixture-solution-copied-from.txt");
 
-   /// <summary>The copy replaces the last one, so no run sees what an earlier one changed.</summary>
+   /// <summary>
+   ///   The copy replaces the last one, so no run sees what an earlier one changed. That includes a git repository a
+   ///   specification made of it and didn't remove, as when it failed: git makes its objects read-only, which Windows
+   ///   won't delete as they are.
+   /// </summary>
    void CopyTheFixtureSolution()
    {
       var copy = Path.GetDirectoryName(FixtureSolution)!;
-      if(Directory.Exists(copy)) Directory.Delete(copy, recursive: true);
+      if(Directory.Exists(copy)) DeleteWithItsReadOnlyFiles(copy);
       CopyFolder(RepositoryRoot.FixtureSolutionFolder, copy);
       File.WriteAllText(FixtureCopiedFromFile, TheFixtureSolutionsFingerprint());
+
+      static void DeleteWithItsReadOnlyFiles(string folder)
+      {
+         foreach(var file in new DirectoryInfo(folder).EnumerateFiles("*", new EnumerationOptions { RecurseSubdirectories = true, AttributesToSkip = 0 }))
+            file.Attributes &= ~FileAttributes.ReadOnly;
+         Directory.Delete(folder, recursive: true);
+      }
 
       static void CopyFolder(string source, string destination)
       {
