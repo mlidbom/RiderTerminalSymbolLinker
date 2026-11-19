@@ -13,7 +13,6 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.project.ProjectManager
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.vfs.VfsUtil
-import com.intellij.openapi.wm.ToolWindowManager
 import com.intellij.terminal.frontend.toolwindow.TerminalToolWindowTabsManager
 import com.sun.net.httpserver.HttpExchange
 import com.sun.net.httpserver.HttpServer
@@ -27,6 +26,7 @@ import dev.magnus.claudesessions.hub.ClaudeToolingHub
 import dev.magnus.claudesessions.newsession.NewClaudeSessionPopup
 import dev.magnus.claudesessions.saving.ClaudeSessionKeeper
 import dev.magnus.claudesessions.saving.SavedClaudeSessions
+import dev.magnus.claudesessions.saving.SavedTab
 import java.awt.event.KeyEvent
 import java.net.InetAddress
 import java.net.InetSocketAddress
@@ -34,8 +34,8 @@ import java.net.URLDecoder
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import javax.swing.KeyStroke
+import kotlinx.coroutines.runBlocking
 import org.jetbrains.plugins.terminal.TerminalProjectOptionsProvider
-import org.jetbrains.plugins.terminal.TerminalToolWindowFactory
 
 /**
  * A development-only HTTP server through which the development tools see and drive what the plugin does in the
@@ -44,18 +44,20 @@ import org.jetbrains.plugins.terminal.TerminalToolWindowFactory
  *
  * Every endpoint answers JSON. `project` names the open project to ask about, and may be left out when one is open:
  *  - `GET /state` — each open project's [ClaudeSessionsView]: its tabs, each with the process its terminal runs, its
- *    shell, the Claude Code that runs below it and that one's parent process, and its session, the
- *    [SavedClaudeSessions], and whether the [ClaudeSessionKeeper] keeps them; and the Claude Codes the
- *    [ClaudeToolingHub] last told of, each with its process and its session.
+ *    session host's attach client, its session host and the host's shell, the Claude Code that runs in it and that
+ *    one's parent process, and its session; the [SavedClaudeSessions], each tab with its session and its host, and
+ *    whether the [ClaudeSessionKeeper] keeps them; and the Claude Codes the [ClaudeToolingHub] last told of, each with
+ *    its process, its session and its session host.
  *  - `POST /view/open?project=` — has the IDE give the view its content, as showing the tool window would.
  *  - `POST /sessions/new?project=` — starts a new session in a tab, without a name, as the New Claude Session popup
- *    does with its field left empty.
+ *    does with its field left empty, and answers with the tab's place among the view's tabs once its session host
+ *    has started.
  *  - `POST /new-session-popup/open?project=` — opens the New Claude Session popup, as the New Claude Session action
  *    does, and answers as `GET /new-session-popup`.
  *  - `GET /new-session-popup?project=` — whether the popup shows in the project's window, and the name typed into it.
  *  - `POST /new-session-popup/name?project=` with `{"text": …}` — types the name into the popup's field.
  *  - `POST /new-session-popup/enter?project=` — has the popup's field take Enter, which starts the session, and
- *    answers with its tab's place among the view's tabs, as `/sessions/new` does.
+ *    answers with its tab's place among the view's tabs once the tab has opened, as `/sessions/new` does.
  *  - `POST /new-session-popup/close?project=` — closes the popup, as Escape does.
  *  - `POST /terminal/shell?project=&path=` — has the project's terminals run the shell `path` from now on, as its
  *    setting in the IDE's terminal settings does, such as `cmd.exe`, and answers with the one they ran.
@@ -65,8 +67,7 @@ import org.jetbrains.plugins.terminal.TerminalToolWindowFactory
  *  - `GET /tabs/screen?project=&tab=` — the text the tab's terminal shows, from the top of its screen, and the size
  *    of its screen, in columns and rows, once the tab has been laid out.
  *  - `POST /tabs/type?project=&tab=` with `{"text": …}` — types the text into the tab's terminal, and Enter.
- *  - `POST /tabs/close?project=&tab=` — closes the tab by ending its processes, as its shell's exit does: closing it
- *    as its close button does asks the user to confirm, and that dialog would wait for a human.
+ *  - `POST /tabs/close?project=&tab=` — closes the tab, as its close button does: its session ends with it.
  *  - `POST /tabs/close-all?project=` — closes every tab so, and answers once they're gone, so that a specification
  *    starts with none.
  *  - `POST /history/open?project=` — opens the session history picker, as the Resume a Claude Session action does,
@@ -205,7 +206,7 @@ class ObservationChannel : Disposable {
 
     private fun state(): Map<String, Any?> = mapOf(
         "startedAt" to startedAt,
-        "runningClaudeCodes" to ClaudeToolingHub.getInstance().runningClaudeCodes.value.all.map { mapOf("processId" to it.process.pid(), "session" to it.session.id.value) },
+        "runningClaudeCodes" to ClaudeToolingHub.getInstance().runningClaudeCodes.value.all.map { mapOf("processId" to it.process.pid(), "session" to it.session.id.value, "sessionHost" to it.sessionHost?.value) },
         "projects" to ProjectManager.getInstance().openProjects.map { project ->
             val saved = SavedClaudeSessions(project)
             mapOf(
@@ -213,18 +214,10 @@ class ObservationChannel : Disposable {
                 "basePath" to project.basePath,
                 "view" to describe(ClaudeSessionsView.getInstance(project)),
                 "keeping" to ClaudeSessionKeeper.getInstance(project).isKeeping,
-                "terminalToolWindow" to describeTheTerminalToolWindow(project),
-                "saved" to mapOf("file" to saved.location.toString(), "sessions" to saved.read().sessions.map(::describe), "selected" to saved.read().selected?.value),
+                "saved" to saved.read().let { mapOf("file" to saved.location.toString(), "tabs" to it.tabs.map(::describe), "selected" to it.selected?.value) },
             )
         },
     )
-
-    /** The Terminal tool window, where the view's tabs are parked while the plugin reloads. */
-    private fun describeTheTerminalToolWindow(project: Project): Map<String, Any?> {
-        val toolWindow = ToolWindowManager.getInstance(project).getToolWindow(TerminalToolWindowFactory.TOOL_WINDOW_ID)
-        val tabs = TerminalToolWindowTabsManager.getInstance(project).tabs
-        return mapOf("visible" to toolWindow?.isVisible, "tabs" to tabs.map { mapOf("name" to it.content.displayName, "processId" to ClaudeSessionTab.processOf(it)?.pid()) })
-    }
 
     private fun describe(view: ClaudeSessionsView): Map<String, Any?> = mapOf(
         "open" to view.isOpen,
@@ -233,12 +226,17 @@ class ObservationChannel : Disposable {
         "selectedTab" to view.selectedTab?.let(view.tabs::indexOf),
     )
 
+    /** [tab]: its shell is its session host's, or its terminal's process, for a tab without a host. */
     private fun describe(tab: ClaudeSessionTab): Map<String, Any?> = mapOf(
         "name" to tab.content.displayName,
         "processId" to tab.process?.pid(),
+        "sessionHost" to tab.sessionHost?.id?.value,
+        "shellProcessId" to (if (tab.sessionHost != null) tab.sessionHost.shell?.pid() else tab.process?.pid()),
         "claudeCode" to tab.claudeCode?.process?.let { mapOf("processId" to it.pid(), "parentProcessId" to it.parent().orElse(null)?.pid()) },
         "session" to tab.lookAtTheSession()?.let(::describe),
     )
+
+    private fun describe(tab: SavedTab): Map<String, Any?> = mapOf("session" to tab.session?.let(::describe), "sessionHost" to tab.sessionHost?.value)
 
     private fun describe(session: ClaudeSession): Map<String, Any?> =
         mapOf("id" to session.id.value, "workingDirectory" to session.workingDirectory.toString(), "name" to session.name)
@@ -248,11 +246,11 @@ class ObservationChannel : Disposable {
         describe(ClaudeSessionsView.getInstance(project))
     }
 
-    private fun startANewSession(project: Project): Map<String, Any?> = onTheEdt {
-        ClaudeSessionsView.toolWindowOf(project)!!.contentManager
-        val view = ClaudeSessionsView.getInstance(project)
-        val tab = view.startNewSession(name = null)
-        mapOf("tab" to view.tabs.indexOf(tab))
+    /** Off the EDT, which opens the tab once its session host has started. */
+    private fun startANewSession(project: Project): Map<String, Any?> {
+        val view = onTheEdt { ClaudeSessionsView.openIn(project) }
+        val tab = runBlocking { onTheEdt { view.startNewSession(name = null) }.await() } ?: error("No session host started: the IDE's notification says why.")
+        return onTheEdt { mapOf("tab" to view.tabs.indexOf(tab)) }
     }
 
     private fun openTheNewSessionPopup(project: Project): Map<String, Any?> = onTheEdt {
@@ -266,11 +264,16 @@ class ObservationChannel : Disposable {
         describeTheNewSessionPopupIn(project)
     }
 
-    /** Has the popup's field take Enter, and answers with the place of the tab it started the session in: the tab the view shows. */
-    private fun pressEnterInTheNewSessionPopup(project: Project): Map<String, Any?> = onTheEdt {
-        NewClaudeSessionPopup.shownIn(project)!!.pressEnter()
+    /**
+     * Has the popup's field take Enter, and answers with the place of the tab it started the session in, the last, once
+     * it has opened: off the EDT, which opens the tab once its session host has started.
+     */
+    private fun pressEnterInTheNewSessionPopup(project: Project): Map<String, Any?> {
         val view = ClaudeSessionsView.getInstance(project)
-        mapOf("tab" to view.tabs.indexOf(view.selectedTab!!))
+        val before = onTheEdt { view.tabs.size.also { NewClaudeSessionPopup.shownIn(project)!!.pressEnter() } }
+        val deadline = System.currentTimeMillis() + 30_000
+        while (onTheEdt { view.tabs.size } == before && System.currentTimeMillis() < deadline) Thread.sleep(100)
+        return mapOf("tab" to before)
     }
 
     private fun describeTheNewSessionPopupIn(project: Project): Map<String, Any?> {
@@ -315,25 +318,16 @@ class ObservationChannel : Disposable {
         )
     }
 
-    private fun close(project: Project, tab: Int): Map<String, Any?> {
-        end(ClaudeSessionsView.getInstance(project).tabs[tab])
-        return mapOf("closed" to tab)
+    private fun close(project: Project, tab: Int): Map<String, Any?> = onTheEdt {
+        val view = ClaudeSessionsView.getInstance(project)
+        view.close(view.tabs[tab])
+        mapOf("closed" to tab)
     }
 
     private fun closeEveryTab(project: Project): Map<String, Any?> {
         val view = ClaudeSessionsView.getInstance(project)
-        val tabs = view.tabs
-        tabs.forEach(::end)
-        val deadline = System.currentTimeMillis() + 10_000
-        while (view.tabs.isNotEmpty() && System.currentTimeMillis() < deadline) Thread.sleep(100)
-        return mapOf("closed" to tabs.size, "left" to view.tabs.size)
-    }
-
-    /** Ends the process [tab] runs, and those below it, so that the tab closes as when Claude Code exits. */
-    private fun end(tab: ClaudeSessionTab) {
-        val process = tab.process ?: return
-        process.descendants().forEach { it.destroyForcibly() }
-        process.destroyForcibly()
+        val closed = onTheEdt { view.tabs.onEach(view::close).size }
+        return mapOf("closed" to closed, "left" to onTheEdt { view.tabs.size })
     }
 
     private fun openThePicker(project: Project): Map<String, Any?> {

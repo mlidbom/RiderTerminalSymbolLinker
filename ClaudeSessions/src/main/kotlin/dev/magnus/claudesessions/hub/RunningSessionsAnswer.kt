@@ -25,6 +25,7 @@ class RunningSessionsAnswer private constructor(val runningSessions: List<Runnin
                 status = session.get("status").asString,
                 name = session.get("name").takeUnless { it.isJsonNull }?.asString,
                 directory = session.get("directory").asString,
+                sessionHost = session.get("sessionHost")?.takeUnless { it.isJsonNull }?.asString,
             )
     }
 }

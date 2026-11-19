@@ -19,8 +19,9 @@ Its packages, below `dev.magnus.claudesessions`, which holds the tool window and
   run, its transcripts, and the command a tab's shell runs it with.
 - **`hub`:** the Claude tooling's hub, as the plugin follows it and types through it: the one place that knows the hub's
   local API.
-- **`saving`:** saving the sessions the tabs run, and resuming them as the IDE starts.
-- **`reload`:** keeping the tabs through a reload of the plugin.
+- **`saving`:** saving the tabs, each with its session and its session host, and bringing them back as the IDE starts.
+- **`sessionhosts`:** the session hosts, outside the IDE, that the tabs' shells run in, and the shell and environment
+  the IDE's terminal would give them.
 - **`newsession`:** the + and the popup that names a new session.
 - **`history`:** the session history picker.
 - **`api`:** the local API through which other tools, and other IDEs, show a session's tab.
@@ -33,11 +34,12 @@ Its packages, below `dev.magnus.claudesessions`, which holds the tool window and
 ## A tab runs a shell, and Claude Code in it
 
 Each tab of the view (`ClaudeSessionsView`) is a reworked-terminal tab, made with the terminal's public
-`TerminalToolWindowTabsManager.createTabBuilder()`, that runs the user's shell. Once the shell has started, the hub types
-`claude`, `claude --name <name>`, or `claude --resume <id>` into it (`ClaudeCodeCommand`), at the tab's request: the hub
-owns all typing into Claude Code and the shell under it (below, "Who provides what"). When Claude Code exits, the shell is
-left at its prompt, and the tab keeps the session that ran in it last; the tab closes when the shell exits. The terminal
-plugin neither saves nor restores these tabs: `restoreOnProjectReopen(false)`.
+`TerminalToolWindowTabsManager.createTabBuilder()`, that shows the user's shell, which runs in a session host outside
+the IDE (below, "Sessions that outlive the IDE"). The hub types `claude`, `claude --name <name>`, or
+`claude --resume <id>` into the shell (`ClaudeCodeCommand`), at the tab's request: the hub owns all typing into Claude
+Code and the shell under it (below, "Who provides what"). When Claude Code exits, the shell is left at its prompt, and
+the tab keeps the session that ran in it last; the tab closes when the shell exits. The terminal plugin neither saves
+nor restores these tabs: `restoreOnProjectReopen(false)`.
 
 - **Why a shell:** Magnus's session tooling reloads a session (to run a new Claude Code, or take in changed settings)
   by typing `/exit` into Claude Code, and then `claude --resume <id>` into the shell above it, which it takes to be
@@ -51,6 +53,9 @@ plugin neither saves nor restores these tabs: `restoreOnProjectReopen(false)`.
   any other as it comes across it, by the terminal's `TerminalToolWindowTab.KEY` on the content. A tab the view hadn't
   opened ran Magnus's resident-server session on 2026-11-17, and was neither saved nor kept through a reload. How it
   came into the tool window wasn't found: the terminal's New Tab action is disabled outside the Terminal tool window.
+  Such a tab runs its shell itself, with no session host, and its Claude Code is the one below its shell
+  (`RunningClaudeCodes.inOrBelow`). It goes with the tool window at a reload, and its session, saved, is resumed in a
+  new tab's host.
 
 ## Starting a new session, named or not
 
@@ -76,8 +81,7 @@ Claude Code records each running session in `sessions/<process id>.json` in its 
 starts a new session or `/resume` switches to another, and deletes it when it exits. **The plugin doesn't read the
 records:** the Claude tooling's hub does, ClaudeTooling's resident server, which owns everything about Claude Code, as
 agreed (below, "Who provides what"), and the plugin follows its stream of them. A tab's Claude Code is the one the hub
-tells of below the tab's process, its shell, which `TerminalView.startupOptionsDeferred` gives
-(`RunningClaudeCodes.inOrBelow`).
+tells of in the tab's session host, by the `sessionHost` of its running session (`RunningClaudeCodes.inTheHost`).
 
 - **`ClaudeToolingHub`,** an application service the first project's `ClaudeSessionsStartup` starts, follows
   `GET /running-sessions/stream` of the hub's local API, whose contract is `~/.claude/dev_docs/the-hubs-local-api.md`,
@@ -109,19 +113,26 @@ tells of below the tab's process, its shell, which `TerminalView.startupOptionsD
 - **The record is undocumented internal state of Claude Code,** which the hub follows as each version writes it. Its
   status, `idle`, `busy`, `waiting` or `shell`, is for the chat view, through its adapter, still to come.
 
-## Saving and resuming
+## Saving and bringing back
 
-- **`ClaudeSessionKeeper`** saves the sessions the tabs run, in tab order, and the selected tab's session
-  (`ClaudeSessionsInTheView`), every two seconds, and once more as the project closes or the plugin unloads
-  (`SavedClaudeSessions`, a file per project in the IDE's system folder). The view selects that tab again as it opens. It starts
-  only once the view has resumed the saved sessions, so that it never saves a view they aren't in yet.
-- **A tab whose Claude Code has exited keeps its session,** and the keeper saves it, so it's resumed at the next start.
-  That way a stop of every session before an IDE restart, which the session tooling plans, ends with them resumed.
-- **`ClaudeSessionsStartup`** has the IDE give the tool window its content as the project opens, when sessions were
-  saved, and the view resumes each with `claude --resume <id>`, in its own folder and tab.
+- **`ClaudeSessionKeeper`** saves the tabs, in their order, each with the session it runs and its session host
+  (`SavedTab`), and the selected tab's session (`ClaudeSessionsInTheView`), every two seconds, and once more as the
+  project closes or the plugin unloads (`SavedClaudeSessions`, a file per project in the IDE's system folder). The view
+  selects that tab again as it opens. It starts only once the view has brought the saved tabs back, so that it never
+  saves a view they aren't in yet. A tab whose Claude Code hasn't recorded its session yet is saved with its host alone.
+- **`ClaudeSessionsStartup`** has the IDE give the tool window its content as the project opens, when tabs were saved,
+  and the view brings each back (`ClaudeSessionsView.bringBackTheSavedTabs`):
+  - **its session host runs:** the tab attaches to it again, its session as it is, mid-turn included, and a tab whose
+    Claude Code had exited comes back at its shell's prompt;
+  - **its host is gone,** as after a reboot: its session is resumed with `claude --resume <id>`, in its own folder, in
+    a new host. So a tab whose Claude Code had exited comes back running, as before session hosts.
+  - **the hosts the view started and didn't save,** found by their label, come back after the saved ones, unless an
+    attach client shows them: as when the IDE crashed before the keeper looked.
 - **A session that can't be resumed is left out:** one whose transcript, `projects/<folder as a name>/<id>.jsonl` in
   Claude Code's folder, is gone (`ClaudeCodeTranscripts`), as archiving or deleting a session moves or removes it.
-  `claude --resume` would fail on it.
+  `claude --resume` would fail on it. One whose host runs comes back all the same: it runs.
+- **When the hub can't tell which hosts run,** the saved tabs stay saved for the next start, the keeper doesn't start,
+  and a notification says why.
 
 ## The session history picker
 
@@ -151,28 +162,29 @@ over `ClaudeSessionHistory`: what Magnus asked for on 2026-11-18, with the chang
 
 ## Surviving a reload of the plugin
 
-Unloading the plugin, as for an update, removes its tool window, and with it the terminals of its tabs, which would end
-every session mid-turn. So `ParkTheTabsWhileThePluginReloads` moves every tab to the terminal's own Terminal tool window
-first (`TabsParkedInTheTerminal`: the terminal's public `detachTab`, then the content manager's `addContent`), and the
-reloaded plugin takes them all back, as they were, in their order. Uninstalled, the sessions run on in the Terminal tool
-window.
+Unloading the plugin, as for an update, removes its tool window, and with it its tabs' terminals, and so their attach
+clients: the sessions run on in their hosts, as when the IDE exits. `DetachTheTabsAsTheViewGoes` has the keeper save
+the tabs one last time first, and the view take their going for a detach, not the user's close. The reloaded plugin
+brings them back from what was saved, as at a start. What's brought back is logged to the IDE's `idea.log`: each tab's
+name, session host and session.
 
-- **A parked tab is marked by a client property of its component,** `dev.magnus.claudesessions.parkedTab`, holding the
-  session it ran last. A property named by a string reaches the reloaded plugin, whose classes are new: a `Key` doesn't,
-  and `Key.findKeyByName`, the one way to find one by name across class loaders, is deprecated.
-- **The mark, not Claude Code's record, tells a tab apart.** Until 2026-11-17 the reloaded plugin took back the tabs
-  whose Claude Code's record named a saved session, and parked only tabs in which Claude Code ran. One session of
-  Magnus's, resident-server, wasn't taken back at any of four reloads, though four others in the same Rider were; its
-  tab was resumed anew, or lost. Why its record didn't match was never found: the reload log below is there for the next
-  time. A tab whose Claude Code had exited went with the tool window too.
-- **Each park and take-back is logged** to the IDE's `idea.log` by `TabsParkedInTheTerminal`: each tab's name, process
-  and session.
-- **A known leak:** with tabs parked, the unloaded build stays in memory, and the IDE says the plugin "didn't unload
-  fully" and advises a restart. With no tab open, the unload is clean. See the `bug:` comment in
-  `TabsParkedInTheTerminal.park`. What it costs, measured in Magnus's Rider with 8 old builds in memory (2026-11-18):
-  about 0.25 MB of metaspace for each old build's classes, and a few bytes of its objects; whatever holds them may hold
-  more, which only a heap dump would show. None of an old build's code runs on: its views, keepers, coroutines and
-  local API server were all gone.
+- **The chats are taken away first,** while the tool window is still there: disposed with the view, after the tool
+  window, a chat gave its terminal back to a content whose tool window had no UI any more, and the IDE reported a
+  `NullPointerException` in `ContentManagerImpl.getComponent` at every reload.
+- **A known leak:** the unloaded build stays in memory, and the IDE says the plugin "didn't unload fully" and advises a
+  restart. Until 2026-11-19 it was seen only with tabs parked (below), and with no tab open the unload was clean; with
+  session hosts, nothing parked, the sandbox still logged "Plugins that were expected to unload but are still
+  referenced" after a reload with tabs open. See the `bug:` comment in `DetachTheTabsAsTheViewGoes.beforePluginUnload`.
+  What it costs, measured in Magnus's Rider with 8 old builds in memory (2026-11-18): about 0.25 MB of metaspace for
+  each old build's classes, and a few bytes of its objects. None of an old build's code runs on.
+
+Until 2026-11-19, when a tab's terminal ran its shell itself, the unload parked every tab in the terminal's own
+Terminal tool window (`TabsParkedInTheTerminal`), marked by a client property of its component, and the reloaded
+plugin took them back. That build of Claude Sessions and this one differ in what
+plugin.xml registers, so the first deploy of this one takes a restart: the old build's parked tabs die with the IDE,
+and their sessions are resumed in hosts. Not `everyday deploy --into-running-ides`: the running IDE would reload at
+once, the old build parking its tabs, and the new one resuming their sessions in hosts while the parked tabs still run
+them.
 
 ## Whether a session can be ended without losing anything (researched, not built)
 
@@ -242,14 +254,14 @@ other IDE no provider gives a tab one, and it shows its terminal alone, as befor
 ### What the first version does, as built
 
 - **Two cards in each tab, in a `CardLayout`:** the chat and the terminal (`ChatAndTerminalCards`), the tab's content
-  in place of the terminal's component. A tab gets them as the view opens it or takes it back after a reload, and gives
-  them up, its content the terminal again, before it's parked for a reload and as it closes.
+  in place of the terminal's component. A tab gets them as the view opens it, and gives them up, its content the
+  terminal again, as it closes.
   - **What the tab shows by itself:** the chat while Claude Code is busy or idle, and the terminal while it doesn't
     run, and while it's `waiting`: Claude Code's record says so whenever a dialog is open, a permission prompt, a
     question, or a picker a slash command opened (`function B4o` in Claude Code 2.1.328's code), which only the TUI
     draws. When that changes, the tab switches, and back to the chat once Claude Code is busy or idle again, only if it
     was the tab that switched: a card the user chose stays. The terminal's card is shown until Claude Code runs, so a
-    tab whose shell starts only once it's shown starts it, at its size.
+    tab's attach client, which starts only once its terminal is shown, starts, at its size.
   - **The switch:** `SwitchBetweenTheChatAndTheTerminalAction`, a button in the tool window's title bar, and
     **Ctrl+Alt+Shift+Z**, free in the default keymap, both Visual Studio keymaps and Magnus's own on 2026-11-19 (a
     specification checks the bundled ones). Its shortcut works in the terminal too, through the terminal's
@@ -328,8 +340,8 @@ component, the chat card shown.
 - **With `deferSessionStartUntilUiShown(false)`, the shell starts at once, and Claude Code at 80 by 20,** though the
   terminal knew its grid of 113 by 11: the trap in "The terminal API, and its traps". Showing the card doesn't fix it; a
   change of size does. A gap of 20 pixels at the top and bottom of the cards, taken away 300 ms later, sent two resizes,
-  113 by 14 and then 113 by 16; taken away at once, it sent none. The same nudge may fix the `bug:` at
-  `ClaudeSessionsView.resume`: not tried.
+  113 by 14 and then 113 by 16; taken away at once, it sent none. Since session hosts, every tab's attach client
+  starts only once its terminal is shown, and the `bug:` the nudge might have fixed went.
 - **Not seen:** the real Claude Code's fullscreen drawing through a hide and a show; only the fake's sizes were.
 
 **Sending into the real Claude Code:**
@@ -363,34 +375,47 @@ component, the chat card shown.
 - **The real Claude Code ran with `--setting-sources project,local`,** and `--settings` with only `"tui": "fullscreen"`,
   so that none of Magnus's hooks ran, such as the notification at a turn's end.
 
-## Sessions that outlive the IDE (being built)
+## Sessions that outlive the IDE
 
-Magnus's go, 2026-11-19, on the proposal in `~/.claude/dev_docs/sessions-that-outlive-the-ide.md`. The hub starts a
-session host for each tab: a process outside the IDE's job that owns a pseudo console, with the shell in it. The tab's
-process becomes an attach client, `ClaudeTooling.SessionHost.exe attach <id>`, that relays between the tab's console
-and the host. When the IDE dies, only the attach client dies. Closing a tab ends its session (Magnus: "End it"); the IDE
-exiting, crashing, or reloading the plugin only detaches. survive-IDE-restart builds the hub's side.
+Magnus's go, 2026-11-19, on the proposal in `~/.claude/dev_docs/sessions-that-outlive-the-ide.md`: "Do it. I'm dying for
+the new workflow where I don't have to sit around trying to wait for all agents to stop working so I can restart
+Rider". The hub starts a session host for each tab (`SessionHost`): a process outside the IDE's job that owns a pseudo
+console, with the shell in it. The tab's process is its attach client, `ClaudeTooling.SessionHost.exe attach <id>`,
+which relays between the tab's console and the host. When the IDE dies, only the attach client dies. Closing a tab ends
+its session (Magnus: "End it"); the IDE exiting, crashing, the project closing, or the plugin reloading only detaches.
+survive-IDE-restart built the hub's side; its contract is `the-hubs-local-api.md`, "Session hosts".
 
-**The hub's API, as agreed with survive-IDE-restart on 2026-11-19** (its contract will be in `the-hubs-local-api.md`):
+**As built, the plugin's side, 2026-11-19:**
 
-- **`POST /session-hosts`** with the shell's command line, its directory, an `environment`, an optional size, and a
-  `label` the hub keeps for the plugin. The answer names the host, its shell's process, and the `attachCommand` for the
-  tab's `shellCommand`. `GET /session-hosts` lists the hosts of the hub's Claude Code folder; `POST
-  /session-hosts/{id}/end` closes the host's pseudo console, as closing a terminal tab does today.
-- **Each running session gains `sessionHost`,** which pairs a tab with its Claude Code in place of
-  `RunningClaudeCodes.inOrBelow`.
-- **`shell`:** the command line of the terminal's shell setting, without Rider's shell-integration arguments.
-- **`environment`:** the whole environment Rider's terminal gives a shell, as its `LocalOptionsConfigurer` builds it in
-  2026.3: the IDE's own (unless the user unticked passing it), then `TERM=xterm-256color`, `COLORTERM=truecolor`,
-  `TERMINAL_EMULATOR=JetBrains-JediTerm`, a new `TERM_SESSION_ID`, then the user's own variables from the terminal's
-  settings. The whole of it, because the sandbox IDE's environment holds what its shells need: `CLAUDE_CONFIG_DIR`,
-  `CLAUDE_TOOLING_LOCAL_API_FOLDER`, `PATH` with the fake Claude Code first. The hub sets `CLAUDE_CONFIG_DIR` to its own
-  folder, or removes it for `~/.claude`'s hub.
-- **No size:** a tab's attach client starts only once the tab is first shown, at the tab's real size, and its resize
-  repaints Claude Code's screen. The session runs in its host meanwhile, so the 80-by-20 trap goes.
-- **The plugin keeps each tab's host with its session,** attaches by it at the IDE's start, and finds by `label` the
-  hosts it opened and didn't save. After an attach client exits, `GET /session-hosts` tells whether its host ended.
-- **The sandbox** copies the session host's exe with the hub's, and ends its hosts as it stops: they would outlive it.
+- **A new tab starts a host first** (`SessionHosts.start`, through `ClaudeToolingHub.sessionHosts`), then opens its
+  terminal on the host's `attachCommand`, and has the hub type `claude` into the host's shell. The tab opens once the
+  host answers, a fraction of a second, so `startNewSession` and `resumeInTheProjectsFolder` answer a `Deferred` of
+  the tab, or of null, with a notification, when no host started.
+  - **`shell`:** the terminal's shell setting, `TerminalProjectOptionsProvider.shellPath`, which has no
+    shell-integration arguments (`TheTerminalsShell`).
+  - **`environment`:** the one the terminal's internal `LocalOptionsConfigurer` builds in 2026.3: the IDE's own (unless
+    the user unticked passing it), then `TERM=xterm-256color`, `COLORTERM=truecolor`,
+    `TERMINAL_EMULATOR=JetBrains-JediTerm`, a new `TERM_SESSION_ID`, then the user's own variables from the terminal's
+    settings. The whole of it, because the sandbox IDE's environment holds what its shells need:
+    `CLAUDE_TOOLING_LOCAL_API_FOLDER`, `PATH` with the fake Claude Code first. Left out: the IDE launcher's variables
+    put back as they were (the platform's internal `EnvironmentRestorer`), and what other plugins' terminal customizers
+    add. The hub sets `CLAUDE_CONFIG_DIR` to its own folder, or removes it for `~/.claude`'s hub. The setting's getter,
+    `getEnvData()`, is a function of the terminal's Kotlin class, not a property, and its type is in the platform module
+    `intellij.platform.execution.impl`, which the build names.
+  - **`label`:** `{"ideConfigFolder": …, "project": …}` (`SessionHostLabel`), by which the view finds the hosts it
+    started and didn't save.
+  - **No size:** the terminal starts the attach client only once the tab is first shown
+    (`deferSessionStartUntilUiShown(true)`, every tab), at the tab's size, and its resize has Claude Code draw itself
+    again. The session runs in its host meanwhile, at the hub's 120 by 30, so the 80-by-20 trap went.
+- **A tab tells the user's close from its attach client's end:** its terminal doesn't close the tab as its process ends
+  (`closeOnProcessTermination(false)`); the tab watches its attach client's process, and closes itself when it ends,
+  marked `closedAsItsAttachClientEnded`: the shell exited, which ended the host, or another attach client took the
+  session over. Any other close, unless the view is going (`ClaudeSessionsView.detachTheTabs`), is the user's, and ends
+  the host (`POST /session-hosts/{id}/end`). Telling the two apart by whether the process still ran as the tab closed
+  would race with the terminal's own ending of it.
+- **The sandbox** copies the session host's exe with the hub's (`SandboxHub`), and `sandbox stop`, like the end of a
+  specification run that started the sandbox, ends its hosts (`SandboxRider.StopAndEndItsSessions`): they outlive it.
+  Each story starts with none. Restarting the sandbox Rider in a story keeps them, as Magnus's IDE restart does.
 
 **What the plugin's spike found, 2026-11-19** (a probe in the hub's throwaway hosts, with Claude Code's own console
 mode, input `0x208`):
@@ -443,14 +468,13 @@ tooling-owner on 2026-11-17 (protocol 1):
   migration notices and tab persistence hear of an attached tab, which these tabs want none of.
 - **Its tab classes live in the content module `intellij.terminal.frontend`,** which a `<depends>` on
   `org.jetbrains.plugins.terminal` reaches, as the SDK says.
-- **A tab whose shell starts before the tab is laid out can keep 80 columns by 20 rows,** and Claude Code drawn at
-  that size, until the tab's size changes. With `deferSessionStartUntilUiShown(false)` the terminal starts the shell at
-  80 by 20, its guess; it drops a resize that comes before the shell has started, and sends none once it has. So a tab
-  shown at once, opened by the + or by the history picker, starts its shell only once it's laid out, at its size. A tab
-  resumed as the IDE starts starts its shell at once, so that its session runs though its tab is never shown, and gets
-  its size as it's first shown. The one the view selects then, shown at once when the tool window is, can keep 80 by
-  20: seen in the sandbox on 2026-11-19, and not fixed (the `bug:` at `ClaudeSessionsView.resume`). The same in Rider
-  2026.3 (263.7307) and in intellij-community's code on 2026-11-19.
+- **A tab whose process starts before the tab is laid out can keep 80 columns by 20 rows,** and a program drawn at
+  that size, until the tab's size changes. With `deferSessionStartUntilUiShown(false)` the terminal starts the process at
+  80 by 20, its guess; it drops a resize that comes before the process has started, and sends none once it has. So every
+  tab starts its attach client only once it's shown, at its size: its session runs in its host meanwhile. Until
+  2026-11-19, a tab resumed as the IDE starts started its shell at once, so that its session ran though its tab was
+  never shown, and the one the view selected then could keep 80 by 20. The same in Rider 2026.3 (263.7307) and in
+  intellij-community's code on 2026-11-19.
 - **A banner above a tab takes rows from it without resizing its shell** in Rider 2026.3: the terminal resizes the
   shell only as its whole panel's size changes. The MCP Server plugin shows one, asking to enable the IDE's MCP server,
   when `claude` starts in a tab of an IDE whose MCP server isn't enabled: Claude Code then draws three rows taller than

@@ -26,8 +26,8 @@ import kotlin.time.Duration.Companion.milliseconds
  * The Claude tooling's hub, ClaudeTooling's resident server, as the IDE follows it: the one place in the plugin that
  * talks to it. The hub owns everything about Claude Code, as Magnus and the tooling owner agreed on 2026-11-19
  * (`~/.claude/dev_docs/the-claude-tooling-bundle.md`): which Claude Codes run, with their sessions, which the plugin
- * follows on the stream of its local API, `GET /running-sessions/stream`, and all [typing] into Claude Code and the shell
- * below it.
+ * follows on the stream of its local API, `GET /running-sessions/stream`, all [typing] into Claude Code and the shell
+ * below it, and the [sessionHosts] the sessions run in.
  *
  * Every Claude Code session's SessionStart hook starts the hub, and it stops only once no session has run for minutes.
  * So when no hub runs, no Claude Code does, and the plugin waits for one to announce itself, unless it must type into
@@ -47,8 +47,13 @@ class ClaudeToolingHub(scope: CoroutineScope) : Disposable {
     /** The Claude Codes that run, as the hub last told of them: none until it has. */
     val runningClaudeCodes: StateFlow<RunningClaudeCodes> = told.asStateFlow()
 
+    private val requests = RequestsToTheHub(client)
+
     /** Typing into Claude Code, and into the shell below it, through the hub. */
-    val typing = TypingIntoClaudeCode(client)
+    val typing = TypingIntoClaudeCode(requests)
+
+    /** The session hosts, outside the IDE, that the tabs' sessions run in, as the hub starts, lists and ends them. */
+    val sessionHosts = SessionHosts(requests)
 
     /** The builds of the hubs the user has been told about, each once: one of a protocol this build doesn't know, or of another Claude Code folder. */
     private val toldAbout = mutableSetOf<String>()

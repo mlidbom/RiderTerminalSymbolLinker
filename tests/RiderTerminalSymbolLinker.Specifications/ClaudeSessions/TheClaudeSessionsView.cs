@@ -11,8 +11,9 @@ namespace RiderTerminalSymbolLinker.Specifications.ClaudeSessions;
 ///   Sessions' development observation channel. Its tabs run the sandbox's fake Claude Code, <c>tools/FakeClaudeCode</c>.
 /// </summary>
 /// <remarks>
-///   It starts with no tabs, no sessions saved, and its terminals running <see cref="TheShellStoriesStartIn"/>: every
-///   story starts from there.
+///   It starts with no tabs, no session hosts, no sessions saved, and its terminals running
+///   <see cref="TheShellStoriesStartIn"/>: every story starts from there. A tab's session runs in a session host of the
+///   sandbox's hub, outside the sandbox Rider, and outlives it.
 /// </remarks>
 public sealed class TheClaudeSessionsView
 {
@@ -33,7 +34,8 @@ public sealed class TheClaudeSessionsView
       if(NewSessionPopup.Shown) CloseTheNewSessionPopup();
       RunTheShell(TheShellStoriesStartIn);
       Channel.CloseEveryTab();
-      WaitUntil(() => Tabs.Count == 0 && SavedSessions.Count == 0, "the view to have no tabs, and no sessions saved");
+      _sandbox.EndItsSessions(); // Those no tab shows, as when a story ended a tab's attach client.
+      WaitUntil(() => Tabs.Count == 0 && SavedTabs.Count == 0 && SessionHosts.Count == 0, "the view to have no tabs and no session hosts, and no tabs saved");
       ForgetTheHistory();
    }
 
@@ -170,36 +172,44 @@ public sealed class TheClaudeSessionsView
       return (int)client.PostAsync($"http://127.0.0.1:{port}/sessions/show?{query}", null).Result.StatusCode;
    }
 
-   /// <summary>Whether the IDE shows the Terminal tool window, where the view's tabs wait while the plugin reloads.</summary>
-   public bool TheTerminalToolWindowIsShown => Project()["terminalToolWindow"]!["visible"]?.GetValue<bool>() ?? false;
-
    /// <summary>Whether the IDE shows the view's tool window: starting a session shows it.</summary>
    public bool IsShown => Project()["view"]!["toolWindowVisible"]!.GetValue<bool>();
 
    /// <summary>The view's tabs, in their order.</summary>
    public IReadOnlyList<SessionTab> Tabs =>
    [
-      .. Project()["view"]!["tabs"]!.AsArray().Select(tab => new SessionTab(tab!["processId"]?.GetValue<long>(),
+      .. Project()["view"]!["tabs"]!.AsArray().Select(tab => new SessionTab(tab!["shellProcessId"]?.GetValue<long>(),
                                                                             tab["claudeCode"] is {} claudeCode
                                                                                ? new ClaudeCodeProcess(claudeCode["processId"]!.GetValue<long>(),
                                                                                                        claudeCode["parentProcessId"]?.GetValue<long>())
                                                                                : null,
                                                                             tab["session"]?["id"]!.GetValue<string>(),
                                                                             tab["session"]?["workingDirectory"]!.GetValue<string>(),
-                                                                            tab["session"]?["name"]?.GetValue<string>()))
+                                                                            tab["session"]?["name"]?.GetValue<string>(),
+                                                                            tab["sessionHost"]?.GetValue<string>()))
    ];
+
+   /// <summary>The process each tab's terminal runs, in their order: its session host's attach client, once the tab has been shown.</summary>
+   public IReadOnlyList<long?> AttachClients => [.. Project()["view"]!["tabs"]!.AsArray().Select(tab => tab!["processId"]?.GetValue<long>())];
 
    /// <summary>The names the view shows its tabs by, in their order.</summary>
    public IReadOnlyList<string> TabNames => [.. Project()["view"]!["tabs"]!.AsArray().Select(tab => tab!["name"]!.GetValue<string>())];
 
+   /// <summary>The tabs saved for the next start, in their order, each with its session, once it has one, and its session host.</summary>
+   public IReadOnlyList<SavedTab> SavedTabs =>
+      [.. Project()["saved"]!["tabs"]!.AsArray().Select(it => new SavedTab(it!["session"]?["id"]!.GetValue<string>(), it["sessionHost"]?.GetValue<string>()))];
+
    /// <summary>The ids of the sessions saved for the next start, in the order of the tabs that ran them.</summary>
-   public IReadOnlyList<string> SavedSessions => [.. Project()["saved"]!["sessions"]!.AsArray().Select(it => it!["id"]!.GetValue<string>())];
+   public IReadOnlyList<string> SavedSessions => [.. SavedTabs.Select(it => it.SessionId).OfType<string>()];
 
    /// <summary>
-   ///   The processes the Terminal tool window's tabs run, where the view's tabs are parked while the plugin reloads, or
-   ///   null for a tab whose process hasn't started.
+   ///   The ids of the session hosts that run, as the sandbox's hub lists them, outside the sandbox Rider: each the
+   ///   console of a tab's session, which outlives the sandbox Rider.
    /// </summary>
-   public IReadOnlyList<long?> TerminalToolWindowProcesses => [.. Project()["terminalToolWindow"]!["tabs"]!.AsArray().Select(it => it!["processId"]?.GetValue<long>())];
+   public IReadOnlyList<string> SessionHosts => [.. _sandbox.SessionHosts().Select(it => it!["id"]!.GetValue<string>())];
+
+   /// <summary>Whether the session host <paramref name="id"/> has an attach client connected, as its hub lists it.</summary>
+   public bool IsAttached(string id) => _sandbox.SessionHosts().Single(it => it!["id"]!.GetValue<string>() == id)!["attached"]!.GetValue<bool>();
 
    /// <summary>
    ///   Starts a new session, without a name, as the New Claude Session popup does with its field left empty, and returns
@@ -287,15 +297,35 @@ public sealed class TheClaudeSessionsView
    }
 
    /// <summary>
-   ///   Closes the sandbox Rider as a user would, and starts it again, and returns once the view has its tabs, each with
-   ///   its Claude Code running.
+   ///   Closes the sandbox Rider as a user would, and starts it again, and returns once the view has its tabs back, each
+   ///   with its session: the sessions run on in their session hosts meanwhile.
    /// </summary>
    public void RestartTheIde(int tabsToComeBack)
    {
       _sandbox.Stop();
-      _sandbox.Start();
+      _sandbox.Start(_sandbox.FixtureSolution);
+      WaitUntil(() => Tabs.Count == tabsToComeBack && Tabs.All(it => it.SessionId is not null), $"{tabsToComeBack} tabs to be back with their sessions");
+   }
+
+   /// <summary>
+   ///   Closes the sandbox Rider as a user would, ends the session hosts its sessions ran in, as a reboot does, and starts
+   ///   it again, and returns once the view has its tabs, each with its Claude Code running.
+   /// </summary>
+   public void RestartTheIdeAsAfterAReboot(int tabsToComeBack)
+   {
+      _sandbox.StopAndEndItsSessions();
+      _sandbox.Start(_sandbox.FixtureSolution);
       WaitUntil(() => Tabs.Count == tabsToComeBack && Tabs.All(it => it.ClaudeCode is not null), $"{tabsToComeBack} tabs to run their sessions again");
    }
+
+   /// <summary>Closes the tab, as its close button does: its session ends.</summary>
+   public void Close(int tab) => Channel.Close(tab);
+
+   /// <summary>
+   ///   Ends the process of the tab's terminal, its session host's attach client, as when another terminal attaches to
+   ///   the session and takes it over, or the attach client crashes: the tab closes, and its session runs on.
+   /// </summary>
+   public void EndTheAttachClientOf(int tab) => Process.GetProcessById((int)AttachClients[tab]!.Value).Kill();
 
    /// <summary>Has the sandbox reload Claude Sessions, as for an update, and returns once the reloaded plugin answers.</summary>
    public void ReloadThePlugin() => _sandbox.ReloadThePlugin(OurPlugin.ClaudeSessions);
@@ -304,10 +334,13 @@ public sealed class TheClaudeSessionsView
 }
 
 /// <summary>
-///   A tab of the view: the process its terminal runs, its shell; the Claude Code that runs below it, while one does; and
-///   the session that runs in it, or ran in it last, with the folder it runs in and its name.
+///   A tab of the view: its shell, which runs in its session host; the Claude Code that runs below it, while one does;
+///   the session that runs in it, or ran in it last, with the folder it runs in and its name; and its session host.
 /// </summary>
-public sealed record SessionTab(long? ShellProcessId, ClaudeCodeProcess? ClaudeCode, string? SessionId, string? WorkingDirectory, string? SessionName);
+public sealed record SessionTab(long? ShellProcessId, ClaudeCodeProcess? ClaudeCode, string? SessionId, string? WorkingDirectory, string? SessionName, string? SessionHost);
+
+/// <summary>A tab as the view saves it for the next start: its session, once it has one, and its session host.</summary>
+public sealed record SavedTab(string? SessionId, string? SessionHost);
 
 /// <summary>The New Claude Session popup, as the observation channel tells of it: whether it's shown, and the name typed into it.</summary>
 public sealed record NewSessionPopup(bool Shown, string? Name)

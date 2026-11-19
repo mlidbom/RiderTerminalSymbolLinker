@@ -16,10 +16,14 @@ All notable changes to Claude Sessions are documented here. The format follows
   sessions does. The tab closes when the shell exits. A terminal tab that comes into the tool window some other way is
   kept like the others. The tool window is shown again when the IDE starts, if it was
   shown as the IDE closed, with the tab that was selected selected again.
-- **Sessions survive a restart.** When the project opens again, every session that ran in the tool window when it
-  closed is resumed in its own tab, in its own folder, in the same order. That includes a session switched to with
-  `/resume` or started with `/clear` in a tab, and one whose Claude Code had exited in a tab left open. A session
-  archived or deleted since, whose transcript Claude Code no longer has, isn't.
+- **Sessions run on when the IDE exits, crashes or restarts.** Each tab's shell, and Claude Code in it, runs in a
+  session host of the Claude tooling's hub, outside the IDE, and the tab shows it. When the IDE goes, the sessions run
+  on, mid-turn included, and when the project opens again every tab comes back as it was, in the same order, showing
+  its session as it is now. Closing a tab ends its session.
+- **Sessions survive a reboot.** When a tab's session host is gone too, as after a reboot, its session is resumed in a
+  new tab, in its own folder, in the same order. That includes a session switched to with `/resume` or started with
+  `/clear` in a tab, and one whose Claude Code had exited in a tab left open. A session archived or deleted since,
+  whose transcript Claude Code no longer has, isn't.
 - **Resume any earlier session from the session history picker.** The history button beside the **+**, or
   Ctrl+Alt+Shift+Y, lists the sessions Claude Code has kept, most recently active first: each by its name, or the title
   Claude Code gave it, with its last prompt and when it was last active. Typing filters them, word by word. It lists
@@ -31,10 +35,10 @@ All notable changes to Claude Sessions are documented here. The format follows
 - **Other tools on the machine can show a session's tab.** Each IDE announces a local API in
   `%LOCALAPPDATA%\ClaudeSessions\ides\<its process id>.json`. A tool whose notification about a Claude Code session
   you click can ask it to show the session's tab: it selects the tab, and shows the tool window.
-- **Sessions run on through an update of the plugin.** While the plugin reloads, its tabs wait in
-  the Terminal tool window, and come back as they were when it has, with the same tab selected, and the tool window
-  shown as it was. That includes a tab whose Claude Code has exited. Should the plugin be uninstalled, they run on
-  there.
+- **Sessions run on through an update of the plugin.** While the plugin reloads, the sessions run on in their session
+  hosts, and the tabs come back as they were when it has, with the same tab selected, and the tool window shown as it
+  was. That includes a tab whose Claude Code has exited. A terminal tab that came into the tool window some other way
+  runs its shell itself, and its session is resumed in a new tab's session host.
 
 ### Changed
 - **Which session each tab runs comes from the Claude tooling's hub.** Claude Sessions follows the hub, the Claude
@@ -48,6 +52,6 @@ All notable changes to Claude Sessions are documented here. The format follows
   shell's prompt, and a notification says why.
 
 ### Fixed
-- **A new session's tab shows Claude Code at the tab's size.** A tab opened by the **+**, or by the session history
-  picker, often showed Claude Code drawn 80 columns wide and 20 rows tall until the tool window was resized. A session
-  resumed as the IDE starts, in the tab selected then, may still be drawn so.
+- **A tab shows Claude Code at the tab's size.** A tab opened by the **+**, or by the session history picker, often
+  showed Claude Code drawn 80 columns wide and 20 rows tall until the tool window was resized, and so did the tab
+  selected as the IDE started.

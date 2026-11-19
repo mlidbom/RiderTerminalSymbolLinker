@@ -15,13 +15,15 @@ public class When_a_new_session_starts_in_the_view(When_a_new_session_starts_in_
    {
       public readonly TheClaudeSessionsView View = new();
       public readonly SessionTab Tab;
-      public readonly IReadOnlyList<string> Saved;
+      public readonly IReadOnlyList<SavedTab> Saved;
+      public readonly IReadOnlyList<string> SessionHosts;
 
       public Story()
       {
          Tab = View.StartANewSession();
          Thread.Sleep(TimeSpan.FromSeconds(3)); // The keeper looks every two seconds.
-         Saved = View.SavedSessions;
+         Saved = View.SavedTabs;
+         SessionHosts = View.SessionHosts;
       }
    }
 
@@ -30,7 +32,77 @@ public class When_a_new_session_starts_in_the_view(When_a_new_session_starts_in_
    // The session tooling's reload types /exit into Claude Code, and then `claude --resume <id>` into its parent, which must be a shell.
    [XF] public void claude_code_runs_as_a_child_of_the_tabs_shell() => story.Tab.ClaudeCode!.ParentProcessId.Must().Be(story.Tab.ShellProcessId);
 
-   [XF] public void the_session_is_saved() => story.Saved.Must().Satisfy(it => it.SequenceEqual([story.Tab.SessionId]));
+   // Outside the IDE, so that the session outlives it.
+   [XF] public void the_shell_runs_in_a_session_host_of_its_own() => story.SessionHosts.Must().Satisfy(it => it.SequenceEqual([story.Tab.SessionHost!]));
+
+   [XF] public void the_session_is_saved_with_its_session_host() => story.Saved.Must().Satisfy(it => it.SequenceEqual([new SavedTab(story.Tab.SessionId, story.Tab.SessionHost)]));
+}
+
+public class When_the_user_closes_a_tab(When_the_user_closes_a_tab.Story story) : IClassFixture<When_the_user_closes_a_tab.Story>
+{
+   public sealed class Story
+   {
+      public readonly SessionTab Closed;
+      public readonly SessionTab Other;
+      public readonly IReadOnlyList<SessionTab> TabsAfter;
+      public readonly IReadOnlyList<string> SessionHostsAfter;
+      public readonly IReadOnlyList<int> RunningClaudeCodesAfter;
+      public readonly IReadOnlyList<string> SavedAfter;
+
+      public Story()
+      {
+         var view = new TheClaudeSessionsView();
+         Closed = view.StartANewSession();
+         Other = view.StartANewSession();
+         view.Close(0);
+         view.WaitUntil(() => view.Tabs.Count == 1 && view.SessionHosts.Count == 1, "the tab and its session host to be gone");
+         view.WaitUntil(() => !view.RunningClaudeCodes.Contains((int)Closed.ClaudeCode!.ProcessId), "the hub to tell the closed tab's Claude Code has exited");
+         Thread.Sleep(TimeSpan.FromSeconds(3)); // The keeper looks every two seconds.
+         TabsAfter = view.Tabs;
+         SessionHostsAfter = view.SessionHosts;
+         RunningClaudeCodesAfter = view.RunningClaudeCodes;
+         SavedAfter = view.SavedSessions;
+      }
+   }
+
+   [XF] public void its_session_ends_with_its_session_host() => story.SessionHostsAfter.Must().Satisfy(it => !it.Contains(story.Closed.SessionHost!));
+   [XF] public void its_claude_code_exits() => story.RunningClaudeCodesAfter.Must().Satisfy(it => !it.Contains((int)story.Closed.ClaudeCode!.ProcessId));
+   [XF] public void the_other_tabs_session_runs_on() => story.TabsAfter.Must().Satisfy(it => it.SequenceEqual([story.Other]));
+   [XF] public void it_is_no_longer_saved() => story.SavedAfter.Must().Satisfy(it => it.SequenceEqual([story.Other.SessionId!]));
+}
+
+/// <summary>
+///   The process of a tab's terminal, its session host's attach client, ends by itself, as when another terminal attaches
+///   to the session and takes it over, or the attach client crashes.
+/// </summary>
+public class When_a_tabs_attach_client_ends_by_itself(When_a_tabs_attach_client_ends_by_itself.Story story) : IClassFixture<When_a_tabs_attach_client_ends_by_itself.Story>
+{
+   public sealed class Story
+   {
+      public readonly SessionTab Before;
+      public readonly int TabsAfter;
+      public readonly IReadOnlyList<string> SessionHostsAfter;
+      public readonly bool AttachedAfter;
+      public readonly IReadOnlyList<int> RunningClaudeCodesAfter;
+
+      public Story()
+      {
+         var view = new TheClaudeSessionsView();
+         Before = view.StartANewSession();
+         view.WaitUntil(() => view.AttachClients[0] is not null, "the tab's attach client to run");
+         view.EndTheAttachClientOf(0);
+         view.WaitUntil(() => view.Tabs.Count == 0, "the tab to close");
+         TabsAfter = view.Tabs.Count;
+         SessionHostsAfter = view.SessionHosts;
+         AttachedAfter = view.IsAttached(Before.SessionHost!);
+         RunningClaudeCodesAfter = view.RunningClaudeCodes;
+      }
+   }
+
+   [XF] public void the_tab_closes() => story.TabsAfter.Must().Be(0);
+   [XF] public void its_session_runs_on_in_its_session_host() => story.SessionHostsAfter.Must().Contain(story.Before.SessionHost!);
+   [XF] public void which_no_attach_client_shows() => story.AttachedAfter.Must().BeFalse();
+   [XF] public void its_claude_code_included() => story.RunningClaudeCodesAfter.Must().Contain((int)story.Before.ClaudeCode!.ProcessId);
 }
 
 public class When_the_user_clears_the_session_in_a_tab(When_the_user_clears_the_session_in_a_tab.Story story) : IClassFixture<When_the_user_clears_the_session_in_a_tab.Story>
@@ -75,18 +147,24 @@ public class When_a_tab_the_view_did_not_open_is_in_its_tool_window(When_a_tab_t
          PlainTab = view.OpenAPlainTerminalTab();
          view.Type(PlainTab, "claude");
          view.WaitUntil(() => view.Tabs[PlainTab].SessionId is not null, "the view to find the session Claude Code runs in the plain tab");
+         view.Say(PlainTab, "a line of the plain tab's conversation"); // Claude Code keeps no transcript of a session without one, and can't resume it.
          view.WaitUntil(() => view.SavedSessions.Count == 2, "both sessions to be saved");
          SavedBefore = view.SavedSessions;
          Before = view.Tabs;
          view.ReloadThePlugin();
-         view.WaitUntil(() => view.Tabs.Count == 2, "both tabs to be back in the view");
+         view.WaitUntil(() => view.Tabs.Count == 2 && view.Tabs.All(it => it.ClaudeCode is not null), "both tabs to be back in the view, running their sessions");
          After = view.Tabs;
       }
    }
 
    [XF] public void the_view_takes_it_as_one_of_its_tabs() => story.PlainTab.Must().Be(1);
    [XF] public void its_session_is_saved() => story.SavedBefore.Must().Contain(story.Before[1].SessionId!);
-   [XF] public void it_comes_back_after_a_reload_of_the_plugin_as_it_was() => story.After.Must().Satisfy(it => it.SequenceEqual(story.Before));
+
+   // Its shell ran in the tab's terminal, which went with the plugin's tool window: not in a session host, which outlives it.
+   [XF] public void after_a_reload_of_the_plugin_its_session_comes_back_resumed_in_a_session_host() =>
+      story.After[1].Must().Satisfy(it => it.SessionId == story.Before[1].SessionId && it.SessionHost is not null && it.ClaudeCode!.ProcessId != story.Before[1].ClaudeCode!.ProcessId);
+
+   [XF] public void and_the_tab_the_view_opened_comes_back_as_it_was() => story.After[0].Must().Be(story.Before[0]);
 }
 
 public class When_claude_code_exits_in_a_tab(When_claude_code_exits_in_a_tab.Story story) : IClassFixture<When_claude_code_exits_in_a_tab.Story>
@@ -189,6 +267,56 @@ public class When_the_IDE_restarts(When_the_IDE_restarts.Story story) : IClassFi
       public Story()
       {
          var view = new TheClaudeSessionsView();
+         for(var tab = 0; tab < 3; tab++)
+         {
+            view.StartANewSession();
+            view.Say(tab, $"a line of session {tab}'s conversation");
+         }
+
+         view.ExitClaudeCode(0);
+         view.Select(1); // Neither the first tab nor the last, which the view might select whatever was selected.
+         view.WaitUntil(() => view.SavedSessions.Count == 3, "the three sessions to be saved");
+         Before = view.Tabs;
+         ShownBefore = view.IsShown;
+         view.DeleteTheTranscriptOf(Before[2].SessionId!); // As archiving the session does: it runs on all the same.
+         view.RestartTheIde(tabsToComeBack: 3);
+         After = view.Tabs;
+         ShownAfter = view.IsShown;
+         SelectedAfter = view.SelectedTab;
+         view.WaitUntil(() => view.Screen(1).Any(it => it.StartsWith("> ")), "the second tab to show its conversation");
+         SecondTabsScreen = view.Screen(1);
+      }
+   }
+
+   [XF] public void every_tab_comes_back_as_it_was_its_session_having_run_on_in_its_session_host() =>
+      story.After.Must().Satisfy(it => it.SequenceEqual(story.Before));
+
+   [XF] public void a_tab_whose_claude_code_had_exited_comes_back_on_its_shell() =>
+      story.After[0].Must().Satisfy(it => it.ShellProcessId == story.Before[0].ShellProcessId && it.ClaudeCode is null);
+
+   // The session host repaints its console's screen for each new attach client.
+   [XF] public void a_tab_shows_its_session_as_it_is() => story.SecondTabsScreen.Must().Contain("> a line of session 1's conversation");
+
+   [XF] public void the_view_is_shown_again_as_it_was_when_the_IDE_closed() => (story.ShownBefore, story.ShownAfter).Must().Be((true, true));
+   [XF] public void the_tab_that_was_selected_is_selected_again() => story.SelectedAfter.Must().Be(1);
+}
+
+/// <summary>The IDE restarts after its session hosts have ended, as after a reboot.</summary>
+public class When_the_IDE_restarts_after_its_session_hosts_ended(When_the_IDE_restarts_after_its_session_hosts_ended.Story story)
+   : IClassFixture<When_the_IDE_restarts_after_its_session_hosts_ended.Story>
+{
+   public sealed class Story
+   {
+      public readonly IReadOnlyList<SessionTab> Before;
+      public readonly IReadOnlyList<SessionTab> After;
+      public readonly IReadOnlyList<string> SecondTabsScreen;
+      public readonly bool ShownBefore;
+      public readonly bool ShownAfter;
+      public readonly int? SelectedAfter;
+
+      public Story()
+      {
+         var view = new TheClaudeSessionsView();
          for(var tab = 0; tab < 4; tab++)
          {
             view.StartANewSession();
@@ -201,7 +329,7 @@ public class When_the_IDE_restarts(When_the_IDE_restarts.Story story) : IClassFi
          Before = view.Tabs;
          ShownBefore = view.IsShown;
          view.DeleteTheTranscriptOf(Before[3].SessionId!);
-         view.RestartTheIde(tabsToComeBack: 3);
+         view.RestartTheIdeAsAfterAReboot(tabsToComeBack: 3);
          After = view.Tabs;
          ShownAfter = view.IsShown;
          SelectedAfter = view.SelectedTab;
@@ -218,8 +346,8 @@ public class When_the_IDE_restarts(When_the_IDE_restarts.Story story) : IClassFi
    [XF] public void a_session_archived_or_deleted_since_does_not_come_back() =>
       story.After.Select(it => it.SessionId).Must().Satisfy(it => !it.Contains(story.Before[3].SessionId));
 
-   [XF] public void the_sessions_are_resumed_in_new_processes() =>
-      story.After.Select(it => it.ShellProcessId).Intersect(story.Before.Select(it => it.ShellProcessId)).Must().Satisfy(it => !it.Any());
+   [XF] public void the_sessions_are_resumed_in_new_session_hosts() =>
+      story.After.Select(it => it.SessionHost).Intersect(story.Before.Select(it => it.SessionHost)).Must().Satisfy(it => !it.Any());
 
    [XF] public void a_resumed_session_has_its_conversation() =>
       story.SecondTabsScreen.Must().Contain("> a line of session 1's conversation");
@@ -234,11 +362,9 @@ public class When_the_plugin_reloads(When_the_plugin_reloads.Story story) : ICla
    {
       public readonly IReadOnlyList<SessionTab> Before;
       public readonly IReadOnlyList<SessionTab> After;
-      public readonly IReadOnlyList<long?> TerminalToolWindowProcessesAfter;
       public readonly int? SelectedAfter;
       public readonly bool ShownBefore;
       public readonly bool ShownAfter;
-      public readonly bool TheTerminalToolWindowShownAfter;
 
       public Story()
       {
@@ -251,20 +377,18 @@ public class When_the_plugin_reloads(When_the_plugin_reloads.Story story) : ICla
 
          view.DeleteTheSessionRecordOfTheClaudeCodeIn(1); // As if the reload couldn't read it.
          view.ExitClaudeCode(2);
-         view.Select(0); // Not the last tab taken back, which the terminal's attachTab left selected whatever was.
+         view.Select(0); // Not the last tab to come back.
          Before = view.Tabs;
          ShownBefore = view.IsShown;
          view.ReloadThePlugin();
          view.WaitUntil(() => view.Tabs.Count == 3, "the three tabs to be back in the view");
          After = view.Tabs;
-         TerminalToolWindowProcessesAfter = view.TerminalToolWindowProcesses;
          SelectedAfter = view.SelectedTab;
          ShownAfter = view.IsShown;
-         TheTerminalToolWindowShownAfter = view.TheTerminalToolWindowIsShown;
       }
    }
 
-   [XF] public void every_tab_comes_back_as_it_was_with_its_processes_and_session() => story.After.Must().Satisfy(it => it.SequenceEqual(story.Before));
+   [XF] public void every_tab_comes_back_as_it_was_its_session_having_run_on_in_its_session_host() => story.After.Must().Satisfy(it => it.SequenceEqual(story.Before));
 
    [XF] public void that_includes_a_tab_whose_claude_codes_record_of_its_session_it_could_not_read() =>
       story.After[1].Must().Satisfy(it => it.ShellProcessId == story.Before[1].ShellProcessId && it.SessionId == story.Before[1].SessionId);
@@ -273,11 +397,5 @@ public class When_the_plugin_reloads(When_the_plugin_reloads.Story story) : ICla
       story.After[2].Must().Satisfy(it => it.ShellProcessId == story.Before[2].ShellProcessId && it.ClaudeCode is null);
 
    [XF] public void the_tab_that_was_selected_is_selected_again() => story.SelectedAfter.Must().Be(0);
-
-   // The tabs wait in the Terminal tool window, which shares the bottom of the IDE with the view's: shown, it hides the view.
-   [XF] public void the_view_is_shown_as_before_and_not_the_terminal_tool_window() =>
-      (story.ShownBefore, story.ShownAfter, story.TheTerminalToolWindowShownAfter).Must().Be((true, true, false));
-
-   [XF] public void none_of_them_is_left_in_the_terminal_tool_window() =>
-      story.TerminalToolWindowProcessesAfter.Intersect(story.Before.Concat(story.After).Select(it => it.ShellProcessId)).Must().Satisfy(it => !it.Any());
+   [XF] public void the_view_is_shown_as_before() => (story.ShownBefore, story.ShownAfter).Must().Be((true, true));
 }

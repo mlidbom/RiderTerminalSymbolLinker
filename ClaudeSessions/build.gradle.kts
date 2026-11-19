@@ -34,6 +34,9 @@ dependencies {
         bundledPlugin("org.jetbrains.plugins.terminal")
         // The platform's JNA, to call Windows' AllowSetForegroundWindow.
         bundledPlugin("com.intellij.modules.jna")
+        // The type of the terminal's environment setting, EnvironmentVariablesData, which a session host's shell gets:
+        // on the IDE's classpath, and not on the one the build compiles against without it.
+        bundledModule("intellij.platform.execution.impl")
     }
 
     // Plain JUnit Jupiter, as for the symbol linker's unit tests: the contract test of the hub's local API touches no

@@ -1,7 +1,13 @@
 package dev.magnus.claudesessions.claudecode
 
-/** A Claude Code that runs: its process, the [session] it runs now, and what it's doing. See [RunningClaudeCodes]. */
-data class RunningClaudeCode(val process: ProcessHandle, val session: ClaudeSession, val status: Status) {
+import dev.magnus.claudesessions.sessionhosts.SessionHost
+import dev.magnus.claudesessions.sessionhosts.SessionHostId
+
+/**
+ * A Claude Code that runs: its process, the [session] it runs now, what it's doing, and the [SessionHost] whose console
+ * it runs in, if it runs in one, as Claude Code started in a tab of the view does. See [RunningClaudeCodes].
+ */
+data class RunningClaudeCode(val process: ProcessHandle, val session: ClaudeSession, val status: Status, val sessionHost: SessionHostId?) {
     /** What a Claude Code that runs is doing, as the record it keeps of its session says, in its `status`. */
     enum class Status {
         /** It waits for the next prompt. */

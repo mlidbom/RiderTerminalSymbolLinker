@@ -49,7 +49,7 @@ class TheHubBehindTheChat(private val tab: ClaudeSessionTab) : ClaudeCodeBehindT
     }
 
     private fun statusInTheTab(running: RunningClaudeCodes): ClaudeCodeStatus =
-        when (tab.process?.let(running::inOrBelow)?.status) {
+        when (tab.claudeCodeAmong(running)?.status) {
             null -> ClaudeCodeStatus.NOT_RUNNING
             RunningClaudeCode.Status.IDLE, RunningClaudeCode.Status.IDLE_WITH_A_BACKGROUND_TASK -> ClaudeCodeStatus.IDLE
             RunningClaudeCode.Status.BUSY, RunningClaudeCode.Status.OTHER -> ClaudeCodeStatus.BUSY

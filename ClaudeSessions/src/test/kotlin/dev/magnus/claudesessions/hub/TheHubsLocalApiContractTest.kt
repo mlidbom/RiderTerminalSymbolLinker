@@ -9,6 +9,8 @@ import dev.magnus.claudesessions.chat.claudecode.TypingOutcome
 import dev.magnus.claudesessions.claudecode.ClaudeCodeCommand
 import dev.magnus.claudesessions.claudecode.ClaudeSession
 import dev.magnus.claudesessions.claudecode.ClaudeSessionId
+import dev.magnus.claudesessions.sessionhosts.SessionHostId
+import dev.magnus.claudesessions.sessionhosts.SessionHostLabel
 import java.net.URI
 import java.nio.file.Path
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -21,7 +23,7 @@ import org.junit.jupiter.api.assertThrows
  * Whether the plugin reads the hub's local API as the hub answers it, and asks as the hub reads it: on copies of the
  * samples of its answers that the hub's own specifications compare its answers with, in
  * `~/.claude/src/ClaudeTooling.Specifications/ResidentServer/LocalApi/Samples`, copied on 2026-11-19 from the tooling's
- * commits cc7853b and, for typing, 1d16ff3, and on the examples of its contract, `~/.claude/dev_docs/the-hubs-local-api.md`.
+ * commits cc7853b, for typing 1d16ff3, and for session hosts eff80d7, and on the examples of its contract, `~/.claude/dev_docs/the-hubs-local-api.md`.
  * When the samples change, as the contract changes, copy them again.
  */
 class TheHubsLocalApiContractTest {
@@ -41,15 +43,15 @@ class TheHubsLocalApiContractTest {
     }
 
     @Test
-    fun `the running sessions are read with each one's Claude Code's process, its session, its status, its name and its directory`() {
+    fun `the running sessions are read with each one's Claude Code's process, its session, its status, its name, its directory and its session host`() {
         val answer = HttpSample(HttpSample.named("running-sessions.http"))
 
         assertEquals(200, answer.status)
         assertEquals(HubProtocol.VERSION.toString(), answer.header(HubProtocol.HEADER))
         assertEquals(
             listOf(
-                RunningSessionInTheAnswer(24936, "87c58397-ae2b-4346-ab49-ebc624ed1193", "waiting", "chat-view", "C:\\Dev\\ClaudeSymbolLinker"),
-                RunningSessionInTheAnswer(61812, "34aba8f2-a171-443f-955b-d2733a92adf2", "idle", null, "C:\\Users\\magnu\\.claude"),
+                RunningSessionInTheAnswer(24936, "87c58397-ae2b-4346-ab49-ebc624ed1193", "waiting", "chat-view", "C:\\Dev\\ClaudeSymbolLinker", "3f9a0c71d2e84b56"),
+                RunningSessionInTheAnswer(61812, "34aba8f2-a171-443f-955b-d2733a92adf2", "idle", null, "C:\\Users\\magnu\\.claude", null),
             ),
             RunningSessionsAnswer.parse(answer.body).runningSessions,
         )
@@ -116,6 +118,35 @@ class TheHubsLocalApiContractTest {
             assertEquals(sample in theTerminalShowsWhy, outcome.theTerminalShowsWhy, sample)
         }
         assertEquals((typingAnswerIn("input-box-holds-text.http") as TypingAnswer.NotTyped).why, TheHubBehindTheChat.outcomeOf(typingAnswerIn("input-box-holds-text.http")).whyNotTyped)
+    }
+
+    @Test
+    fun `the session hosts are read with each one's id, its label, whether it's attached, and the command that attaches to it`() {
+        val answer = HttpSample(HttpSample.named("session-hosts.http"))
+        val hosts = SessionHosts.hostsIn(answer.body)
+
+        assertEquals(200, answer.status)
+        assertEquals(listOf("3f9a0c71d2e84b56", "b0e41d9a6c2f8835"), hosts.map { it.id.value })
+        assertEquals(listOf(true, false), hosts.map { it.attached })
+        assertEquals(listOf("C:\\Users\\magnu\\.claude\\bin\\ClaudeTooling.SessionHost.exe", "attach", "3f9a0c71d2e84b56"), hosts[0].attachCommand)
+        assertEquals(SessionHostLabel(Path.of("C:\\Users\\magnu\\AppData\\Roaming\\JetBrains\\Rider2026.3"), Path.of("C:\\Dev\\ClaudeSymbolLinker")), SessionHostLabel.of(hosts[0].label))
+        assertEquals(null, SessionHostLabel.of(hosts[1].label))
+    }
+
+    @Test
+    fun `a session host started is read as the hosts are listed`() {
+        val answer = HttpSample(HttpSample.named("session-host-started.http"))
+
+        assertEquals(201, answer.status)
+        assertEquals(SessionHostId("3f9a0c71d2e84b56"), SessionHosts.hostIn(JsonParser.parseString(answer.body).asJsonObject.getAsJsonObject("sessionHost")).id)
+    }
+
+    @Test
+    fun `the label the plugin gives a session host reads back as it was given`() {
+        val label = SessionHostLabel(Path.of("C:\\Users\\magnu\\AppData\\Roaming\\JetBrains\\Rider2026.3"), Path.of("C:\\Dev\\Magnus's {project}"))
+
+        assertEquals(label, SessionHostLabel.of(label.text))
+        assertEquals(null, SessionHostLabel.of("not JSON {"))
     }
 
     @Test

@@ -11,7 +11,8 @@ Claude-Tooling-Protocol: 1
       "statusSince": "2026-11-19T18:04:27.965Z",
       "waitingFor": "permission prompt",
       "name": "chat-view",
-      "directory": "C:\\Dev\\ClaudeSymbolLinker"
+      "directory": "C:\\Dev\\ClaudeSymbolLinker",
+      "sessionHost": "3f9a0c71d2e84b56"
     },
     {
       "processId": 61812,
@@ -20,7 +21,8 @@ Claude-Tooling-Protocol: 1
       "statusSince": "2026-11-19T17:43:52.4Z",
       "waitingFor": null,
       "name": null,
-      "directory": "C:\\Users\\magnu\\.claude"
+      "directory": "C:\\Users\\magnu\\.claude",
+      "sessionHost": null
     }
   ]
 }
