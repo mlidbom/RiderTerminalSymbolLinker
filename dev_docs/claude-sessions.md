@@ -345,6 +345,47 @@ component, the chat card shown.
 - **The real Claude Code ran with `--setting-sources project,local`,** and `--settings` with only `"tui": "fullscreen"`,
   so that none of Magnus's hooks ran, such as the notification at a turn's end.
 
+## Sessions that outlive the IDE (being built)
+
+Magnus's go, 2026-11-19, on the proposal in `~/.claude/dev_docs/sessions-that-outlive-the-ide.md`. The hub starts a
+session host for each tab: a process outside the IDE's job that owns a pseudo console, with the shell in it. The tab's
+process becomes an attach client, `ClaudeTooling.SessionHost.exe attach <id>`, that relays between the tab's console
+and the host. When the IDE dies, only the attach client dies. Closing a tab ends its session (Magnus: "End it"); the IDE
+exiting, crashing, or reloading the plugin only detaches. survive-IDE-restart builds the hub's side.
+
+**The hub's API, as agreed with survive-IDE-restart on 2026-11-19** (its contract will be in `the-hubs-local-api.md`):
+
+- **`POST /session-hosts`** with the shell's command line, its directory, an `environment`, an optional size, and a
+  `label` the hub keeps for the plugin. The answer names the host, its shell's process, and the `attachCommand` for the
+  tab's `shellCommand`. `GET /session-hosts` lists the hosts of the hub's Claude Code folder; `POST
+  /session-hosts/{id}/end` closes the host's pseudo console, as closing a terminal tab does today.
+- **Each running session gains `sessionHost`,** which pairs a tab with its Claude Code in place of
+  `RunningClaudeCodes.inOrBelow`.
+- **`shell`:** the command line of the terminal's shell setting, without Rider's shell-integration arguments.
+- **`environment`:** the whole environment Rider's terminal gives a shell, as its `LocalOptionsConfigurer` builds it in
+  2026.3: the IDE's own (unless the user unticked passing it), then `TERM=xterm-256color`, `COLORTERM=truecolor`,
+  `TERMINAL_EMULATOR=JetBrains-JediTerm`, a new `TERM_SESSION_ID`, then the user's own variables from the terminal's
+  settings. The whole of it, because the sandbox IDE's environment holds what its shells need: `CLAUDE_CONFIG_DIR`,
+  `CLAUDE_TOOLING_LOCAL_API_FOLDER`, `PATH` with the fake Claude Code first. The hub sets `CLAUDE_CONFIG_DIR` to its own
+  folder, or removes it for `~/.claude`'s hub.
+- **No size:** a tab's attach client starts only once the tab is first shown, at the tab's real size, and its resize
+  repaints Claude Code's screen. The session runs in its host meanwhile, so the 80-by-20 trap goes.
+- **The plugin keeps each tab's host with its session,** attaches by it at the IDE's start, and finds by `label` the
+  hosts it opened and didn't save. After an attach client exits, `GET /session-hosts` tells whether its host ended.
+- **The sandbox** copies the session host's exe with the hub's, and ends its hosts as it stops: they would outlive it.
+
+**What the plugin's spike found, 2026-11-19** (a probe in the hub's throwaway hosts, with Claude Code's own console
+mode, input `0x208`):
+
+- **Every input passes two pseudo consoles as it passes one:** typed text, Enter, Escape then Enter, Ctrl+J, CSI-u,
+  SGR mouse clicks and wheel, bracketed paste, back-tab, arrows, focus. Rider's terminal sends a plain CR for Shift+Enter
+  (JediTerm's `TerminalKeyEncoder` in 2026.3), with a session host or without.
+- **An attach loses the modes the program set before it:** alternate screen, mouse tracking, focus reporting and
+  bracketed paste reach the terminal only as the program sets them, and the repaint on attach sets none again. Without
+  them, Rider would draw the fullscreen renderer into its scrollback, the wheel wouldn't scroll Claude Code, and a
+  multi-line paste into the TUI would be sent at its first line. So the host must set them again for each new attach
+  client, before the repaint: told to survive-IDE-restart.
+
 ## The local API: showing a session's tab for another tool
 
 Clicking the notifications of Magnus's session tooling (tooling-owner's, in `~/.claude`) brings forward the IDE window
