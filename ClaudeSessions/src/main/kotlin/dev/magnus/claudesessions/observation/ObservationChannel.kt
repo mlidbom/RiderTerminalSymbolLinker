@@ -106,9 +106,15 @@ import org.jetbrains.plugins.terminal.TerminalProjectOptionsProvider
  *  - `POST /tabs/chat/switch?project=&tab=` — switches between the chat and the terminal, as the action does.
  *  - `POST /tabs/chat/click-tab?project=&tab=&card=` — shows the card, `CHAT` or `TERMINAL`, as clicking its tab does.
  *  - `GET /tabs/chat/shortcut?project=&tab=&keystroke=&in=` — the action the IDE would run for the keystroke, such as
- *    `ctrl H`, pressed `in` the chat, the terminal, or `elsewhere`: see [TheChatObserved.theActionTheShortcutRuns].
- *  - `POST /tabs/chat/fold?project=&tab=&fold=&open=` — opens a fold of the conversation, by its place, or closes it.
+ *    `ctrl H`, pressed `in` the chat's input box (`chat`), its `transcript`, the `terminal`, or `elsewhere`: see
+ *    [TheChatObserved.theActionTheShortcutRuns].
+ *  - `POST /tabs/chat/click-row?project=&tab=&row=` — clicks the line of a row of the transcript, by its key: opens a
+ *    tool call, or a run of them, or closes it.
  *  - `POST /tabs/chat/scroll?project=&tab=&item=` — scrolls the conversation so that the item, by its id, is at the top.
+ *  - `POST /tabs/chat/find?project=&tab=&text=` — opens the transcript's find bar, and has it seek the text.
+ *  - `POST /tabs/chat/find-next?project=&tab=&forward=` — goes to the next place it found, or the one before.
+ *  - `POST /tabs/chat/close-find?project=&tab=` — closes the find bar.
+ *  - `GET /tabs/chat/picture?project=&tab=` — paints the chat into a PNG file, and tells where it is.
  *  - `POST /chats/behind?by=` — has the tabs opened from then on get `standIn`, a [StandInBehindTheChat], behind their
  *    chats, as they do unless asked otherwise, or the `hub`'s adapter, as outside the sandbox.
  */
@@ -204,10 +210,12 @@ class ObservationChannel : Disposable {
             createContext("/tabs/chat/shortcut") { exchange ->
                 answer(exchange) { inTheChat(exchange) { it.theActionTheShortcutRuns(query(exchange, "keystroke")!!, query(exchange, "in")!!) } }
             }
-            createContext("/tabs/chat/fold") { exchange ->
-                answer(exchange) { inTheChat(exchange) { it.openTheFold(query(exchange, "fold")!!.toInt(), query(exchange, "open") != "false") } }
-            }
+            createContext("/tabs/chat/click-row") { exchange -> answer(exchange) { inTheChat(exchange) { it.clickTheRow(query(exchange, "row")!!) } } }
             createContext("/tabs/chat/scroll") { exchange -> answer(exchange) { inTheChat(exchange) { it.scrollTheTranscriptTo(query(exchange, "item")!!) } } }
+            createContext("/tabs/chat/find-next") { exchange -> answer(exchange) { inTheChat(exchange) { it.findNext(query(exchange, "forward") != "false") } } }
+            createContext("/tabs/chat/close-find") { exchange -> answer(exchange) { inTheChat(exchange) { it.closeTheFind() } } }
+            createContext("/tabs/chat/find") { exchange -> answer(exchange) { inTheChat(exchange) { it.find(query(exchange, "text")!!) } } }
+            createContext("/tabs/chat/picture") { exchange -> answer(exchange) { inTheChat(exchange) { it.picture() } } }
             createContext("/chats/behind") { exchange ->
                 answer(exchange) {
                     StandInBehindTheChatInTheSandbox.standInsBehindTheChats = when (val by = query(exchange, "by")) {

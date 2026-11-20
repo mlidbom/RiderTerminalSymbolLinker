@@ -1,6 +1,7 @@
-package dev.magnus.claudesessions.chat.transcript
+package dev.magnus.claudesessions.chat.transcript.toolcalls
 
 import dev.magnus.claudesessions.chat.claudecode.conversation.ToolCall
+import dev.magnus.claudesessions.chat.transcript.TranscriptPane
 
 /**
  * The one line the [TranscriptPane] shows for a [ToolCall] while its input and result are folded away: the tool's name,

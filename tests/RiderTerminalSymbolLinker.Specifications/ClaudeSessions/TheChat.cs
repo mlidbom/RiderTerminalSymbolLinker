@@ -53,8 +53,20 @@ public sealed class TheChat(ClaudeSessionsObservationChannel channel, int tab)
    public string? TheActionTheShortcutRuns(string keystroke, string pressedIn) =>
       channel.TheActionTheShortcutRuns(tab, keystroke, pressedIn)["action"]?.GetValue<string>();
 
-   /// <summary>Opens the conversation's fold <paramref name="fold"/>, by its place among the folds.</summary>
-   public ChatSeen OpenTheFold(int fold) => ChatSeen.From(channel.OpenTheFoldInTheChat(tab, fold));
+   /// <summary>Clicks the line of the transcript's row <paramref name="row"/>, by its key: opens a tool call, or a run of them, or closes it.</summary>
+   public ChatSeen ClickTheRow(string row) => ChatSeen.From(channel.ClickTheRowInTheChat(tab, row));
+
+   /// <summary>Opens the transcript's find bar, and has it seek <paramref name="text"/>, as the user types it.</summary>
+   public ChatSeen Find(string text) => ChatSeen.From(channel.FindInTheChat(tab, text));
+
+   /// <summary>Goes to the next place the find bar found, as Enter in its field does.</summary>
+   public ChatSeen FindNext() => ChatSeen.From(channel.FindNextInTheChat(tab));
+
+   /// <summary>Goes to the place before, as Shift+Enter in the find bar's field does.</summary>
+   public ChatSeen FindPrevious() => ChatSeen.From(channel.FindNextInTheChat(tab, forward: false));
+
+   /// <summary>Closes the find bar, as Escape in its field does.</summary>
+   public ChatSeen CloseTheFind() => ChatSeen.From(channel.CloseTheFindInTheChat(tab));
 
    /// <summary>Scrolls the conversation so that the item <paramref name="item"/>, by its id, is at the top, as the user would.</summary>
    public ChatSeen ScrollTheTranscriptTo(string item) => ChatSeen.From(channel.ScrollTheTranscriptInTheChat(tab, item));
@@ -109,6 +121,7 @@ public sealed class TheChat(ClaudeSessionsObservationChannel channel, int tab)
    {
       public static object Prompt(string id, string text) => new { kind = "prompt", id, text };
       public static object AssistantText(string id, string text) => new { kind = "assistant-text", id, text };
+      public static object Thinking(string id, string text) => new { kind = "thinking", id, text };
 
       /// <summary>A tool call, with its result, or none while it runs, when <paramref name="result"/> is null.</summary>
       public static object ToolCall(string id, string tool, IReadOnlyDictionary<string, string> input, string? result, bool isAnError = false) =>
@@ -120,18 +133,18 @@ public sealed class TheChat(ClaudeSessionsObservationChannel channel, int tab)
 
 /// <summary>
 ///   A tab's chat as the observation channel tells of it: the card the tab shows, <c>CHAT</c> or <c>TERMINAL</c>, or
-///   null when the tab has no chat, and the card the user chose, or null when the tab chose it; the conversation's text,
-///   its folds, the texts its links cover, and the id of the item at the top of the pane; the status line, and why
-///   Claude Code didn't get what the chat last gave it, or null; the text in the input box, its parts and its caret;
-///   and the titles of the cards' tabs.
+///   null when the tab has no chat, and the card the user chose, or null when the tab chose it; the transcript's rows, the
+///   texts the console filters' links cover, the id of the item at the top of the pane, and the transcript's find bar;
+///   the status line, and why Claude Code didn't get what the chat last gave it, or null; the text in the input box, its
+///   parts and its caret; and the titles of the cards' tabs.
 /// </summary>
 public sealed record ChatSeen(
    string? Card,
    string? CardTheUserChose,
-   string Transcript,
-   IReadOnlyList<FoldSeen> Folds,
+   IReadOnlyList<RowSeen> Rows,
    IReadOnlyList<string> Links,
    string? ItemAtTheTop,
+   FindSeen? Find,
    string? StatusLine,
    string? WhyNotTyped,
    string? MessageBox,
@@ -139,15 +152,21 @@ public sealed record ChatSeen(
    int Caret,
    IReadOnlyList<string> Tabs)
 {
+   /// <summary>The rows' texts, each on a line of its own, as they read on the screen: the bodies of tool calls aside.</summary>
+   public string Transcript => string.Join("\n", Rows.Select(it => it.Text));
+
+   /// <summary>The row with the key <paramref name="key"/>.</summary>
+   public RowSeen Row(string key) => Rows.Single(it => it.Key == key);
+
    public static ChatSeen From(JsonNode chat) =>
       chat["card"] is null
-         ? new ChatSeen(null, null, "", [], [], null, null, null, null, [], 0, [])
+         ? new ChatSeen(null, null, [], [], null, null, null, null, null, [], 0, [])
          : new ChatSeen(chat["card"]!.GetValue<string>(),
                         chat["cardTheUserChose"]?.GetValue<string>(),
-                        chat["transcript"]!.GetValue<string>(),
-                        [.. chat["folds"]!.AsArray().Select(it => new FoldSeen(it!["header"]!.GetValue<string>(), it["folded"]!.GetValue<string>(), it["open"]!.GetValue<bool>()))],
+                        [.. chat["rows"]!.AsArray().Select(it => RowSeen.From(it!))],
                         [.. chat["links"]!.AsArray().Select(it => it!.GetValue<string>())],
                         chat["itemAtTheTop"]?.GetValue<string>(),
+                        FindSeen.From(chat["find"]!),
                         chat["statusLine"]!.GetValue<string>(),
                         chat["whyNotTyped"]?.GetValue<string>(),
                         chat["messageBox"]!.GetValue<string>(),
@@ -156,8 +175,37 @@ public sealed record ChatSeen(
                         [.. chat["tabs"]!.AsArray().Select(it => it!.GetValue<string>())]);
 }
 
-/// <summary>A fold of the chat's conversation: the line it starts on, up to it, the text it folds away, and whether it's open.</summary>
-public sealed record FoldSeen(string Header, string Folded, bool Open);
+/// <summary>
+///   A row of the chat's transcript: its key; its kind, <c>prompt</c>, <c>from</c> (a prompt from elsewhere, with its
+///   caption), <c>claude</c>, <c>thinking</c>, <c>interruption</c>, <c>compaction</c>, <c>clearing</c>, <c>tool-call</c>
+///   or <c>tool-calls</c> (the line of a run of them); and its text, as it reads on the screen. A tool call's has its
+///   body, shown or not, and says whether it's open, and whether it's in a run; a run's says whether it's open.
+/// </summary>
+public sealed record RowSeen(string Key, string Kind, string Text, string? Caption, string? Body, bool Open, bool InARun)
+{
+   public static RowSeen From(JsonNode row) =>
+      new(row["key"]!.GetValue<string>(),
+          row["kind"]!.GetValue<string>(),
+          row["text"]!.GetValue<string>(),
+          row["caption"]?.GetValue<string>(),
+          row["body"]?.GetValue<string>(),
+          row["open"]?.GetValue<bool>() ?? false,
+          row["inARun"]?.GetValue<bool>() ?? false);
+}
+
+/// <summary>
+///   The transcript's find bar: whether it's shown, the text in its field, what it says of how many places hold it, such
+///   as <c>3/17</c>, and the place the user is at, by its item and the index of the item's text, or nulls.
+/// </summary>
+public sealed record FindSeen(bool Shown, string Text, string Count, string? CurrentItem, int? CurrentPart)
+{
+   public static FindSeen From(JsonNode find) =>
+      new(find["shown"]!.GetValue<bool>(),
+          find["text"]!.GetValue<string>(),
+          find["count"]!.GetValue<string>(),
+          find["current"]?["item"]?.GetValue<string>(),
+          find["current"]?["part"]?.GetValue<int>());
+}
 
 /// <summary>What Claude Code got from a tab's chat, through the stand-in behind it: its messages, and how often it was interrupted and its permission mode changed.</summary>
 public sealed record SentToClaudeCode(IReadOnlyList<IReadOnlyList<MessagePartSeen>> Messages, int Interruptions, int PermissionModeChanges)

@@ -38,7 +38,7 @@ public class When_the_hub_is_behind_a_tabs_chat(When_the_hub_is_behind_a_tabs_ch
                                              "Claude Code to answer what the chat sent, or the chat to say why it didn't get it");
          // The stand-in records the tool's result with \r\n, as Windows' tools print and Claude Code keeps it.
          view.Say(0, "Run a tool that prints 2 lines");
-         OnceAToolPrintedWindowsLines = chat.SeenOnce(it => it.Folds.Any(fold => fold.Folded.Contains("line 1")), "the chat to show the tool's call");
+         OnceAToolPrintedWindowsLines = chat.SeenOnce(it => it.Rows.Any(row => row.Body?.Contains("line 1") == true), "the chat to show the tool's call");
          view.Say(0, "And the circle again");
          OnceSaidAfterThem = chat.SeenOnce(it => it.Transcript.Contains("Heard: And the circle again"), "the chat to show what was said after the tool's lines");
       }
@@ -46,23 +46,23 @@ public class When_the_hub_is_behind_a_tabs_chat(When_the_hub_is_behind_a_tabs_ch
 
    [XF] public void the_tab_shows_its_chat_once_claude_code_runs() => story.OnceClaudeCodeRuns.Card.Must().Be("CHAT");
    [XF] public void the_status_line_says_claude_is_idle() => story.OnceClaudeCodeRuns.StatusLine.Must().Be("Claude is idle");
-   [XF] public void the_conversation_is_empty_until_something_is_said() => story.OnceClaudeCodeRuns.Transcript.Must().Be("");
+   [XF] public void the_conversation_is_empty_until_something_is_said() => story.OnceClaudeCodeRuns.Rows.Must().BeEmpty();
 
    [XF] public void the_chat_shows_what_was_said_and_claude_codes_answer() =>
-      story.OnceALineWasSaid.Transcript.Must().Be("## You\nFix the bug in the circle\n\n## Claude\nHeard: Fix the bug in the circle\n\n");
+      story.OnceALineWasSaid.Rows.Select(it => (it.Kind, it.Text)).Must().Satisfy(it => it.SequenceEqual([("prompt", "Fix the bug in the circle"), ("claude", "Heard: Fix the bug in the circle")]));
 
    [XF] public void and_what_was_said_next_after_it() =>
-      story.OnceAnotherWas.Transcript.Must().Be(story.OnceALineWasSaid.Transcript + "## You\nAnd the square\n\n## Claude\nHeard: And the square\n\n");
+      story.OnceAnotherWas.Transcript.Must().Be(story.OnceALineWasSaid.Transcript + "\nAnd the square\nHeard: And the square");
 
    [XF] public void what_the_chat_sends_claude_code_gets() => story.OnceSentFromTheChat.WhyNotTyped.Must().BeNull();
 
    [XF] public void and_answers() =>
-      story.OnceSentFromTheChat.Transcript.Must().Be(story.OnceAnotherWas.Transcript + "## You\nAnd the triangle\n\n## Claude\nHeard: And the triangle\n\n");
+      story.OnceSentFromTheChat.Transcript.Must().Be(story.OnceAnotherWas.Transcript + "\nAnd the triangle\nHeard: And the triangle");
 
    [XF] public void the_input_box_is_empty_again() => story.OnceSentFromTheChat.MessageBox.Must().Be("");
 
    [XF] public void a_tools_windows_line_endings_show_as_line_breaks() =>
-      story.OnceAToolPrintedWindowsLines.Folds.Must().Satisfy(it => it.Any(fold => fold.Folded.Contains("line 1\nline 2") && !fold.Folded.Contains('\r')));
+      story.OnceAToolPrintedWindowsLines.Rows.Must().Satisfy(it => it.Any(row => row.Body?.Contains("line 1\nline 2") == true && !row.Body.Contains('\r')));
 
-   [XF] public void and_the_chat_goes_on_after_them() => story.OnceSaidAfterThem.Transcript.Must().Satisfy(it => it.EndsWith("## You\nAnd the circle again\n\n## Claude\nHeard: And the circle again\n\n"));
+   [XF] public void and_the_chat_goes_on_after_them() => story.OnceSaidAfterThem.Transcript.Must().Satisfy(it => it.EndsWith("\nAnd the circle again\nHeard: And the circle again"));
 }

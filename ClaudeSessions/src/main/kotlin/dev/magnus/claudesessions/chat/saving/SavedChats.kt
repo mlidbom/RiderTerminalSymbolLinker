@@ -68,9 +68,9 @@ class SavedChats(project: Project) {
         add("notSent", notSent.map { it.toJson() }.toJsonArray())
         add("maybeSent", maybeSent.map { JsonObject().apply { add("message", it.message.toJson()); addProperty("lastItemBefore", it.lastItemBefore) } }.toJsonArray())
         add("transcript", JsonObject().apply {
-            addProperty("topItem", transcript.topItem)
-            addProperty("linesIntoIt", transcript.linesIntoIt)
-            add("openFolds", transcript.openFolds.map(::JsonPrimitive).toJsonArray())
+            addProperty("topRow", transcript.topRow)
+            addProperty("pixelsIntoIt", transcript.pixelsIntoIt)
+            add("opened", transcript.opened.map(::JsonPrimitive).toJsonArray())
         })
         addProperty("cardTheUserChose", cardTheUserChose?.name)
     }
@@ -82,8 +82,24 @@ class SavedChats(project: Project) {
             Draft(draft.toMessage(), draft.get("caret").asInt),
             getAsJsonArray("notSent").map { it.asJsonObject.toMessage() },
             getAsJsonArray("maybeSent").map { it.asJsonObject.let { maybeSent -> MessageMaybeSent(maybeSent.getAsJsonObject("message").toMessage(), maybeSent.stringOrNull("lastItemBefore")) } },
-            TranscriptPosition(transcript.stringOrNull("topItem"), transcript.get("linesIntoIt").asInt, transcript.getAsJsonArray("openFolds").map { it.asString }.toSet()),
+            transcript.toTranscriptPosition(),
             stringOrNull("cardTheUserChose")?.let(TabCard::valueOf),
+        )
+    }
+
+    /**
+     * The [TranscriptPosition] this JSON saved: as a chat saves it, or as a chat of the transcript in an editor saved
+     * it, before 0.1.0 rendered the conversation's markdown, with the item at the top in place of the row, lines into
+     * it in place of pixels, and the open tool calls as its folds: the row of an item that isn't a tool call has the
+     * item's id as its key, as a tool call's row has the call's.
+     */
+    private fun JsonObject.toTranscriptPosition(): TranscriptPosition {
+        //todo: Drop the names of the transcript in an editor once every IDE has saved its chats anew (Claude, 2026-11-20).
+        val isOfAnEditor = has("linesIntoIt")
+        return TranscriptPosition(
+            stringOrNull(if (isOfAnEditor) "topItem" else "topRow"),
+            if (isOfAnEditor) 0 else get("pixelsIntoIt").asInt,
+            getAsJsonArray(if (isOfAnEditor) "openFolds" else "opened").map { it.asString }.toSet(),
         )
     }
 

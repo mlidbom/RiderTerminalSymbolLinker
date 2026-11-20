@@ -287,24 +287,47 @@ plain terminal tab, with no session host, gets none, and shows its terminal alon
     elsewhere (`GET /tabs/chat/shortcut`), from the keymap, the promoters and each action's enablement: the IDE's key
     dispatcher reads the real focus, which a specification can't count on in the sandbox IDE, so the key itself, and
     the terminal's letting it through, are seen only in use.
-- **The transcript pane** (`TranscriptPane`), a read-only editor: the IDE's search, selection and shortcuts work in it.
-  Its text is markdown, highlighted as markdown where the IDE has the Markdown file type, found by name, so no
-  dependency on the Markdown plugin.
-  - **Each prompt under `## You`, each turn of Claude's under `## Claude`;** a prompt from elsewhere under where it came
-    from (`## From <the session's name>`, `## A background task finished`, `## A scheduled wake-up`,
-    `## From Claude Code`, `## From a program`); a slash command as typed; thinking folded under `▸ Thinking`; an
-    interruption in italics; a compaction, and a `/clear`, as a divider line, the line's next session going on below
-    the `/clear`.
-  - **Each tool call as its header,** such as `▸ Bash: git status` (`ToolCallHeader`: the field that says what it ran
-    on, for Claude Code's own tools), with its input and its result folded away below it, collapsed, in a fenced code
-    block fenced with more backticks than any run inside.
-  - **It shows anew only from the first item that differs** from what it shows: a tool call's result coming, or a
-    rewind, redraws from there, so what the user scrolled to, selected or opened above stays. A fold the user opened
-    stays open when its tool call is redrawn. It follows the end while scrolled to the end.
-  - **Links:** every filter on the platform's `consoleFilterProvider` extension point runs over new text, **each by
-    itself**, as the terminal runs them: a filter's result ends the filtering of its line unless it says otherwise
+- **The transcript pane** (`TranscriptPane`) renders the conversation as the desktop app does, in Compose, with the
+  platform's own Jewel and its markdown renderer, styled from the IDE's theme. Magnus asked for it on 2026-11-20, in
+  place of the read-only editor that showed the markdown as written: "similar to how the desktop app renders the
+  transcript. But with the option to collapse more stuff automatically". Jewel and Compose come with the IDE, in the
+  bundled plugin `com.intellij.modules.compose`, since 2025.1: plugin.xml depends on it, and on the markdown modules,
+  and the build compiles against them (`bundledModule`) with Kotlin's Compose compiler. Jewel is below 1.0, and its
+  markdown API experimental as a whole: the build opts in, and each new IDE's Jewel is to be checked.
+  - **A list of rows** (`TranscriptRow`), a `LazyColumn`, which composes only the rows on the screen, its text
+    selectable across them (`SelectionContainer`): what the user said shaded, as typed; a prompt from elsewhere shaded,
+    under where it came from (`From <the session's name>`, `A background task finished`, `A scheduled wake-up`,
+    `From Claude Code`, `From a program`); what Claude said as rendered markdown, with GitHub's tables, strikethrough and
+    links of bare addresses (`ClaudesMarkdown`); thinking dimmed, under `Thinking`, shown (Magnus: "Leave it visible
+    for now"); an interruption in italics; a compaction, and a `/clear`, as a divider.
+  - **Each tool call as one line, its header,** such as `Bash: git status` (`ToolCallHeader`: the field that says what
+    it ran on, for Claude Code's own tools), with how it went (`ToolCallStatus`: ` · running`, ` · failed` in red),
+    which opens to its body (`ToolCallBody`: its input, field by field, and its result). Collapsed until the user opens
+    it.
+  - **Tool calls Claude made one after the other** (`ToolCallRun`) show as one line that counts them, as the desktop
+    app does, such as `Ran 2 commands, read 1 file · running`, and opens to their lines, indented below it. A call by
+    itself shows as its own line. A run that grows out of a call the user opened opens too, so that the call stays in
+    sight; a run the user closed stays closed as it grows.
+  - **What the user opened and scrolled to stays as the conversation changes:** the rows are keyed, the item's id or the
+    run's first call's, so Compose keeps each row's place. It follows the end while scrolled to the end.
+  - **Links:** every filter on the platform's `consoleFilterProvider` extension point runs, in the background, over each
+    item's texts as the transcript shows them (`TranscriptTexts`: Claude's once rendered), **each filter by itself**, as
+    the terminal runs them: a filter's result ends the filtering of its line unless it says otherwise
     (`Filter.NextAction.EXIT` by default), so a `CompositeFilter` let the symbol linker's symbol links hide its file
-    links on the same line. Links over text taken away go with it.
+    links on the same line. A text a filter linked is a link wherever it shows in its item (`TranscriptLinks`,
+    `TextDecorations`), but where Claude's markdown links already.
+  - **Find,** as in an editor, with the keymap's shortcuts of Find, Find Next and Find Previous (`use-shortcut-of`),
+    such as Ctrl+F and F3, which run Claude Sessions' own Find actions with the focus in the transcript: Find's own are
+    disabled there, as it isn't an editor. A Swing bar above the conversation (`TranscriptFindBar`): Enter goes to the
+    next place, Shift+Enter to the one before, Escape closes it. It seeks every text the transcript shows, collapsed or
+    not, case aside (`TranscriptFind`), from the item at the top of the pane; going to a place opens what hides it, a
+    run or a tool call's body, and scrolls it onto the screen. Every place is highlighted, the current one in the
+    selection's color: in Claude's markdown through Jewel's inline renderer (`DecoratingInlineRenderer`), which
+    `ClaudesMarkdown` tells which part of the text it renders. Its limits: a table of Claude's isn't searched, as Jewel
+    keeps its table types to itself, and a code block of Claude's is searched but not highlighted; in Claude's
+    markdown the place scrolls only its item onto the screen, not the place itself.
+  - **The editor it replaced** had the IDE's own Find and selection across everything; Compose selects across rows less
+    well, and only the rows composed, those on the screen and near it.
 - **The input box** (`MessageBox`), an editor of a plain-text `LightVirtualFile`. Ctrl+Enter sends, Shift+Enter starts
   a new line, Escape interrupts Claude Code, Shift+Tab changes its permission mode, each a key of the box's own, ahead of
   the keymap's, as Ctrl+Enter's Split Line; Ctrl+Enter, Shift+Enter and Escape go to a completion list instead while one
@@ -334,8 +357,9 @@ plain terminal tab, with no session host, gets none, and shows its terminal alon
   typed into one of the chat input boxes it has built will survive this restart".
   - **What is saved,** a `SavedChat`: the box's `Draft` (each part as it came in, and the caret); the messages sent that
     waited in `TypingFromTheChat` to be given to Claude Code; the one being given, a `MessageMaybeSent`, with the
-    conversation's last item as it began; the transcript's `TranscriptPosition` (the item at the top, lines into it,
-    and the open folds, by item id); and the card the user chose, if they chose one.
+    conversation's last item as it began; the transcript's `TranscriptPosition` (the row at the top, pixels into it,
+    and the rows the user opened, by their keys); and the card the user chose, if they chose one. A chat saved by the
+    editor's transcript, before it rendered the markdown, comes back at the item it was at, with its tool calls open.
   - **When,** by the tab's `ChatKeeper`: half a second after the chat last changed, so a crash loses at most that, and
     at once as the view detaches the tabs. Written on a thread of its own, in order, by an atomic move.
   - **Where,** by `SavedChats`: `claude-sessions/chats/<the project's location hash>/<session host id>.json` in the
@@ -351,8 +375,7 @@ plain terminal tab, with no session host, gets none, and shows its terminal alon
     the hub's code at a60fa14, confirmed by the tooling owner). A message Claude Code queued is in the conversation
     already, as the hub tells of it. So `ClaudeCodeBehindTheChat.conversation` is null until known: an empty one would
     say it wasn't sent.
-  - **The transcript** scrolls to where it was once it shows the item and is first shown on screen, without the
-    editor's animation: animated, it was where it had been for a moment after. Its folds open as their items show.
+  - **The transcript** scrolls to where it was once it shows the row, with what the user opened open.
 
 ### What's left for the first version
 

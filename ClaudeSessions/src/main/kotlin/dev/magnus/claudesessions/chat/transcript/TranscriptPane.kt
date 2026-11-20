@@ -1,106 +1,119 @@
 package dev.magnus.claudesessions.chat.transcript
 
-import com.intellij.execution.filters.ConsoleFilterProvider
-import com.intellij.execution.impl.EditorHyperlinkSupport
+import androidx.compose.foundation.gestures.scrollBy
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
+import com.intellij.ide.BrowserUtil
 import com.intellij.openapi.Disposable
-import com.intellij.openapi.actionSystem.IdeActions
-import com.intellij.openapi.application.WriteAction
-import com.intellij.openapi.command.CommandProcessor
-import com.intellij.openapi.command.undo.UndoUtil
-import com.intellij.openapi.editor.EditorFactory
-import com.intellij.openapi.editor.EditorKind
-import com.intellij.openapi.editor.FoldRegion
-import com.intellij.openapi.editor.LogicalPosition
-import com.intellij.openapi.editor.RangeMarker
-import com.intellij.openapi.editor.ScrollType
-import com.intellij.openapi.editor.ex.EditorEx
-import com.intellij.openapi.editor.ex.FoldingListener
-import com.intellij.openapi.editor.highlighter.EditorHighlighterFactory
-import com.intellij.openapi.fileTypes.FileTypeManager
+import com.intellij.openapi.actionSystem.DataKey
+import com.intellij.openapi.actionSystem.DataSink
+import com.intellij.openapi.actionSystem.UiDataProvider
+import com.intellij.openapi.application.EDT
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Disposer
-import com.intellij.openapi.util.Expirable
-import com.intellij.util.ui.update.UiNotifyConnector
+import com.intellij.openapi.wm.IdeFocusManager
+import dev.magnus.claudesessions.chat.claudecode.conversation.AssistantText
 import dev.magnus.claudesessions.chat.claudecode.conversation.Conversation
 import dev.magnus.claudesessions.chat.claudecode.conversation.ConversationItem
-import java.awt.Point
+import dev.magnus.claudesessions.chat.claudecode.conversation.ToolCall
+import dev.magnus.claudesessions.chat.transcript.find.FoundText
+import dev.magnus.claudesessions.chat.transcript.find.TranscriptFind
+import dev.magnus.claudesessions.chat.transcript.find.TranscriptFindBar
+import dev.magnus.claudesessions.chat.transcript.links.TranscriptLink
+import dev.magnus.claudesessions.chat.transcript.links.TranscriptLinks
+import java.awt.BorderLayout
 import javax.swing.JComponent
+import javax.swing.JPanel
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.launch
+import org.jetbrains.jewel.bridge.JewelComposePanel
+import org.jetbrains.jewel.foundation.enableNewSwingCompositing
 
 /**
- * The upper part of the chat: the conversation, in a read-only editor, so that the IDE's own search, selection and
- * shortcuts work in it. Its text is markdown, highlighted as markdown where the IDE has the Markdown plugin, as the
- * bundled one in most. Each tool call shows as its header, with its input and result folded away below it, collapsed
- * until the user opens it.
+ * The upper part of the chat: the conversation, rendered as the desktop app renders it, in Compose, with Jewel's
+ * markdown renderer, styled as the IDE is. What the user said shows shaded; what Claude said as rendered markdown;
+ * Claude's thinking dimmed; and each tool call as one line, its header, which opens to what it ran and got. Tool calls
+ * Claude made one after the other show as one line too, which counts them, such as `Ran 2 commands, read 1 file`, and
+ * opens to their lines: see [TranscriptRow].
  *
- * Every filter on the platform's `consoleFilterProvider` extension point runs over the text, as over a console's: in
- * Rider that brings the symbol linker's links, and in every IDE the platform's own, such as those of file paths.
+ * Find seeks text in it as in an editor, with the IDE's Find shortcuts: see [TranscriptFind] and [TranscriptFindBar].
+ * The console filters link what they link in a terminal, as file paths, and in Rider the symbol linker's symbols: see
+ * [TranscriptLinks].
  *
- * When the conversation changes, it shows anew only from the first item that differs, so that what the user has
- * scrolled to, selected or opened above stays as it was: as when a tool call's result comes, or Claude says more. It
- * follows the end of the conversation while it's scrolled to the end.
+ * It follows the end of the conversation while it's scrolled to the end, and what the user scrolled to and opened stays
+ * as the conversation changes. Where the user is in it, its [position], is saved as it changes, and comes back as the
+ * IDE starts again: see [restore].
  *
- * Where the user is in it, its [position], is saved as it changes, and comes back as the IDE starts again: see
- * [restore].
+ * Magnus asked for the rendered markdown on 2026-11-20, in place of the editor that showed the markdown as it's
+ * written, "similar to how the desktop app renders the transcript. But with the option to collapse more stuff
+ * automatically", and Find with it.
  *
  * Its methods run on the EDT.
  */
-class TranscriptPane(private val project: Project, parent: Disposable) : Disposable {
-    private val document = EditorFactory.getInstance().createDocument("").also(UndoUtil::disableUndoFor)
+class TranscriptPane(val project: Project, parent: Disposable) : Disposable {
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.EDT)
 
-    /** The editor that shows the conversation. */
-    val editor: EditorEx = (EditorFactory.getInstance().createViewer(document, project, EditorKind.CONSOLE) as EditorEx).apply {
-        settings.isUseSoftWraps = true
-        settings.isLineNumbersShown = false
-        settings.isLineMarkerAreaShown = false
-        settings.isFoldingOutlineShown = true
-        settings.isIndentGuidesShown = false
-        settings.isCaretRowShown = false
-        settings.isRightMarginShown = false
-        settings.additionalLinesCount = 0
-        settings.isAdditionalPageAtBottom = false
-        contextMenuGroupId = IdeActions.GROUP_CONSOLE_EDITOR_POPUP
-        FileTypeManager.getInstance().findFileTypeByName(MARKDOWN)?.let { highlighter = EditorHighlighterFactory.getInstance().createEditorHighlighter(project, it) }
+    /** The texts the pane shows of each item, and Claude's texts' markdown. */
+    val texts = TranscriptTexts()
+
+    /** Where the conversation is scrolled to. */
+    val listState = LazyListState()
+
+    private var items: List<ConversationItem> by mutableStateOf(emptyList())
+
+    /** The keys of the rows the user opened: tool calls, and runs of them. */
+    private var opened: Set<String> by mutableStateOf(emptySet())
+
+    /** The rows shown, in their order. */
+    val rows: List<TranscriptRow> by derivedStateOf { TranscriptRow.of(items, opened) }
+
+    private val links = TranscriptLinks(project, scope)
+
+    val find = TranscriptFind({ texts.of(items) }, ::showWhatFindFound)
+
+    /** The place Find found that the text holding it is to scroll onto the screen, until it has; or null. */
+    var placeToShow: FoundText? by mutableStateOf(null)
+        private set
+
+    val findBar = TranscriptFindBar(find, whereTheUserIs = { itemAtTheTop }, close = ::closeFind)
+
+    /** Where to scroll to once the pane shows its row, as [restore] was told, or null when nowhere. */
+    private var positionToScrollTo: TranscriptPosition? = null
+
+    /** The conversation, in Compose. */
+    val conversation: JComponent = run {
+        // Compose in a window that holds Swing too needs Swing's newer compositing, which panels made since take.
+        enableNewSwingCompositing()
+        JewelComposePanel { TranscriptView(this) }
     }
 
-    val component: JComponent get() = editor.component
-
-    /** The items shown, in their order, each with where its text is. */
-    private val shown = mutableListOf<ShownItem>()
-
-    /** The links over the text, from the console filters. */
-    private val links = EditorHyperlinkSupport.get(editor)
-
-    /**
-     * The console filters, each run over the text by itself, as the terminal runs them: a filter's result ends the
-     * filtering of its line unless it says otherwise, so a `CompositeFilter` of them all would let the symbol linker's
-     * symbol links hide its file links on the same line.
-     */
-    private val filters = ConsoleFilterProvider.FILTER_PROVIDERS.extensionList.flatMap { it.getDefaultFilters(project).asList() }
-
-    /**
-     * How many times text has been taken away: links still being found for text taken away since are dropped, as their
-     * places are no longer theirs.
-     */
-    private var removals = 0
-
-    private var isDisposed = false
+    /** The pane, with the find bar above the conversation. It tells the actions of Find which pane they're in. */
+    val component: JComponent = object : JPanel(BorderLayout()), UiDataProvider {
+        override fun uiDataSnapshot(sink: DataSink) {
+            sink[KEY] = this@TranscriptPane
+        }
+    }.apply {
+        add(findBar.component, BorderLayout.NORTH)
+        add(conversation, BorderLayout.CENTER)
+    }
 
     init {
         Disposer.register(parent, this)
     }
 
-    /** The conversation's text, as shown. For the development observation channel. */
-    val text: String get() = document.text
+    /** The id of the first item of the row at the top of the pane, or null when it shows none. */
+    val itemAtTheTop: String? get() = rows.getOrNull(listState.firstVisibleItemIndex)?.items?.first()?.id
 
-    /** The folds, in their order: each tool call's. For the development observation channel. */
-    val folds: List<FoldRegion> get() = shown.mapNotNull { it.fold }
-
-    /** The texts the links cover, in their order. For the development observation channel. */
-    val linkedTexts: List<String>
-        get() = editor.markupModel.allHighlighters.filter { it.isValid && EditorHyperlinkSupport.getHyperlinkInfo(it) != null }.sortedBy { it.startOffset }.map { document.getText(it.textRange) }
-
-    /** The id of the item at the top of the pane, or null when it shows none. For the development observation channel. */
-    val itemAtTheTop: String? get() = shownAtTheTop()?.item?.id
+    /** The texts the console filters linked, item by item, in the conversation's order. For the development observation channel. */
+    val linkedTexts: List<String> get() = items.flatMap { item -> links.of(item.id).map { it.text } }
 
     /**
      * Where the user is in the conversation: see [TranscriptPosition]. Until the pane has shown the position it was to
@@ -108,152 +121,138 @@ class TranscriptPane(private val project: Project, parent: Disposable) : Disposa
      */
     val position: TranscriptPosition
         get() {
-            val openFolds = shown.filter { it.fold?.isExpanded == true }.map { it.item.id }.toSet() + foldsToOpen
-            positionToScrollTo?.let { return it.copy(openFolds = openFolds) }
-            val top = shownAtTheTop()?.takeUnless { isScrolledToTheEnd() } ?: return TranscriptPosition(topItem = null, linesIntoIt = 0, openFolds)
-            return TranscriptPosition(top.item.id, linesIntoIt = lineAtTheTop() - document.getLineNumber(top.range.startOffset), openFolds)
+            positionToScrollTo?.let { return it.copy(opened = opened) }
+            val top = rows.getOrNull(listState.firstVisibleItemIndex)?.takeUnless { isAtTheEnd() } ?: return TranscriptPosition(topRow = null, pixelsIntoIt = 0, opened)
+            return TranscriptPosition(top.key, listState.firstVisibleItemScrollOffset, opened)
         }
 
-    /** The folds to open once the pane shows their items: those [restore] was told of that it doesn't show yet. */
-    private var foldsToOpen = emptySet<String>()
-
-    /** Where to scroll to once the pane shows its item, as [restore] was told, or null when nowhere. */
-    private var positionToScrollTo: TranscriptPosition? = null
-
-    /**
-     * Has the pane show the conversation where [position] says, as the user left it before the IDE restarted: each
-     * fold open, and scrolled there, once it shows their items.
-     */
+    /** Has the pane show the conversation where [position] says, as the user left it before the IDE restarted, once it shows its row. */
     fun restore(position: TranscriptPosition) {
-        foldsToOpen = position.openFolds
-        positionToScrollTo = position.takeIf { it.topItem != null }
+        opened = position.opened
+        positionToScrollTo = position.takeIf { it.topRow != null }
         scrollToThePositionRestored()
     }
 
-    /** Has [action] run whenever the pane is scrolled, or a fold opened or closed, until the pane goes. */
+    /** Has [action] run whenever the pane is scrolled, or a row opened or closed, until the pane goes. */
     fun whenItChanges(action: () -> Unit) {
-        editor.scrollingModel.addVisibleAreaListener({ action() }, this)
-        editor.foldingModel.addListener(object : FoldingListener {
-            override fun onFoldRegionStateChange(region: FoldRegion) = action()
-        }, this)
-    }
-
-    /**
-     * Scrolls the pane so that the line [linesIntoIt] of the item [item] is at its top, at once: the editor's scrolling
-     * is otherwise animated, and is where it was for a moment after.
-     */
-    fun showAtTheTop(item: String, linesIntoIt: Int) {
-        val shownItem = shown.single { it.item.id == item }
-        val line = (document.getLineNumber(shownItem.range.startOffset) + linesIntoIt).coerceAtMost(document.lineCount - 1)
-        editor.scrollingModel.disableAnimation()
-        try {
-            editor.scrollingModel.scrollVertically(editor.logicalPositionToXY(LogicalPosition(line, 0)).y)
-        } finally {
-            editor.scrollingModel.enableAnimation()
+        scope.launch {
+            snapshotFlow { Triple(listState.firstVisibleItemIndex, listState.firstVisibleItemScrollOffset, opened) }.drop(1).collect { action() }
         }
     }
 
-    /** Shows [conversation] in place of the one shown: anew from the first item that differs. */
+    /**
+     * Shows [conversation] in place of the one shown. What the user opened stays open, and a run of tool calls that
+     * grows out of a call the user opened opens too.
+     */
     fun show(conversation: Conversation) {
-        val items = conversation.items
-        val firstThatDiffers = shown.indices.firstOrNull { it >= items.size || shown[it].item != items[it] } ?: shown.size
-        if (firstThatDiffers == shown.size && items.size == shown.size) return
-        val wasAtTheEnd = isScrolledToTheEnd()
-        val opened = shown.drop(firstThatDiffers).filter { it.fold?.isExpanded == true }.map { it.item.id }.toSet()
-        removeFrom(firstThatDiffers)
-        val appendedFrom = document.textLength
-        append(items.drop(firstThatDiffers), after = items.getOrNull(firstThatDiffers - 1), opened + foldsToOpen)
-        foldsToOpen = foldsToOpen - shown.map { it.item.id }.toSet()
-        findLinksIn(appendedFrom)
-        if (wasAtTheEnd) editor.scrollingModel.scrollTo(editor.offsetToLogicalPosition(document.textLength), ScrollType.MAKE_VISIBLE)
-        scrollToThePositionRestored()
+        if (conversation.items == items) return
+        val wasAtTheEnd = isAtTheEnd()
+        val runsBefore = rows.filterIsInstance<TranscriptRow.OfAToolCallRun>().map { it.key }.toSet()
+        items = conversation.items
+        openTheNewRunsOfOpenCalls(runsBefore)
+        texts.keepOnly(items)
+        links.findIn(items.associate { it.id to texts.of(it) })
+        if (find.query.isNotEmpty()) {
+            find.searchAgain()
+            findBar.update()
+        }
+        if (positionToScrollTo != null) scrollToThePositionRestored() else if (wasAtTheEnd) scrollToTheEnd()
+    }
+
+    /** Opens the row with the key [key], or closes it when it's open, as clicking its line does. */
+    fun toggle(key: String) {
+        opened = if (key in opened) opened - key else opened + key
+    }
+
+    /** Scrolls the pane so that the row of the item [item] is at its top. */
+    fun showAtTheTop(item: String) {
+        val index = rows.indexOfFirst { row -> row.items.any { it.id == item } }
+        check(index >= 0) { "The transcript shows no item $item" }
+        scope.launch { listState.scrollToItem(index) }
+    }
+
+    /** What the pane adds to the text [part] as it shows it: Find's highlights, and the console filters' links. */
+    fun decorationsOf(part: ItemTextPart): TextDecorations = TextDecorations(find.highlightsIn(part), links.of(part.item))
+
+    /** Follows [link], as the console that found it would. */
+    fun follow(link: TranscriptLink) {
+        link.info.navigate(project)
+    }
+
+    /** Opens [url], a link of Claude's markdown, in the browser. */
+    fun browse(url: String) {
+        BrowserUtil.browse(url)
+    }
+
+    /** Opens the find bar, with the focus in its field. */
+    fun openFind() {
+        findBar.open()
+    }
+
+    /** Closes the find bar, and has Find seek nothing, with the focus back in the conversation. */
+    fun closeFind() {
+        find.stop()
+        placeToShow = null
+        findBar.hide()
+        IdeFocusManager.getInstance(project).requestFocus(conversation, true)
+    }
+
+    /** Has the text that holds [place] know it's on the screen, once it has scrolled it there. */
+    fun shown(place: FoundText) {
+        if (placeToShow == place) placeToShow = null
     }
 
     /**
-     * Scrolls to the position [restore] was told of, once the pane shows its item, and once it's shown on the screen:
-     * until then it has no height to scroll in.
+     * Shows the place Find found, [place]: opens what hides it, a run of calls or a tool call's body, and scrolls its row
+     * onto the screen, and its text then scrolls the place itself onto it, but Claude's markdown, whose renderer can't.
      */
+    private fun showWhatFindFound(place: FoundText) {
+        val item = items.first { it.id == place.part.item }
+        if (item is ToolCall) {
+            rows.filterIsInstance<TranscriptRow.OfAToolCallRun>().firstOrNull { item in it.run.calls }?.let { opened = opened + it.key }
+            if (place.part.index == TranscriptTexts.BODY) opened = opened + item.id
+        }
+        val index = rows.indexOfFirst { it.key == item.id }
+        if (!isWhollyOnTheScreen(index)) scope.launch { listState.scrollToItem(index) }
+        placeToShow = place.takeUnless { item is AssistantText }
+    }
+
+    private fun isWhollyOnTheScreen(index: Int): Boolean {
+        val layout = listState.layoutInfo
+        return layout.visibleItemsInfo.any { it.index == index && it.offset >= layout.viewportStartOffset && it.offset + it.size <= layout.viewportEndOffset }
+    }
+
+    /** Opens each run of tool calls that wasn't one of [runsBefore], and holds a call the user opened while it was alone. */
+    private fun openTheNewRunsOfOpenCalls(runsBefore: Set<String>) {
+        val runsToOpen = rows.filterIsInstance<TranscriptRow.OfAToolCallRun>().filter { run -> run.key !in runsBefore && run.run.calls.any { it.id in opened } }
+        if (runsToOpen.isNotEmpty()) opened = opened + runsToOpen.map { it.key }
+    }
+
+    /** Scrolls to the position [restore] was told of, once the pane shows its row. */
     private fun scrollToThePositionRestored() {
         val position = positionToScrollTo ?: return
-        val item = position.topItem!!
-        if (shown.none { it.item.id == item }) return
-        UiNotifyConnector.doWhenFirstShown(editor.component) {
-            if (positionToScrollTo != position) return@doWhenFirstShown
-            positionToScrollTo = null
-            if (shown.any { it.item.id == item }) showAtTheTop(item, position.linesIntoIt)
+        val index = rows.indexOfFirst { it.key == position.topRow }.takeIf { it >= 0 } ?: rows.indexOfFirst { row -> row.items.any { it.id == position.topRow } }
+        if (index < 0) return
+        positionToScrollTo = null
+        scope.launch { listState.scrollToItem(index, position.pixelsIntoIt) }
+    }
+
+    private fun scrollToTheEnd() {
+        if (rows.isEmpty()) return
+        scope.launch {
+            listState.scrollToItem(rows.lastIndex)
+            listState.scrollBy(Float.MAX_VALUE)
         }
     }
 
-    /** The item at the top of the pane, or null when it shows none. */
-    private fun shownAtTheTop(): ShownItem? {
-        if (shown.isEmpty()) return null
-        val offset = document.getLineStartOffset(lineAtTheTop())
-        return shown.firstOrNull { offset < it.range.endOffset } ?: shown.last()
-    }
-
-    /** The line of the conversation at the top of the pane. */
-    private fun lineAtTheTop(): Int = editor.xyToLogicalPosition(Point(0, editor.scrollingModel.verticalScrollOffset)).line.coerceAtMost(maxOf(document.lineCount - 1, 0))
-
-    /** Takes the items from [first] on away, with their text, folds, and the links over it, which go with their text. */
-    private fun removeFrom(first: Int) {
-        if (first >= shown.size) return
-        val removed = shown.subList(first, shown.size)
-        val start = removed.first().range.startOffset
-        removals++
-        editor.foldingModel.runBatchFoldingOperation { removed.mapNotNull { it.fold }.filter { it.isValid }.forEach(editor.foldingModel::removeFoldRegion) }
-        changeTheText { document.deleteString(start, document.textLength) }
-        removed.forEach { it.range.dispose() }
-        removed.clear()
-    }
-
-    /** Appends [items], the first shown after [after], with the folds of those whose ids are in [opened] open. */
-    private fun append(items: List<ConversationItem>, after: ConversationItem?, opened: Set<String>) {
-        val texts = items.zip(listOf(after) + items.dropLast(1)) { item, previous -> item to ItemText.of(item, previous) }
-        changeTheText { document.insertString(document.textLength, texts.joinToString("") { it.second.text }) }
-        var start = document.textLength - texts.sumOf { it.second.text.length }
-        editor.foldingModel.runBatchFoldingOperation {
-            for ((item, text) in texts) {
-                val range = document.createRangeMarker(start, start + text.text.length)
-                val fold = text.folded?.let { editor.foldingModel.addFoldRegion(start + it.first, start + it.last + 1, FOLDED) }
-                fold?.isExpanded = item.id in opened
-                shown += ShownItem(item, range, fold)
-                start += text.text.length
-            }
-        }
-    }
-
-    /** Has the console filters find links in the text from [offset] to the end, in the background. */
-    private fun findLinksIn(offset: Int) {
-        if (offset >= document.textLength) return
-        val removalsNow = removals
-        val expired = Expirable { isDisposed || removals != removalsNow }
-        for (filter in filters) links.highlightHyperlinksLater(filter, document.getLineNumber(offset), document.getLineNumber(document.textLength), expired)
-    }
-
-    /** Has [change] change the text, as the user can't: the pane's changes aren't for the user to undo. */
-    private fun changeTheText(change: () -> Unit) {
-        CommandProcessor.getInstance().runUndoTransparentAction { WriteAction.run<Throwable>(change) }
-    }
-
-    private fun isScrolledToTheEnd(): Boolean {
-        if (shown.isEmpty()) return true
-        val visible = editor.scrollingModel.visibleArea
-        return visible.y + visible.height >= editor.contentComponent.height - editor.lineHeight
-    }
+    private fun isAtTheEnd(): Boolean = rows.isEmpty() || !listState.canScrollForward
 
     override fun dispose() {
-        isDisposed = true
-        EditorFactory.getInstance().releaseEditor(editor)
+        scope.cancel()
     }
 
-    /** An item shown: where its text is, and its fold, if it has one. */
-    private class ShownItem(val item: ConversationItem, val range: RangeMarker, val fold: FoldRegion?)
-
-    private companion object {
-        /** The name of the Markdown plugin's file type, whose highlighting the text gets where the IDE has it. */
-        const val MARKDOWN = "Markdown"
-
-        /** What a fold shows while it's collapsed, after the tool call's header. */
-        const val FOLDED = " …"
+    companion object {
+        /** The pane an action of Find runs in, as the pane's component tells. */
+        val KEY: DataKey<TranscriptPane> = DataKey.create("ClaudeSessions.TranscriptPane")
     }
 }

@@ -13,6 +13,15 @@
     <depends>org.jetbrains.plugins.terminal</depends>
     <!-- The platform's JNA, through which the session history picker lets another IDE bring its window forward. -->
     <depends>com.intellij.modules.jna</depends>
+    <!-- The platform's Compose UI, with Jewel, in which a chat's transcript renders the conversation's markdown. -->
+    <depends>com.intellij.modules.compose</depends>
+    <dependencies>
+        <module name="intellij.platform.jewel.markdown.core"/>
+        <module name="intellij.platform.jewel.markdown.ideLafBridgeStyling"/>
+        <module name="intellij.platform.jewel.markdown.extensions.gfmTables"/>
+        <module name="intellij.platform.jewel.markdown.extensions.gfmStrikethrough"/>
+        <module name="intellij.platform.jewel.markdown.extensions.autolink"/>
+    </dependencies>
 
     <!-- Where a tab's chat gets the Claude Code behind it: see ClaudeCodeBehindTheChatProvider. The hub's adapter provides
          one for every tab whose session runs in a session host; the sandbox's stand-in, first, in the sandbox IDE. -->
@@ -85,5 +94,24 @@
                  TheSwitchFirstInAClaudeSessionsTab (Magnus, 2026-11-20). -->
             <keyboard-shortcut keymap="$default" first-keystroke="ctrl H"/>
         </action>
+        <!-- Find in a chat's transcript, with the shortcuts of Find, Find Next and Find Previous, whatever the keymap
+             binds them to: enabled only with the focus in a transcript, which isn't an editor, so Find's own are
+             disabled there. -->
+        <action id="ClaudeSessions.FindInTheTranscript"
+                class="dev.magnus.claudesessions.chat.transcript.find.FindInTheTranscriptAction"
+                text="Find in the Chat's Transcript"
+                description="Seek a text in the conversation the Claude Sessions tab's chat shows"
+                icon="AllIcons.Actions.Find"
+                use-shortcut-of="Find"/>
+        <action id="ClaudeSessions.FindNextInTheTranscript"
+                class="dev.magnus.claudesessions.chat.transcript.find.FindNextInTheTranscriptAction"
+                text="Next Occurrence in the Chat's Transcript"
+                description="Go to the next place in the chat's transcript that holds what Find seeks"
+                use-shortcut-of="FindNext"/>
+        <action id="ClaudeSessions.FindPreviousInTheTranscript"
+                class="dev.magnus.claudesessions.chat.transcript.find.FindPreviousInTheTranscriptAction"
+                text="Previous Occurrence in the Chat's Transcript"
+                description="Go to the place before in the chat's transcript that holds what Find seeks"
+                use-shortcut-of="FindPrevious"/>
     </actions>
 </idea-plugin>

@@ -1,15 +1,16 @@
 package dev.magnus.claudesessions.chat.transcript
 
 /**
- * Where the user was in a [TranscriptPane]'s conversation, to show it there again after the IDE restarts: the item at
- * the top of the pane, [topItem], and how many of its lines are scrolled past, [linesIntoIt]; and the items whose folds
- * the user opened, [openFolds], by their ids.
+ * Where the user was in a [TranscriptPane]'s conversation, to show it there again after the IDE restarts: the row at
+ * the top of the pane, [topRow], and how far it's scrolled past, [pixelsIntoIt]; and what the user opened, [opened]: the
+ * tool calls and runs of them, by their rows' keys.
  *
- * @property topItem The id of the item at the top of the pane, or null when the pane follows the end of the conversation.
+ * @property topRow The key of the [TranscriptRow] at the top of the pane, or null when the pane follows the end of the
+ *   conversation.
  */
-data class TranscriptPosition(val topItem: String?, val linesIntoIt: Int, val openFolds: Set<String>) {
+data class TranscriptPosition(val topRow: String?, val pixelsIntoIt: Int, val opened: Set<String>) {
     companion object {
-        /** At the end of the conversation, following it, every fold closed: where a new chat is. */
-        val AT_THE_END = TranscriptPosition(topItem = null, linesIntoIt = 0, openFolds = emptySet())
+        /** At the end of the conversation, following it, nothing opened: where a new chat is. */
+        val AT_THE_END = TranscriptPosition(topRow = null, pixelsIntoIt = 0, opened = emptySet())
     }
 }

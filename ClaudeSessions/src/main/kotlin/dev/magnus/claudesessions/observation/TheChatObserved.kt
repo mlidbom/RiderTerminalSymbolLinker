@@ -1,6 +1,12 @@
 package dev.magnus.claudesessions.observation
 
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.ui.ImageComposeScene
+import androidx.compose.ui.unit.Density
 import com.google.gson.JsonObject
+import com.intellij.ui.scale.JBUIScale
+import org.jetbrains.jewel.bridge.theme.SwingBridgeTheme
+import org.jetbrains.skia.EncodedImageFormat
 import com.intellij.ide.DataManager
 import com.intellij.openapi.actionSystem.ActionManager
 import com.intellij.openapi.actionSystem.ActionPlaces
@@ -14,7 +20,6 @@ import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.editor.EditorModificationUtil
 import com.intellij.openapi.keymap.KeymapManager
 import com.intellij.openapi.project.Project
-import com.intellij.openapi.util.TextRange
 import com.intellij.openapi.wm.WindowManager
 import com.intellij.util.ui.ImageUtil
 import dev.magnus.claudesessions.ClaudeSessionTab
@@ -29,13 +34,24 @@ import dev.magnus.claudesessions.chat.claudecode.PastedText
 import dev.magnus.claudesessions.chat.claudecode.TypedText
 import dev.magnus.claudesessions.chat.claudecode.TypingOutcome
 import dev.magnus.claudesessions.chat.claudecode.conversation.AssistantText
+import dev.magnus.claudesessions.chat.claudecode.conversation.Clearing
 import dev.magnus.claudesessions.chat.claudecode.conversation.Compaction
 import dev.magnus.claudesessions.chat.claudecode.conversation.Conversation
 import dev.magnus.claudesessions.chat.claudecode.conversation.ConversationItem
+import dev.magnus.claudesessions.chat.claudecode.conversation.Interruption
 import dev.magnus.claudesessions.chat.claudecode.conversation.Prompt
+import dev.magnus.claudesessions.chat.claudecode.conversation.PromptFromElsewhere
+import dev.magnus.claudesessions.chat.claudecode.conversation.Thinking
 import dev.magnus.claudesessions.chat.claudecode.conversation.ToolCall
 import dev.magnus.claudesessions.chat.claudecode.conversation.ToolInputField
 import dev.magnus.claudesessions.chat.claudecode.conversation.ToolResult
+import dev.magnus.claudesessions.chat.transcript.PromptFromElsewhereCaption
+import dev.magnus.claudesessions.chat.transcript.toolcalls.ToolCallBody
+import dev.magnus.claudesessions.chat.transcript.toolcalls.ToolCallHeader
+import dev.magnus.claudesessions.chat.transcript.toolcalls.ToolCallStatus
+import dev.magnus.claudesessions.chat.transcript.TranscriptPane
+import dev.magnus.claudesessions.chat.transcript.TranscriptRow
+import dev.magnus.claudesessions.chat.transcript.TranscriptView
 import java.awt.Color
 import java.awt.Component
 import java.awt.Image
@@ -65,15 +81,13 @@ class TheChatObserved(private val project: Project, private val tab: Int) {
 
     /**
      * The tab's chat: the card shown, or null when the tab has no chat, and the card the user chose, or null; the
-     * conversation's text, each fold of it with its header line, its folded text and whether it is open, the texts the
-     * links cover, and the id of the item at the top of the pane; the status line, and why Claude Code didn't get what
-     * the chat last gave it, or null; the text in the input box, its parts, each with its kind, and its caret; and the
-     * titles of the cards' tabs.
+     * transcript's rows, as [describe] tells each, the texts the links cover, the id of the item at the top of the pane,
+     * and its find bar; the status line, and why Claude Code didn't get what the chat last gave it, or null; the text in
+     * the input box, its parts, each with its kind, and its caret; and the titles of the cards' tabs.
      */
     fun describe(): Map<String, Any?> {
         val cards = sessionTab.cards ?: return mapOf("card" to null)
         val transcript = cards.chat.transcript
-        val document = transcript.editor.document
         val draft = cards.chat.messageBox.draft
         return mapOf(
             "card" to cards.shown.name,
@@ -81,15 +95,8 @@ class TheChatObserved(private val project: Project, private val tab: Int) {
             "itemAtTheTop" to transcript.itemAtTheTop,
             "messageBoxParts" to describe(draft.message)["parts"],
             "caret" to draft.caret,
-            "transcript" to transcript.text,
-            "folds" to transcript.folds.map { fold ->
-                val line = document.getLineNumber(fold.startOffset)
-                mapOf(
-                    "header" to document.getText(TextRange(document.getLineStartOffset(line), fold.startOffset)),
-                    "folded" to document.getText(fold.textRange),
-                    "open" to fold.isExpanded,
-                )
-            },
+            "rows" to transcript.rows.map { describe(it, transcript) },
+            "find" to describeTheFindOf(transcript),
             "links" to transcript.linkedTexts,
             "statusLine" to cards.chat.statusLine.text,
             "whyNotTyped" to cards.chat.statusLine.whyNotTyped,
@@ -195,6 +202,7 @@ class TheChatObserved(private val project: Project, private val tab: Int) {
     fun theActionTheShortcutRuns(keystroke: String, pressedIn: String): Map<String, Any?> {
         val component = when (pressedIn) {
             "chat" -> cards.focusOf(TabCard.CHAT)
+            "transcript" -> cards.chat.transcript.conversation
             "terminal" -> cards.focusOf(TabCard.TERMINAL)
             "elsewhere" -> WindowManager.getInstance().getFrame(project)!!.rootPane
             else -> error("No place $pressedIn to press a key in")
@@ -223,17 +231,110 @@ class TheChatObserved(private val project: Project, private val tab: Int) {
         }
     }
 
-    /** Opens the fold [fold], by its place among the folds, or closes it when not [open]. */
-    fun openTheFold(fold: Int, open: Boolean): Map<String, Any?> {
-        val editor = cards.chat.transcript.editor
-        editor.foldingModel.runBatchFoldingOperation { cards.chat.transcript.folds[fold].isExpanded = open }
+    /** Clicks the line of the transcript's row with the key [row]: opens a tool call, or a run of them, or closes it. */
+    fun clickTheRow(row: String): Map<String, Any?> {
+        val transcript = cards.chat.transcript
+        check(transcript.rows.any { it.key == row && it !is TranscriptRow.OfAnItem }) { "The transcript has no line to click with the key $row" }
+        transcript.toggle(row)
         return describe()
     }
 
-    /** Scrolls the conversation so that the item [item], by its id, is at the top of the pane, as the user would. */
+    /** Scrolls the conversation so that the row of the item [item], by its id, is at the top of the pane, as the user would. */
     fun scrollTheTranscriptTo(item: String): Map<String, Any?> {
-        cards.chat.transcript.showAtTheTop(item, linesIntoIt = 0)
+        cards.chat.transcript.showAtTheTop(item)
         return describe()
+    }
+
+    /**
+     * A row of the transcript: its `key`; its `kind`, `prompt`, `from` (a prompt from elsewhere, with its `caption`),
+     * `claude`, `thinking`, `interruption`, `compaction`, `clearing`, `tool-call` or `tool-calls` (the line of a run of
+     * them); and its `text`, as it reads on the screen: what Claude said once its markdown is rendered, each part on a
+     * line of its own, and the line of a tool call, or of a run, with how it went. A tool call's has its `body`, shown or
+     * not, and says whether it's `open`, and whether it's `inARun`; a run's says whether it's `open`.
+     */
+    private fun describe(row: TranscriptRow, transcript: TranscriptPane): Map<String, Any?> = when (row) {
+        is TranscriptRow.OfAnItem -> {
+            val item = row.item
+            mapOf(
+                "key" to row.key,
+                "kind" to when (item) {
+                    is Prompt -> "prompt"
+                    is PromptFromElsewhere -> "from"
+                    is AssistantText -> "claude"
+                    is Thinking -> "thinking"
+                    is Interruption -> "interruption"
+                    is Compaction -> "compaction"
+                    is Clearing -> "clearing"
+                    is ToolCall -> error("A tool call shows in a row of its own")
+                },
+                "caption" to (item as? PromptFromElsewhere)?.from?.let(PromptFromElsewhereCaption::of),
+                "text" to transcript.texts.of(item).joinToString("\n"),
+            )
+        }
+        is TranscriptRow.OfAToolCall -> mapOf(
+            "key" to row.key,
+            "kind" to "tool-call",
+            "text" to ToolCallHeader.of(row.call) + ToolCallStatus.of(listOf(row.call)).suffix,
+            "body" to ToolCallBody.of(row.call),
+            "open" to row.isOpen,
+            "inARun" to row.inARun,
+        )
+        is TranscriptRow.OfAToolCallRun -> mapOf("key" to row.key, "kind" to "tool-calls", "text" to row.run.summary, "open" to row.isOpen)
+    }
+
+    /**
+     * The transcript's find bar: whether it's `shown`, the `text` in its field, what it says of how many places hold
+     * it, `count`, such as `3/17`, and the place the user is at, `current`, by its `item` and the index of its text, `part`.
+     */
+    private fun describeTheFindOf(transcript: TranscriptPane): Map<String, Any?> = mapOf(
+        "shown" to transcript.findBar.component.isVisible,
+        "text" to transcript.findBar.text,
+        "count" to transcript.findBar.countSaid,
+        "current" to transcript.find.current?.let(transcript.find.found::getOrNull)?.let { mapOf("item" to it.part.item, "part" to it.part.index) },
+    )
+
+    /** Opens the find bar of the transcript, and has its field hold [text], as when the user types it. */
+    fun find(text: String): Map<String, Any?> {
+        cards.chat.transcript.openFind()
+        cards.chat.transcript.findBar.type(text)
+        return describe()
+    }
+
+    /** Goes to the next place the find bar found, as Enter in its field does, or to the one before when not [forward]. */
+    fun findNext(forward: Boolean): Map<String, Any?> {
+        val transcript = cards.chat.transcript
+        if (forward) transcript.find.next() else transcript.find.previous()
+        transcript.findBar.update()
+        return describe()
+    }
+
+    /** Closes the transcript's find bar, as Escape in its field does. */
+    fun closeTheFind(): Map<String, Any?> {
+        cards.chat.transcript.closeFind()
+        return describe()
+    }
+
+    /**
+     * Renders the chat's transcript, scrolled as it is, into a PNG file, [PICTURE_WIDTH] by [PICTURE_HEIGHT] at the
+     * screen's scale, and tells where the file is, `file`: a picture for an agent to look at. Rendered by itself, in a
+     * Compose scene of its own, as the sandbox IDE's window is on a virtual desktop of its own, where Compose draws nothing.
+     */
+    fun picture(): Map<String, Any?> {
+        val transcript = cards.chat.transcript
+        val scale = JBUIScale.sysScale(transcript.component)
+        val listState = LazyListState(transcript.listState.firstVisibleItemIndex, transcript.listState.firstVisibleItemScrollOffset)
+        val scene = ImageComposeScene((PICTURE_WIDTH * scale).toInt(), (PICTURE_HEIGHT * scale).toInt(), Density(scale)) {
+            SwingBridgeTheme { TranscriptView(transcript, listState) }
+        }
+        val png = try {
+            scene.render()
+            scene.render().encodeToData(EncodedImageFormat.PNG)!!.bytes
+        } finally {
+            scene.close()
+        }
+        val file = Files.createTempFile("claude-sessions-transcript-", ".png")
+        Files.write(file, png)
+        return mapOf("file" to file.toString())
     }
 
     private fun describe(message: Message): Map<String, Any?> = mapOf(
@@ -257,6 +358,12 @@ class TheChatObserved(private val project: Project, private val tab: Int) {
         /** The place the channel runs actions from, as the IDE's action system names where an action was invoked. */
         const val PLACE = "ClaudeSessions.Observation"
 
+        /** How wide a [picture] of the transcript is, unscaled. */
+        const val PICTURE_WIDTH = 900
+
+        /** How high a [picture] of the transcript is, unscaled. */
+        const val PICTURE_HEIGHT = 1000
+
         val KEYS = mapOf(
             "ENTER" to KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, 0),
             "CTRL_ENTER" to KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, InputEvent.CTRL_DOWN_MASK),
@@ -267,7 +374,7 @@ class TheChatObserved(private val project: Project, private val tab: Int) {
 
         /**
          * The conversation [json] describes: `{"items": [...]}`, each item an object with its `kind` and `id`:
-         * `prompt` and `assistant-text` with their `text`; `tool-call` with its `tool`, its `input` as an object of
+         * `prompt`, `assistant-text` and `thinking` with their `text`; `tool-call` with its `tool`, its `input` as an object of
          * texts, and its `result`, `{"text": …, "isAnError": …}` or null; and `compaction`.
          */
         fun conversationFrom(json: JsonObject): Conversation = Conversation(json.getAsJsonArray("items").map { itemFrom(it.asJsonObject) })
@@ -277,6 +384,7 @@ class TheChatObserved(private val project: Project, private val tab: Int) {
             return when (val kind = item.get("kind").asString) {
                 "prompt" -> Prompt(id, item.get("text").asString)
                 "assistant-text" -> AssistantText(id, item.get("text").asString)
+                "thinking" -> Thinking(id, item.get("text").asString)
                 "tool-call" -> ToolCall(
                     id,
                     item.get("tool").asString,

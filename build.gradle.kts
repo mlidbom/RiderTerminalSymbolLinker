@@ -4,6 +4,8 @@ import org.jetbrains.intellij.platform.gradle.tasks.VerifyPluginTask
 
 plugins {
     kotlin("jvm") version "2.4.21"
+    // The Compose compiler, for Claude Sessions' chat, which renders the conversation with the platform's Compose.
+    kotlin("plugin.compose") version "2.4.21" apply false
     id("org.jetbrains.intellij.platform") version "2.20.1"
     id("org.jetbrains.changelog") version "2.5.0"
 }

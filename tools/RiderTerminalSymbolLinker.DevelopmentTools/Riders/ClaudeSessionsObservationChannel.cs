@@ -146,15 +146,29 @@ public sealed class ClaudeSessionsObservationChannel(int port) : ObservationChan
 
    /// <summary>
    ///   The action the IDE would run for <paramref name="keystroke"/>, such as <c>ctrl H</c>, pressed in tab
-   ///   <paramref name="tab"/>'s <c>chat</c> or <c>terminal</c>, or <c>elsewhere</c> in the IDE's window, and the actions
-   ///   the keymap binds it to.
+   ///   <paramref name="tab"/>'s chat's input box, <c>chat</c>, or its <c>transcript</c>, in its <c>terminal</c>, or
+   ///   <c>elsewhere</c> in the IDE's window.
    /// </summary>
    public JsonNode TheActionTheShortcutRuns(int tab, string keystroke, string pressedIn, string? project = null) =>
       Get("tabs/chat/shortcut", project, $"tab={tab}&keystroke={Uri.EscapeDataString(keystroke)}&in={pressedIn}");
 
-   /// <summary>Opens the conversation's fold <paramref name="fold"/>, by its place, or closes it when not <paramref name="open"/>.</summary>
-   public JsonNode OpenTheFoldInTheChat(int tab, int fold, bool open = true, string? project = null) =>
-      Post("tabs/chat/fold", project, new { }, $"tab={tab}&fold={fold}&open={(open ? "true" : "false")}");
+   /// <summary>Clicks the line of the transcript's row <paramref name="row"/>, by its key: opens a tool call, or a run of them, or closes it.</summary>
+   public JsonNode ClickTheRowInTheChat(int tab, string row, string? project = null) =>
+      Post("tabs/chat/click-row", project, new { }, $"tab={tab}&row={Uri.EscapeDataString(row)}");
+
+   /// <summary>Opens the transcript's find bar, and has it seek <paramref name="text"/>.</summary>
+   public JsonNode FindInTheChat(int tab, string text, string? project = null) =>
+      Post("tabs/chat/find", project, new { }, $"tab={tab}&text={Uri.EscapeDataString(text)}");
+
+   /// <summary>Goes to the next place the transcript's find bar found, or to the one before when not <paramref name="forward"/>.</summary>
+   public JsonNode FindNextInTheChat(int tab, bool forward = true, string? project = null) =>
+      Post("tabs/chat/find-next", project, new { }, $"tab={tab}&forward={(forward ? "true" : "false")}");
+
+   /// <summary>Closes the transcript's find bar.</summary>
+   public JsonNode CloseTheFindInTheChat(int tab, string? project = null) => Post("tabs/chat/close-find", project, new { }, $"tab={tab}");
+
+   /// <summary>Paints tab <paramref name="tab"/>'s chat into a PNG file, and tells where it is: <c>file</c>. For an agent to look at.</summary>
+   public JsonNode PictureOfTheChat(int tab, string? project = null) => Get("tabs/chat/picture", project, $"tab={tab}");
 
    /// <summary>
    ///   Has the tabs opened from now on get the claude tooling's hub behind their chats, when <paramref name="hub"/>, as

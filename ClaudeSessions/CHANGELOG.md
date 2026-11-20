@@ -20,12 +20,15 @@ All notable changes to Claude Sessions are documented here. The format follows
   session host of the Claude tooling's hub, outside the IDE, and the tab shows it. When the IDE goes, the sessions run
   on, mid-turn included, and when the project opens again every tab comes back as it was, in the same order, showing
   its session as it is now. Closing a tab ends its session.
-- **Each tab shows its session as a chat.** In place of Claude Code's own UI, a tab shows the conversation in an
-  editor, where the IDE's search, selection and shortcuts work, and an input box that is an editor too. Each prompt shows
-  under `## You`, each turn of Claude's under `## Claude`, and a prompt from another session, a background task or a
-  scheduled wake-up under where it came from. Each tool call is one line, its input and result folded below it, and
-  thinking is folded too; file paths and symbols are links, as in the terminal. A `/clear` shows as a divider, with the
-  conversation going on below it. Ctrl+Enter sends, Enter starts a new line, as in any editor, and so does Shift+Enter,
+- **Each tab shows its session as a chat.** In place of Claude Code's own UI, a tab shows the conversation rendered as
+  the desktop app renders it, in the IDE's theme, and an input box that is an editor. What you said shows shaded, as
+  you wrote it, and a prompt from another session, a background task or a scheduled wake-up under where it came from;
+  what Claude said shows as rendered markdown, with headings, lists, tables, code and links, and its thinking dimmed.
+  Each tool call is one line, which opens to its input and result, and tool calls Claude made one after the other are
+  one line that counts them, such as "Ran 2 commands, read 1 file", which opens to theirs; a failed call says so in red.
+  File paths and symbols are links, as in the terminal. Find works in it with the IDE's Find shortcuts, such as Ctrl+F
+  and F3, and opens what hides the text it finds. A `/clear` shows as a divider, with the conversation going on below
+  it. Ctrl+Enter sends, Enter starts a new line, as in any editor, and so does Shift+Enter,
   as in Claude Code's own box; Escape interrupts Claude, Shift+Tab changes
   its permission mode, and the IDE's paste takes text and images. The box is free for the next message at once; a
   message Claude Code doesn't get comes back into the box, and the status line says why. Claude Code's own UI is under

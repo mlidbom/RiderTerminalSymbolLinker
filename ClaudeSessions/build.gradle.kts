@@ -4,6 +4,7 @@ import org.jetbrains.intellij.platform.gradle.tasks.VerifyPluginTask
 // The plugins' versions are the root build's: Gradle applies a plugin the root build has applied without a version.
 plugins {
     kotlin("jvm")
+    kotlin("plugin.compose")
     id("org.jetbrains.intellij.platform")
     id("org.jetbrains.changelog")
 }
@@ -37,6 +38,19 @@ dependencies {
         // The type of the terminal's environment setting, EnvironmentVariablesData, which a session host's shell gets:
         // on the IDE's classpath, and not on the one the build compiles against without it.
         bundledModule("intellij.platform.execution.impl")
+        // The platform's Compose and Jewel, in which the chat's transcript renders the conversation's markdown, styled
+        // as the IDE is: the modules of the bundled plugin com.intellij.modules.compose, which plugin.xml depends on.
+        bundledModule("intellij.libraries.compose.runtime.desktop")
+        bundledModule("intellij.libraries.compose.foundation.desktop")
+        bundledModule("intellij.libraries.skiko")
+        bundledModule("intellij.platform.jewel.foundation")
+        bundledModule("intellij.platform.jewel.ui")
+        bundledModule("intellij.platform.jewel.ideLafBridge")
+        bundledModule("intellij.platform.jewel.markdown.core")
+        bundledModule("intellij.platform.jewel.markdown.ideLafBridgeStyling")
+        bundledModule("intellij.platform.jewel.markdown.extensions.gfmTables")
+        bundledModule("intellij.platform.jewel.markdown.extensions.gfmStrikethrough")
+        bundledModule("intellij.platform.jewel.markdown.extensions.autolink")
     }
 
     // Plain JUnit Jupiter, as for the symbol linker's unit tests: the contract test of the hub's local API touches no
@@ -108,5 +122,8 @@ kotlin {
     // reports as uses of deprecated and experimental API.
     compilerOptions {
         jvmDefault = org.jetbrains.kotlin.gradle.dsl.JvmDefaultMode.NO_COMPATIBILITY
+        // Jewel's markdown rendering, which the chat's transcript is built on, is experimental as a whole, as Jewel is
+        // below 1.0: its uses are checked as the platform's Jewel changes, with each new IDE.
+        optIn.add("org.jetbrains.jewel.foundation.ExperimentalJewelApi")
     }
 }

@@ -89,6 +89,7 @@ public class When_the_chat_shows_a_conversation(When_the_chat_shows_a_conversati
    public sealed class Story
    {
       public readonly ChatSeen Shown;
+      public readonly ChatSeen WithTheRunOpen;
       public readonly ChatSeen OnceTheResultCame;
       public readonly ChatSeen WithLinks;
       public readonly ChatSeen AfterARewind;
@@ -102,7 +103,8 @@ public class When_the_chat_shows_a_conversation(When_the_chat_shows_a_conversati
          object[] conversation =
          [
             Item.Prompt("p1", "Fix the bug in the circle"),
-            Item.AssistantText("a1", "Looking at it."),
+            Item.Thinking("k1", "The area uses the diameter."),
+            Item.AssistantText("a1", "## Looking at it\n\nThe area is **wrong**:\n\n- it uses `diameter`"),
             Item.ToolCall("t1", "Bash", new Dictionary<string, string> { ["command"] = "git status", ["description"] = "Show the working tree" }, "On branch main"),
             Item.AssistantText("a2", "Fixed **Circle.Area** in Shapes/Circle.cs:7."),
             Item.Compaction("c1"),
@@ -112,43 +114,150 @@ public class When_the_chat_shows_a_conversation(When_the_chat_shows_a_conversati
             Item.ToolCall("t3", "Bash", new Dictionary<string, string> { ["command"] = "dotnet test" }, result: null)
          ];
          Shown = chat.Give(conversation);
-         chat.OpenTheFold(2);
+         chat.ClickTheRow(Run);
+         WithTheRunOpen = chat.ClickTheRow("t3");
          conversation[^1] = Item.ToolCall("t3", "Bash", new Dictionary<string, string> { ["command"] = "dotnet test" }, "Failed: 1 in Shapes/Circle.cs:7", isAnError: true);
          chat.Give(conversation);
-         OnceTheResultCame = chat.SeenOnce(it => it.Transcript.Contains("Failed: 1"), "the tool call's result to show");
+         OnceTheResultCame = chat.SeenOnce(it => it.Row("t3").Body!.Contains("Failed: 1"), "the tool call's result to show");
          WithLinks = chat.SeenOnce(it => it.Links.Count(link => link == "Shapes/Circle.cs:7") == 2, "the symbol linker's links to show");
          chat.Give([.. conversation[..^2], Item.AssistantText("a3", "Went another way.")]); // As a rewind does.
          AfterARewind = chat.SeenOnce(it => it.Transcript.Contains("Went another way."), "the conversation to go another way");
       }
    }
 
-   [XF] public void a_prompt_shows_under_a_heading_of_the_users() => story.Shown.Transcript.Must().StartWith("## You\nFix the bug in the circle\n\n");
-   [XF] public void claudes_turn_starts_with_a_heading_of_claudes() => story.Shown.Transcript.Must().Contain("\n\n## Claude\nLooking at it.\n\n");
+   /// <summary>The key of the row of the run of tool calls t2 and t3.</summary>
+   const string Run = "tool calls from t2";
 
-   [XF] public void each_tool_call_shows_as_its_header() =>
-      story.Shown.Folds.Select(it => it.Header).Must().Satisfy(it => it.SequenceEqual(["▸ Bash: git status", "▸ Read: C:\\Some\\File.cs", "▸ Bash: dotnet test"]));
+   [XF] public void a_prompt_shows_as_the_users() => story.Shown.Rows[0].Must().Be(new RowSeen("p1", "prompt", "Fix the bug in the circle", null, null, false, false));
+   [XF] public void claudes_thinking_shows_too() => (story.Shown.Row("k1").Kind, story.Shown.Row("k1").Text).Must().Be(("thinking", "The area uses the diameter."));
+   [XF] public void what_claude_said_shows_as_its_markdown_renders() => story.Shown.Row("a1").Text.Must().Be("Looking at it\nThe area is wrong:\nit uses diameter");
 
-   [XF] public void with_its_input_and_result_folded_away_below_it() =>
-      story.Shown.Folds[0].Folded.Must().Be("\n```\ncommand: git status\ndescription: Show the working tree\n── result ──\nOn branch main\n```");
+   [XF] public void a_tool_call_by_itself_shows_as_its_header() => (story.Shown.Row("t1").Kind, story.Shown.Row("t1").Text).Must().Be(("tool-call", "Bash: git status"));
+   [XF] public void with_its_input_and_result_in_its_body() => story.Shown.Row("t1").Body.Must().Be("command: git status\ndescription: Show the working tree\n── result ──\nOn branch main");
+   [XF] public void collapsed() => story.Shown.Row("t1").Open.Must().BeFalse();
 
-   [XF] public void collapsed() => story.Shown.Folds.Must().Satisfy(folds => folds.All(it => !it.Open));
+   [XF] public void tool_calls_made_one_after_the_other_show_as_one_line_that_counts_them() =>
+      (story.Shown.Row(Run).Kind, story.Shown.Row(Run).Text).Must().Be(("tool-calls", "Read 1 file, ran 1 command · running"));
 
-   [XF] public void a_result_with_backticks_in_it_is_fenced_with_more() => story.Shown.Folds[1].Folded.Must().StartWith("\n````\n");
-   [XF] public void a_tool_call_without_a_result_shows_it_runs() => story.Shown.Folds[2].Folded.Must().Contain("── running ──");
-   [XF] public void a_compaction_shows_as_a_divider() => story.Shown.Transcript.Must().Contain("\n───── The conversation was compacted here ─────\n\n## You\n/compact\n\n");
-
+   [XF] public void collapsed_too_with_no_rows_of_their_own() => (story.Shown.Row(Run).Open, story.Shown.Rows.Any(it => it.Key is "t2" or "t3")).Must().Be((false, false));
+   [XF] public void a_compaction_shows_as_a_divider() => (story.Shown.Row("c1").Kind, story.Shown.Row("c1").Text).Must().Be(("compaction", "The conversation was compacted here"));
    [XF] public void the_status_line_counts_the_commands_of_the_turn() => story.Shown.StatusLine.Must().Be("Claude is busy · 2 commands this turn");
 
-   [XF] public void when_a_tool_calls_result_comes_it_shows_in_the_fold() => story.OnceTheResultCame.Folds[2].Folded.Must().Contain("── failed ──\nFailed: 1");
-   [XF] public void which_stays_open_if_the_user_opened_it() => story.OnceTheResultCame.Folds[2].Open.Must().BeTrue();
-   [XF] public void and_what_came_before_it_stays_as_it_was() => story.OnceTheResultCame.Transcript.Must().StartWith(story.Shown.Transcript[..story.Shown.Transcript.IndexOf("▸ Bash: dotnet test")]);
+   [XF] public void opened_the_run_shows_its_calls_below_it() =>
+      story.WithTheRunOpen.Rows.Select(it => (it.Key, it.Text, it.InARun)).TakeLast(2).Must().Satisfy(it => it.SequenceEqual([("t2", @"Read: C:\Some\File.cs", true), ("t3", "Bash: dotnet test · running", true)]));
+
+   [XF] public void a_call_without_a_result_shows_it_runs() => story.WithTheRunOpen.Row("t3").Body.Must().EndWith("── running ──");
+
+   [XF] public void when_a_tool_calls_result_comes_it_shows_in_the_body() => story.OnceTheResultCame.Row("t3").Body.Must().EndWith("── failed ──\nFailed: 1 in Shapes/Circle.cs:7");
+   [XF] public void and_the_calls_line_and_its_runs_say_it_failed() => (story.OnceTheResultCame.Row("t3").Text, story.OnceTheResultCame.Row(Run).Text).Must().Be(("Bash: dotnet test · failed", "Read 1 file, ran 1 command · 1 failed"));
+   [XF] public void what_the_user_opened_stays_open() => (story.OnceTheResultCame.Row(Run).Open, story.OnceTheResultCame.Row("t3").Open).Must().Be((true, true));
+   [XF] public void and_what_came_before_it_stays_as_it_was() => story.OnceTheResultCame.Rows.Take(8).Must().Satisfy(it => it.SequenceEqual(story.Shown.Rows.Take(8)));
 
    [XF] public void the_console_filters_link_what_they_link_in_a_terminal() => story.WithLinks.Links.Must().Contain("Circle.Area").Contain("Shapes/Circle.cs:7");
 
    [XF] public void when_the_conversation_goes_another_way_what_it_left_goes() =>
-      story.AfterARewind.Transcript.Must().Be(story.Shown.Transcript[..story.Shown.Transcript.IndexOf("▸ Read:")] + "Went another way.\n\n");
+      story.AfterARewind.Rows.Select(it => it.Key).Must().Satisfy(it => it.SequenceEqual(["p1", "k1", "a1", "t1", "a2", "c1", "p2", "p3", "a3"]));
 
    [XF] public void with_its_links() => story.AfterARewind.Links.Must().Satisfy(it => it.SequenceEqual(["Circle.Area", "Shapes/Circle.cs:7"]));
+}
+
+public class When_claude_makes_another_tool_call_after_one_the_user_opened(When_claude_makes_another_tool_call_after_one_the_user_opened.Story story)
+   : IClassFixture<When_claude_makes_another_tool_call_after_one_the_user_opened.Story>
+{
+   public sealed class Story
+   {
+      public readonly ChatSeen OnceTheSecondCame;
+      public readonly ChatSeen OnceTheThirdCame;
+
+      public Story()
+      {
+         var view = new TheClaudeSessionsView();
+         view.StartANewSession();
+         var chat = view.ChatOf(0);
+         chat.SayTheStatus("BUSY");
+         chat.Give(Item.Prompt("p1", "Look around"), Call("t1", "dir", "a.txt"));
+         chat.ClickTheRow("t1");
+         chat.Give(Item.Prompt("p1", "Look around"), Call("t1", "dir", "a.txt"), Call("t2", "type a.txt", result: null));
+         OnceTheSecondCame = chat.SeenOnce(it => it.Rows.Any(row => row.Key == Run), "the run of calls to show");
+         chat.ClickTheRow(Run);
+         chat.Give(Item.Prompt("p1", "Look around"), Call("t1", "dir", "a.txt"), Call("t2", "type a.txt", "hello"), Call("t3", "dir b", result: null));
+         OnceTheThirdCame = chat.SeenOnce(it => it.Row(Run).Text.StartsWith("Ran 3"), "the run to count the third call");
+      }
+
+      static object Call(string id, string command, string? result) => Item.ToolCall(id, "Bash", new Dictionary<string, string> { ["command"] = command }, result);
+   }
+
+   const string Run = "tool calls from t1";
+
+   [XF] public void the_two_show_as_one_line() => story.OnceTheSecondCame.Row(Run).Text.Must().Be("Ran 2 commands · running");
+   [XF] public void which_is_open_as_the_call_the_user_opened_was() => story.OnceTheSecondCame.Row(Run).Open.Must().BeTrue();
+   [XF] public void with_that_call_still_open_below_it() => story.OnceTheSecondCame.Rows.Select(it => (it.Key, it.Open)).Skip(2).Must().Satisfy(it => it.SequenceEqual([("t1", true), ("t2", false)]));
+   [XF] public void a_run_the_user_closed_stays_closed_as_it_grows() => story.OnceTheThirdCame.Row(Run).Open.Must().BeFalse();
+}
+
+public class When_the_user_seeks_a_text_in_the_transcript(When_the_user_seeks_a_text_in_the_transcript.Story story)
+   : IClassFixture<When_the_user_seeks_a_text_in_the_transcript.Story>
+{
+   public sealed class Story
+   {
+      public readonly string? CtrlFInTheTranscript;
+      public readonly string? F3BeforeItSeeks;
+      public readonly ChatSeen Seeking;
+      public readonly string? F3WhileItSeeks;
+      public readonly string? ShiftF3WhileItSeeks;
+      public readonly ChatSeen AtTheSecond;
+      public readonly ChatSeen AtTheThird;
+      public readonly ChatSeen AtTheFourth;
+      public readonly ChatSeen PastTheLast;
+      public readonly ChatSeen BackBeforeTheFirst;
+      public readonly ChatSeen SeekingWhatIsntThere;
+      public readonly ChatSeen Closed;
+
+      public Story()
+      {
+         var view = new TheClaudeSessionsView();
+         view.StartANewSession();
+         var chat = view.ChatOf(0);
+         chat.SayTheStatus("IDLE");
+         chat.Give(Item.Prompt("p1", "Find the needle"),
+                   Item.AssistantText("a1", "No **needle** here."),
+                   Call("t1", "echo hay", "hay"),
+                   Call("t2", "echo more", "a NEEDLE in the hay"),
+                   Item.AssistantText("a2", "That was the last needle."));
+         chat.SeenOnce(it => it.Card == "CHAT", "the tab to show the chat");
+         CtrlFInTheTranscript = chat.TheActionTheShortcutRuns("ctrl F", "transcript");
+         F3BeforeItSeeks = chat.TheActionTheShortcutRuns("F3", "transcript");
+         Seeking = chat.Find("needle");
+         F3WhileItSeeks = chat.TheActionTheShortcutRuns("F3", "transcript");
+         ShiftF3WhileItSeeks = chat.TheActionTheShortcutRuns("shift F3", "transcript");
+         AtTheSecond = chat.FindNext();
+         AtTheThird = chat.FindNext();
+         AtTheFourth = chat.FindNext();
+         PastTheLast = chat.FindNext();
+         BackBeforeTheFirst = chat.FindPrevious();
+         SeekingWhatIsntThere = chat.Find("haystack");
+         Closed = chat.CloseTheFind();
+      }
+
+      static object Call(string id, string command, string result) => Item.ToolCall(id, "Bash", new Dictionary<string, string> { ["command"] = command }, result);
+   }
+
+   [XF] public void ctrl_f_in_the_transcript_opens_its_find_bar() => story.CtrlFInTheTranscript.Must().Be("ClaudeSessions.FindInTheTranscript");
+   [XF] public void f3_does_nothing_there_until_it_seeks() => story.F3BeforeItSeeks.Must().Satisfy(it => it != "ClaudeSessions.FindNextInTheTranscript");
+   [XF] public void then_it_goes_to_the_next_place() => story.F3WhileItSeeks.Must().Be("ClaudeSessions.FindNextInTheTranscript");
+   [XF] public void and_shift_f3_to_the_one_before() => story.ShiftF3WhileItSeeks.Must().Be("ClaudeSessions.FindPreviousInTheTranscript");
+
+   [XF] public void the_bar_shows_what_it_seeks() => (story.Seeking.Find!.Shown, story.Seeking.Find.Text).Must().Be((true, "needle"));
+   [XF] public void it_counts_every_place_case_aside_collapsed_or_not_and_starts_at_the_first() => story.Seeking.Find!.Count.Must().Be("1/4");
+   [XF] public void the_first_is_in_what_the_user_said() => story.Seeking.Find!.CurrentItem.Must().Be("p1");
+   [XF] public void the_next_in_what_claude_said_once_rendered() => (story.AtTheSecond.Find!.Count, story.AtTheSecond.Find.CurrentItem).Must().Be(("2/4", "a1"));
+   [XF] public void the_third_in_a_tool_calls_body() => (story.AtTheThird.Find!.CurrentItem, story.AtTheThird.Find.CurrentPart).Must().Be(("t2", (int?)1));
+   [XF] public void which_it_opens_with_the_run_it_is_in() => (story.AtTheThird.Row("tool calls from t1").Open, story.AtTheThird.Row("t2").Open).Must().Be((true, true));
+   [XF] public void the_fourth_is_the_last() => (story.AtTheFourth.Find!.Count, story.AtTheFourth.Find.CurrentItem).Must().Be(("4/4", "a2"));
+   [XF] public void past_the_last_it_goes_to_the_first() => story.PastTheLast.Find!.Count.Must().Be("1/4");
+   [XF] public void and_back_before_the_first_to_the_last() => story.BackBeforeTheFirst.Find!.Count.Must().Be("4/4");
+   [XF] public void what_isnt_there_it_says_isnt() => (story.SeekingWhatIsntThere.Find!.Count, story.SeekingWhatIsntThere.Find.CurrentItem).Must().Be(("0 results", (string?)null));
+   [XF] public void closed_the_bar_hides() => story.Closed.Find!.Shown.Must().BeFalse();
 }
 
 public class When_the_user_sends_a_message_from_the_chat(When_the_user_sends_a_message_from_the_chat.Story story) : IClassFixture<When_the_user_sends_a_message_from_the_chat.Story>
@@ -186,7 +295,7 @@ public class When_the_user_sends_a_message_from_the_chat(When_the_user_sends_a_m
 
    [XF] public void enter_starts_a_new_line() => story.WhileWritten.MessageBox.Must().Be("First line\nsecond line, pasted\ntext and onetwo [Image #1]");
    [XF] public void and_so_does_shift_enter() => story.WhileWrittenOn.MessageBox.Must().Be(story.WhileWritten.MessageBox + "\nthird line");
-   [XF] public void neither_sends_it() => story.WhileWrittenOn.MessageBox.Must().Satisfy(it => it.StartsWith("First line"));
+   [XF] public void neither_sends_it() => story.WhileWrittenOn.MessageBox.Must().Satisfy(it => it?.StartsWith("First line") == true);
 
    [XF] public void ctrl_enter_sends_it_as_one_message() => story.Sent.Messages.Count.Must().Be(1);
 
@@ -549,8 +658,9 @@ public class When_the_ide_restarts_with_a_chat_scrolled_up_and_the_terminal_chos
          chat.SayTheStatus("IDLE");
          chat.Give(Conversation());
          chat.SeenOnce(it => it.Card == "CHAT", "the tab to show the chat");
-         chat.OpenTheFold(1);
+         chat.ClickTheRow("t2");
          chat.ScrollTheTranscriptTo("a20");
+         chat.SeenOnce(it => it.ItemAtTheTop == "a20", "the conversation to be scrolled to the item");
          Before = chat.Switch();
          view.RestartTheIde(tabsToComeBack: 1);
          chat = view.ChatOf(0);
@@ -578,5 +688,5 @@ public class When_the_ide_restarts_with_a_chat_scrolled_up_and_the_terminal_chos
    [XF] public void the_terminal_the_user_chose_is_shown_again() => (story.Before.Card, story.After.Card).Must().Be(("TERMINAL", "TERMINAL"));
    [XF] public void as_the_users_choice() => story.After.CardTheUserChose.Must().Be("TERMINAL");
    [XF] public void the_chat_shows_the_conversation_scrolled_to_where_it_was() => story.ShownAfter.ItemAtTheTop.Must().Be("a20");
-   [XF] public void with_the_fold_the_user_opened_open() => story.ShownAfter.Folds.Select(it => it.Open).Take(3).Must().Satisfy(it => it.SequenceEqual([false, true, false]));
+   [XF] public void with_the_tool_call_the_user_opened_open() => new[] { "t1", "t2", "t3" }.Select(it => story.ShownAfter.Row(it).Open).Must().Satisfy(it => it.SequenceEqual([false, true, false]));
 }
