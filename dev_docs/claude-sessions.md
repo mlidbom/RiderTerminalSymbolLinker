@@ -221,6 +221,37 @@ Code 2.1.327's own code and five transcripts on 2026-11-18. It isn't documented,
     resume lost resident-server's session-only cron job on 2026-11-17. Whether a resume re-arms a /loop wake-up isn't
     known: 2.1.327 has code that rebuilds one from the transcript.
 
+## Talking to the hub through Tessaging (considered, not built)
+
+On 2026-11-20 the tooling sessions considered moving the hub's local APIs onto Tessaging, the type-routed messaging of
+Compze. Magnus: "this is all design and considering so far. Do not start doing any significant porting effort." The
+Compze side, and why the choice is a .NET sidecar per IDE, with its lifecycle and its measured start, is
+`C:\Dev\Compze\src\Compze.Tessaging\dev_docs\TODO\java-participants-through-a-dotnet-sidecar.md`. What Claude Sessions
+requires of any way it takes part:
+
+- **No .NET in the IDE's process:** a plugin reload, several times a day, can't unload a runtime; a .NET crash would
+  end the IDE; IDEA and PyCharm run no .NET.
+- **The unload hook, `beforePluginUnload`, runs on the EDT,** and the unload waits for every service's coroutine scope:
+  stopping a sidecar may wait a few hundred milliseconds, then destroys it. Whatever reads blocks interruptibly, and no
+  handler waits for the EDT on a thread the stop waits for (above, "Which session a tab runs", and the observation
+  channels in `development-environment.md`).
+- **Java 21 bytecode, the platform's level,** so no `java.lang.foreign`, a preview there. Native calls go through the
+  platform's JNA.
+- **"This IDE" is its process id:** the notification click and other IDEs call `AllowSetForegroundWindow` with it
+  before asking an IDE to show a tab. It holds through reloads, and changes at a restart.
+- **One hub per Claude Code folder,** of a protocol the build knows, which the plugin starts when none runs; the
+  sandbox's hub and IDEs never meet Magnus's.
+- **At most once:** a message typed twice is sent twice, and a restart delivered again restarts again. At a hub's
+  publish, "not done, ask the next hub" must be told from "done". A show request fails within about a second; typing
+  may take two minutes, and is cancelled by an interrupt.
+- **Contracts only grow, every way:** the hub calls older builds, and builds of different IDEs call each other.
+- **Volume:** up to about 30 conversation streams on the machine, each replayed from its start at every publish of the
+  hub; the status drives the tab's switch to the terminal, about 0.1 s after Claude Code writes its record.
+- **Not through it:** a tab's terminal bytes, which its attach client relays.
+
+What it would gain: Claude Sessions would speak JSON to the sidecar in place of HTTP to the hub, so only what Tessaging
+adds beyond that.
+
 ## The chat view
 
 Magnus's go, 2026-11-19, for a first version to test. A tab shows its session as a chat of the plugin's own: the
