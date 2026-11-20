@@ -112,12 +112,12 @@ public sealed class SandboxHub(string folder)
 
    /// <summary>
    ///   Asks the hub to restart the sandbox Rider, through its local API's <c>POST /rider-restart</c>, as Claude Sessions
-   ///   asks for a button Magnus presses himself: <c>askedByMagnus</c>, so the hub shows him no prompt, whatever has the
-   ///   input focus. Returns once the hub has started the restart; <see cref="TheRiderRestart"/> tells how it goes.
+   ///   asks for a button Magnus presses himself: <c>askedByMagnus</c>, so the hub shows him no prompt, whatever window
+   ///   is in front. Returns once the hub has started the restart; <see cref="TheRiderRestart"/> tells how it goes.
    /// </summary>
    /// <remarks>
-   ///   Not as an agent asks, with <c>ClaudeTooling.exe rider restart</c>: that shows Magnus the prompt while a window of
-   ///   the sandbox Rider has the input focus, as it has once it has started.
+   ///   Not as an agent asks, with <c>ClaudeTooling.exe rider restart</c>: that shows Magnus the prompt while a Rider's
+   ///   window is Windows' foreground window, as the sandbox Rider's may be once it has started, or his own.
    /// </remarks>
    public void AskToRestartRider(string why, string askedBy)
    {

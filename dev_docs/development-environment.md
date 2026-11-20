@@ -145,9 +145,9 @@ re-highlights old output.
   one. The copy's hub is given a write time of its own: the hub's pipe is named after it, and with the published
   one's, the copy's client would hand its commands to Magnus's hub. It stops 5 minutes after the sandbox Rider's stream
   of it closes. `sandbox status` shows its announcement. `When_the_hub_restarts_rider` has it restart the sandbox
-  Rider through `POST /rider-restart`, with `askedByMagnus`, so it shows Magnus no prompt: the sandbox Rider's window
-  has the input focus once it has started, by Claude Sessions' `GET /windows`, and an agent's
-  `ClaudeTooling.exe rider restart` would show him one. Its steps are in `rider-restarts.log` in the sandbox's
+  Rider through `POST /rider-restart`, with `askedByMagnus`, so it shows Magnus no prompt: an agent's
+  `ClaudeTooling.exe rider restart` shows him one while a Rider's window is Windows' foreground window, as the sandbox
+  Rider's may be once it has started, or his own. Its steps are in `rider-restarts.log` in the sandbox's
   Claude Code folder.
 - **The sandbox's session hosts outlive it,** as Magnus's do his IDEs, their shells in the fixture solution's copy:
   `sandbox stop`, and the end of a specification run that started the sandbox, end them

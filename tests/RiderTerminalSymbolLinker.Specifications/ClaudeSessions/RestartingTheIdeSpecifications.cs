@@ -68,8 +68,8 @@ public class When_a_tool_asks_the_ide_to_restart(When_a_tool_asks_the_ide_to_res
 
 /// <summary>
 ///   The tool for restarting Rider end to end: the sandbox's hub restarts the sandbox Rider through Claude Sessions' local
-///   API, and finds it back. Asked as for a button Magnus presses, so with no prompt of his: the sandbox Rider's window
-///   has the input focus once it has started, and an agent's request would show him one.
+///   API, and finds it back. Asked as for a button Magnus presses, so with no prompt of his: an agent's request shows him
+///   one while a Rider's window is in front, as the sandbox Rider's may be once it has started.
 /// </summary>
 public class When_the_hub_restarts_rider(When_the_hub_restarts_rider.Story story) : IClassFixture<When_the_hub_restarts_rider.Story>
 {
