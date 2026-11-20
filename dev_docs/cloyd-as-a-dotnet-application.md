@@ -252,14 +252,27 @@ Claude's calls, 2026-11-20, unless marked as Magnus's:
     specification's own; and against Magnus's Rider with `Cloyd.exe --links-in` (`development-environment.md`).
 - **A click:**
   - Ctrl+click, as Iciclecreek's terminal already has for URLs, and as Windows Terminal and VS Code do;
-  - a file or a symbol opens in the IDE whose open project holds it, preferring the IDE showing the window's project,
-    through a new `POST /files/open` of Claude Sessions' local API, which brings the IDE's window forward. Cloyd, in the
-    foreground at the click, lets the IDE take it;
+  - a file or a symbol opens in the IDE that shows the window's project, through a new `POST /files/open` of Claude
+    Sessions' local API, in an editor of that project, the IDE's focus on it;
+  - Cloyd then brings the IDE's window forward itself, as the hub brings Cloyd's: in the foreground at the click, it may.
+    Not the IDE: it couldn't without Cloyd letting it, and the specifications, which ask the sandbox Rider to open files,
+    would have it take Magnus's focus whenever he had left the machine alone for Windows' foreground lock timeout;
   - several declarations or files show a picker in Cloyd; none, the window's foot says so;
   - a URL opens in the browser.
-- **Showing the links:** Iciclecreek's terminal finds links only in OSC 8 sequences and with its own URL regex, and has
-  no hook for others. Either a hook upstream, which is a pull request to Iciclecreek and so Magnus's to decide, or a
-  layer of Cloyd's own over the terminal (see "What's still open").
+- **Showing the links: a link-provider hook in Iciclecreek, in a fork of it** (Magnus, 2026-11-20: "Wait with the pull
+  request, go ahead with everything else, forking adding the functionality etc."):
+  - **Why a hook there:** Iciclecreek's terminal underlines a link under the pointer, shows the hand cursor, and raises
+    `UrlClicked` on a Ctrl+click, but only for OSC 8 links and what its own URL regex finds
+    (`TerminalView.FindUrlAtColumn`). Nothing public lets another kind of link in: XTerm.NET's `BufferLine.AddLink` is
+    internal too.
+  - **The hook:** the view asks the host's link providers for the links in a line, after OSC 8 and its regex, and
+    underlines, points at and clicks theirs as it does URLs. About a hundred lines, with its tests.
+  - **Until it's released:** Cloyd builds against a package of the fork's branch from a local folder. The pull request
+    to tomlm/Iciclecreek.Avalonia.Terminal waits for Magnus's word. The project merges outside pull requests within a
+    day: #212 to #216, one contributor's, 2026-11-05 and 06, released in 4.1.4 on 2026-11-09.
+  - **Not chosen: a layer of Cloyd's own** over the terminal, finding the cell under the pointer from the control's
+    `CharWidth`, `CharHeight`, `GutterWidth` and `ViewportY`. It would repeat Iciclecreek's hit-testing from outside,
+    and go wrong unnoticed when Iciclecreek changes how it lays out cells.
 - **Specified:** the finder by the ported unit tests; the rest on the headless platform, with a stand-in Royder and the
   `StandInIde`; the IDE's side in the sandbox Rider.
 
@@ -337,19 +350,10 @@ Each as it is found: what the app does, what he asked for and where, and that th
   window also lists every session on the machine is open.
 - **Publishing:** a .NET application and a plugin. Magnus, 2026-11-19: "How, and even if, we publish this is a
   question for the future."
-- **How the terminal shows Cloyd's links, put to Magnus 2026-11-20.** Iciclecreek's terminal underlines a link under
-  the pointer, shows the hand cursor, and raises `UrlClicked` on a Ctrl+click, for OSC 8 links and for what its URL
-  regex finds (`TerminalView.FindUrlAtColumn`). Nothing public lets another kind of link in: XTerm.NET's
-  `BufferLine.AddLink` is internal.
-  - **Recommended: a link-provider hook in Iciclecreek,** a pull request to tomlm/Iciclecreek.Avalonia.Terminal:
-    the view asks the host's providers for the links in a line after OSC 8 and its regex, and underlines, points at and
-    clicks theirs as it does URLs. About a hundred lines there, with its tests. The project merges outside pull requests
-    within a day: #212 to #216, one contributor's, 2026-11-05 and 06, released in 4.1.4 on 2026-11-09. Until a release,
-    Cloyd builds against a package of the branch from a local folder.
-  - **Or a layer of Cloyd's own** over the terminal, which finds the cell under the pointer from the control's
-    `CharWidth`, `CharHeight`, `GutterWidth` and `ViewportY`, reads the line from XTerm.NET's buffer, and draws its own
-    underline. It repeats Iciclecreek's hit-testing from outside: wrapped lines, wide characters, double-width rows. It
-    goes wrong unnoticed when Iciclecreek changes how it lays out cells.
+- **The pull request to Iciclecreek: when Magnus says so.** How the terminal shows Cloyd's links is decided (see
+  "Showing the links" under "Clickable file paths and C# symbols: the plan"); opening the pull request upstream waits
+  for his word (2026-11-20: "Wait with the pull request, go ahead with everything else, forking adding the
+  functionality etc.").
 - **Where the hub's contract types live: settled.** In `~/.claude/src/ClaudeTooling.Hub.LocalApi.Contract`, published
   2026-11-20, which Cloyd compiles in.
 
