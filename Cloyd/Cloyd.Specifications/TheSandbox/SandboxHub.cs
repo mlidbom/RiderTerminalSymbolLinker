@@ -46,6 +46,15 @@ sealed class SandboxHub
 
    public TheHub Hub => TheHub.AnnouncedIn(new DirectoryInfo(_started.AnnouncementFolder));
 
+   /// <summary>
+   /// The sessions the hub has transcripts of, as it lists them now: asked on the thread pool, so that it may be asked on
+   /// the UI thread too, as a condition of <see cref="SpecificationOpeningWindows.WaitUntil"/> is.
+   /// </summary>
+   public IReadOnlyList<TranscribedSession> TranscribedSessions() => Task.Run(() => Hub.TranscribedSessions()).GetAwaiter().GetResult();
+
+   /// <summary>The Claude Codes that run, as the hub lists them now: asked as <see cref="TranscribedSessions"/> is.</summary>
+   public IReadOnlyList<RunningSession> RunningSessions() => Task.Run(() => Hub.RunningSessions()).GetAwaiter().GetResult();
+
    /// <summary>The Claude Code folder the hub serves: its sessions keep their records and transcripts there.</summary>
    public string ClaudeCodeFolder => _started.ClaudeCodeFolder;
 

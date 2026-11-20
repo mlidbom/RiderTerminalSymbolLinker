@@ -203,6 +203,9 @@ tells of in the tab's session host, by the `sessionHost` of its running session 
 
 ### The session history picker
 
+Ported to Cloyd on 2026-11-20: `cloyd-as-a-dotnet-application.md`, "The session history picker, as it's built". As
+the plugin had it until 0.2.0:
+
 `ResumeClaudeSessionAction` (the history button in the tool window's title bar, and Ctrl+Alt+Shift+Y, free in the
 default keymap, both Visual Studio keymaps and Magnus's own on 2026-11-18) opens `ClaudeSessionHistoryPicker`, a popup
 over `ClaudeSessionHistory`: what Magnus asked for on 2026-11-18, with the changes he agreed to.

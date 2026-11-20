@@ -364,13 +364,42 @@ Each as it is found: what the app does, what he asked for and where, and that th
 - **Not yet as the app:** inline code has no grey ground, and a code block has LiveMarkdown's bar with its language,
   which the app's hasn't.
 
-**Next, before more of the chat: the session picker,** reopening this session and old ones. Magnus, 2026-11-20: "Not
-having a simple clear way of getting this session and old sessions opened again is a bigger problem than any polish
-that the chat UI might need."
+**Before more of the chat: the session history picker** (below), reopening this session and old ones. Magnus,
+2026-11-20: "Not having a simple clear way of getting this session and old sessions opened again is a bigger problem
+than any polish that the chat UI might need."
 
 **Then the chat's next increments:** the input box, sending through the hub, and then the chat as each tab's first view; while Claude
 works (the line at the end, the text as it streams, the task list); scrolling's `Scroll to bottom` button; the buttons
 and time under a turn; links in Claude's text, with `POST /files/open`; a permission prompt switching to the terminal.
+
+### The session history picker, as it's built
+
+**Built 2026-11-20** (`Cloyd.History`): the Kotlin plugin's picker (`claude-sessions.md`, "The session history
+picker"), ported, laid over the project's window.
+
+- **Opened by the History button beside the +, and Ctrl+Alt+Shift+Y,** which the window takes before the terminal
+  with the focus would pass it to Claude Code. Escape, or a click beside the picker, closes it.
+- **What it lists:** the hub's `GET /sessions`, every session Claude Code has a transcript of, most recently used
+  first, but those with no conversation to resume and those `claude -p` ran. Each with its title, else its last prompt;
+  below it, greyed, its last prompt, when it was last used, and its folder and branch in the wider scopes. Typing
+  filters by every word, in any case. Up and Down move the selection from the search box, Enter or a double click
+  chooses.
+- **Its scopes,** as in the plugin: the git worktree the project is in, every worktree of its repository, all projects
+  (`ProjectWorktrees`, through `git rev-parse` and `git worktree list`). A session the hub knows no directory of is
+  covered only by all projects: the hub takes the directory from entries that name a git branch, and the stand-in for
+  Claude Code writes none (told to the tooling owner, 2026-11-20).
+- **Where each session is decides what choosing it does** (`WhereTheSessionIs`), from the hub's running sessions and
+  hosts, and the tabs of every one of Cloyd's windows (`ProjectWindows`, which each window joins as it opens):
+  - running in a tab, of this window or another project's: the tab is selected and its window brought forward;
+  - exited in a tab, its Claude Code at the shell's prompt: resumed in that tab;
+  - running in a session host no tab shows, as after its window closed, or a console attached to it: shown in a new tab
+    of this window, which takes it over from the console. Cloyd's own call: the plugin had no session hosts when its
+    picker was built;
+  - running in no session host, as in a terminal of its own: greyed out, and it can't be chosen;
+  - otherwise: resumed in a new tab, in the project's folder.
+- **Specified** with transcripts the specifications write (`SessionOfASpecification`), in a project with a second
+  worktree, and with live sessions of the stand-in in each of those places, one of them in a terminal of its own
+  (`ClaudeCodeInATerminalOfItsOwn`): `RenderedWindows/the-session-history-picker*.png`.
 
 ## What's still open
 

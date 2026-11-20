@@ -4,13 +4,13 @@ using Cloyd.Sessions;
 namespace Cloyd.Projects;
 
 /// <summary>
-/// The <see cref="ProjectWindow"/>s the Cloyd application shows: one for each project, on the UI thread. A window
-/// leaves them as it closes, and the project's next one opens anew.
+/// The <see cref="ProjectWindow"/>s the Cloyd application shows: one for each project, on the UI thread. A window is one
+/// of them from when it opens until it closes, and the project's next one opens anew.
 /// </summary>
-/// <param name="newWindowOf">Makes a new window of a project, not yet shown.</param>
-sealed class ProjectWindows(Func<Project, ProjectWindow> newWindowOf)
+/// <param name="newWindowOf">Makes a new window of a project, one of these windows once it opens, not yet shown.</param>
+sealed class ProjectWindows(Func<Project, ProjectWindows, ProjectWindow> newWindowOf)
 {
-   readonly Func<Project, ProjectWindow> _newWindowOf = newWindowOf;
+   readonly Func<Project, ProjectWindows, ProjectWindow> _newWindowOf = newWindowOf;
    readonly List<ProjectWindow> _open = [];
 
    /// <summary>The windows open, in the order they opened.</summary>
@@ -30,11 +30,16 @@ sealed class ProjectWindows(Func<Project, ProjectWindow> newWindowOf)
          return open;
       }
 
-      var window = _newWindowOf(project);
-      window.Closed += (_, _) => _open.Remove(window);
-      _open.Add(window);
+      var window = _newWindowOf(project, this);
       window.Show();
       return window;
+   }
+
+   /// <summary>Takes <paramref name="window"/>, which has just opened, as one of the windows open, until it closes.</summary>
+   public void Opened(ProjectWindow window)
+   {
+      _open.Add(window);
+      window.Closed += (_, _) => _open.Remove(window);
    }
 
    /// <summary>
@@ -53,8 +58,7 @@ sealed class ProjectWindows(Func<Project, ProjectWindow> newWindowOf)
       if((TheTabWhoseClaudeCodeRunsAs(claudeCode) ?? TheTabThatRunsOrRanLast(session)) is not {} tab) return null;
 
       var window = _open.Single(it => it.Tabs.Contains(tab));
-      window.Select(tab);
-      window.BringForward();
+      window.ShowTheTab(tab);
       return window;
 
       SessionTab? TheTabWhoseClaudeCodeRunsAs(ClaudeCodeProcessId? process) => process is {} asked ? tabs.FirstOrDefault(it => it.RunsTheClaudeCodeOf(asked)) : null;

@@ -38,10 +38,15 @@ sealed class SandboxProject : IDisposable
    TheHub Hub => Sandbox.Started.HubOfTheSandbox.Hub;
 
    /// <summary>
-   /// A new window of the project, not yet shown, which saves itself where the project's next window finds it, finds the
-   /// project's window in the sandbox's IDEs, and its C# symbols in the solutions the sandbox's Rider has loaded.
+   /// A new window of the project, not yet shown, one of the <see cref="Sandbox.WindowsOfCloyd"/> once it opens, which
+   /// saves itself where the project's next window finds it, finds the project's window in the sandbox's IDEs, and its C#
+   /// symbols in the solutions the sandbox's Rider has loaded.
    /// </summary>
-   public ProjectWindow Window() => new(Project, Hub, Sandbox.Started.Ides, Sandbox.Started.DotNetAnalysisAndRefactoringMcp.Mcp, Sandbox.Started.ShellOfItsSessions, _savedWindows);
+   public ProjectWindow Window() => Window(Sandbox.Started.WindowsOfCloyd);
+
+   /// <summary>A new window of the project, as <see cref="Window()"/>, one of <paramref name="windowsOfCloyd"/> once it opens, as a Cloyd application's.</summary>
+   public ProjectWindow Window(ProjectWindows windowsOfCloyd) =>
+      new(Project, windowsOfCloyd, Hub, Sandbox.Started.Ides, Sandbox.Started.DotNetAnalysisAndRefactoringMcp.Mcp, Sandbox.Started.ShellOfItsSessions, _savedWindows);
 
    /// <summary>What the project's windows saved last.</summary>
    public SavedProjectWindow SavedWindow => _savedWindows.Of(Project);
@@ -90,10 +95,26 @@ sealed class SandboxProject : IDisposable
       return folder;
    }
 
+   /// <summary>
+   /// Ends the project's session hosts, and waits until the hub no longer lists the Claude Codes that ran in them: a Claude
+   /// Code outlives its host for a moment, listed in no host, and a history picker opened then takes its session for one
+   /// that runs outside Cloyd.
+   /// </summary>
    void EndItsSessionHosts()
    {
-      foreach(var host in ItsSessionHosts()) Answer(() => Hub.End(host.Id));
+      var hosts = ItsSessionHosts().Select(it => it.Id).ToHashSet();
+      var claudeCodes = Answer(() => Hub.RunningSessions()).Where(it => it.SessionHost is {} host && hosts.Contains(host)).Select(it => it.Process).ToHashSet();
+      foreach(var host in hosts) Answer(() => Hub.End(host));
+      var clock = System.Diagnostics.Stopwatch.StartNew();
+      while(Answer(() => Hub.RunningSessions()).Any(it => claudeCodes.Contains(it.Process)))
+      {
+         if(clock.Elapsed > HowLongAClaudeCodeMayOutliveItsHost)
+            throw new TimeoutException($"The hub still listed a Claude Code of a session host of {Project} {HowLongAClaudeCodeMayOutliveItsHost.TotalSeconds:0} s after it ended the host.");
+         Thread.Sleep(50);
+      }
    }
+
+   static readonly TimeSpan HowLongAClaudeCodeMayOutliveItsHost = TimeSpan.FromSeconds(15);
 
    /// <summary>What <paramref name="asked"/> answers, asked on the thread pool, where no UI thread's context holds its continuations.</summary>
    static TAnswer Answer<TAnswer>(Func<Task<TAnswer>> asked) => Task.Run(asked).GetAwaiter().GetResult();

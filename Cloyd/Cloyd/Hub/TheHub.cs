@@ -7,6 +7,7 @@ using ClaudeTooling.Hub.LocalApi.Contract;
 using ClaudeTooling.Hub.LocalApi.Contract.Conversations;
 using ClaudeTooling.Hub.LocalApi.Contract.Conversations.Messages;
 using ClaudeTooling.Hub.LocalApi.Contract.HostingSessions;
+using ClaudeTooling.Hub.LocalApi.Contract.ListingSessions;
 using ClaudeTooling.Hub.LocalApi.Contract.RunningSessions;
 using ClaudeTooling.Hub.LocalApi.Contract.TypingIntoRunningSessions;
 using ClaudeTooling.SessionHost.Protocol;
@@ -107,6 +108,23 @@ sealed partial class TheHub
          throw new RefusedByTheHub((await Read<RefusalAnswer>(answer, cancellation)).Error);
 
       await Read<ClaudeCodeStartedInTheShellAnswer>(answer, cancellation);
+   }
+
+   /// <summary>
+   /// Every session Claude Code has a transcript of, in the Claude Code folder the hub serves, but the archived ones: the
+   /// most recently used first.
+   /// </summary>
+   public async Task<IReadOnlyList<TranscribedSession>> TranscribedSessions(CancellationToken cancellation = default)
+   {
+      using var answer = await Send(it => new HttpRequestMessage(HttpMethod.Get, it.AddressOf("sessions")), cancellation);
+      return [.. (await Read<SessionsAnswer>(answer, cancellation)).Sessions.Select(TranscribedSession.InThe)];
+   }
+
+   /// <summary>Every running Claude Code, as the hub lists them now.</summary>
+   public async Task<IReadOnlyList<RunningSession>> RunningSessions(CancellationToken cancellation = default)
+   {
+      using var answer = await Send(it => new HttpRequestMessage(HttpMethod.Get, it.AddressOf("running-sessions")), cancellation);
+      return [.. (await Read<RunningSessionsAnswer>(answer, cancellation)).RunningSessions.Select(RunningSession.InThe)];
    }
 
    /// <summary>

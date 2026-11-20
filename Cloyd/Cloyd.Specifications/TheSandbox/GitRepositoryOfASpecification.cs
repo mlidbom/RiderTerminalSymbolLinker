@@ -33,6 +33,17 @@ sealed class GitRepositoryOfASpecification
       File.WriteAllText(file.FullName, text);
    }
 
+   /// <summary>
+   /// Has the repository a second worktree, in <paramref name="folder"/>, with <paramref name="branch"/> checked out: a
+   /// new one, or the one an earlier run made there. A first commit, empty, is made for it when there is none.
+   /// </summary>
+   public void HasAWorktreeIn(DirectoryInfo folder, string branch)
+   {
+      if(!Succeeds("rev-parse", "--verify", "HEAD")) Git("-c", "user.name=Specification", "-c", "user.email=specification@localhost", "-c", "commit.gpgsign=false", "commit", "--allow-empty", "--quiet", "-m", "The first commit");
+      Git("worktree", "prune");
+      if(!folder.Exists) Git("worktree", "add", "--quiet", "-B", branch, folder.FullName);
+   }
+
    /// <summary>Deletes the repository's folder, whose object files git writes read-only.</summary>
    public void Delete()
    {
@@ -40,10 +51,15 @@ sealed class GitRepositoryOfASpecification
       Folder.Delete(recursive: true);
    }
 
-   void Git(params string[] arguments)
+   void Git(params string[] arguments) => Succeeds(arguments).Must().BeTrue();
+
+   /// <summary>Whether git, run with <paramref name="arguments"/> in the repository's folder, exits with 0.</summary>
+   bool Succeeds(params string[] arguments)
    {
-      using var git = Process.Start(new ProcessStartInfo("git", arguments) { WorkingDirectory = Folder.FullName, CreateNoWindow = true })!;
+      using var git = Process.Start(new ProcessStartInfo("git", arguments) { WorkingDirectory = Folder.FullName, CreateNoWindow = true, RedirectStandardError = true, RedirectStandardOutput = true })!;
+      git.StandardOutput.ReadToEnd();
+      git.StandardError.ReadToEnd();
       git.WaitForExit();
-      git.ExitCode.Must().Be(0);
+      return git.ExitCode == 0;
    }
 }

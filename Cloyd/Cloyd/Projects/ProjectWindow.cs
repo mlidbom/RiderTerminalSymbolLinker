@@ -1,11 +1,14 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Input;
+using Avalonia.Interactivity;
 using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Threading;
 using ClaudeTooling.SessionHost.Protocol;
 using Cloyd.ClaudeCode;
 using Cloyd.DotNetAnalysisAndRefactoring;
+using Cloyd.History;
 using Cloyd.Hub;
 using Cloyd.Ides;
 using Cloyd.Links;
@@ -46,23 +49,32 @@ sealed class ProjectWindow : Window
    /// <summary>How soon the window asks for the symbols again after Rider didn't answer, as while it still loads the solution, which it does as Cloyd's window opens.</summary>
    static readonly TimeSpan BeforeAskingAgainForItsSymbols = TimeSpan.FromSeconds(10);
 
+   readonly ProjectWindows _windowsOfCloyd;
    readonly TheHub _hub;
    readonly TheIdes _ides;
    readonly ShellOfNewSessions _shellOfNewSessions;
    readonly SavedProjectWindows _savedWindows;
    readonly TabControl _tabs = new();
    readonly NewSessionButton _newSession = new();
+   readonly Button _openTheHistory = new() { Content = "History" };
+   readonly ClaudeSessionHistoryPicker _historyPicker;
    readonly TextBlock _failure = new() { IsVisible = false, Foreground = Brushes.Orange, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(8, 4) };
    readonly CancellationTokenSource _closed = new();
 
    /// <summary>What saves the window every <see cref="BetweenSaves"/>: null until it has brought back the saved tabs, so that it never saves a window they aren't in yet.</summary>
    DispatcherTimer? _saving;
 
-   public ProjectWindow(Project project, TheHub hub, TheIdes ides, DotNetAnalysisAndRefactoringMcp dotNetAnalysisAndRefactoringMcp, ShellOfNewSessions shellOfNewSessions, SavedProjectWindows savedWindows)
+   /// <summary>
+   /// The window of <paramref name="project"/>, one of <paramref name="windowsOfCloyd"/> from when it opens until it
+   /// closes: its history picker tells which of their tabs runs what.
+   /// </summary>
+   public ProjectWindow(Project project, ProjectWindows windowsOfCloyd, TheHub hub, TheIdes ides, DotNetAnalysisAndRefactoringMcp dotNetAnalysisAndRefactoringMcp, ShellOfNewSessions shellOfNewSessions, SavedProjectWindows savedWindows)
    {
       Project = project;
       FilesAndSymbols = new FilesAndSymbolsOfAProject(project, dotNetAnalysisAndRefactoringMcp);
+      _windowsOfCloyd = windowsOfCloyd;
       _hub = hub;
+      _historyPicker = new ClaudeSessionHistoryPicker(this);
       _ides = ides;
       _shellOfNewSessions = shellOfNewSessions;
       _savedWindows = savedWindows;
@@ -71,8 +83,16 @@ sealed class ProjectWindow : Window
       Height = 900;
       Content = TheLayout();
       _newSession.NewSessionAsked += name => _ = TellingOfFailure(() => StartANewSession(name));
+      ToolTip.SetTip(_openTheHistory, TipOfTheHistoryButton);
+      _openTheHistory.Click += (_, _) => _ = OpenTheHistoryPicker();
+      AddHandler(KeyDownEvent, OpenTheHistoryPickerOnItsKey, RoutingStrategies.Tunnel);
+      _historyPicker.Chosen += entry => _ = TellingOfFailure(() => entry.Choose(this));
+      _historyPicker.Closed += () => SelectedTab?.Terminal.Focus();
       _tabs.SelectionChanged += (_, _) => Dispatcher.UIThread.Post(() => SelectedTab?.Terminal.Focus(), DispatcherPriority.Loaded);
    }
+
+   /// <summary>The tip of the button that opens the session history picker: the key that does too.</summary>
+   public const string TipOfTheHistoryButton = "Resume a session: Ctrl+Alt+Shift+Y";
 
    /// <summary>The project whose sessions the window shows.</summary>
    public Project Project { get; }
@@ -108,6 +128,7 @@ sealed class ProjectWindow : Window
    protected override void OnOpened(EventArgs e)
    {
       base.OnOpened(e);
+      _windowsOfCloyd.Opened(this);
       BringingBackTheTabs = TellingOfFailure(async () =>
       {
          await BringBackTheTabs();
@@ -144,6 +165,58 @@ sealed class ProjectWindow : Window
 
    /// <summary>Selects <paramref name="tab"/>, one of the window's <see cref="Tabs"/>, which focuses its terminal.</summary>
    public void Select(SessionTab tab) => _tabs.SelectedItem = tab;
+
+   /// <summary>Selects <paramref name="tab"/>, one of the window's <see cref="Tabs"/>, and brings the window forward.</summary>
+   public void ShowTheTab(SessionTab tab)
+   {
+      Select(tab);
+      BringForward();
+   }
+
+   /// <summary>The session history picker laid over the window, which <see cref="OpenTheHistoryPicker"/> opens.</summary>
+   public ClaudeSessionHistoryPicker HistoryPicker => _historyPicker;
+
+   /// <summary>
+   /// Opens the session history picker over the window, as the History button and Ctrl+Alt+Shift+Y do, and shows the
+   /// history in it once it has read it. Done once it shows it, or the window has told why not and closed it.
+   /// </summary>
+   public Task OpenTheHistoryPicker() => TellingOfFailure(async () =>
+   {
+      _historyPicker.Open();
+      try
+      {
+         _historyPicker.Show(await ClaudeSessionHistory.ReadFor(Project, _windowsOfCloyd, _hub, _closed.Token));
+      }
+      catch
+      {
+         _historyPicker.Close(); // The window's foot tells why, not the picker, which would wait for the history.
+         throw;
+      }
+   });
+
+   /// <summary>Resumes <paramref name="session"/> in a new tab, in the project's folder, which it selects, as choosing it in the history picker does.</summary>
+   public async Task ResumeInANewTab(ClaudeSession session)
+   {
+      var tab = await ShowANewHost(Project.Folder, session, nameGiven: null);
+      _tabs.SelectedItem = tab;
+      await StartClaudeCodeIn(tab, ClaudeCodeCommand.Resuming(session));
+   }
+
+   /// <summary>
+   /// Resumes <paramref name="session"/> in <paramref name="tab"/>, one of the window's <see cref="Tabs"/>, whose Claude
+   /// Code has exited to its shell: selects it, and brings the window forward.
+   /// </summary>
+   public async Task ResumeIn(SessionTab tab, ClaudeSession session)
+   {
+      ShowTheTab(tab);
+      await StartClaudeCodeIn(tab, ClaudeCodeCommand.Resuming(session));
+   }
+
+   /// <summary>
+   /// Shows <paramref name="host"/>, which runs <paramref name="session"/> and which no tab shows, in a tab of its own, which
+   /// it selects: attaching takes the session over from a console that shows it.
+   /// </summary>
+   public void ShowInATab(SessionHostOfTheHub host, ClaudeSession session) => _tabs.SelectedItem = Show(host, session, nameGiven: null);
 
    /// <summary>
    /// Starts a new session in the project's folder, in a tab of its own, which it selects: named
@@ -332,11 +405,20 @@ sealed class ProjectWindow : Window
          return Task.CompletedTask;
       });
 
+   /// <summary>Opens the session history picker on Ctrl+Alt+Shift+Y, before the terminal that has the focus takes the key for Claude Code.</summary>
+   void OpenTheHistoryPickerOnItsKey(object? sender, KeyEventArgs key)
+   {
+      if(key is not { Key: Key.Y, KeyModifiers: KeyModifiers.Control | KeyModifiers.Alt | KeyModifiers.Shift }) return;
+
+      key.Handled = true;
+      _ = OpenTheHistoryPicker();
+   }
+
    Control TheLayout()
    {
-      var bar = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(4), Children = { _newSession } };
+      var bar = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(4), Spacing = 4, Children = { _newSession, _openTheHistory } };
       DockPanel.SetDock(bar, Dock.Top);
       DockPanel.SetDock(_failure, Dock.Bottom);
-      return new DockPanel { Children = { bar, _failure, _tabs } };
+      return new Panel { Children = { new DockPanel { Children = { bar, _failure, _tabs } }, _historyPicker } };
    }
 }

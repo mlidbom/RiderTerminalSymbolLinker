@@ -23,7 +23,7 @@ public abstract class SpecificationRunningTheCloydApplication : SpecificationOpe
    private protected SpecificationRunningTheCloydApplication(string name)
    {
       CloydsFolder = Sandbox.Started.EmptyCloydsFolder(name);
-      Windows = OnTheUIThread(() => new ProjectWindows(project => Projects.Single(it => it.Project.Equals(project)).Window()));
+      Windows = OnTheUIThread(() => new ProjectWindows((project, windowsOfCloyd) => Projects.Single(it => it.Project.Equals(project)).Window(windowsOfCloyd)));
       _localApi = CloydsLocalApi.Start(Windows, CloydsFolder);
       Application = new TheCloydApplication(CloydsFolder);
    }

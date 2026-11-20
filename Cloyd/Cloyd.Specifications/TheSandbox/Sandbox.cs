@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using Cloyd.Ides;
 using Cloyd.LocalApi;
+using Cloyd.Projects;
 using Cloyd.Sessions;
 
 namespace Cloyd.Specifications.TheSandbox;
@@ -54,6 +55,13 @@ sealed class Sandbox
 
    /// <summary>Rider's .NET Analysis&amp;Refactoring MCP, as the specifications' project windows see it, with the solutions they load.</summary>
    public StandInDotNetAnalysisAndRefactoringMcp DotNetAnalysisAndRefactoringMcp { get; } = new();
+
+   /// <summary>
+   /// The windows of Cloyd that the specifications open themselves, each through its <see cref="SandboxProject"/>, one
+   /// after another: so a window's history picker finds the tabs of the specification's other windows. It opens no window
+   /// itself, as a Cloyd application does when handed a project.
+   /// </summary>
+   public ProjectWindows WindowsOfCloyd { get; } = new((project, _) => throw new InvalidOperationException($"The specifications open their windows themselves, through their SandboxProject, not {project}'s through the sandbox's WindowsOfCloyd."));
 
    /// <summary>The folder in which the <see cref="StandInIde"/>s announce their local APIs.</summary>
    public string FolderOfTheIdes => Path.Combine(_root, "ides");
