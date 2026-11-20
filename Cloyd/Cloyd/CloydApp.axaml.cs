@@ -3,6 +3,7 @@ using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 using Cloyd.Hub;
+using Cloyd.Ides;
 using Cloyd.LocalApi;
 using Cloyd.Projects;
 using Cloyd.Sessions;
@@ -25,7 +26,8 @@ sealed class CloydApp : Application
          var folder = Program.FolderOfTheApplication(desktop.Args!);
          var hub = TheHub.OfCloydsEnvironment();
          var shell = ShellOfNewSessions.OnThisMachine();
-         var windows = new ProjectWindows(project => new ProjectWindow(project, hub, shell, folder.SavedProjectWindows));
+         var ides = TheIdes.OnThisMachine();
+         var windows = new ProjectWindows(project => new ProjectWindow(project, hub, ides, shell, folder.SavedProjectWindows));
          desktop.ShutdownMode = ShutdownMode.OnLastWindowClose;
          var localApi = CloydsLocalApi.Start(windows, folder);
          desktop.Exit += (_, _) => localApi.Stop();

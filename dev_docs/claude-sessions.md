@@ -60,7 +60,8 @@ and the hub is to ask it there. The contract, agreed with tooling-owner on 2026-
 - **`GET /windows`** and **`POST /restart`,** for the tooling owner's tool for restarting Rider
   (`~/.claude/dev_docs/restarting-the-ides.md`), agreed with it on 2026-11-19. `GET /windows`: each project window's
   folder, title, native handle (`HWND`), and its virtual desktop's GUID. The hub tells whether a Rider window is in
-  front from Windows' foreground window itself (the tooling's fd212d6). `POST /restart` `{"why", "askedBy",
+  front from Windows' foreground window itself (the tooling's fd212d6). Cloyd asks it every 2 s for each of its
+  project windows, which keeps to its IDE window's desktop (`cloyd-as-a-dotnet-application.md`). `POST /restart` `{"why", "askedBy",
   "beforeItStartsAgain"}`: 202, then `ApplicationEx.restart(SAVE | EXIT_CONFIRMED, beforeItStartsAgain)`, as
   `restart(exitConfirmed = true)` does with no command; 409 while a modal dialog is open; one that exits already goes
   on exiting (`Application.isExitInProgress` is internal API, which the verifier refuses). Rider may still ask on the

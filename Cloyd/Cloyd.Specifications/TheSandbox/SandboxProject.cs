@@ -37,8 +37,11 @@ sealed class SandboxProject : IDisposable
 
    TheHub Hub => Sandbox.Started.HubOfTheSandbox.Hub;
 
-   /// <summary>A new window of the project, not yet shown, which saves itself where the project's next window finds it.</summary>
-   public ProjectWindow Window() => new(Project, Hub, Sandbox.Started.ShellOfItsSessions, _savedWindows);
+   /// <summary>
+   /// A new window of the project, not yet shown, which saves itself where the project's next window finds it, and finds
+   /// the project's window in the sandbox's IDEs.
+   /// </summary>
+   public ProjectWindow Window() => new(Project, Hub, Sandbox.Started.Ides, Sandbox.Started.ShellOfItsSessions, _savedWindows);
 
    /// <summary>What the project's windows saved last.</summary>
    public SavedProjectWindow SavedWindow => _savedWindows.Of(Project);

@@ -6,9 +6,11 @@ using Avalonia.Threading;
 using ClaudeTooling.SessionHost.Protocol;
 using Cloyd.ClaudeCode;
 using Cloyd.Hub;
+using Cloyd.Ides;
 using Cloyd.Saving;
 using Cloyd.SessionHosts;
 using Cloyd.Sessions;
+using Cloyd.VirtualDesktops;
 
 namespace Cloyd.Projects;
 
@@ -25,12 +27,18 @@ namespace Cloyd.Projects;
 /// them, and the ones the window started and didn't get to save. A host that an IDE's tab shows is left to the tab,
 /// since attaching would take the session over from it.
 /// </remarks>
+/// <remarks>
+/// It keeps to the virtual desktop of the project's window in an IDE (<see cref="DesktopOfItsIdesWindow"/>): Magnus keeps
+/// each IDE window on a desktop of its own, and Cloyd's window beside it.
+/// </remarks>
 sealed class ProjectWindow : Window
 {
    static readonly TimeSpan BeforeFollowingTheRunningSessionsAgain = TimeSpan.FromSeconds(1);
    static readonly TimeSpan BetweenSaves = TimeSpan.FromSeconds(2);
+   static readonly TimeSpan BetweenLooksAtItsIdesWindow = TimeSpan.FromSeconds(2);
 
    readonly TheHub _hub;
+   readonly TheIdes _ides;
    readonly ShellOfNewSessions _shellOfNewSessions;
    readonly SavedProjectWindows _savedWindows;
    readonly TabControl _tabs = new();
@@ -41,10 +49,11 @@ sealed class ProjectWindow : Window
    /// <summary>What saves the window every <see cref="BetweenSaves"/>: null until it has brought back the saved tabs, so that it never saves a window they aren't in yet.</summary>
    DispatcherTimer? _saving;
 
-   public ProjectWindow(Project project, TheHub hub, ShellOfNewSessions shellOfNewSessions, SavedProjectWindows savedWindows)
+   public ProjectWindow(Project project, TheHub hub, TheIdes ides, ShellOfNewSessions shellOfNewSessions, SavedProjectWindows savedWindows)
    {
       Project = project;
       _hub = hub;
+      _ides = ides;
       _shellOfNewSessions = shellOfNewSessions;
       _savedWindows = savedWindows;
       Title = $"Cloyd: {project.Name}";
@@ -71,6 +80,18 @@ sealed class ProjectWindow : Window
    /// </summary>
    public Task BringingBackTheTabs { get; private set; } = Task.CompletedTask;
 
+   /// <summary>
+   /// The virtual desktop the project's window in an IDE was on as the window last looked, which it went to: null until an
+   /// IDE showed the project.
+   /// </summary>
+   public VirtualDesktop? DesktopOfItsIdesWindow { get; private set; }
+
+   /// <summary>
+   /// Whether the window is on the virtual desktop shown, where Magnus is. A window of Avalonia's headless platform, which
+   /// Windows doesn't know, is on no desktop but the one shown.
+   /// </summary>
+   public bool IsOnTheCurrentVirtualDesktop => NativeWindow.Of(this)?.IsOnTheCurrentVirtualDesktop ?? true;
+
    protected override void OnOpened(EventArgs e)
    {
       base.OnOpened(e);
@@ -80,6 +101,7 @@ sealed class ProjectWindow : Window
          _saving = new DispatcherTimer(BetweenSaves, DispatcherPriority.Background, (_, _) => TellingOfFailure(Save));
       });
       _ = FollowTheRunningSessions();
+      _ = FollowItsIdesWindow();
    }
 
    protected override void OnClosed(EventArgs e)
@@ -95,7 +117,10 @@ sealed class ProjectWindow : Window
       base.OnClosed(e);
    }
 
-   /// <summary>Brings the window forward: restored when it is minimized, and activated, in front of the others where Windows lets Cloyd (<see cref="LocalApi.TheForeground"/>).</summary>
+   /// <summary>
+   /// Brings the window forward: restored when it is minimized, and activated, in front of the others where Windows lets
+   /// Cloyd (<see cref="LocalApi.TheForeground"/>). Windows then switches to its virtual desktop.
+   /// </summary>
    public void BringForward()
    {
       if(WindowState == WindowState.Minimized) WindowState = WindowState.Normal;
@@ -208,6 +233,27 @@ sealed class ProjectWindow : Window
                   tab.SessionRunningInIt = runningSessions.FirstOrDefault(it => it.SessionHost == tab.Host.Id);
          });
          await Task.Delay(BeforeFollowingTheRunningSessionsAgain, CancellationToken.None);
+      }
+   }
+
+   /// <summary>
+   /// Keeps the window on the virtual desktop of the project's window in an IDE, until the window closes: moves it there
+   /// once an IDE shows the project, and again each time that window is on another desktop, as when Magnus moves it, or
+   /// the IDE restarts. A desktop Magnus moves Cloyd's window to himself it stays on until the IDE's window moves.
+   /// </summary>
+   async Task FollowItsIdesWindow()
+   {
+      while(!_closed.IsCancellationRequested)
+      {
+         await TellingOfFailure(async () =>
+         {
+            if((await _ides.WindowOf(Project, _closed.Token))?.Desktop is {} desktop && desktop != DesktopOfItsIdesWindow)
+            {
+               DesktopOfItsIdesWindow = desktop;
+               NativeWindow.Of(this)?.MoveTo(desktop);
+            }
+         });
+         await Task.Delay(BetweenLooksAtItsIdesWindow, CancellationToken.None);
       }
    }
 

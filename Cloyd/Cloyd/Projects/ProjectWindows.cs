@@ -16,12 +16,17 @@ sealed class ProjectWindows(Func<Project, ProjectWindow> newWindowOf)
    /// <summary>The windows open, in the order they opened.</summary>
    public IReadOnlyList<ProjectWindow> Open => _open;
 
-   /// <summary>Shows the window of <paramref name="project"/>: brings it forward when it is open, else opens a new one.</summary>
+   /// <summary>
+   /// Shows the window of <paramref name="project"/>, as an IDE opening the project asks: brings it forward when it is
+   /// open on the virtual desktop shown, else opens a new one. One open on another desktop, as its IDE window's
+   /// (<see cref="ProjectWindow.DesktopOfItsIdesWindow"/>), stays where it is: bringing it forward would switch Magnus to
+   /// that desktop, as an IDE restarting would, opening its projects again.
+   /// </summary>
    public ProjectWindow Show(Project project)
    {
       if(_open.SingleOrDefault(it => it.Project.Equals(project)) is {} open)
       {
-         open.BringForward();
+         if(open.IsOnTheCurrentVirtualDesktop) open.BringForward();
          return open;
       }
 
@@ -38,8 +43,9 @@ sealed class ProjectWindows(Func<Project, ProjectWindow> newWindowOf)
    /// when no open window has such a tab.
    /// </summary>
    /// <remarks>
-   /// As a click on a notification of the session asks. The process finds the tab after a <c>/clear</c> gave its
-   /// Claude Code a new session, and the session finds the one whose Claude Code exited to the shell.
+   /// As a click on a notification of the session asks: on whatever virtual desktop the window is, Windows switches to it.
+   /// The process finds the tab after a <c>/clear</c> gave its Claude Code a new session, and the session finds the one
+   /// whose Claude Code exited to the shell.
    /// </remarks>
    public ProjectWindow? ShowTheTabOf(ClaudeSessionId? session, ClaudeCodeProcessId? claudeCode)
    {

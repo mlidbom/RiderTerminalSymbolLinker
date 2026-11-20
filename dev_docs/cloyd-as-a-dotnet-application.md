@@ -164,6 +164,23 @@ Claude's calls (.NET-cloyd, the session in this repository), which Magnus OK'd o
 - **A window per project,** with a tab per session host of the project. Each tab shows the host's terminal in
   Iciclecreek's control, attached in process (`AttachmentToASessionHost`), and is titled with the name of the session
   the hub says runs in its host.
+- **Each project's window keeps to its IDE window's virtual desktop** (`ProjectWindow.DesktopOfItsIdesWindow`), as
+  Magnus keeps each IDE window on a desktop of its own: after the switch's restart all four of Cloyd's opened on the
+  desktop he was on.
+  - **Where the IDE's window is:** every 2 s, each window asks the IDEs that announce their local APIs in
+    `%LOCALAPPDATA%\ClaudeSessions\ides` (`TheIdes`), whose `GET /windows` names each project window's desktop. No
+    change to the plugin. An IDE whose process doesn't run isn't asked: a crash leaves its file, and Windows takes 2 s
+    to refuse a connection to its port.
+  - **Following it:** the window goes to that desktop once an IDE shows the project, and again each time the IDE's
+    window is on another, as when Magnus moves it, or an IDE that restarts opens it on the desktop shown before putting
+    it back. A desktop Magnus moves Cloyd's window to himself it stays on until the IDE's window moves.
+  - **Moving it:** Windows' documented `IVirtualDesktopManager`, which moves only the calling process's own windows
+    (`NativeWindow`).
+  - **An IDE opening the project no longer brings forward a window on another desktop:** Windows switches to the
+    desktop of a window that comes to the foreground, so an IDE restarting, opening its projects again, would have taken
+    Magnus to each one's desktop in turn. A notification's click still does, as is its purpose.
+  - **Specified** with a stand-in IDE (`StandInIde`), which serves `GET /windows`: the desktop the window went to. The
+    move itself can't be specified on the headless platform, whose windows Windows doesn't know.
 - **Shift+Enter types a new line** in Claude Code's input box, as a line feed, which Claude Code takes as Ctrl+J
   (`TerminalOfASessionHost`): Claude Code ignores the Shift on Enter in a Windows console, and sent the message
   (Magnus, 2026-11-20, his first hour in Cloyd).
@@ -198,10 +215,7 @@ Claude's calls (.NET-cloyd, the session in this repository), which Magnus OK'd o
 
 1. **A notification's click shows the session in Cloyd:** Cloyd answers it, built 2026-11-20; the hub's side, asking
    Cloyd with its token and letting it take the foreground, is the tooling owner's, asked the same day.
-2. **Each project's window on its IDE window's virtual desktop** (Magnus, 2026-11-20: "do"): after the switch's restart
-   all four opened on the desktop he was on. Windows' documented virtual-desktop API tells any window's desktop, and
-   moves the calling process's own windows; the IDE's local API lists its project windows.
-3. **Clickable file paths and C# symbols in Cloyd's terminal** (Magnus, 2026-11-20, keeping the order: the links before
+2. **Clickable file paths and C# symbols in Cloyd's terminal** (Magnus, 2026-11-20, keeping the order: the links before
    the chat, which needs the same link finder).
 
 Then the chat, to the desktop app (below).

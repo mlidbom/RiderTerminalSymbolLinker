@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using Cloyd.Ides;
 using Cloyd.LocalApi;
 using Cloyd.Sessions;
 
@@ -44,6 +45,15 @@ sealed class Sandbox
 
    /// <summary>The folder of the specifications' projects, each in a folder of its own.</summary>
    public string ProjectsFolder => Path.Combine(_root, "projects");
+
+   /// <summary>
+   /// The IDEs as the specifications' project windows see them: the <see cref="StandInIde"/>s announced in a folder of the
+   /// sandbox's own, so that no window of a specification asks Magnus's IDEs.
+   /// </summary>
+   public TheIdes Ides => new(new DirectoryInfo(FolderOfTheIdes));
+
+   /// <summary>The folder in which the <see cref="StandInIde"/>s announce their local APIs.</summary>
+   public string FolderOfTheIdes => Path.Combine(_root, "ides");
 
    /// <summary>The folder where the specifications' projects save their windows, each in a folder of its own.</summary>
    public string SavedProjectWindowsFolder => Path.Combine(_root, "project-windows");
