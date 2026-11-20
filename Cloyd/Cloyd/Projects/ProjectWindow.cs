@@ -442,12 +442,13 @@ sealed class ProjectWindow : Window
    }
 
    /// <summary>
-   /// Switches the selected tab between its terminal and its chat on Ctrl+T, before the terminal that has the focus takes
-   /// the key for Claude Code, whose own Ctrl+T shows its task list.
+   /// Switches the selected tab between its terminal and its chat on Ctrl+H, before the terminal that has the focus takes
+   /// the key, a Backspace: of the keys on that row in Dvorak, Magnus's, the one Claude Code binds to no command of its own,
+   /// as the IDE's tool window chose it (Magnus, 2026-11-20).
    /// </summary>
    void SwitchTheTabOnItsKey(object? sender, KeyEventArgs key)
    {
-      if(key is not { Key: Key.T, KeyModifiers: KeyModifiers.Control } || SelectedTab is not {} tab) return;
+      if(key is not { Key: Key.H, KeyModifiers: KeyModifiers.Control } || SelectedTab is not {} tab) return;
 
       key.Handled = true;
       tab.SwitchBetweenTheTerminalAndTheChat();

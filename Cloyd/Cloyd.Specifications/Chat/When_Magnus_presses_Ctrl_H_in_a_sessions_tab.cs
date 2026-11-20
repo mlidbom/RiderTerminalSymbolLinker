@@ -10,14 +10,14 @@ using Compze.xUnitBDD;
 namespace Cloyd.Specifications.Chat;
 
 /// <summary>
-/// Magnus presses Ctrl+T in a session's tab that shows its terminal, which has the keyboard: the tab switches to its chat.
+/// Magnus presses Ctrl+H in a session's tab that shows its terminal, which has the keyboard: the tab switches to its chat.
 /// </summary>
-public class When_Magnus_presses_Ctrl_T_in_a_sessions_tab : SpecificationOpeningWindows
+public class When_Magnus_presses_Ctrl_H_in_a_sessions_tab : SpecificationOpeningWindows
 {
    readonly ProjectWindow _window;
    readonly SessionTab _tab;
 
-   public When_Magnus_presses_Ctrl_T_in_a_sessions_tab()
+   public When_Magnus_presses_Ctrl_H_in_a_sessions_tab()
    {
       var project = Sandbox.Project("the-project");
       _window = Open(project.Window);
@@ -25,10 +25,10 @@ public class When_Magnus_presses_Ctrl_T_in_a_sessions_tab : SpecificationOpening
       _tab = OnTheUIThread(() => _window.Tabs.Single());
       WaitUntil(() => _tab.SessionRunningInIt is not null, "Claude Code ran in the tab's host");
       Focus(_tab.Terminal);
-      PressCtrlT();
+      PressCtrlH();
    }
 
-   void PressCtrlT() => Press(_window, Key.T, PhysicalKey.T, RawInputModifiers.Control);
+   void PressCtrlH() => Press(_window, Key.H, PhysicalKey.H, RawInputModifiers.Control);
 
    (bool Chat, bool Terminal) Shown => OnTheUIThread(() => (_tab.Chat.IsVisible, _tab.Terminal.IsVisible));
 
@@ -40,9 +40,9 @@ public class When_Magnus_presses_Ctrl_T_in_a_sessions_tab : SpecificationOpening
 
    [XF] public void the_chat_has_the_keyboard() => WaitUntilItHasTheKeyboard(_tab.Chat, "the chat had the keyboard");
 
-   public class and_presses_it_again : When_Magnus_presses_Ctrl_T_in_a_sessions_tab
+   public class and_presses_it_again : When_Magnus_presses_Ctrl_H_in_a_sessions_tab
    {
-      public and_presses_it_again() => PressCtrlT();
+      public and_presses_it_again() => PressCtrlH();
 
       [XF] public void the_tab_shows_its_terminal_again_and_not_its_chat() => Shown.Must().Be((false, true));
 

@@ -17,7 +17,7 @@ namespace Cloyd.Sessions;
 /// <summary>
 /// A tab of a <see cref="Projects.ProjectWindow"/>: the terminal of one session host, showing its shell, and the Claude
 /// Code in the shell as Claude Code draws its TUI; and the chat of the session that runs in it, or ran in it last. A
-/// switch at its top shows the one or the other, as Ctrl+T does: the terminal at first, until the chat can do all Magnus
+/// switch at its top shows the one or the other, as Ctrl+H does: the terminal at first, until the chat can do all Magnus
 /// needs. Titled with the name of that session.
 /// </summary>
 sealed class SessionTab : TabItem
@@ -56,10 +56,10 @@ sealed class SessionTab : TabItem
    protected override Type StyleKeyOverride => typeof(TabItem);
 
    /// <summary>The tip of the switch's button that shows the chat: the key that switches too.</summary>
-   public const string TipOfTheChatsSwitch = "Show the chat: Ctrl+T";
+   public const string TipOfTheChatsSwitch = "Show the chat: Ctrl+H";
 
    /// <summary>The tip of the switch's button that shows the terminal: the key that switches too.</summary>
-   public const string TipOfTheTerminalsSwitch = "Show the terminal: Ctrl+T";
+   public const string TipOfTheTerminalsSwitch = "Show the terminal: Ctrl+H";
 
    public SessionHostOfTheHub Host { get; }
 
@@ -116,7 +116,7 @@ sealed class SessionTab : TabItem
       _notice.IsVisible = true;
    }
 
-   /// <summary>Shows the chat when the terminal is shown, else the terminal, as Ctrl+T does, and gives it the keyboard.</summary>
+   /// <summary>Shows the chat when the terminal is shown, else the terminal, as Ctrl+H does, and gives it the keyboard.</summary>
    public void SwitchBetweenTheTerminalAndTheChat() => Show(chat: !Chat.IsVisible);
 
    /// <summary>Gives the keyboard to what the tab shows: the terminal, which types into the session, or the chat.</summary>

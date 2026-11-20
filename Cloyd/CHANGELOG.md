@@ -32,8 +32,8 @@ All notable changes to Cloyd are documented here. The format follows
   markdown, tool calls folded into a line that counts them and opens to each, a command's with its output, and a line
   where the conversation was compacted. It shows what Claude Code's transcript holds, and can't send yet, so each tab
   shows its terminal at first.
-- **Ctrl+T switches a tab between its terminal and its chat,** as the switch at its top does, and gives the keyboard to
-  the one it shows. In the terminal, Claude Code's own Ctrl+T, which shows its task list, no longer reaches it.
+- **Ctrl+H switches a tab between its terminal and its chat,** as the switch at its top does, and gives the keyboard to
+  the one it shows. Claude Code binds Ctrl+H to no command of its own: in the terminal it was a Backspace.
 - **Cloyd follows Windows' theme, light or dark,** as the desktop app does. The terminal stays dark.
 - **The session history picker,** as the IDE's was until Claude Sessions 0.2.0. The **History** button beside the
   **+**, or Ctrl+Alt+Shift+Y, lays it over the window: the sessions, most recently used first, filtered by every word
