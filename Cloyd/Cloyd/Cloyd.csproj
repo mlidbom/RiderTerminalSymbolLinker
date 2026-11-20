@@ -4,6 +4,8 @@
       <OutputType>WinExe</OutputType>
       <RootNamespace>Cloyd</RootNamespace>
       <ApplicationManifest>app.manifest</ApplicationManifest>
+      <!-- The version Cloyd/CHANGELOG.md's top section is about. -->
+      <Version>0.1.0</Version>
       <!-- For starting the Cloyd application through CreateProcessW, as the hub is started: see StartingTheApplication. -->
       <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
    </PropertyGroup>
