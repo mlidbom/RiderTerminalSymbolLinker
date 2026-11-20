@@ -2,9 +2,8 @@
 
 ## Status
 
-**Magnus's direction, 2026-11-20. The spike is run, and step one is built** (see "Step one, as it's built"): its switch
-waits for Magnus's go to deploy. Until then his IDEs run Claude Sessions 0.1.0, the Kotlin plugin with its tool window,
-as `claude-sessions.md` describes it under "Until the switch".
+**Magnus's direction, 2026-11-20. The spike is run, and step one is built and deployed** (see "Step one, as it's
+built"): since 14:22 that day his IDEs run Claude Sessions 0.2.0, and Cloyd shows his sessions, a window per project.
 
 - **Agreed (Magnus, 2026-11-20):**
   - the direction below, and the calls under "How it's to be built";
@@ -119,7 +118,10 @@ Claude's calls (.NET-cloyd, the session in this repository), which Magnus OK'd o
 
 **Built (3cbb526, 73cd255, 84b7525, 2496008):**
 
-- **The switch, Claude Sessions 0.2.0, not deployed yet:**
+- **The switch, Claude Sessions 0.2.0, deployed on Magnus's go, 2026-11-20,** with `everyday deploy
+  --restarting-the-ides`: IntelliJ IDEA was back in 15 s and Rider, with three solutions, in 38 s, and Cloyd showed all
+  four projects' windows, with the sessions that ran on in their hosts. Its application, started by IntelliJ IDEA's
+  Claude Sessions, runs in no job, where both IDEs run in one: it broke away.
   - **The plugin has no UI:** as a project opens, it runs `Cloyd.exe --project <the project's folder>` from `bin` in
     Cloyd's folder, and a notification says why when Cloyd isn't installed or doesn't show the window
     (`claude-sessions.md`, "Showing each project in Cloyd"). It keeps the local API's `GET /windows` and
@@ -136,7 +138,8 @@ Claude's calls (.NET-cloyd, the session in this repository), which Magnus OK'd o
     application runs on through an IDE restart, as the same process; three solutions opening each show in Cloyd.
   - **Not seen in the sandbox: breaking away from the IDE's job.** The sandbox Rider runs in no job, as the tools start
     it, where Magnus's Rider and IntelliJ IDEA run in one, as explorer starts them (2026-11-20). Cloyd's own
-    specification of a job that ends everything in it as it closes covers the breakaway.
+    specification of a job that ends everything in it as it closes covers the breakaway, and Magnus's Cloyd showed it
+    (above).
 - **One Cloyd application, with every project's window** (`Cloyd.LocalApi`):
   - **`Cloyd.exe --project <folder>` is a command:** it hands the project to the Cloyd application, and exits once the
     project's window shows, 0.16 s when the application runs, 0.84 s when it starts it. Opening a project's window
@@ -185,14 +188,11 @@ Claude's calls (.NET-cloyd, the session in this repository), which Magnus OK'd o
 
 **Next, in this order:**
 
-1. **Deploying the switch, on Magnus's go,** as it changes how every session of his is shown:
-   `everyday deploy --restarting-the-ides`, as the plugin's registrations change. The hub restarts his IDEs, and each
-   comes back with Claude Sessions 0.2.0, which has Cloyd show each project. His sessions run on in their hosts, and
-   Cloyd shows them by their labels: the tabs the plugin saved need no reading. Then his Cloyd application's process
-   tells whether it broke away from the IDE's job.
-2. **A notification's click shows the session in Cloyd:** the hub's side is the tooling owner's.
+1. **A notification's click shows the session in Cloyd:** the hub's side is the tooling owner's.
+2. **Clickable file paths and C# symbols in Cloyd's terminal** (Magnus, 2026-11-20, keeping the order: the links before
+   the chat, which needs the same link finder).
 
-Then clickable file paths and C# symbols in Cloyd's terminal.
+Then the chat, to the desktop app (below).
 
 ## The chat, when it comes back: the desktop app is its specification
 

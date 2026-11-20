@@ -8,7 +8,7 @@ project window back on its virtual desktop after a restart. It runs in any JetBr
 its JNA. Magnus asked for it on 2026-11-17: shutting down 3-8 IDEs with 1-4 Claude sessions each, and starting them all
 again by hand, was a real pain.
 
-**Until 0.2.0, the switch to Cloyd (built 2026-11-20, deployed on Magnus's go),** it was a tool window whose tabs each
+**Until 0.2.0, the switch to Cloyd (built and deployed 2026-11-20),** it was a tool window whose tabs each
 ran a Claude Code session, with a chat and a session history picker. Magnus, 2026-11-20: "once Cloyd in .NET can even
 just show the terminals and nothing else, no UI, get rid of all the UI in java". "Until the switch: the tool window"
 below describes what it did, for porting it to Cloyd, and the traps it found.
