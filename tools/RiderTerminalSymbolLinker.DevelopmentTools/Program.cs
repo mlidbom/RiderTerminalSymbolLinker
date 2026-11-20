@@ -53,6 +53,12 @@ static class Program
                                                       Types the text into tab <tab>'s terminal, counting from 0, and Enter
                           sandbox sessions close <tab>
                                                       Closes tab <tab>, as its close button does: its session ends
+                          sandbox chat <tab>          Tab <tab>'s chat: its cards, its transcript's rows, its find bar,
+                                                      its status line and its input box
+                          sandbox chat give <tab> <conversation.json>
+                                                      Has the stand-in behind tab <tab>'s chat give it the conversation
+                                                      in the file: {"items": [...]}, as the specifications give it
+                          sandbox chat picture <tab>  Paints tab <tab>'s chat into a PNG file, and prints where it is
 
                         Magnus's IDEs:
 
@@ -139,6 +145,15 @@ static class Program
             break;
          case ["sandbox", "sessions", "close", var tab]:
             Console.WriteLine(ObservationChannel.Indent(sandbox.ClaudeSessionsObservation.Close(int.Parse(tab))));
+            break;
+         case ["sandbox", "chat", var tab]:
+            Console.WriteLine(ObservationChannel.Indent(sandbox.ClaudeSessionsObservation.TheChat(int.Parse(tab))));
+            break;
+         case ["sandbox", "chat", "give", var tab, var conversationFile]:
+            Console.WriteLine(ObservationChannel.Indent(sandbox.ClaudeSessionsObservation.GiveTheChatAConversation(int.Parse(tab), System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(conversationFile))!)));
+            break;
+         case ["sandbox", "chat", "picture", var tab]:
+            Console.WriteLine(sandbox.ClaudeSessionsObservation.PictureOfTheChat(int.Parse(tab))["file"]!.GetValue<string>());
             break;
          case ["everyday", "reload", var plugin]:
             foreach(var line in EverydayIdes.Reload(OurPlugin.Named(plugin))) Console.WriteLine(line);

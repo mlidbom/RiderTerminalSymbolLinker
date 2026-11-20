@@ -99,7 +99,11 @@ reload of the plugin, whose unloading stops the server on the EDT.
   session host, shell and session each runs, and the saved tabs; it starts sessions, drives the New Claude Session popup
   and the session history picker, chooses the shell the terminals run, types into a tab, shows what a tab's terminal
   shows, and closes tabs, as their close button does, which ends their sessions. The `sandbox sessions` commands call
-  it.
+  it. For a tab's chat, it tells the transcript's rows, its links and its find bar, gives the chat a conversation
+  through the stand-in, opens rows, seeks text, and renders the transcript into a PNG: `sandbox chat <tab>`,
+  `sandbox chat give <tab> <conversation.json>` and `sandbox chat picture <tab>`, for an agent to see how it looks.
+  The picture renders the transcript in a Compose scene of its own, scrolled as it is: the sandbox's window is on a
+  virtual desktop of its own, where Compose draws nothing, so painting the panel gave an empty picture.
 
 ## The specifications
 
