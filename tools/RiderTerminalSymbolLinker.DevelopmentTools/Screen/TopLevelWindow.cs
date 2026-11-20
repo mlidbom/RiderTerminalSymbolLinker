@@ -34,6 +34,9 @@ sealed class TopLevelWindow
       return windows;
    }
 
+   /// <summary>The visible top-level window whose handle, its <c>HWND</c>, is <paramref name="handle"/>: null when there is none.</summary>
+   public static TopLevelWindow? WithHandle(long handle) => AllVisible().FirstOrDefault(it => ((IntPtr)it._handle).ToInt64() == handle);
+
    /// <summary>The title the window had when it was listed.</summary>
    public string Title { get; }
 
@@ -69,10 +72,12 @@ sealed class TopLevelWindow
       get
       {
          var bounds = Bounds;
-         var desktopNumber = Desktop is {} desktop ? $"Desktop {Array.FindIndex(VirtualDesktop.GetDesktops(), it => it.Id == desktop.Id) + 1}" : "every desktop";
-         return $"'{Title}' at ({bounds.left}, {bounds.top}), {bounds.Width}x{bounds.Height}, on {desktopNumber}";
+         return $"'{Title}' at ({bounds.left}, {bounds.top}), {bounds.Width}x{bounds.Height}, on {DesktopByNumber}";
       }
    }
+
+   /// <summary>The virtual desktop the window is on, by its number, as Windows' Task View counts them: <c>Desktop 2</c>, or <c>every desktop</c> for a pinned window.</summary>
+   public string DesktopByNumber => Desktop is {} desktop ? $"Desktop {Array.FindIndex(VirtualDesktop.GetDesktops(), it => it.Id == desktop.Id) + 1}" : "every desktop";
 
    /// <summary>Restores the window if it's minimized or maximized, and gives it <paramref name="bounds"/>, in physical pixels.</summary>
    public void MoveTo(RECT bounds)

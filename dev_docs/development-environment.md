@@ -205,7 +205,8 @@ for a plugin's jar. The application that runs runs on with the build it has unti
 project to open then starts the new one. `--dry-run` says which, and changes nothing. `everyday reload Cloyd` has it
 take the new build at once: it closes its windows, each saving its tabs, and runs `Cloyd.exe --project` for each
 project it showed, which starts it again with the same windows, their tabs brought back. The sessions run on in their
-hosts. On Magnus's go, as it closes the windows he works in.
+hosts. On Magnus's go, as it closes the windows he works in. `everyday cloyd` reads where its windows are, changing
+nothing: each one's virtual desktop, and its project's IDE window's, which it is to keep to (`CloydBesideTheIdes`).
 
 **A build that needs a restart isn't put into a running IDE that reloads,** and the deploy says `DIDN'T DEPLOY`, and
 `--dry-run` says `CLOSE <IDE> FIRST`. Such a build adds or removes a file, or changes what its plugin.xml registers, and

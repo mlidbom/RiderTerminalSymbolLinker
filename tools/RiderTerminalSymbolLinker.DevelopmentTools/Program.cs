@@ -83,6 +83,8 @@ static class Program
                                                       restarts it, its windows closing and opening again for the same
                                                       projects, their tabs brought back. The sessions run on. On his
                                                       go-ahead, as it closes the windows he works in
+                          everyday cloyd              Where his Cloyd application's windows are: each one's virtual
+                                                      desktop, and its project's IDE window's, which it is to keep to
                         """;
 
    static int Main(string[] arguments)
@@ -132,6 +134,9 @@ static class Program
             break;
          case ["sandbox", "cloyd"]:
             foreach(var line in sandbox.WhatItsCloydShows()) Console.WriteLine(line);
+            break;
+         case ["everyday", "cloyd"]:
+            foreach(var line in CloydBesideTheIdes.WhereTheWindowsAre(InstalledCloyd.Everyday)) Console.WriteLine(line);
             break;
          case ["everyday", "reload", "Cloyd"]:
             Console.WriteLine(InstalledCloyd.Everyday.RestartTheApplication());
