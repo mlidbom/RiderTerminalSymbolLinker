@@ -17,12 +17,15 @@ import dev.magnus.claudesessions.chat.claudecode.conversation.ToolCall
 import dev.magnus.claudesessions.chat.claudecode.conversation.ToolInputField
 import dev.magnus.claudesessions.chat.claudecode.conversation.ToolResult
 import dev.magnus.claudesessions.claudecode.ClaudeCodeCommand
+import dev.magnus.claudesessions.claudecode.ClaudeCodesStatusLine
 import dev.magnus.claudesessions.claudecode.ClaudeSession
 import dev.magnus.claudesessions.claudecode.ClaudeSessionId
+import dev.magnus.claudesessions.claudecode.TurnUnderWay
 import dev.magnus.claudesessions.sessionhosts.SessionHostId
 import dev.magnus.claudesessions.sessionhosts.SessionHostLabel
 import java.net.URI
 import java.nio.file.Path
+import java.time.Instant
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -34,7 +37,8 @@ import org.junit.jupiter.api.assertThrows
  * samples of its answers that the hub's own specifications compare its answers with, in
  * `~/.claude/src/ClaudeTooling.Specifications/Hub/LocalApi/Samples`, copied on 2026-11-19 from the tooling's
  * commits cc7853b, for typing 1d16ff3, and for session hosts eff80d7, and message-sent.http and the conversation's,
- * conversation-stream.http and no-such-session.http, from 7b23e8a, and still the same on 2026-11-20, and on the
+ * conversation-stream.http and no-such-session.http, from 7b23e8a, and still the same on 2026-11-20, the running
+ * sessions' with their status lines and turns, and the turn's stream, from 2dae3f0, and on the
  * examples of its contract,
  * `~/.claude/dev_docs/the-hubs-local-api.md`.
  * When the samples change, as the contract changes, copy them again.
@@ -56,18 +60,27 @@ class TheHubsLocalApiContractTest {
     }
 
     @Test
-    fun `the running sessions are read with each one's Claude Code's process, its session, its status, its name, its directory and its session host`() {
+    fun `the running sessions are read with each one's Claude Code's process, its session, its status, its name, its directory, its session host, its status line and its turn under way`() {
         val answer = HttpSample(HttpSample.named("running-sessions.http"))
 
         assertEquals(200, answer.status)
         assertEquals(HubProtocol.VERSION.toString(), answer.header(HubProtocol.HEADER))
         assertEquals(
             listOf(
-                RunningSessionInTheAnswer(24936, "87c58397-ae2b-4346-ab49-ebc624ed1193", "waiting", "chat-view", "C:\\Dev\\ClaudeSymbolLinker", "3f9a0c71d2e84b56"),
-                RunningSessionInTheAnswer(61812, "34aba8f2-a171-443f-955b-d2733a92adf2", "idle", null, "C:\\Users\\magnu\\.claude", null),
+                RunningSessionInTheAnswer(24936, "87c58397-ae2b-4346-ab49-ebc624ed1193", "waiting", "chat-view", "C:\\Dev\\ClaudeSymbolLinker", "3f9a0c71d2e84b56", OPUS_IN_BYPASS, TURN_RUNNING_TOOLS),
+                RunningSessionInTheAnswer(61812, "34aba8f2-a171-443f-955b-d2733a92adf2", "idle", null, "C:\\Users\\magnu\\.claude", null, ClaudeCodesStatusLine("Haiku 4.5", null, null, null), null),
+                RunningSessionInTheAnswer(70364, "ac61d91a-65b8-4bb0-85d4-d492f9fd0b45", "busy", "throwaway-session", "C:\\Dev\\Deskmancer", null, null, TURN_WRITING_A_WRITE_CALL),
             ),
             RunningSessionsAnswer.parse(answer.body).runningSessions,
         )
+    }
+
+    @Test
+    fun `a status line says the model, the effort level, the permission mode in short and the context used, leaving out what isn't known`() {
+        assertEquals("Opus 5.5 · xhigh · Bypass permissions · context 31%", OPUS_IN_BYPASS.text)
+        assertEquals("Haiku 4.5", ClaudeCodesStatusLine("Haiku 4.5", null, null, null).text)
+        assertEquals("Opus 5.5 · Plan", ClaudeCodesStatusLine("Opus 5.5", null, null, ClaudeCodesStatusLine.PermissionMode("plan", "plan mode on")).text)
+        assertEquals("Opus 5.5 · some new mode on", ClaudeCodesStatusLine("Opus 5.5", null, null, ClaudeCodesStatusLine.PermissionMode(null, "some new mode on")).text)
     }
 
     @Test
@@ -251,4 +264,10 @@ class TheHubsLocalApiContractTest {
 
     private fun typingAnswerIn(sample: String): TypingAnswer =
         HttpSample(HttpSample.named(sample)).let { TypingAnswer.of(it.status, it.body, build = "2026-11-19T20:38:00Z") }
+
+    private companion object {
+        val OPUS_IN_BYPASS = ClaudeCodesStatusLine("Opus 5.5", "xhigh", 31, ClaudeCodesStatusLine.PermissionMode("bypassPermissions", "bypass permissions on"))
+        val TURN_RUNNING_TOOLS = TurnUnderWay(Instant.parse("2026-11-19T18:03:58.214Z"), TurnUnderWay.Activity.RUNNING_TOOLS, toolBeingWritten = null, outputTokensSoFar = 1228)
+        val TURN_WRITING_A_WRITE_CALL = TurnUnderWay(Instant.parse("2026-11-19T18:05:01.071Z"), TurnUnderWay.Activity.WRITING_A_TOOL_CALL, toolBeingWritten = "Write", outputTokensSoFar = 2044)
+    }
 }

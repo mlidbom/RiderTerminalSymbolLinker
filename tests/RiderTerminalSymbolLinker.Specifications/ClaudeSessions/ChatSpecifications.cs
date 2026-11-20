@@ -187,6 +187,69 @@ public class When_the_chat_shows_a_conversation(When_the_chat_shows_a_conversati
    [XF] public void with_its_links() => story.AfterARewind.Links.Must().Satisfy(it => it.SequenceEqual(["Circle.Area", "Shapes/Circle.cs:7"]));
 }
 
+public class When_claude_code_tells_what_it_shows_under_its_box_and_what_its_turn_does(When_claude_code_tells_what_it_shows_under_its_box_and_what_its_turn_does.Story story)
+   : IClassFixture<When_claude_code_tells_what_it_shows_under_its_box_and_what_its_turn_does.Story>
+{
+   public sealed class Story
+   {
+      public readonly ChatSeen Thinking;
+      public readonly ChatSeen WritingAToolCall;
+      public readonly ChatSeen RunningTools;
+      public readonly ChatSeen InAutoModeOnAModelWithoutEffort;
+      public readonly ChatSeen WithNoStatusLineToldOf;
+
+      public Story()
+      {
+         var view = new TheClaudeSessionsView();
+         view.StartANewSession();
+         var chat = view.ChatOf(0);
+         chat.Give(Item.Prompt("p1", "Write the file and test it"));
+         chat.SayTheStatus("BUSY");
+         var opusInBypass = new { model = new { id = "claude-opus-5-5", displayName = "Opus 5.5" }, effortLevel = "xhigh", contextWindow = new { usedPercentage = 31, size = 1000000 }, permissionMode = new { name = "bypassPermissions", shownAs = "bypass permissions on" } };
+         var startedAt = DateTime.UtcNow.AddSeconds(-75).ToString("O");
+
+         chat.SayWhatClaudeCodeShows(opusInBypass, Turn("thinking", toolName: null, outputTokensSoFar: 228));
+         Thinking = chat.SeenOnce(it => it.WorkingLine?.StartsWith("Thinking") == true && it.ClaudeCodesStatusLine is not null, "the chat to show that Claude thinks");
+
+         chat.SayWhatClaudeCodeShows(opusInBypass, Turn("writingAToolCall", toolName: "Write", outputTokensSoFar: 2044));
+         WritingAToolCall = chat.SeenOnce(it => it.WorkingLine?.StartsWith("Writing") == true, "the chat to show that Claude writes a tool call");
+
+         chat.Give(Item.Prompt("p1", "Write the file and test it"), Item.ToolCall("t1", "Bash", new Dictionary<string, string> { ["command"] = "dotnet test" }, result: null));
+         chat.SayWhatClaudeCodeShows(opusInBypass, Turn("runningTools", toolName: null, outputTokensSoFar: 2044));
+         RunningTools = chat.SeenOnce(it => it.WorkingLine?.StartsWith("Running") == true, "the chat to show that Claude runs a tool call");
+
+         var opusInAuto = new { model = new { id = "claude-opus-5-5", displayName = "Opus 5.5" }, effortLevel = (string?)null, contextWindow = new { usedPercentage = (int?)null, size = 1000000 }, permissionMode = new { name = "auto", shownAs = "auto mode on" } };
+         chat.SayWhatClaudeCodeShows(opusInAuto, Turn("runningTools", toolName: null, outputTokensSoFar: 2044));
+         InAutoModeOnAModelWithoutEffort = chat.SeenOnce(it => it.ClaudeCodesStatusLine?.Contains("Auto") == true, "the chat to show the auto mode");
+
+         chat.SayWhatClaudeCodeShows(statusLine: null, turnUnderWay: null);
+         WithNoStatusLineToldOf = chat.SeenOnce(it => it.ClaudeCodesStatusLine is null, "the chat to show no status line of Claude Code's");
+
+         object Turn(string kind, string? toolName, int outputTokensSoFar) =>
+            new { turnId = "e1f0a8df-3c2c-4571-8f70-d3d390f1cd3b", startedAt, activity = new { kind, since = startedAt, toolUseId = toolName is null ? null : "toolu_01", toolName }, outputTokensSoFar };
+      }
+   }
+
+   [XF] public void the_line_under_the_box_shows_claude_codes_model_effort_permission_mode_and_context_used_at_its_right() =>
+      story.Thinking.ClaudeCodesStatusLine.Must().Be("Opus 5.5 · xhigh · Bypass permissions · context 31%");
+
+   [XF] public void the_working_line_says_claude_thinks_how_long_the_turn_has_taken_since_it_started_and_its_output_tokens() =>
+      story.Thinking.WorkingLine.Must().Satisfy(it => it is not null && Regex.IsMatch(it, @"^Thinking… · 1m \d\ds · ↓ 228 tokens$"));
+
+   [XF] public void while_claude_writes_a_tool_call_it_says_which_tool_with_the_tokens_in_thousands() =>
+      story.WritingAToolCall.WorkingLine.Must().Satisfy(it => it is not null && Regex.IsMatch(it, @"^Writing the Write call… · 1m \d\ds · ↓ 2\.0k tokens$"));
+
+   [XF] public void while_tools_run_it_says_which_call_runs_and_counts_the_commands() =>
+      story.RunningTools.WorkingLine.Must().Satisfy(it => it is not null && Regex.IsMatch(it, @"^Running Bash: dotnet test · 1m \d\ds · ↓ 2\.0k tokens · 1 command$"));
+
+   [XF] public void what_claude_code_doesnt_tell_is_left_out() => story.InAutoModeOnAModelWithoutEffort.ClaudeCodesStatusLine.Must().Be("Opus 5.5 · Auto");
+
+   [XF] public void with_no_status_line_told_of_none_shows() => story.WithNoStatusLineToldOf.StatusLine.Must().Be("Claude is busy");
+
+   [XF] public void and_without_a_turn_told_of_the_working_line_counts_from_when_claude_turned_busy() =>
+      story.WithNoStatusLineToldOf.WorkingLine.Must().Satisfy(it => it is not null && Regex.IsMatch(it, @"^Running Bash: dotnet test · \d+s · 1 command$"));
+}
+
 public class When_claude_makes_another_tool_call_after_one_the_user_opened(When_claude_makes_another_tool_call_after_one_the_user_opened.Story story)
    : IClassFixture<When_claude_makes_another_tool_call_after_one_the_user_opened.Story>
 {

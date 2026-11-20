@@ -3,6 +3,8 @@ package dev.magnus.claudesessions.chat.claudecode
 import com.intellij.openapi.Disposable
 import dev.magnus.claudesessions.ClaudeSessionTab
 import dev.magnus.claudesessions.chat.claudecode.conversation.Conversation
+import dev.magnus.claudesessions.claudecode.ClaudeCodesStatusLine
+import dev.magnus.claudesessions.claudecode.TurnUnderWay
 import kotlinx.coroutines.flow.StateFlow
 
 /**
@@ -30,6 +32,12 @@ interface ClaudeCodeBehindTheChat : Disposable {
 
     /** Whether Claude Code runs in the tab, and if so, whether it is busy, waiting for the user, or idle. */
     val status: StateFlow<ClaudeCodeStatus>
+
+    /** What the tab's Claude Code last showed under its input box: null while none runs, or it hasn't been told of yet. */
+    val statusLine: StateFlow<ClaudeCodesStatusLine?>
+
+    /** What the tab's Claude Code's turn under way does: null while no turn is, or none is told of. */
+    val turnUnderWay: StateFlow<TurnUnderWay?>
 
     /**
      * Gives Claude Code [message], as if it were typed and pasted into its input box, and Enter pressed: Claude Code

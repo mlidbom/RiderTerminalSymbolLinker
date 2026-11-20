@@ -113,6 +113,12 @@ public sealed class ClaudeSessionsObservationChannel(int port) : ObservationChan
    /// <summary>Has the stand-in behind the chat say Claude Code's status is <paramref name="status"/>: <c>NOT_RUNNING</c>, <c>IDLE</c>, <c>BUSY</c> or <c>WAITING</c>.</summary>
    public JsonNode SayTheStatusToTheChat(int tab, string status, string? project = null) => Post("tabs/chat/status", project, new { }, $"tab={tab}&status={status}");
 
+   /// <summary>
+   ///   Has the stand-in behind the chat say what Claude Code last showed under its input box, and its turn under way, as
+   ///   <paramref name="session"/> says them: <c>{"statusLine": …, "turnUnderWay": …}</c>, in the shape of the hub's running session's.
+   /// </summary>
+   public JsonNode SayWhatClaudeCodeShowsToTheChat(int tab, object session, string? project = null) => Post("tabs/chat/shows", project, session, $"tab={tab}");
+
    /// <summary>What Claude Code got from the chat, through the stand-in behind it: its messages, part by part, and how often it was interrupted and its permission mode changed.</summary>
    public JsonNode WhatTheChatSent(int tab, string? project = null) => Get("tabs/chat/sent", project, $"tab={tab}");
 

@@ -4,10 +4,20 @@ import dev.magnus.claudesessions.sessionhosts.SessionHost
 import dev.magnus.claudesessions.sessionhosts.SessionHostId
 
 /**
- * A Claude Code that runs: its process, the [session] it runs now, what it's doing, and the [SessionHost] whose console
- * it runs in, if it runs in one, as Claude Code started in a tab of the view does. See [RunningClaudeCodes].
+ * A Claude Code that runs: its process, the [session] it runs now, what it's doing, the [SessionHost] whose console it
+ * runs in, if it runs in one, as Claude Code started in a tab of the view does, what it last showed under its input box,
+ * and its turn under way, if one is. See [RunningClaudeCodes].
  */
-data class RunningClaudeCode(val process: ProcessHandle, val session: ClaudeSession, val status: Status, val sessionHost: SessionHostId?) {
+data class RunningClaudeCode(
+    val process: ProcessHandle,
+    val session: ClaudeSession,
+    val status: Status,
+    val sessionHost: SessionHostId?,
+    /** Null until it has shown its status line to the hub: within a minute of a hub's start, as after a publish. */
+    val statusLine: ClaudeCodesStatusLine?,
+    /** Null while no turn is under way, and in a session that doesn't load the `tooling-commands` mod. */
+    val turnUnderWay: TurnUnderWay?,
+) {
     /** What a Claude Code that runs is doing, as the record it keeps of its session says, in its `status`. */
     enum class Status {
         /** It waits for the next prompt. */

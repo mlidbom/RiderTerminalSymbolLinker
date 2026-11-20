@@ -12,21 +12,25 @@ import dev.magnus.claudesessions.chat.claudecode.conversation.Prompt
 import dev.magnus.claudesessions.chat.claudecode.conversation.PromptFromElsewhere
 import dev.magnus.claudesessions.chat.claudecode.conversation.ToolCall
 import dev.magnus.claudesessions.chat.transcript.toolcalls.ToolCallHeader
+import dev.magnus.claudesessions.claudecode.TurnUnderWay
 import java.time.Duration
 import java.time.Instant
+import java.util.Locale
 import javax.swing.JComponent
 import javax.swing.SwingConstants
 import javax.swing.Timer
 
 /**
  * The line over the chat's input box that shows, while Claude works on a turn, that it does, and at what: a spinner,
- * the tool call under way, if one is, how long the turn has taken so far, and how many commands it has run, as Claude
- * Code's own UI, its desktop app and claude.ai show it. It takes no room while Claude isn't busy.
+ * what the [TurnUnderWay] does, such as thinking, writing or the tool call under way, how long the turn has taken so
+ * far, its output tokens, and how many commands it has run, as Claude Code's own UI, its desktop app and claude.ai show
+ * it. It takes no room while Claude isn't busy.
  *
  * Magnus, 2026-11-20: "The lack of any information about that in the new UI is what keeps me switching back to the TUI
  * constantly at the moment, to see what is going on."
  *
- * How long the turn has taken is counted from when the line saw Claude Code turn busy.
+ * How long the turn has taken is counted from its start, or, while no turn under way is told of, as in a session that
+ * doesn't load the `tooling-commands` mod, from when the line saw Claude Code turn busy.
  *
  * Its methods run on the EDT.
  */
@@ -46,6 +50,9 @@ class WorkingLine(parent: Disposable) : Disposable {
     private var toolCallUnderWay: ToolCall? = null
 
     private var commandsOfTheTurn = 0
+
+    /** The turn under way, as Claude Code's mod tells of it, or null while none is told of. */
+    private var turn: TurnUnderWay? = null
 
     /** Has the line count the seconds while Claude is busy. */
     private val ticking = Timer(1000) { update() }
@@ -77,18 +84,41 @@ class WorkingLine(parent: Disposable) : Disposable {
         update()
     }
 
+    fun show(turn: TurnUnderWay?) {
+        this.turn = turn
+        update()
+    }
+
     private fun update() {
-        val since = busySince
-        label.isVisible = since != null
-        if (since == null) return
-        val doing = toolCallUnderWay?.let { "Running ${ToolCallHeader.of(it)}" } ?: "Working…"
+        val busySince = busySince
+        label.isVisible = busySince != null
+        if (busySince == null) return
+        val since = turn?.startedAt ?: busySince
+        val tokens = turn?.outputTokensSoFar?.takeIf { it > 0 }?.let { "↓ ${inThousands(it)} tokens" }
         val commands = when (commandsOfTheTurn) {
             0 -> null
             1 -> "1 command"
             else -> "$commandsOfTheTurn commands"
         }
-        label.text = listOfNotNull(doing, howLong(Duration.between(since, Instant.now())), commands).joinToString(" · ")
+        label.text = listOfNotNull(doing(), howLong(Duration.between(since, Instant.now())), tokens, commands).joinToString(" · ")
     }
+
+    /** What the turn does now, in a few words. */
+    private fun doing(): String {
+        val running = toolCallUnderWay?.let { "Running ${ToolCallHeader.of(it)}" }
+        val turn = turn ?: return running ?: "Working…"
+        return when (turn.activity) {
+            TurnUnderWay.Activity.REQUESTING -> "Waiting for the model…"
+            TurnUnderWay.Activity.THINKING -> "Thinking…"
+            TurnUnderWay.Activity.WRITING -> "Writing…"
+            TurnUnderWay.Activity.WRITING_A_TOOL_CALL -> turn.toolBeingWritten?.let { "Writing the $it call…" } ?: "Writing a tool call…"
+            TurnUnderWay.Activity.RUNNING_TOOLS -> running ?: "Running tools…"
+            TurnUnderWay.Activity.OTHER -> "Working…"
+        }
+    }
+
+    /** [tokens], as Claude Code's spinner counts them: `228`, `1.2k`. */
+    private fun inThousands(tokens: Long): String = if (tokens < 1000) "$tokens" else "%.1fk".format(Locale.ROOT, tokens / 1000.0)
 
     /** [taken], as Claude Code's own UI says how long a turn has taken: `42s`, `3m 05s`. */
     private fun howLong(taken: Duration): String =

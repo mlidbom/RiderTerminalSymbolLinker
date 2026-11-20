@@ -25,8 +25,11 @@ All notable changes to Claude Sessions are documented here. The format follows
   the desktop app renders it, in the IDE's theme, and an input box that is an editor, one line tall until you write
   more, growing up to two fifths of the chat. The box is rounded, as the desktop app's is, with a send button at its
   right, which stops Claude instead while Claude is busy and the box is empty. While Claude works on a turn, a line over
-  the box says so, with a spinner, the tool call under way, how long the turn has taken and how many commands it has
-  run; a line under the box says whether Claude is busy, idle or waiting for you in the terminal. What you said shows shaded, at the right, as you wrote it; a message from
+  the box says so, as Claude Code's own spinner line does: whether Claude thinks, writes, writes a tool call or runs
+  one, and which, how long the turn has taken, its output tokens, and how many commands it has run. A line under the
+  box says whether Claude is busy, idle or waiting for you in the terminal, and at its right what Claude Code shows in
+  its status line: the model, the effort level, the permission mode and the context used, such as "Opus 5.5 · xhigh ·
+  Auto · context 31%". What you said shows shaded, at the right, as you wrote it; a message from
   another session, a background task's notice or a scheduled wake-up is one line, which says where it came from and
   what it's about, and opens to the whole of it. What Claude said shows as rendered markdown, with headings a little
   larger than the text, lists, tables, code and links, and its thinking dimmed.

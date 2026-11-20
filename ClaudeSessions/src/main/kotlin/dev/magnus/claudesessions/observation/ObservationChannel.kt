@@ -94,6 +94,9 @@ import org.jetbrains.plugins.terminal.TerminalProjectOptionsProvider
  *  - `POST /tabs/chat/conversation?project=&tab=` with `{"items": [...]}` — has the tab's stand-in give the chat that
  *    conversation: see [TheChatObserved.giveTheConversation].
  *  - `POST /tabs/chat/status?project=&tab=&status=` — has the stand-in say Claude Code's status, such as `IDLE`.
+ *  - `POST /tabs/chat/shows?project=&tab=` with `{"statusLine": …, "turnUnderWay": …}` — has the stand-in say what
+ *    Claude Code last showed under its input box, and its turn under way, as the hub's running session says them; a
+ *    field left out or null says none.
  *  - `GET /tabs/chat/sent?project=&tab=` — the messages Claude Code got from the chat, part by part, and the keys.
  *  - `POST /tabs/chat/outcome?project=&tab=` with `{"outcome": …}` — has the stand-in answer what the chat gives it with
  *    that outcome, from then on: see [TheChatObserved.answerWith].
@@ -188,6 +191,12 @@ class ObservationChannel : Disposable {
                 }
             }
             createContext("/tabs/chat/status") { exchange -> answer(exchange) { inTheChat(exchange) { it.sayTheStatus(query(exchange, "status")!!) } } }
+            createContext("/tabs/chat/shows") { exchange ->
+                answer(exchange) {
+                    val session = request<JsonObject>(exchange)
+                    inTheChat(exchange) { it.sayWhatClaudeCodeShows(session) }
+                }
+            }
             createContext("/tabs/chat/sent") { exchange -> answer(exchange) { inTheChat(exchange) { it.sent() } } }
             createContext("/tabs/chat/outcome") { exchange ->
                 answer(exchange) {

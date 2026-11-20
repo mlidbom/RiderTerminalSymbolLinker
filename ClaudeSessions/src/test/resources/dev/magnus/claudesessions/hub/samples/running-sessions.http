@@ -12,7 +12,20 @@ Claude-Tooling-Protocol: 1
       "waitingFor": "permission prompt",
       "name": "chat-view",
       "directory": "C:\\Dev\\ClaudeSymbolLinker",
-      "sessionHost": "3f9a0c71d2e84b56"
+      "sessionHost": "3f9a0c71d2e84b56",
+      "statusLine": {
+        "text": "Opus 5.5 · xhigh · context 31% · week 21% · Fable 3% · €74.62 · 37% · .claude 12",
+        "model": {"id": "claude-opus-5-5", "displayName": "Opus 5.5"},
+        "effortLevel": "xhigh",
+        "contextWindow": {"usedPercentage": 31, "size": 1000000},
+        "permissionMode": {"name": "bypassPermissions", "shownAs": "bypass permissions on"}
+      },
+      "turnUnderWay": {
+        "turnId": "e1f0a8df-3c2c-4571-8f70-d3d390f1cd3b",
+        "startedAt": "2026-11-19T18:03:58.214Z",
+        "activity": {"kind": "runningTools", "since": "2026-11-19T18:04:27.802Z", "toolUseId": null, "toolName": null},
+        "outputTokensSoFar": 1228
+      }
     },
     {
       "processId": 61812,
@@ -22,7 +35,32 @@ Claude-Tooling-Protocol: 1
       "waitingFor": null,
       "name": null,
       "directory": "C:\\Users\\magnu\\.claude",
-      "sessionHost": null
+      "sessionHost": null,
+      "statusLine": {
+        "text": "Haiku 4.5 · week 21%",
+        "model": {"id": "claude-haiku-4-5", "displayName": "Haiku 4.5"},
+        "effortLevel": null,
+        "contextWindow": {"usedPercentage": null, "size": 200000},
+        "permissionMode": null
+      },
+      "turnUnderWay": null
+    },
+    {
+      "processId": 70364,
+      "sessionId": "ac61d91a-65b8-4bb0-85d4-d492f9fd0b45",
+      "status": "busy",
+      "statusSince": "2026-11-19T18:05:01.12Z",
+      "waitingFor": null,
+      "name": "throwaway-session",
+      "directory": "C:\\Dev\\Deskmancer",
+      "sessionHost": null,
+      "statusLine": null,
+      "turnUnderWay": {
+        "turnId": "a948af92-e6ea-4672-98a7-b5ab7fe51a57",
+        "startedAt": "2026-11-19T18:05:01.071Z",
+        "activity": {"kind": "writingAToolCall", "since": "2026-11-19T18:05:09.33Z", "toolUseId": "toolu_01XtqTdVW5yWFcxgWo1Ec9ca", "toolName": "Write"},
+        "outputTokensSoFar": 2044
+      }
     }
   ]
 }

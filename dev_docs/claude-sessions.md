@@ -405,14 +405,21 @@ plain terminal tab, with no session host, gets none, and shows its terminal alon
     When what is in the way shows in Claude Code's own UI, a dialog or text in its own input box, the tab shows the
     terminal. A message the hub typed and left unsent in Claude Code's own box (`inputBoxShowsOtherThanTyped`,
     `notSentByEnter`) isn't put back: the terminal shows it there.
-- **A status line** under the input box, as the desktop app has its model and modes there: whether Claude is busy, idle
-  or waiting in the terminal.
+- **A status line** under the input box (`StatusLine`), as the desktop app has its model and modes there: whether
+  Claude is busy, idle or waiting in the terminal; and at its right, Claude Code's own status line,
+  `ClaudeCodesStatusLine`: the model, the effort level, the permission mode in short, such as "Auto", and the context
+  used, leaving out what isn't known. The hub keeps it with each running session, `statusLine`, from what Claude Code
+  gives the status line's command and from its screen, and `ClaudeCodeBehindTheChat.statusLine` follows it.
 - **A working line** over the input box while Claude is busy (`WorkingLine`), as Claude Code's own UI, the desktop app
-  and claude.ai show that Claude works: a spinner, the tool call under way, the last of the turn's with no result yet,
-  or else "Working…", how long the turn has taken since the line saw Claude Code turn busy, and how many commands it has
-  run, counted from the conversation. Magnus, 2026-11-20: "The lack of any information about that in the new UI is what
-  keeps me switching back to the TUI constantly at the moment, to see what is going on." Over the box rather than at
-  the transcript's end, so that it shows however the transcript is scrolled, as the TUI's does.
+  and claude.ai show that Claude works: a spinner; what the `TurnUnderWay` does, "Waiting for the model…",
+  "Thinking…", "Writing…", "Writing the Write call…", or while tools run the tool call under way, the last of the
+  turn's with no result yet; how long the turn has taken since it started; its output tokens, as the TUI's "↓ 1.2k
+  tokens"; and how many commands it has run, counted from the conversation. The hub keeps the turn with each running
+  session, `turnUnderWay`, from what the `tooling-commands` mod reports, and `ClaudeCodeBehindTheChat.turnUnderWay`
+  follows it. In a session that doesn't load the mod, the line says "Working…" or the call under way, and counts the
+  time from when it saw Claude Code turn busy. Magnus, 2026-11-20: "The lack of any information about that in the new
+  UI is what keeps me switching back to the TUI constantly at the moment, to see what is going on." Over the box rather
+  than at the transcript's end, so that it shows however the transcript is scrolled, as the TUI's does.
 - **Nothing the user wrote is lost when the IDE goes, and the chat comes back where it was,** after a restart, a crash
   or a plugin reload. Magnus asked for it on 2026-11-19, for the Rider restart tool: "make sure that anything that I had
   typed into one of the chat input boxes it has built will survive this restart".

@@ -6,9 +6,11 @@ import dev.magnus.claudesessions.chat.claudecode.ClaudeCodeStatus
 import dev.magnus.claudesessions.chat.claudecode.Message
 import dev.magnus.claudesessions.chat.claudecode.TypingOutcome
 import dev.magnus.claudesessions.chat.claudecode.conversation.Conversation
+import dev.magnus.claudesessions.claudecode.ClaudeCodesStatusLine
 import dev.magnus.claudesessions.claudecode.ClaudeSessionId
 import dev.magnus.claudesessions.claudecode.RunningClaudeCode
 import dev.magnus.claudesessions.claudecode.RunningClaudeCodes
+import dev.magnus.claudesessions.claudecode.TurnUnderWay
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -76,6 +78,16 @@ class TheHubBehindTheChat(private val tab: ClaudeSessionTab) : ClaudeCodeBehindT
 
     override val status: StateFlow<ClaudeCodeStatus> =
         hub.runningClaudeCodes.map(::statusInTheTab).stateIn(scope, SharingStarted.Eagerly, statusInTheTab(hub.runningClaudeCodes.value))
+
+    override val statusLine: StateFlow<ClaudeCodesStatusLine?> = ofTheTabsClaudeCode { it.statusLine }
+
+    override val turnUnderWay: StateFlow<TurnUnderWay?> = ofTheTabsClaudeCode { it.turnUnderWay }
+
+    /** What [part] says of the tab's Claude Code, as the hub tells of it, and as it changes: null while none runs. */
+    private fun <Part> ofTheTabsClaudeCode(part: (RunningClaudeCode) -> Part?): StateFlow<Part?> {
+        fun partNow(running: RunningClaudeCodes): Part? = tab.claudeCodeAmong(running)?.let(part)
+        return hub.runningClaudeCodes.map(::partNow).stateIn(scope, SharingStarted.Eagerly, partNow(hub.runningClaudeCodes.value))
+    }
 
     override suspend fun send(message: Message): TypingOutcome = typedIntoTheTabsClaudeCode { hub.typing.send(it, message) }
 

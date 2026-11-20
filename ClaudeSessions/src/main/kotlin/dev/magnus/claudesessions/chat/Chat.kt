@@ -99,6 +99,8 @@ class Chat(project: Project, val claudeCode: ClaudeCodeBehindTheChat, private va
                 messageBox.show(it)
             }
         }
+        scope.launch { claudeCode.statusLine.collect(statusLine::show) }
+        scope.launch { claudeCode.turnUnderWay.collect(workingLine::show) }
     }
 
     /**

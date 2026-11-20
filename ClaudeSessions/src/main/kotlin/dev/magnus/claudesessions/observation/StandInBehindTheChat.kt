@@ -5,6 +5,8 @@ import dev.magnus.claudesessions.chat.claudecode.ClaudeCodeStatus
 import dev.magnus.claudesessions.chat.claudecode.Message
 import dev.magnus.claudesessions.chat.claudecode.TypingOutcome
 import dev.magnus.claudesessions.chat.claudecode.conversation.Conversation
+import dev.magnus.claudesessions.claudecode.ClaudeCodesStatusLine
+import dev.magnus.claudesessions.claudecode.TurnUnderWay
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.atomic.AtomicInteger
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -12,9 +14,9 @@ import kotlinx.coroutines.flow.first
 
 /**
  * A [ClaudeCodeBehindTheChat] that the sandbox's specifications drive through the [ObservationChannel], in place of a
- * real one: the specifications set its [conversation] and its [status], see what the chat sent through it, and say
- * what comes of what the chat gives it. So they specify the chat itself, whatever comes to provide it the conversation,
- * and type for it.
+ * real one: the specifications set its [conversation], its [status], its [statusLine] and its [turnUnderWay], see what
+ * the chat sent through it, and say what comes of what the chat gives it. So they specify the chat itself, whatever
+ * comes to provide it the conversation, and type for it.
  *
  * Until set, it says no Claude Code runs, so the tab shows its terminal, as a tab without a chat does, and the
  * conversation isn't known yet, as while the hub reads it.
@@ -22,6 +24,8 @@ import kotlinx.coroutines.flow.first
 class StandInBehindTheChat : ClaudeCodeBehindTheChat {
     override val conversation = MutableStateFlow<Conversation?>(null)
     override val status = MutableStateFlow(ClaudeCodeStatus.NOT_RUNNING)
+    override val statusLine = MutableStateFlow<ClaudeCodesStatusLine?>(null)
+    override val turnUnderWay = MutableStateFlow<TurnUnderWay?>(null)
 
     /** The messages Claude Code got from the chat, in their order. */
     val sent: MutableList<Message> = CopyOnWriteArrayList()

@@ -29,6 +29,7 @@ import dev.magnus.claudesessions.chat.ChatAndTerminalCards
 import dev.magnus.claudesessions.chat.SwitchBetweenTheChatAndTheTerminalAction
 import dev.magnus.claudesessions.chat.TabCard
 import dev.magnus.claudesessions.chat.claudecode.ClaudeCodeStatus
+import dev.magnus.claudesessions.hub.RunningSessionsAnswer
 import dev.magnus.claudesessions.chat.claudecode.Message
 import dev.magnus.claudesessions.chat.claudecode.PastedImage
 import dev.magnus.claudesessions.chat.claudecode.PastedText
@@ -105,6 +106,7 @@ class TheChatObserved(private val project: Project, private val tab: Int) {
             "find" to describeTheFindOf(transcript),
             "links" to transcript.linkedTexts,
             "statusLine" to cards.chat.statusLine.text,
+            "claudeCodesStatusLine" to cards.chat.statusLine.claudeCodesStatusLine,
             "workingLine" to cards.chat.workingLine.text,
             "whyNotTyped" to cards.chat.statusLine.whyNotTyped,
             "messageBox" to cards.chat.messageBox.text,
@@ -132,6 +134,16 @@ class TheChatObserved(private val project: Project, private val tab: Int) {
     /** Has the stand-in say Claude Code's status is [status], such as `IDLE`. */
     fun sayTheStatus(status: String): Map<String, Any?> {
         standIn.status.value = ClaudeCodeStatus.valueOf(status)
+        return describe()
+    }
+
+    /**
+     * Has the stand-in say what Claude Code last showed under its input box, and its turn under way, as [session] says
+     * them: the `statusLine` and `turnUnderWay` of a running session in the hub's answer, read as the hub's are.
+     */
+    fun sayWhatClaudeCodeShows(session: JsonObject): Map<String, Any?> {
+        standIn.statusLine.value = RunningSessionsAnswer.statusLineIn(session)
+        standIn.turnUnderWay.value = RunningSessionsAnswer.turnUnderWayIn(session)
         return describe()
     }
 

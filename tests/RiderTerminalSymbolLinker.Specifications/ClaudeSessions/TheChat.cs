@@ -28,6 +28,14 @@ public sealed class TheChat(ClaudeSessionsObservationChannel channel, int tab)
    /// <summary>Has the stand-in say Claude Code's status is <paramref name="status"/>: <c>NOT_RUNNING</c>, <c>IDLE</c>, <c>BUSY</c> or <c>WAITING</c>.</summary>
    public ChatSeen SayTheStatus(string status) => ChatSeen.From(channel.SayTheStatusToTheChat(tab, status));
 
+   /// <summary>
+   ///   Has the stand-in say what Claude Code last showed under its input box, <paramref name="statusLine"/>, and its turn
+   ///   under way, <paramref name="turnUnderWay"/>, each in the shape of the hub's running session's <c>statusLine</c> and
+   ///   <c>turnUnderWay</c>, or null for none. The chat shows them a moment later: see <see cref="SeenOnce"/>.
+   /// </summary>
+   public ChatSeen SayWhatClaudeCodeShows(object? statusLine, object? turnUnderWay) =>
+      ChatSeen.From(channel.SayWhatClaudeCodeShowsToTheChat(tab, new { statusLine, turnUnderWay }));
+
    /// <summary>Types <paramref name="text"/> into the input box, at its caret.</summary>
    public ChatSeen Type(string text) => ChatSeen.From(channel.TypeInTheChat(tab, text));
 
@@ -148,7 +156,8 @@ public sealed class TheChat(ClaudeSessionsObservationChannel channel, int tab)
 ///   A tab's chat as the observation channel tells of it: the card the tab shows, <c>CHAT</c> or <c>TERMINAL</c>, or
 ///   null when the tab has no chat, and the card the user chose, or null when the tab chose it; the transcript's rows, the
 ///   texts the console filters' links cover, the id of the item at the top of the pane, and the transcript's find bar;
-///   the working line, or null while it doesn't show; the status line, and why Claude Code didn't get what the chat last gave it, or null; the text in the input box, its
+///   the working line, or null while it doesn't show; the status line, what it shows of Claude Code's own status line at
+///   its right, or null, and why Claude Code didn't get what the chat last gave it, or null; the text in the input box, its
 ///   parts, its caret, how many lines tall it is, and how many it has room for: two fifths of the chat's height, which
 ///   in the sandbox Rider is its tool window's; the thumbnails over it, and what its send button does, <c>SEND</c>,
 ///   <c>STOP</c> or <c>NOTHING</c>; and the titles of the cards' tabs.
@@ -162,6 +171,7 @@ public sealed record ChatSeen(
    FindSeen? Find,
    string? WorkingLine,
    string? StatusLine,
+   string? ClaudeCodesStatusLine,
    string? WhyNotTyped,
    string? MessageBox,
    IReadOnlyList<MessagePartSeen> MessageBoxParts,
@@ -180,7 +190,7 @@ public sealed record ChatSeen(
 
    public static ChatSeen From(JsonNode chat) =>
       chat["card"] is null
-         ? new ChatSeen(null, null, [], [], null, null, null, null, null, null, [], 0, 0, 0, [], null, [])
+         ? new ChatSeen(null, null, [], [], null, null, null, null, null, null, null, [], 0, 0, 0, [], null, [])
          : new ChatSeen(chat["card"]!.GetValue<string>(),
                         chat["cardTheUserChose"]?.GetValue<string>(),
                         [.. chat["rows"]!.AsArray().Select(it => RowSeen.From(it!))],
@@ -189,6 +199,7 @@ public sealed record ChatSeen(
                         FindSeen.From(chat["find"]!),
                         chat["workingLine"]?.GetValue<string>(),
                         chat["statusLine"]!.GetValue<string>(),
+                        chat["claudeCodesStatusLine"]?.GetValue<string>(),
                         chat["whyNotTyped"]?.GetValue<string>(),
                         chat["messageBox"]!.GetValue<string>(),
                         [.. chat["messageBoxParts"]!.AsArray().Select(it => MessagePartSeen.From(it!))],
