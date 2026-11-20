@@ -104,9 +104,9 @@ Claude's calls (.NET-cloyd, the session in this repository), which Magnus OK'd o
   - **Why it's simpler:** no session is ever shown by two UIs, so attaching never takes a TUI away from a tab. No parity
     has to be reached before the switch, and the Kotlin side of it is deletion.
   - **Why it's cheap:** the spike has most of it: the attachment, the terminal and the window.
-  - **Clickable file paths and C# symbols come right after it** (Magnus, 2026-11-20: "Agreed"), so step one stays
-    quick. Until then, URLs and the links Claude Code writes itself (OSC 8) are what is clickable in Cloyd's terminal:
-    underlined under the pointer, and a Ctrl+click opens a web page's in the browser (below).
+  - **Clickable file paths and C# symbols come in the chat, not the terminal** (Magnus, 2026-11-20, see "Clickable
+    file paths and C# symbols: the plan"). In Cloyd's terminal, URLs and the links Claude Code writes itself (OSC 8)
+    are what is clickable: underlined under the pointer, and a Ctrl+click opens a web page's in the browser (below).
   - **The chat comes back afterwards,** built in .NET, to the desktop app as its specification (see "The chat, when
     it comes back: the desktop app is its specification").
   - **Built in `Cloyd/`,** a solution of its own in this repository, which can move to a repository of its own.
@@ -222,12 +222,23 @@ Claude's calls (.NET-cloyd, the session in this repository), which Magnus OK'd o
    tooling owner's, published the same day (`~/.claude` 1046b04, 6091138). The hub asks `POST /sessions/show` first, then
    brings the window forward itself, finding it among Cloyd's windows by the title the 200 answers. The IDEs are no
    longer asked. Not yet seen with Magnus's Cloyd, which runs the build from before until he restarts it.
-2. **Clickable file paths and C# symbols in Cloyd's terminal** (Magnus, 2026-11-20, keeping the order: the links before
-   the chat, which needs the same link finder). Planned below.
-
-Then the chat, to the desktop app (below).
+2. **Clickable file paths and C# symbols:** what links is found, and each window keeps its files and symbols current
+   (below). Showing them in the terminal is dropped (Magnus, 2026-11-20: "So better build the new UI than spend a ton
+   of efforts on the UI we don't use"): the terminal "is just a backup once we get the new UI".
+3. **The chat, to the desktop app** (below), with the links in it.
 
 ## Clickable file paths and C# symbols: the plan
+
+**In the chat, not the terminal** (Magnus, 2026-11-20): the terminal "is just a backup once we get the new UI. So
+better build the new UI than spend a ton of efforts on the UI we don't use." The chat renders Claude's output in Cloyd's
+own controls, which can show links as they like, where the terminal, Iciclecreek's, has no hook for them. So:
+
+- **Kept, and used by the chat as they are:** the link finder, each window's files and symbols, and `Cloyd.exe
+  --links-in`, all built.
+- **Built with the chat, when its first link is clicked:** the click below.
+- **Dropped:** links in the terminal, and with them the fork of Iciclecreek for a link-provider hook, which Magnus had
+  chosen over a layer of Cloyd's own before this. The terminal keeps what Iciclecreek shows: URLs and OSC 8 links,
+  which a Ctrl+click opens in the browser.
 
 Claude's calls, 2026-11-20, unless marked as Magnus's:
 
@@ -251,7 +262,6 @@ Claude's calls, 2026-11-20, unless marked as Magnus's:
   - **Specified** with a stand-in Royder (`StandInDotNetAnalysisAndRefactoringMcp`) and a git repository of the
     specification's own; and against Magnus's Rider with `Cloyd.exe --links-in` (`development-environment.md`).
 - **A click:**
-  - Ctrl+click, as Iciclecreek's terminal already has for URLs, and as Windows Terminal and VS Code do;
   - a file or a symbol opens in the IDE that shows the window's project, through a new `POST /files/open` of Claude
     Sessions' local API, in an editor of that project, the IDE's focus on it;
   - Cloyd then brings the IDE's window forward itself, as the hub brings Cloyd's: in the foreground at the click, it may.
@@ -259,20 +269,6 @@ Claude's calls, 2026-11-20, unless marked as Magnus's:
     would have it take Magnus's focus whenever he had left the machine alone for Windows' foreground lock timeout;
   - several declarations or files show a picker in Cloyd; none, the window's foot says so;
   - a URL opens in the browser.
-- **Showing the links: a link-provider hook in Iciclecreek, in a fork of it** (Magnus, 2026-11-20: "Wait with the pull
-  request, go ahead with everything else, forking adding the functionality etc."):
-  - **Why a hook there:** Iciclecreek's terminal underlines a link under the pointer, shows the hand cursor, and raises
-    `UrlClicked` on a Ctrl+click, but only for OSC 8 links and what its own URL regex finds
-    (`TerminalView.FindUrlAtColumn`). Nothing public lets another kind of link in: XTerm.NET's `BufferLine.AddLink` is
-    internal too.
-  - **The hook:** the view asks the host's link providers for the links in a line, after OSC 8 and its regex, and
-    underlines, points at and clicks theirs as it does URLs. About a hundred lines, with its tests.
-  - **Until it's released:** Cloyd builds against a package of the fork's branch from a local folder. The pull request
-    to tomlm/Iciclecreek.Avalonia.Terminal waits for Magnus's word. The project merges outside pull requests within a
-    day: #212 to #216, one contributor's, 2026-11-05 and 06, released in 4.1.4 on 2026-11-09.
-  - **Not chosen: a layer of Cloyd's own** over the terminal, finding the cell under the pointer from the control's
-    `CharWidth`, `CharHeight`, `GutterWidth` and `ViewportY`. It would repeat Iciclecreek's hit-testing from outside,
-    and go wrong unnoticed when Iciclecreek changes how it lays out cells.
 - **Specified:** the finder by the ported unit tests; the rest on the headless platform, with a stand-in Royder and the
   `StandInIde`; the IDE's side in the sandbox Rider.
 
@@ -350,10 +346,6 @@ Each as it is found: what the app does, what he asked for and where, and that th
   window also lists every session on the machine is open.
 - **Publishing:** a .NET application and a plugin. Magnus, 2026-11-19: "How, and even if, we publish this is a
   question for the future."
-- **The pull request to Iciclecreek: when Magnus says so.** How the terminal shows Cloyd's links is decided (see
-  "Showing the links" under "Clickable file paths and C# symbols: the plan"); opening the pull request upstream waits
-  for his word (2026-11-20: "Wait with the pull request, go ahead with everything else, forking adding the
-  functionality etc.").
 - **Where the hub's contract types live: settled.** In `~/.claude/src/ClaudeTooling.Hub.LocalApi.Contract`, published
   2026-11-20, which Cloyd compiles in.
 
