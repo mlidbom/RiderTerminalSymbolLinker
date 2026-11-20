@@ -11,6 +11,11 @@ All notable changes to Claude Sessions are documented here. The format follows
   when you closed it, as opening the project does. A Cloyd window on another virtual desktop stays there, as it does when
   the project opens. Pressed again in Cloyd's window, the same keys open Cloyd's session history picker.
 
+### Fixed
+- **Each project's window goes back to its virtual desktop after a restart again.** Since the IDEs' update of
+  2026-11-20 they hid the windows before Claude Sessions recorded where they were, so every window opened on the desktop
+  shown. It now records them as the IDE starts closing, while they still show.
+
 ### Changed
 - **The sessions show in Cloyd, beside the IDE.** As a project opens, Claude Sessions has Cloyd show the project's
   window: Cloyd is an application of its own, with a window for each project, whose tabs each show a Claude Code

@@ -27,6 +27,13 @@ public sealed class ClaudeSessionsInTheSandbox
    /// <summary>The process the sandbox Rider runs as.</summary>
    public int SandboxProcessId => _sandbox.ProcessId;
 
+   /// <summary>
+   ///   The windows Claude Sessions has put back on their virtual desktops as their projects opened, since it started,
+   ///   each with its project's folder, <c>project</c>, and the desktop, <c>desktop</c>. The tools place the sandbox's
+   ///   windows themselves after a restart, so only this tells what the plugin did.
+   /// </summary>
+   public IReadOnlyList<JsonNode> WindowsPutBackOnTheirDesktops => [.. _sandbox.ClaudeSessionsObservation.State()["windowsPutBackOnTheirDesktops"]!.AsArray().OfType<JsonNode>()];
+
    /// <summary>The process the sandbox's Cloyd application runs as: null when none runs.</summary>
    public int? CloydsApplication => _sandbox.ItsCloyd.TheApplication()?.Id;
 

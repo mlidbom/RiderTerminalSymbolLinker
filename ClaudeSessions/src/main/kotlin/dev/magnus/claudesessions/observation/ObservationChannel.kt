@@ -15,6 +15,7 @@ import com.intellij.openapi.project.ProjectManager
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.vfs.VfsUtil
 import com.sun.net.httpserver.HttpExchange
+import dev.magnus.claudesessions.windows.DesktopsThroughARestart
 import com.sun.net.httpserver.HttpServer
 import java.net.InetAddress
 import java.net.InetSocketAddress
@@ -27,8 +28,8 @@ import java.util.concurrent.Executors
  * sandbox's `idea.properties` sets, so a user's IDE never has it.
  *
  * Every endpoint answers JSON:
- *  - `GET /state` — when this build of the plugin started, `startedAt`, and the projects open, each with its name and
- *    folder.
+ *  - `GET /state` — when this build of the plugin started, `startedAt`, the projects open, each with its name and
+ *    folder, and the windows it put back on their virtual desktops as their projects opened, `windowsPutBackOnTheirDesktops`.
  *  - `POST /plugins/refresh` — has the IDE look at its plugins folder again, so that with `idea.auto.reload.plugins` it
  *    reloads a plugin whose files changed, this one included. `/state`'s `startedAt` then tells when the new build's
  *    channel started.
@@ -66,6 +67,7 @@ class ObservationChannel : Disposable {
     private fun state(): Map<String, Any?> = mapOf(
         "startedAt" to startedAt,
         "projects" to ProjectManager.getInstance().openProjects.map { mapOf("name" to it.name, "basePath" to it.basePath) },
+        "windowsPutBackOnTheirDesktops" to DesktopsThroughARestart.windowsPutBackOnTheirDesktops,
     )
 
     private fun refreshThePluginsFolder(): Map<String, Any?> {

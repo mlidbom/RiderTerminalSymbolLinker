@@ -22,6 +22,7 @@ public class When_a_tool_asks_the_ide_to_restart(When_a_tool_asks_the_ide_to_res
       public readonly (int Status, JsonNode? Body) Asked;
       public readonly int ProcessAfter;
       public readonly JsonNode WindowAfter;
+      public readonly IReadOnlyList<JsonNode> WindowsPutBackOnTheirDesktops;
       public readonly int? CloydsApplicationBefore;
       public readonly int? CloydsApplicationAfter;
       public readonly IReadOnlyList<string> ProjectsCloydShowsAfter;
@@ -40,6 +41,7 @@ public class When_a_tool_asks_the_ide_to_restart(When_a_tool_asks_the_ide_to_res
          ide.FollowTheIdesRestart(ProcessBefore);
          ProcessAfter = ide.SandboxProcessId;
          WindowAfter = ide.AskTheLocalApi("GET", "/windows").Body!["windows"]!.AsArray().Single()!;
+         WindowsPutBackOnTheirDesktops = ide.WindowsPutBackOnTheirDesktops;
          CloydsApplicationAfter = ide.CloydsApplication;
          ProjectsCloydShowsAfter = ide.ProjectsCloydShows;
       }
@@ -54,6 +56,14 @@ public class When_a_tool_asks_the_ide_to_restart(When_a_tool_asks_the_ide_to_res
    [XF] public void the_ide_restarts_as_another_process() => story.ProcessAfter.Must().Satisfy(it => it != story.ProcessBefore);
    [XF] public void with_its_projects_window_back() => story.WindowAfter["project"]!.GetValue<string>().Must().Be(story.WindowBefore["project"]!.GetValue<string>());
    [XF] public void on_the_virtual_desktop_it_was_on() => story.WindowAfter["desktop"]!.GetValue<string>().Must().Be(story.WindowBefore["desktop"]!.GetValue<string>());
+
+   /// <summary>
+   ///   That Claude Sessions put it there, not the tools, which place the sandbox's windows after a restart too: it recorded
+   ///   no desktop from 2026-11-20 until then, as the IDE had hidden the windows by the time it asked.
+   /// </summary>
+   [XF] public void as_claude_sessions_put_it_back_there() =>
+      story.WindowsPutBackOnTheirDesktops.Select(it => (Path.GetFullPath(it["project"]!.GetValue<string>()), it["desktop"]!.GetValue<string>()))
+           .Must().Satisfy(it => it.Contains((story.ProjectFolder, story.WindowBefore["desktop"]!.GetValue<string>())));
    [XF] public void the_cloyd_application_runs_on_through_the_restart_as_the_same_process() => story.CloydsApplicationAfter.Must().Satisfy(it => it is not null && it == story.CloydsApplicationBefore);
    [XF] public void and_shows_the_projects_window() => story.ProjectsCloydShowsAfter.Must().SequenceEqual([story.ProjectFolder]);
 }
