@@ -12,7 +12,7 @@ namespace Cloyd.Specifications;
 /// as when the IDE exits.
 /// </summary>
 /// <remarks>
-/// The real <c>Cloyd.exe</c>, beside the specifications' assembly, in processes of its own: its application shows a real
+/// The real <c>Cloyd.exe</c>, beside Cloyd's assembly, in processes of its own: its application shows a real
 /// window on the desktop for a few seconds. It serves the <see cref="Sandbox.CloydsFolder"/> of the fact's sandbox, and
 /// reaches the sandbox's hub, as it is run in the hub's <see cref="SandboxHub.Environment"/>.
 /// </remarks>
@@ -39,8 +39,14 @@ public class When_Cloyd_exe_is_run_for_a_project_in_a_job_that_ends_everything_i
    /// environment of the sandbox's hub, with the sandbox's <see cref="Sandbox.CloydsFolder"/>.
    /// </summary>
    int CloydExeRunFor(SandboxProject project, JobOfAnIde job) =>
-      job.Run(Path.Combine(AppContext.BaseDirectory, "Cloyd.exe"), ["--project", project.Project.Folder],
+      job.Run(CloydExe, ["--project", project.Project.Folder],
               new Dictionary<string, string>(_sandbox.HubOfTheSandbox.Environment) { [CloydsFolder.VariableNamingAnother] = _sandbox.CloydsFolder.Folder.FullName });
+
+   /// <summary>
+   /// The <c>Cloyd.exe</c> beside the Cloyd assembly the specifications run: beside their own too when <c>dotnet test</c>
+   /// builds them, and in a folder of its own when NCrunch does.
+   /// </summary>
+   static string CloydExe => Path.Combine(Path.GetDirectoryName(typeof(CloydApp).Assembly.Location)!, "Cloyd.exe");
 
    [XF] public void the_command_succeeds() => _exitCode.Must().Be(0);
 

@@ -32,6 +32,14 @@ static class SandboxesOfThisRun
    /// <summary>Ends <paramref name="sandbox"/>, whose scenario has ended, in the background: its hub stops, and its folder is deleted.</summary>
    public static void EndInTheBackground(Sandbox sandbox) => Ending.Enqueue(Task.Run(sandbox.End));
 
+   /// <summary>
+   /// Waits until no sandbox is starting or ending in the background, as for measuring what else the run's process does.
+   /// Their failures are told where they would be anyway: a start's to the scenario that takes the sandbox, an end's as
+   /// the run ends.
+   /// </summary>
+   public static void WaitUntilNoneIsStartingOrEnding() =>
+      Task.WhenAll(Ending.Append(_startedAhead ?? Task.CompletedTask)).ConfigureAwait(ConfigureAwaitOptions.SuppressThrowing).GetAwaiter().GetResult();
+
    /// <summary>Ends the sandbox started ahead for no scenario, if one was, and waits until every sandbox has ended: one whose end failed fails it.</summary>
    public static void WaitUntilAllHaveEnded()
    {

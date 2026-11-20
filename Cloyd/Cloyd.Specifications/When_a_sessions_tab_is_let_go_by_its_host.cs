@@ -39,13 +39,14 @@ public abstract class When_a_sessions_tab_is_let_go_by_its_host : SpecificationO
    }
 
    /// <summary>
-   /// The processor time the specifications' process takes in the second after the tab has closed, which nothing else
-   /// asks of it: its terminal, which waits for the pseudo console it showed to exit, took a core of its own for 30 s
-   /// until 2026-11-20.
+   /// The processor time the specifications' process takes in the second after the tab has closed, once no sandbox is
+   /// starting or ending in the background, which nothing else asks of it: its terminal, which waits for the pseudo
+   /// console it showed to exit, took a core of its own for 30 s until 2026-11-20.
    /// </summary>
    [Fact] public void its_terminal_keeps_no_processor_busy()
    {
       WaitUntil(() => _window.Tabs.Count == 0, "the tab had closed");
+      SandboxesOfThisRun.WaitUntilNoneIsStartingOrEnding();
       using var process = Process.GetCurrentProcess();
       var before = process.TotalProcessorTime;
       Thread.Sleep(TimeSpan.FromSeconds(1));
