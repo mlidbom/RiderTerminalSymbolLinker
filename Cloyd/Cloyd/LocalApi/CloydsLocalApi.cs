@@ -2,6 +2,7 @@ using System.Net;
 using System.Security.Cryptography;
 using System.Text.Json;
 using Avalonia.Threading;
+using Cloyd.ClaudeCode;
 using Cloyd.LocalApi.Contract;
 using Cloyd.Projects;
 using Microsoft.AspNetCore.Builder;
@@ -21,6 +22,13 @@ namespace Cloyd.LocalApi;
 /// <c>POST /windows/show</c> with a <see cref="WindowToShowInTheRequest"/>: shows the project's window, bringing it forward
 /// when it is open, else opening it, and answers with it, a <see cref="WindowInTheAnswer"/>, once it shows.
 /// <c>Cloyd.exe --project</c> asks it.
+/// </item>
+/// <item>
+/// <c>POST /sessions/show?session=&lt;session id&gt;&amp;process=&lt;Claude Code's process id&gt;</c>: shows the tab whose Claude
+/// Code runs as the process, else the one that runs the session or ran it last, selecting it and bringing its window
+/// forward, and answers with the window, a <see cref="WindowInTheAnswer"/>: 404 when no window has such a tab. Either may
+/// be left out, not both. A click on a notification of the session asks it, through the hub, which may let Cloyd take the
+/// foreground first (<see cref="TheForeground"/>).
 /// </item>
 /// </list>
 /// </summary>
@@ -55,6 +63,7 @@ sealed class CloydsLocalApi
       web.Use((exchange, next) => Guard(exchange, next, token));
       web.MapGet("/windows", exchange => AnswerWithTheWindows(exchange, windows));
       web.MapPost("/windows/show", exchange => Show(exchange, windows));
+      web.MapPost("/sessions/show", exchange => ShowTheTabOfASession(exchange, windows));
       Task.Run(() => web.StartAsync()).GetAwaiter().GetResult();
       new AnnouncementOfCloydsLocalApi(CloydsLocalApiProtocol.Version, Environment.ProcessId, new Uri(web.Urls.Single()).Port, token).WriteIn(folder);
       return new(web, folder);
@@ -97,6 +106,24 @@ sealed class CloydsLocalApi
 
       var shown = await Dispatcher.UIThread.InvokeAsync(() => InTheAnswer(windows.Show(new Project(folder))));
       await Reply(exchange, StatusCodes.Status200OK, shown);
+   }
+
+   static async Task ShowTheTabOfASession(HttpContext exchange, ProjectWindows windows)
+   {
+      var query = exchange.Request.Query;
+      var session = query["session"] is [{Length: > 0} sessionId] ? new ClaudeSessionId(sessionId) : (ClaudeSessionId?)null;
+      var claudeCode = query["process"] is [{} processId] && int.TryParse(processId, out var process) ? new ClaudeCodeProcessId(process) : (ClaudeCodeProcessId?)null;
+      if(session is null && claudeCode is null)
+      {
+         await Reply(exchange, StatusCodes.Status400BadRequest, new ErrorAnswer($"The request must name the session, as ?session=<its id>, or its Claude Code's process, as ?process=<its id as a number>, or both: it asked {exchange.Request.QueryString}."));
+         return;
+      }
+
+      var shown = await Dispatcher.UIThread.InvokeAsync(() => windows.ShowTheTabOf(session, claudeCode) is {} window ? InTheAnswer(window) : null);
+      if(shown is not null)
+         await Reply(exchange, StatusCodes.Status200OK, shown);
+      else
+         await Reply(exchange, StatusCodes.Status404NotFound, new ErrorAnswer($"No tab of a project window runs the Claude Code of process {claudeCode?.ToString() ?? "none named"}, nor runs or ran last the session {session?.ToString() ?? "none named"}."));
    }
 
    static WindowInTheAnswer InTheAnswer(ProjectWindow window) => new(window.Project.Folder, window.Title ?? "");

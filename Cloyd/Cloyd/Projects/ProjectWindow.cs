@@ -95,6 +95,16 @@ sealed class ProjectWindow : Window
       base.OnClosed(e);
    }
 
+   /// <summary>Brings the window forward: restored when it is minimized, and activated, in front of the others where Windows lets Cloyd (<see cref="LocalApi.TheForeground"/>).</summary>
+   public void BringForward()
+   {
+      if(WindowState == WindowState.Minimized) WindowState = WindowState.Normal;
+      Activate();
+   }
+
+   /// <summary>Selects <paramref name="tab"/>, one of the window's <see cref="Tabs"/>, which focuses its terminal.</summary>
+   public void Select(SessionTab tab) => _tabs.SelectedItem = tab;
+
    /// <summary>
    /// Starts a new session in the project's folder, in a tab of its own, which it selects: named
    /// <paramref name="name"/>, or with no name when it is null. When the hub doesn't start Claude Code in it, the tab

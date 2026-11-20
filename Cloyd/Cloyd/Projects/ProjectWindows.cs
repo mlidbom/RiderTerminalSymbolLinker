@@ -1,4 +1,5 @@
-using Avalonia.Controls;
+using Cloyd.ClaudeCode;
+using Cloyd.Sessions;
 
 namespace Cloyd.Projects;
 
@@ -20,8 +21,7 @@ sealed class ProjectWindows(Func<Project, ProjectWindow> newWindowOf)
    {
       if(_open.SingleOrDefault(it => it.Project.Equals(project)) is {} open)
       {
-         if(open.WindowState == WindowState.Minimized) open.WindowState = WindowState.Normal;
-         open.Activate();
+         open.BringForward();
          return open;
       }
 
@@ -30,5 +30,29 @@ sealed class ProjectWindows(Func<Project, ProjectWindow> newWindowOf)
       _open.Add(window);
       window.Show();
       return window;
+   }
+
+   /// <summary>
+   /// Shows the tab whose Claude Code runs as <paramref name="claudeCode"/>, else the one that runs
+   /// <paramref name="session"/> or ran it last: selects it, and brings its window forward. Returns the window: null
+   /// when no open window has such a tab.
+   /// </summary>
+   /// <remarks>
+   /// As a click on a notification of the session asks. The process finds the tab after a <c>/clear</c> gave its
+   /// Claude Code a new session, and the session finds the one whose Claude Code exited to the shell.
+   /// </remarks>
+   public ProjectWindow? ShowTheTabOf(ClaudeSessionId? session, ClaudeCodeProcessId? claudeCode)
+   {
+      var tabs = _open.SelectMany(it => it.Tabs).ToList();
+      if((TheTabWhoseClaudeCodeRunsAs(claudeCode) ?? TheTabThatRunsOrRanLast(session)) is not {} tab) return null;
+
+      var window = _open.Single(it => it.Tabs.Contains(tab));
+      window.Select(tab);
+      window.BringForward();
+      return window;
+
+      SessionTab? TheTabWhoseClaudeCodeRunsAs(ClaudeCodeProcessId? process) => process is {} asked ? tabs.FirstOrDefault(it => it.RunsTheClaudeCodeOf(asked)) : null;
+
+      SessionTab? TheTabThatRunsOrRanLast(ClaudeSessionId? sessionId) => sessionId is {} asked ? tabs.FirstOrDefault(it => it.RunsOrRanLast(asked)) : null;
    }
 }

@@ -49,8 +49,9 @@ Its packages, below `dev.magnus.claudesessions`, which holds what it tells the u
 
 The Claude tooling sees the IDE's windows through it, and restarts the IDE. Until 0.2.0 it also showed a session's
 tab, as clicking a notification of Magnus's session tooling asked, after the tooling had brought the IDE's window
-forward: `POST /sessions/show?session=&process=` and `GET /sessions`, which went with the tabs. A click is to show the
-session in Cloyd next. The contract, agreed with tooling-owner on 2026-11-17 (protocol 1):
+forward: `POST /sessions/show?session=&process=` and `GET /sessions`, which went with the tabs. Cloyd's local API
+answers the same request now (`cloyd-as-a-dotnet-application.md`, "A notification's click shows the session's tab"),
+and the hub is to ask it there. The contract, agreed with tooling-owner on 2026-11-17 (protocol 1):
 
 - **`LocalApi`,** an application service that the first project's `LocalApiStartup` starts, listens on a free
   port of the loopback address. **`LocalApiAnnouncement`** names it in

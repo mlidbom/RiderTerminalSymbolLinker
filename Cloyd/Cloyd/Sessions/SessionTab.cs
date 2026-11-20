@@ -79,6 +79,12 @@ sealed class SessionTab : TabItem
    /// </summary>
    public ClaudeSession? LatestSession { get; private set; }
 
+   /// <summary>Whether the Claude Code that runs in the tab's host runs as <paramref name="process"/>.</summary>
+   public bool RunsTheClaudeCodeOf(ClaudeCodeProcessId process) => SessionRunningInIt?.Process == process;
+
+   /// <summary>Whether <paramref name="session"/> runs in the tab's host, or ran in it last: its <see cref="LatestSession"/>.</summary>
+   public bool RunsOrRanLast(ClaudeSessionId session) => LatestSession?.Id == session;
+
    /// <summary>The tab, as its window saves it.</summary>
    public SavedSessionTab AsSaved => new(Host.Id, Host.Directory, LatestSession);
 

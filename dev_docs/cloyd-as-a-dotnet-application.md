@@ -149,6 +149,11 @@ Claude's calls (.NET-cloyd, the session in this repository), which Magnus OK'd o
   - **Its local API** (`CloydsLocalApi`), on Kestrel on a free loopback port, is announced in
     `%LOCALAPPDATA%\Cloyd\local-api.json` as the plugin's and the hub's are: `GET /windows`, and `POST /windows/show`
     with `{"project": <folder>}`. Every request carries the announcement's token, and names the API's own `Host`.
+  - **A notification's click shows the session's tab:** `POST /sessions/show?session=<id>&process=<claude.exe's id>`,
+    the contract the plugin's tabs answered until 0.2.0, selects the tab whose Claude Code runs as the process, else the
+    one that runs the session or ran it last, and brings its window forward: 200 with the window, 404 when no open
+    window has such a tab, 400 when it names neither. The process finds the tab after a `/clear`, the session one whose
+    Claude Code exited to the shell. The hub, which got the click, is to let Cloyd take the foreground first.
   - **The command finds the application, or starts it,** in a Compze `IMutex` critical section, so that IDEs opening
     several projects at once start one application.
   - **It starts the application breaking away from its jobs,** with `CREATE_BREAKAWAY_FROM_JOB`, where they let it,
@@ -191,7 +196,8 @@ Claude's calls (.NET-cloyd, the session in this repository), which Magnus OK'd o
 
 **Next, in this order:**
 
-1. **A notification's click shows the session in Cloyd:** the hub's side is the tooling owner's.
+1. **A notification's click shows the session in Cloyd:** Cloyd answers it, built 2026-11-20; the hub's side, asking
+   Cloyd with its token and letting it take the foreground, is the tooling owner's, asked the same day.
 2. **Each project's window on its IDE window's virtual desktop** (Magnus, 2026-11-20: "do"): after the switch's restart
    all four opened on the desktop he was on. Windows' documented virtual-desktop API tells any window's desktop, and
    moves the calling process's own windows; the IDE's local API lists its project windows.

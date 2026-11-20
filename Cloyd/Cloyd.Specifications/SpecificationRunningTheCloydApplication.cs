@@ -1,3 +1,4 @@
+using System.Net.Http.Headers;
 using Cloyd.LocalApi;
 using Cloyd.LocalApi.Contract;
 using Cloyd.Projects;
@@ -14,6 +15,8 @@ namespace Cloyd.Specifications;
 /// </summary>
 public abstract class SpecificationRunningTheCloydApplication : SpecificationOpeningWindows
 {
+   static readonly HttpClient Http = new();
+
    readonly CloydsLocalApi _localApi;
 
    /// <summary>Runs the application, with a <see cref="CloydsFolder"/> named <paramref name="name"/>.</summary>
@@ -46,6 +49,21 @@ public abstract class SpecificationRunningTheCloydApplication : SpecificationOpe
 
    /// <summary>The windows the application lists, through its local API.</summary>
    private protected IReadOnlyList<WindowInTheAnswer> WindowsItLists() => Answered(() => Application.Windows()!, "the application listed its windows");
+
+   /// <summary>
+   /// What the application's API answers <c>POST /<paramref name="pathAndQuery"/></c> with an empty body, asked with the
+   /// token of its announcement, as a client that read it asks, such as the hub.
+   /// </summary>
+   private protected HttpResponseMessage Posted(string pathAndQuery)
+   {
+      var announcement = AnnouncementOfCloydsLocalApi.In(CloydsFolder)!;
+      return Answered(() =>
+      {
+         using var request = new HttpRequestMessage(HttpMethod.Post, announcement.AddressOf(pathAndQuery)) { Content = new ByteArrayContent([]) };
+         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", announcement.Token);
+         return Http.Send(request);
+      }, $"the application answered POST /{pathAndQuery}");
+   }
 
    /// <summary>
    /// What <paramref name="asked"/> answers, asked on the thread pool, while the UI thread runs what the application's API
