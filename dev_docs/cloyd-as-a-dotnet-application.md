@@ -2,8 +2,8 @@
 
 ## Status
 
-**Magnus's direction, 2026-11-20. The spike is run; nothing lasting is built.** Until it is, Claude Sessions stays the
-Kotlin plugin that `claude-sessions.md` describes, and its chat stays the one Magnus works in every day.
+**Magnus's direction, 2026-11-20. The spike is run, and step one is being built** (see "Step one, as it's built").
+Until the switch at its end, Claude Sessions stays the Kotlin plugin that `claude-sessions.md` describes.
 
 - **Agreed (Magnus, 2026-11-20):**
   - the direction below, and the calls under "How it's to be built";
@@ -13,7 +13,7 @@ Kotlin plugin that `claude-sessions.md` describes, and its chat stays the one Ma
   - the terminals first, and then all the Kotlin UI goes (under "How it's to be built").
 - **The spike, run on 2026-11-20 on his go,** found the TUI's host and nothing against the port: see "What the spike
   found".
-- **Open, put to Magnus on 2026-11-20:** starting the .NET Cloyd itself.
+- **Started on Magnus's go, 2026-11-20:** "Yes :)" to step one, built in `Cloyd/` from Rider.
 
 ## The direction
 
@@ -110,6 +110,41 @@ Claude's calls (.NET-cloyd, the session in this repository), which Magnus OK'd o
   of the claude UI's have a super competent input box, very few chats do. Any polishing at all of this can wait."
 - **The helper that runs a deploy between an IDE's exit and its start** can move to the .NET side, which outlives the
   IDE (tessaging-in-tooling): simpler than a helper the plugin leaves behind.
+
+## Step one, as it's built
+
+**Built (3cbb526):**
+
+- **A window per project,** `Cloyd.exe --project <folder>`, with a tab per session host of the project. Each tab shows
+  the host's terminal in Iciclecreek's control, attached in process (`AttachmentToASessionHost`), and is titled with
+  the name of the session the hub says runs in its host.
+- **The hosts it shows as it opens:** each of the project's hosts that no attach client shows. The project is told by
+  the host's label (`SessionHostLabel`): Cloyd's own, `{"startedBy": "cloyd", "project": …}`, or Claude Sessions',
+  `{"ideConfigFolder": …, "project": …}`, so that it takes over the plugin's sessions once no IDE's tab shows them. A
+  host an IDE's tab shows is left to the tab: until the switch, Cloyd takes no session from a tab.
+- **The +** starts a new session, named or not, in a new host in the project's folder: `pwsh.exe` where it is on the
+  `PATH`, else `powershell.exe`, with `TERM` and `COLORTERM` on top of a new process's environment.
+- **Closing a tab ends its session;** closing the window only lets go. A tab closes when its host lets it go: another
+  attach client took the session over, or its shell exited.
+- **Specified** on Avalonia's headless platform, against a hub of the specifications' own, a copy of the published one
+  (`Cloyd.Specifications/TheSandbox`), whose sessions run the tooling owner's stand-in for Claude Code. They run in
+  about 30 s, touch no session of Magnus's, and draw each state, and each wait in vain, to
+  `bin/.../RenderedWindows/`.
+
+**Next, in this order:**
+
+1. **Saving the tabs, and bringing them back:** their order and the selected one, per project; after a reboot, when a
+   host is gone, its session is resumed (`claude --resume <id>`) in a new host, as the plugin does
+   (`claude-sessions.md`, "Saving and bringing back").
+2. **One Cloyd process, outside every job, with every project's window.** `Cloyd.exe --project <folder>` hands the
+   project to the Cloyd that runs; started from an IDE, whose job would end it with the IDE, it breaks away. A local
+   API, announced like the plugin's, for the plugin and the hub.
+3. **The switch:** the plugin loses its tool window, chat and history picker, and starts the project's Cloyd window as
+   the project opens. It keeps the local API's `GET /windows` and `POST /restart`, and the symbol linker. Deployed with
+   Magnus's go, as it changes how every session of his is shown.
+4. **A notification's click shows the session in Cloyd:** the hub's side is the tooling owner's.
+
+Then clickable file paths and C# symbols in Cloyd's terminal.
 
 ## What's still open
 
