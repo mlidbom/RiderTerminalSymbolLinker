@@ -18,5 +18,11 @@ event: block-ended
 data: {"turnId":"e1f0a8df-3c2c-4571-8f70-d3d390f1cd3b","response":1,"block":0,"kind":"text"}
 
 event: turn-ended
-data: {"turnId":"e1f0a8df-3c2c-4571-8f70-d3d390f1cd3b"}
+data: {"turnId":"e1f0a8df-3c2c-4571-8f70-d3d390f1cd3b","reason":"answer"}
+
+event: piece
+data: {"turnId":"a948af92-e6ea-4672-98a7-b5ab7fe51a57","response":0,"block":0,"kind":"text","text":"I'll look"}
+
+event: turn-ended
+data: {"turnId":"a948af92-e6ea-4672-98a7-b5ab7fe51a57","reason":null}
 

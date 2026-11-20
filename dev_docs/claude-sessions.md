@@ -426,9 +426,8 @@ plain terminal tab, with no session host, gets none, and shows its terminal alon
   `GET /running-sessions/{processId}/turn/stream`, which `TheHubsTurns` follows for the tab's Claude Code and
   `TheHubsTurnStream` reads.
   - **An ended block stays until the conversation changes next** (`TheHubBehindTheChat`): the hub ends it about 0.15 s
-    before the conversation's stream sends it, and without the wait the text would vanish for that long. The hub ends
-    the block at every turn's end, an interrupted one too; Claude Code then writes the interruption, which changes the
-    conversation, and the block goes.
+    before the conversation's stream sends it, and without the wait the text would vanish for that long. A block its
+    turn cut short, as an interrupt does, gets no `block-ended` (since the hub's 683e68f): it goes at `turn-ended`.
 - **Nothing the user wrote is lost when the IDE goes, and the chat comes back where it was,** after a restart, a crash
   or a plugin reload. Magnus asked for it on 2026-11-19, for the Rider restart tool: "make sure that anything that I had
   typed into one of the chat input boxes it has built will survive this restart".

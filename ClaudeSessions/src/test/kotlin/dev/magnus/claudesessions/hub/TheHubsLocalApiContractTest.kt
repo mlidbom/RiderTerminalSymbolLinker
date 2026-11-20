@@ -39,7 +39,7 @@ import org.junit.jupiter.api.assertThrows
  * `~/.claude/src/ClaudeTooling.Specifications/Hub/LocalApi/Samples`, copied on 2026-11-19 from the tooling's
  * commits cc7853b, for typing 1d16ff3, and for session hosts eff80d7, and message-sent.http and the conversation's,
  * conversation-stream.http and no-such-session.http, from 7b23e8a, and still the same on 2026-11-20, the running
- * sessions' with their status lines and turns, and the turn's stream, from 2dae3f0, and on the
+ * sessions' with their status lines and turns from 2dae3f0, and the turn's stream from 683e68f, and on the
  * examples of its contract,
  * `~/.claude/dev_docs/the-hubs-local-api.md`.
  * When the samples change, as the contract changes, copy them again.
@@ -77,10 +77,11 @@ class TheHubsLocalApiContractTest {
     }
 
     @Test
-    fun `a turn's stream tells, from its caught-up on, the block written so far, and once it ended, keeps it after the turn ended`() {
+    fun `a turn's stream tells, from its caught-up on, the block written so far, keeps one that ended after its turn ended, and drops one its turn cut short`() {
         val sample = HttpSample(HttpSample.named("turn-stream.http"))
         val told = toldOn(sample)
         val id = "being-written:e1f0a8df-3c2c-4571-8f70-d3d390f1cd3b:1:0"
+        val cutShort = "being-written:a948af92-e6ea-4672-98a7-b5ab7fe51a57:0:0"
 
         assertEquals(HubProtocol.VERSION.toString(), sample.header(HubProtocol.HEADER))
         assertEquals(
@@ -89,6 +90,8 @@ class TheHubsLocalApiContractTest {
                 TheHubsTurnStream.StreamedBlock(BlockBeingWritten(id, BlockBeingWritten.Kind.TEXT, "It is Friday, 20 November 2026."), hasEnded = false),
                 TheHubsTurnStream.StreamedBlock(BlockBeingWritten(id, BlockBeingWritten.Kind.TEXT, "It is Friday, 20 November 2026."), hasEnded = true),
                 TheHubsTurnStream.StreamedBlock(BlockBeingWritten(id, BlockBeingWritten.Kind.TEXT, "It is Friday, 20 November 2026."), hasEnded = true),
+                TheHubsTurnStream.StreamedBlock(BlockBeingWritten(cutShort, BlockBeingWritten.Kind.TEXT, "I'll look"), hasEnded = false),
+                null,
             ),
             told,
         )
