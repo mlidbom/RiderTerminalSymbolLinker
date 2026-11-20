@@ -202,6 +202,14 @@ plugin is broken in it until he does, and Claude Sessions brings back the tabs i
 session hosts: the running IDE's old build parks its tabs as it unloads, and the new one, finding no host for them,
 resumes their sessions in new ones while the parked tabs still run them. Close the IDE first.
 
+An agent runs in one of those IDEs, and ends with it, so it can't run such a deploy itself: `everyday deploy
+--once-the-ides-close` says what the deploy would do, and has it run once Magnus has closed his IDEs
+(`DeployOnceTheIdesClose`). It waits in a one-shot scheduled task, which closing them doesn't end, and which runs in his
+desktop session: its console window says what it waits for, and a message, when it's done, to start them again. The
+task runs a copy of the tools in `bin/deploy-once-the-ides-close`, so that building them meanwhile isn't refused, and
+removes itself when done. It's set up only on Magnus's go-ahead, as any deploy that needs a restart: closing his IDEs
+for another reason would deploy too.
+
 **`everyday reload <plugin> [<IDE>]` reloads the build an IDE has,** to see in Magnus's own IDEs what a reload does,
 such as whether his tabs come through it. It gives the plugin's jars the time of now, as `sandbox reload` does in the
 sandbox, which the IDE takes for a new build. On 2026-11-18 his Rider reloaded within 13 seconds, both times. The next

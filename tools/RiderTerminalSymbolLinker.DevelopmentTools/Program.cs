@@ -66,6 +66,11 @@ static class Program
                                                       Deploys as everyday deploy does, and also puts a build that needs a
                                                       restart into an IDE that runs and reloads, which breaks the plugin
                                                       in it until its restart: only when Magnus restarts it right after
+                          everyday deploy --once-the-ides-close
+                                                      Says what the deploy would do, and has it run once Magnus has closed
+                                                      his IDEs, in a scheduled task that outlives them and the session
+                                                      that asked: a message then tells him to start them again. For a
+                                                      build that needs the IDEs closed, which an agent in one can't deploy
                           everyday reload RiderTerminalSymbolLinker|ClaudeSessions [<IDE>]
                                                       Has his IDEs, or only the one named, such as Rider or
                                                       "IntelliJ IDEA", reload the build of the plugin they have, when he
@@ -149,6 +154,12 @@ static class Program
             break;
          case ["everyday", "deploy", "--into-running-ides"]:
             foreach(var line in EverydayIdes.Deploy(new GradleSandbox(), intoRunningIdes: true)) Console.WriteLine(line);
+            break;
+         case ["everyday", "deploy", "--once-the-ides-close"]:
+            foreach(var line in DeployOnceTheIdesClose.SetUp()) Console.WriteLine(line);
+            break;
+         case ["everyday", "deploy", "--after-the-ides-close"]:
+            DeployOnceTheIdesClose.WaitThenDeploy();
             break;
          default:
             Console.Error.WriteLine(Usage);
