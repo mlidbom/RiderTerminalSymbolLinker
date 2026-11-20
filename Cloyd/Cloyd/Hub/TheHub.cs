@@ -3,7 +3,10 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
-using System.Text.Json.Nodes;
+using ClaudeTooling.Hub.LocalApi.Contract;
+using ClaudeTooling.Hub.LocalApi.Contract.HostingSessions;
+using ClaudeTooling.Hub.LocalApi.Contract.RunningSessions;
+using ClaudeTooling.Hub.LocalApi.Contract.TypingIntoRunningSessions;
 using ClaudeTooling.SessionHost.Protocol;
 using Cloyd.ClaudeCode;
 using Cloyd.Sessions;
@@ -23,18 +26,8 @@ namespace Cloyd.Hub;
 /// </remarks>
 sealed partial class TheHub
 {
-   /// <summary>The version of the hub's protocol that Cloyd is written against.</summary>
-   const int ProtocolCloydSpeaks = 1;
-
-   /// <summary>Where the published hub announces itself, unless <see cref="VariableNamingTheFolderOfTheAnnouncement"/> names another folder.</summary>
-   static DirectoryInfo FolderOfThePublishedHubsAnnouncement => new(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "ClaudeTooling"));
-
-   /// <summary>The variable that names the folder of the announcement of a hub tried out apart from the published one, as a sandbox's.</summary>
-   const string VariableNamingTheFolderOfTheAnnouncement = "CLAUDE_TOOLING_LOCAL_API_FOLDER";
-
    static readonly TimeSpan HowLongANewHubMayTakeToAnswer = TimeSpan.FromSeconds(30);
    static readonly TimeSpan BetweenTries = TimeSpan.FromMilliseconds(250);
-   static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
 
    readonly HttpClient _http = new() { Timeout = Timeout.InfiniteTimeSpan };
    readonly DirectoryInfo _folderOfTheAnnouncement;
@@ -52,9 +45,9 @@ sealed partial class TheHub
    /// runs, as after a reboot, before any Claude Code has started one.
    /// </summary>
    public static TheHub OfCloydsEnvironment() =>
-      Environment.GetEnvironmentVariable(VariableNamingTheFolderOfTheAnnouncement) is {Length: > 0} folder
+      Environment.GetEnvironmentVariable(WhatTheAnnouncementSays.VariableNamingTheFolder) is {Length: > 0} folder
          ? AnnouncedIn(new DirectoryInfo(folder))
-         : new TheHub(FolderOfThePublishedHubsAnnouncement, isThePublishedHub: true);
+         : new TheHub(new DirectoryInfo(WhatTheAnnouncementSays.FolderOfThePublishedHub), isThePublishedHub: true);
 
    /// <summary>The hub that announces itself in <paramref name="folder"/>: one tried out apart from the published one, which whoever tries it starts.</summary>
    public static TheHub AnnouncedIn(DirectoryInfo folder) => new(folder, isThePublishedHub: false);
@@ -67,7 +60,7 @@ sealed partial class TheHub
    public async Task<IReadOnlyList<SessionHostOfTheHub>> SessionHosts(CancellationToken cancellation = default)
    {
       using var answer = await Send(it => new HttpRequestMessage(HttpMethod.Get, it.AddressOf("session-hosts")), cancellation);
-      return (await JsonOf(answer, cancellation))["sessionHosts"].Deserialize<List<SessionHostOfTheHub>>(Json)!;
+      return [.. (await Read<SessionHostsAnswer>(answer, cancellation)).SessionHosts.Select(SessionHostOfTheHub.InThe)];
    }
 
    /// <summary>
@@ -77,7 +70,7 @@ sealed partial class TheHub
    /// </summary>
    public async Task<SessionHostOfTheHub> StartASessionHost(ShellOfNewSessions shell, string directory, string label, CancellationToken cancellation = default)
    {
-      var body = new JsonObject { ["shell"] = shell.CommandLine, ["directory"] = directory, ["environment"] = new JsonObject(shell.Environment.Select(it => KeyValuePair.Create(it.Key, (JsonNode?)it.Value))), ["label"] = label };
+      var body = new SessionHostToStartInTheRequest(shell.CommandLine, directory, Columns: null, Rows: null, new Dictionary<string, string>(shell.Environment), label);
       var answer = await Send(Request, cancellation);
       if(answer.StatusCode == HttpStatusCode.InternalServerError)
       {
@@ -85,9 +78,9 @@ sealed partial class TheHub
          answer = await Send(Request, cancellation);
       }
 
-      using(answer) return (await JsonOf(answer, cancellation))["sessionHost"].Deserialize<SessionHostOfTheHub>(Json)!;
+      using(answer) return SessionHostOfTheHub.InThe((await Read<SessionHostStartedAnswer>(answer, cancellation)).SessionHost);
 
-      HttpRequestMessage Request(AnnouncementOfTheHub hub) => new(HttpMethod.Post, hub.AddressOf("session-hosts")) { Content = JsonContent.Create(body) };
+      HttpRequestMessage Request(AnnouncementOfTheHub hub) => new(HttpMethod.Post, hub.AddressOf("session-hosts")) { Content = JsonContent.Create(body, options: LocalApiProtocol.Json) };
    }
 
    /// <summary>
@@ -107,14 +100,11 @@ sealed partial class TheHub
    /// </summary>
    public async Task StartClaudeCodeIn(SessionHostOfTheHub host, ClaudeCodeCommand command, CancellationToken cancellation = default)
    {
-      using var answer = await Send(it => new HttpRequestMessage(HttpMethod.Post, it.AddressOf($"shells/{host.ShellProcessId}/start-claude-code")) { Content = JsonContent.Create(command.Body) }, cancellation);
+      using var answer = await Send(it => new HttpRequestMessage(HttpMethod.Post, it.AddressOf($"shells/{host.ShellProcessId}/start-claude-code")) { Content = JsonContent.Create(command.Request, options: LocalApiProtocol.Json) }, cancellation);
       if(answer.StatusCode is HttpStatusCode.Conflict or HttpStatusCode.NotFound)
-      {
-         var refusal = await JsonOf(answer, cancellation);
-         throw new RefusedByTheHub((string)refusal["error"]!);
-      }
+         throw new RefusedByTheHub((await Read<RefusalAnswer>(answer, cancellation)).Error);
 
-      await JsonOf(answer, cancellation);
+      await Read<ClaudeCodeStartedInTheShellAnswer>(answer, cancellation);
    }
 
    /// <summary>
@@ -136,8 +126,8 @@ sealed partial class TheHub
          answer.EnsureSuccessStatusCode();
          using var events = new StreamReader(await answer.Content.ReadAsStreamAsync(cancellation));
          await foreach(var sent in ServerSentEvent.ReadFrom(events, cancellation))
-            if(sent.Name == "running-sessions")
-               yield return JsonNode.Parse(sent.Data)!["runningSessions"].Deserialize<List<RunningSession>>(Json)!;
+            if(sent.Name == RunningSessionsStreamEventNames.RunningSessions)
+               yield return [.. JsonSerializer.Deserialize<RunningSessionsAnswer>(sent.Data, LocalApiProtocol.Json)!.RunningSessions.Select(RunningSession.InThe)];
       }
    }
 
@@ -156,8 +146,8 @@ sealed partial class TheHub
 
       async Task<HttpResponseMessage?> Answer(AnnouncementOfTheHub announcement)
       {
-         if(announcement.Protocol != ProtocolCloydSpeaks)
-            throw new InvalidOperationException($"The hub speaks protocol {announcement.Protocol}, and this Cloyd protocol {ProtocolCloydSpeaks}: Cloyd needs updating.");
+         if(announcement.Protocol != LocalApiProtocol.Version)
+            throw new InvalidOperationException($"The hub speaks protocol {announcement.Protocol}, and this Cloyd protocol {LocalApiProtocol.Version}: Cloyd needs updating.");
 
          var asked = request(announcement);
          asked.Headers.Authorization = new AuthenticationHeaderValue("Bearer", announcement.Token);
@@ -208,12 +198,15 @@ sealed partial class TheHub
       if(!started.WaitForExit(HowLongANewHubMayTakeToAnswer)) throw new TimeoutException($"{client} hub start didn't exit within {HowLongANewHubMayTakeToAnswer.TotalSeconds:0} s.");
    }
 
-   /// <summary>The JSON of <paramref name="answer"/>: an <see cref="HttpRequestException"/> with its body for an answer that isn't a success.</summary>
-   static async Task<JsonNode> JsonOf(HttpResponseMessage answer, CancellationToken cancellation)
+   /// <summary>
+   /// What <paramref name="answer"/> says, as the contract's <typeparamref name="TAnswer"/>: an
+   /// <see cref="HttpRequestException"/> with its body for an answer that is neither a success nor a refusal (409, 404).
+   /// </summary>
+   static async Task<TAnswer> Read<TAnswer>(HttpResponseMessage answer, CancellationToken cancellation)
    {
       var body = await answer.Content.ReadAsStringAsync(cancellation);
       if(answer.StatusCode is not (HttpStatusCode.Conflict or HttpStatusCode.NotFound) && !answer.IsSuccessStatusCode)
          throw new HttpRequestException($"{answer.RequestMessage?.Method} {answer.RequestMessage?.RequestUri?.AbsolutePath}: {(int)answer.StatusCode} {body}");
-      return JsonNode.Parse(body)!;
+      return JsonSerializer.Deserialize<TAnswer>(body, LocalApiProtocol.Json)!;
    }
 }

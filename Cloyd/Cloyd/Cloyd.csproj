@@ -16,6 +16,10 @@
       <!-- The hub's own types for what session hosts and their clients say to each other, as the hub and the attach
            client compile them. -->
       <Compile Include="$(USERPROFILE)\.claude\src\ClaudeTooling.SessionHost.Protocol\*.cs" Link="SessionHostProtocol\%(Filename)%(Extension)" />
+      <!-- The hub's local API, its requests, answers and events, as the hub writes and reads them. -->
+      <Compile Include="$(USERPROFILE)\.claude\src\ClaudeTooling.Hub.LocalApi.Contract\**\*.cs"
+               Exclude="$(USERPROFILE)\.claude\src\ClaudeTooling.Hub.LocalApi.Contract\bin\**;$(USERPROFILE)\.claude\src\ClaudeTooling.Hub.LocalApi.Contract\obj\**"
+               Link="HubLocalApiContract\%(RecursiveDir)%(Filename)%(Extension)" />
    </ItemGroup>
    <ItemGroup>
       <InternalsVisibleTo Include="Cloyd.Specifications" />

@@ -1,4 +1,4 @@
-using System.Text.Json.Nodes;
+using ClaudeTooling.Hub.LocalApi.Contract.TypingIntoRunningSessions;
 using Cloyd.ClaudeCode;
 
 namespace Cloyd.Hub;
@@ -12,22 +12,22 @@ sealed class ClaudeCodeCommand
    /// <summary>The command, as a human would type it, before the shell's quoting: for what Cloyd tells.</summary>
    readonly string _asTyped;
 
-   ClaudeCodeCommand(JsonObject body, string asTyped)
+   ClaudeCodeCommand(ClaudeCodeToStartInTheRequest request, string asTyped)
    {
-      Body = body;
+      Request = request;
       _asTyped = asTyped;
    }
 
    /// <summary>What the hub's <c>POST /shells/{processId}/start-claude-code</c> is asked with.</summary>
-   public JsonObject Body { get; }
+   public ClaudeCodeToStartInTheRequest Request { get; }
 
    /// <summary>A new session: named <paramref name="name"/>, or with no name when it is null.</summary>
    public static ClaudeCodeCommand OfANewSession(string? name) =>
-      name is null ? new([], "claude") : new(new JsonObject { ["name"] = name }, $"claude --name {name}");
+      new(new ClaudeCodeToStartInTheRequest(name, SessionToResume: null), name is null ? "claude" : $"claude --name {name}");
 
    /// <summary>The session <paramref name="session"/>, continued from its transcript.</summary>
    public static ClaudeCodeCommand Resuming(ClaudeSession session) =>
-      new(new JsonObject { ["sessionToResume"] = session.Id.Value }, $"claude --resume {session.Id}");
+      new(new ClaudeCodeToStartInTheRequest(Name: null, session.Id.Value), $"claude --resume {session.Id}");
 
    public override string ToString() => _asTyped;
 }

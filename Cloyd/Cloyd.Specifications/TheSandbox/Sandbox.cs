@@ -20,11 +20,11 @@ sealed class Sandbox
 
    Sandbox()
    {
-      HubOfTheSandbox = new SandboxHub(Path.Combine(_root, "hub"));
-      TakeTheStandInForClaudeCode();
-      HubOfTheSandbox.Run();
-      ShellOfItsSessions = ShellOfNewSessions.OnThisMachine() with { CommandLine = "pwsh.exe -NoLogo -NoProfile" };
-      ShellOfItsSessions = ShellOfItsSessions.With("PATH", StandInFolder + Path.PathSeparator + Environment.GetEnvironmentVariable("PATH"));
+      HubOfTheSandbox = SandboxHub.RunIn(Path.Combine(_root, "hub"));
+      //todo: The tooling owner, 2026-11-20: the hub is to put the stand-in first on its sandbox sessions' PATH itself.
+      //   Once it does, the sessions' shell needs no PATH of its own.
+      ShellOfItsSessions = (ShellOfNewSessions.OnThisMachine() with { CommandLine = "pwsh.exe -NoLogo -NoProfile" })
+        .With("PATH", HubOfTheSandbox.FolderOfTheStandInForClaudeCode + Path.PathSeparator + Environment.GetEnvironmentVariable("PATH"));
    }
 
    public static Sandbox Started => StartedOnce.Value;
@@ -42,26 +42,4 @@ sealed class Sandbox
 
    /// <summary>The folder where the specifications' projects save their windows, each in a folder of its own.</summary>
    public string SavedProjectWindowsFolder => Path.Combine(_root, "project-windows");
-
-   /// <summary>Where the tooling owner publishes the stand-in for Claude Code, a <c>claude.exe</c> with its files.</summary>
-   static string StandInBuild => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".claude", "bin", "stand-in-for-claude-code");
-
-   /// <summary>
-   /// The sandbox's copy of the <see cref="StandInBuild"/>: a copy, so that the stand-ins that run in session hosts left
-   /// from an earlier run hold no file of the build the tooling owner republishes.
-   /// </summary>
-   string StandInFolder => Path.Combine(_root, "stand-in-for-claude-code");
-
-   /// <summary>Copies the <see cref="StandInBuild"/>'s files that are newer than the copy's, renaming those that a running stand-in holds out of the way.</summary>
-   void TakeTheStandInForClaudeCode()
-   {
-      Directory.CreateDirectory(StandInFolder);
-      foreach(var built in Directory.GetFiles(StandInBuild))
-      {
-         var copy = Path.Combine(StandInFolder, Path.GetFileName(built));
-         if(File.Exists(copy) && File.GetLastWriteTimeUtc(copy) >= File.GetLastWriteTimeUtc(built)) continue;
-         if(File.Exists(copy)) File.Move(copy, $"{copy}.replaced-{Guid.NewGuid():N}");
-         File.Copy(built, copy);
-      }
-   }
 }
