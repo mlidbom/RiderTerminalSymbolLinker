@@ -2,14 +2,17 @@
 
 ## Status
 
-**Magnus's direction, 2026-11-20. Nothing is built.** Until it is, Claude Sessions stays the Kotlin plugin that
-`claude-sessions.md` describes, and its chat stays the one Magnus works in every day.
+**Magnus's direction, 2026-11-20. The spike is run; nothing lasting is built.** Until it is, Claude Sessions stays the
+Kotlin plugin that `claude-sessions.md` describes, and its chat stays the one Magnus works in every day.
 
-- **Agreed (Magnus, 2026-11-20):** the direction below; the calls under "How it's to be built"; the input box as plain
-  as Avalonia's editor gives it; one home, later, for the Avalonia extensions the apps share.
-- **Open, put to Magnus on 2026-11-20:**
-  - whether to run the spike below first;
-  - how Cloyd's windows relate to the IDEs' windows (below, "What's still open").
+- **Agreed (Magnus, 2026-11-20):**
+  - the direction below, and the calls under "How it's to be built";
+  - the input box as plain as Avalonia's editor gives it;
+  - one home, later, for the Avalonia extensions the apps share;
+  - a Cloyd window per project, "for now".
+- **The spike, run on 2026-11-20 on his go,** found the TUI's host and nothing against the port: see "What the spike
+  found".
+- **Open, put to Magnus on 2026-11-20:** starting the .NET Cloyd itself.
 
 ## The direction
 
@@ -101,9 +104,9 @@ Claude's calls (.NET-cloyd, the session in this repository), which Magnus OK'd o
 
 ## What's still open
 
-- **The TUI needs a host.** Slash commands, permission prompts, pickers and dialogs are drawn only by Claude Code's
-  TUI, and a tab switches to it whenever one opens. In the IDE, its terminal hosts the TUI. The candidates, none tried
-  yet:
+- **The TUI needs a host. Settled by the spike: Iciclecreek.Avalonia.Terminal** (see "What the spike found"). Slash
+  commands, permission prompts, pickers and dialogs are drawn only by Claude Code's TUI, and a tab switches to it
+  whenever one opens. In the IDE, its terminal hosts the TUI. The candidates as they stood before the spike:
   - **A native Avalonia terminal control:**
     [Iciclecreek.Avalonia.Terminal](https://vat.pages.dev/tomlm/Iciclecreek.Avalonia.Terminal), on XTerm.NET, for
     Avalonia 12, with releases into July 2026;
@@ -115,24 +118,88 @@ Claude's calls (.NET-cloyd, the session in this repository), which Magnus OK'd o
     pages off the web view, so it's the fallback here, not the first choice.
   - **Windows Terminal,** running `ClaudeTooling.SessionHost.exe attach <id>`: no work at all, and a second window for
     each session.
-- **How Cloyd's windows relate to the IDEs' windows,** across Magnus's 3-8 IDEs on their virtual desktops: one per IDE
-  project window, beside it and following it to its desktop; one per virtual desktop; or one for everything. Claude's lean:
-  one per project window, as the tool window is today, with a list of every session on the machine in each. Cloyd can
-  move its own windows with the documented API; Deskmancer, Magnus's window-placement app, could place them too.
+- **How Cloyd's windows relate to the IDEs' windows: one per project, "for now"** (Magnus, 2026-11-20), across his 3-8
+  IDEs on their virtual desktops. The alternatives were one per virtual desktop, or one for everything. Cloyd can move
+  its own windows with the documented API; Deskmancer, Magnus's window-placement app, could place them too. Whether each
+  window also lists every session on the machine is open.
 - **Publishing:** a .NET application and a plugin. Magnus, 2026-11-19: "How, and even if, we publish this is a
   question for the future."
 - **Where the hub's contract types live** so that both `~/.claude/src` and this repository can reference them: the
   tooling owner's question.
 
-## The spike proposed
+## The spike
 
-Throwaway, about a day, on a branch, to settle the TUI's host and see how fast the porting goes:
+Throwaway, on the branch `spike/dotnet-cloyd` (commit b39fef7, `spikes/CloydSpike`, with a README on running it), to
+settle the TUI's host and see how fast the porting goes:
 
 1. Each candidate for the TUI's host above, attached to a session host running the real Claude Code's fullscreen TUI:
    resizing, the mouse wheel, pasting, colours, the alternate screen.
 2. An AvaloniaEdit input box that sends through the hub.
 3. One session's conversation, from the hub, rendered as markdown.
 4. One specification on Avalonia's headless platform.
+
+### What the spike found (2026-11-20, Claude Code 2.1.329)
+
+**Go, with Iciclecreek.Avalonia.Terminal as the TUI's host.** Each of the four parts worked, and nothing found argues
+against the port.
+
+**How it was tried.** The window attaches to a session host in process, over the host's own protocol: the hub's types,
+compiled in from `~/.claude/src/ClaudeTooling.SessionHost.Protocol`, with no console of its own between the host and the
+terminal control. The attachment is 135 lines. The spike started a throwaway session host of its own, with the real
+Claude Code on Haiku in it. The host carried a label of its own, so that no IDE's tab claimed it, and the spike attached
+to no other host, since attaching takes a session over from its tab. A probe on Avalonia's headless platform, with
+nothing on the desktop, drove each candidate with keys, pastes, resizes and the mouse wheel. At each step it drew the
+control to an image, beside what the session's own console showed (`ClaudeTooling.exe typing screen`), and it logged
+the bytes each control sent.
+
+**The TUI's host:**
+
+- **Iciclecreek.Avalonia.Terminal 4.1.4: the one.**
+  - **Drawing:** Claude Code's fullscreen TUI as Claude Code draws it, its block-character logo, colours, bold, tables'
+    box drawing, a dialog, the slash-command picker and the status line included.
+  - **Keys:** it speaks the console's win32 input mode, which conhost asks every terminal for and the session host
+    replays, so each key reaches Claude Code exactly. Two Escapes cleared the input box. Ctrl+Shift+V pasted three lines
+    as a bracketed paste. Ctrl+V reached Claude Code as its own Ctrl+V, the image paste. It also sent focus events.
+  - **Mouse and size:** the wheel went to Claude Code as mouse reports. The session's own console followed each resize:
+    144 by 46, 180 by 55, 107 by 36.
+  - **Fitting it in:** it plugs in through `AttachConnection(IPtyConnection)` in 43 lines, and draws on the headless
+    platform, so an agent can drive and see it with no desktop.
+- **AgentSpace.Avalonia.XTerm 0.1.7: out.** It draws as well, the logo with gaps, but sends plain VT, and a lone Escape
+  byte doesn't reach Claude Code as the Escape key: two presses left the box as it was. Escape interrupts a turn.
+- **AvaloniaTerminal 1.0.0: out.** It is built against XTerm.NET 1.0, and fails in a process that has Iciclecreek's
+  XTerm.NET 3.0 (`MissingFieldException`).
+- **xterm.js in `NativeWebView`: works, the fallback.** It drew the TUI in a real window, once the application had a
+  manifest listing the Windows versions it supports, as `JAStudio.StandaloneHost`'s has: without one, Avalonia can't
+  create the web view's native window, and the application crashed. It can't be drawn headless, and its keys weren't
+  tried, as that takes Magnus's desktop.
+- **Windows Terminal, through the attach client: not tried,** as it opens a window on Magnus's desktop. The window has
+  a button for it, and the session hosts' own spike found the attach client works in a console.
+- **Not seen:**
+  - the wheel's effect, as the conversation was too short to scroll;
+  - text selection and copying, links (OSC 8), input methods, and scaling across monitors.
+  - Shift+Enter acted as Enter in every candidate: Claude Code ignores Shift on Enter in a Windows console, as known from
+    the session hosts' spike, even with the Shift that win32 input mode carries.
+
+**The rest:**
+
+- **The input box:** AvaloniaEdit as it comes. Enter raises the send, and Shift+Enter is a new line (specified).
+  Sending through the hub worked; Haiku answered.
+- **The conversation:** LiveMarkdown.Avalonia renders what the hub sends: a table, a list, bold, and C# with highlighting
+  and a copy button. Tool calls show folded, with their input and result inside. This session's 164 messages caught up
+  and laid out in 3 s, unvirtualized: a long conversation needs a virtualizing list.
+- **Specifications:** five, on the headless platform, in 0.7 s. One feeds the conversation view the hub's own contract
+  sample stream, and draws it to an image.
+- **Porting speed:** the window, the hub's client, the attachment, three candidates and the chat, about 900 lines, plus
+  a 235-line probe and the specifications, in about an hour, with the TUI tested against the real Claude Code by the
+  agent alone.
+
+**What the real Cloyd must do that the spike showed:**
+
+- **Show a session host's TUI before the hub lists its session.** A new session can open with a dialog, such as
+  "Allow external CLAUDE.md file imports?" in a new folder in a repository, and the hub lists no running session until
+  Claude Code is past it.
+- **Decide which sessions' TUIs it attaches to.** Attaching takes a session over from its IDE tab. While the Kotlin
+  plugin still shows the TUI, Cloyd showing a session the tab shows takes the TUI away from the tab.
 
 ## What it means for the Tessaging work
 
