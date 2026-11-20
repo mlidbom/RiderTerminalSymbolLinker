@@ -121,7 +121,16 @@ reload of the plugin, whose unloading stops the server on the EDT.
 how long each run took; `-ShowTimes` adds each class's time, `-Filter History` takes only some classes. A run is one
 process, whose Avalonia UI thread and keyboard focus take its specifications one after another, and each scenario has a
 sandbox of its own, its hub included, so the runs share nothing else (`Cloyd.Specifications/TheSandbox`). On
-2026-11-20: about 145 s in one run, 50-80 s in 4 to 8, where the hub's slow starts under load set the pace.
+2026-11-20, with each sandbox started ahead and ended in the background: 124-128 s in one run, 31-41 s in six.
+
+**Where a specification's time goes: NCrunch's MCP** (`ncrunch`, Magnus's suggestion, 2026-11-20). It runs the tests
+in processes of its own, each test's in one, which these specifications' one UI thread a process needs, and records the
+time of every line each test ran, with no profiler to attach: `StartSession` on `Cloyd/Cloyd.slnx` with the engine mode
+`Run all tests manually`, `SetTestSelection`, `RunTests`, `WaitForEngineWorkCompleted`, then `GetLinePerformance` for
+the tests selected. It ran all 204 in 25-37 s, and showed at once that 12 of a scenario's 12.3 s were its two 3 s waits.
+Two limits: NCrunch builds Cloyd, a WinExe, without its `Cloyd.exe`, so the 5 facts that run it fail there, and
+`run-the-specifications.ps1` stays the full check; and NCrunch ends its pooled test processes without the run's end,
+whose sandboxes' hubs end with them (`--ending-with`), while their folders wait for the next run's first sandbox.
 
 **The plugins':** `dotnet test tests/RiderTerminalSymbolLinker.Specifications` checks what the symbol linker links and what a click does,
 in the sandbox, against the fixture solution, and, in `ClaudeSessions/`, what Claude Sessions does: has the sandbox's
