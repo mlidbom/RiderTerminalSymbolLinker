@@ -3,6 +3,7 @@ using Avalonia.Controls;
 using Avalonia.Controls.Documents;
 using Avalonia.Layout;
 using Avalonia.Media;
+using Cloyd.Theming;
 
 namespace Cloyd.Chat.Views;
 
@@ -33,11 +34,11 @@ static class LinesOfTheChat
    public static Control Grey(string line) => ColoursOfTheChat.Grey.AsTheForegroundOf(new TextBlock { Text = line, TextWrapping = TextWrapping.Wrap });
 
    /// <summary><paramref name="text"/> in the monospaced font, selectable, as a tool's output is shown: in <paramref name="colour"/>, or the chat's text colour.</summary>
-   public static SelectableTextBlock InMonospace(string text, ColourOfTheChat? colour = null) =>
+   public static SelectableTextBlock InMonospace(string text, ColourOfTheTheme? colour = null) =>
       (colour ?? ColoursOfTheChat.Text).AsTheForegroundOf(new SelectableTextBlock { Text = text, FontFamily = Monospaced, FontSize = 12, TextWrapping = TextWrapping.Wrap });
 
    /// <summary>A run of text in <paramref name="colour"/>.</summary>
-   public static Run Coloured(string text, ColourOfTheChat colour) => colour.AsTheForegroundOf(new Run(text));
+   public static Run Coloured(string text, ColourOfTheTheme colour) => colour.AsTheForegroundOf(new Run(text));
 
    /// <summary>
    /// A line made of <paramref name="inlines"/>, followed by a chevron, that opens what <paramref name="opened"/> makes

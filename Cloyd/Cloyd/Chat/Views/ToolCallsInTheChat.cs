@@ -2,6 +2,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Documents;
 using Cloyd.Chat.ToolCalls;
+using Cloyd.Theming;
 using static Cloyd.Chat.Views.LinesOfTheChat;
 
 namespace Cloyd.Chat.Views;
@@ -69,7 +70,7 @@ static class ToolCallsInTheChat
          {
             WhatHappenedToTheLine.Added => ("+ ", ColoursOfTheChat.GroundOfAnAddedLine),
             WhatHappenedToTheLine.Removed => ("- ", ColoursOfTheChat.GroundOfARemovedLine),
-            _ => ("  ", (ColourOfTheChat?)null)
+            _ => ("  ", (ColourOfTheTheme?)null)
          };
          var shown = new Border { Child = InMonospace(sign + line.Text) };
          ground?.AsTheBackgroundOf(shown);
