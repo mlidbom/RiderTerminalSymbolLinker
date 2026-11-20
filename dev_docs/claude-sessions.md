@@ -535,11 +535,19 @@ tooling-owner on 2026-11-17 (protocol 1):
   the IDE. It asks the window's own IDE first, then every other announced one, a second each, and logs the answer to
   `~/.claude/notifying-magnus.log`.
 - **`GET /windows`** and **`POST /restart`,** for the tooling owner's tool for restarting Rider
-  (`~/.claude/dev_docs/restarting-rider.md`), agreed with it on 2026-11-19. `GET /windows`: each project window's
+  (`~/.claude/dev_docs/restarting-the-ides.md`), agreed with it on 2026-11-19. `GET /windows`: each project window's
   folder, title, native handle (`HWND`), and its virtual desktop's GUID. The hub tells whether a Rider window is in
-  front from Windows' foreground window itself (the tooling's fd212d6). `POST /restart` `{"why", "askedBy"}`: 202, then `ApplicationEx.restart(exitConfirmed = true)`; 409 while a
-  modal dialog is open; one that exits already goes on exiting (`Application.isExitInProgress` is internal API, which
-  the verifier refuses). Rider may still ask on the way, as whether to end running processes.
+  front from Windows' foreground window itself (the tooling's fd212d6). `POST /restart` `{"why", "askedBy",
+  "beforeItStartsAgain"}`: 202, then `ApplicationEx.restart(SAVE | EXIT_CONFIRMED, beforeItStartsAgain)`, as
+  `restart(exitConfirmed = true)` does with no command; 409 while a modal dialog is open; one that exits already goes
+  on exiting (`Application.isExitInProgress` is internal API, which the verifier refuses). Rider may still ask on the
+  way, as whether to end running processes.
+- **`beforeItStartsAgain`,** a program and its arguments, for a deploy through the hub's restart of the IDEs (Magnus,
+  2026-11-20: "I greenlight, you install and restart"; agreed with the tooling owner the same day). The IDE's own
+  `restarter.exe` runs it once the IDE has exited, waits for it to end, then starts the IDE, with the IDE's
+  environment, as the platform's updater applies a patch: the platform makes the array one command
+  (`Restarter.scheduleRestart(elevate, List.of(beforeRestart))`). A specification has a command wait three seconds and
+  record that the old process had gone, and finds the IDE started after it ended.
   The new announcement comes once the first project has opened. Rider restarts its launcher without the arguments it
   started with (`Restarter.restartOnWindows`), and reopens every solution it had open, each in its window, as "Reopen
   projects on startup" is on by default: a specification checks it with three.

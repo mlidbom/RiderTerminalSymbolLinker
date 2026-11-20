@@ -6,6 +6,7 @@ import com.google.gson.JsonParser
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.ModalityState
+import com.intellij.openapi.application.ex.ApplicationEx
 import com.intellij.openapi.application.ex.ApplicationManagerEx
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
@@ -41,13 +42,16 @@ import java.util.concurrent.Executors
  *  - `GET /windows`: the windows of the projects open in the IDE, as `{"windows": [{"project": <the project's folder>,
  *    "title": <the window's title>, "window": <its native handle, HWND>, "desktop": <the GUID of the virtual desktop it's
  *    on, or null>}]}`.
- *  - `POST /restart` with `{"why": <why>, "askedBy": <who asked>}`, and the announcement's token: has the IDE restart
- *    itself, as after a plugin's update, without asking the user to confirm it. It answers 202 once the restart is on
- *    its way, or 409 with `{"error": <why not>}` when a modal dialog is open. The IDE
- *    may still ask on the way, as whether to end the processes that run, and the user may cancel it. Each project's
- *    window goes back to its virtual desktop once the project has opened again, as after every restart
- *    ([DesktopsThroughARestart]). The tool for restarting Rider asks, which the tooling owner builds
- *    (`~/.claude/dev_docs/restarting-rider.md`).
+ *  - `POST /restart` with `{"why": <why>, "askedBy": <who asked>, "beforeItStartsAgain": <a command, as an array of
+ *    its program and arguments, or left out>}`, and the announcement's token: has the IDE restart itself, as after a
+ *    plugin's update, without asking the user to confirm it. It answers 202 once the restart is on its way, or 409 with
+ *    `{"error": <why not>}` when a modal dialog is open. The IDE may still ask on the way, as whether to end the
+ *    processes that run, and the user may cancel it. Each project's window goes back to its virtual desktop once the
+ *    project has opened again, as after every restart ([DesktopsThroughARestart]). The hub's restart of the IDEs asks,
+ *    which the tooling owner builds (`~/.claude/dev_docs/restarting-the-ides.md`).
+ *    The IDE's own restarter runs `beforeItStartsAgain` once the IDE has exited, and starts it again once the command
+ *    has ended, as the IDE's updater applies a patch: the development tools put a build of a plugin in so, which a
+ *    running IDE couldn't take.
  *
  * A tool whose notification about a session the user clicks calls `POST /sessions/show`, after it has brought the
  * IDE's window forward itself: Windows lets the process the user clicked bring a window forward, and not the IDE.
@@ -106,7 +110,7 @@ class LocalApi : Disposable {
 
     /** Has the IDE restart itself, once it has answered, unless it can't now: see the API's description. */
     private fun restart(exchange: HttpExchange) {
-        var restarting = false
+        var beforeItStartsAgain: List<String>? = null
         reply(exchange) {
             when {
                 exchange.requestMethod != "POST" -> 405 to mapOf("error" to "POST it")
@@ -116,15 +120,22 @@ class LocalApi : Disposable {
                     val whyNot = onTheEdt { whyTheIdeCannotRestartNow() }
                     if (whyNot != null) 409 to mapOf("error" to whyNot)
                     else {
-                        thisLogger().info("Restarting the IDE, as ${request.textOf("askedBy")} asked: ${request.textOf("why")}")
-                        restarting = true
+                        beforeItStartsAgain = request.getAsJsonArray("beforeItStartsAgain")?.map { it.asString }.orEmpty()
+                        thisLogger().info("Restarting the IDE, as ${request.textOf("askedBy")} asked: ${request.textOf("why")}. Before it starts again: $beforeItStartsAgain")
                         202 to mapOf("restarting" to true)
                     }
                 }
             }
         }
-        if (restarting) ApplicationManager.getApplication().invokeLater({ ApplicationManagerEx.getApplicationEx().restart(true) }, ModalityState.nonModal())
+        beforeItStartsAgain?.let { command -> ApplicationManager.getApplication().invokeLater({ restartTheIde(command) }, ModalityState.nonModal()) }
     }
+
+    /**
+     * Has the IDE restart itself, as after a plugin's update, its restarter running the command [beforeItStartsAgain]
+     * between the IDE's exit and its start, unless it's empty: `restart(true)` restarts so, with no command.
+     */
+    private fun restartTheIde(beforeItStartsAgain: List<String>) =
+        ApplicationManagerEx.getApplicationEx().restart(ApplicationEx.SAVE or ApplicationEx.EXIT_CONFIRMED, beforeItStartsAgain.toTypedArray())
 
     /**
      * Why the IDE can't restart now, or null when it can. On the EDT. One that exits already exits: asked to restart
