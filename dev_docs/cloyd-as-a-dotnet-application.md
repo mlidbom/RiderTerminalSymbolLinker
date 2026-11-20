@@ -113,7 +113,7 @@ Claude's calls (.NET-cloyd, the session in this repository), which Magnus OK'd o
 
 ## Step one, as it's built
 
-**Built (3cbb526):**
+**Built (3cbb526, 73cd255):**
 
 - **A window per project,** `Cloyd.exe --project <folder>`, with a tab per session host of the project. Each tab shows
   the host's terminal in Iciclecreek's control, attached in process (`AttachmentToASessionHost`), and is titled with
@@ -126,23 +126,34 @@ Claude's calls (.NET-cloyd, the session in this repository), which Magnus OK'd o
   `PATH`, else `powershell.exe`, with `TERM` and `COLORTERM` on top of a new process's environment.
 - **Closing a tab ends its session;** closing the window only lets go. A tab closes when its host lets it go: another
   attach client took the session over, or its shell exited.
+- **Saving the tabs, and bringing them back** (`Cloyd.Saving`), as the plugin does (`claude-sessions.md`, "Saving and
+  bringing back"):
+  - **Saved:** each tab's host, the directory its shell started in, and its `LatestSession`, the session that runs in
+    it or ran in it last; in their order, with the selected tab's host. Every 2 s, and as the window closes, to
+    `%LOCALAPPDATA%\Cloyd\project-windows\<the project's folder as a name>.json`. Saving starts only once the window
+    has brought the saved tabs back, so a window whose bringing back failed, as with no hub, leaves the save as it was
+    for the next one, and saves nothing of its own: its foot tells the failure.
+  - **Brought back as the window opens, one after another:** a tab whose host runs is attached to it again, unless an
+    attach client shows it. A tab whose host is gone, as after a reboot, has its session resumed with
+    `claude --resume <id>`, through the hub's `sessionToResume`, in a new host in the same directory: about 1 s a tab
+    in the sandbox, the hub's wait for the shell's prompt. Left out: a tab whose host ran no Claude Code, and one whose
+    session's transcript is gone from the Claude Code folder the hub's announcement names (`claudeCodeFolder`).
+  - **Then the project's other hosts** that no attach client shows, as before, and the selected tab is selected again.
 - **Specified** on Avalonia's headless platform, against a hub of the specifications' own, a copy of the published one
   (`Cloyd.Specifications/TheSandbox`), whose sessions run the tooling owner's stand-in for Claude Code. They run in
-  about 30 s, touch no session of Magnus's, and draw each state, and each wait in vain, to
+  about 2.5 minutes, touch no session of Magnus's, and draw each state, and each wait in vain, to
   `bin/.../RenderedWindows/`.
 
 **Next, in this order:**
 
-1. **Saving the tabs, and bringing them back:** their order and the selected one, per project; after a reboot, when a
-   host is gone, its session is resumed (`claude --resume <id>`) in a new host, as the plugin does
-   (`claude-sessions.md`, "Saving and bringing back").
-2. **One Cloyd process, outside every job, with every project's window.** `Cloyd.exe --project <folder>` hands the
+1. **One Cloyd process, outside every job, with every project's window.** `Cloyd.exe --project <folder>` hands the
    project to the Cloyd that runs; started from an IDE, whose job would end it with the IDE, it breaks away. A local
    API, announced like the plugin's, for the plugin and the hub.
-3. **The switch:** the plugin loses its tool window, chat and history picker, and starts the project's Cloyd window as
+2. **The switch:** the plugin loses its tool window, chat and history picker, and starts the project's Cloyd window as
    the project opens. It keeps the local API's `GET /windows` and `POST /restart`, and the symbol linker. Deployed with
-   Magnus's go, as it changes how every session of his is shown.
-4. **A notification's click shows the session in Cloyd:** the hub's side is the tooling owner's.
+   Magnus's go, as it changes how every session of his is shown. The plugin's tabs saved before the switch need no
+   reading: their hosts run on, and Cloyd shows them by their labels.
+3. **A notification's click shows the session in Cloyd:** the hub's side is the tooling owner's.
 
 Then clickable file paths and C# symbols in Cloyd's terminal.
 
