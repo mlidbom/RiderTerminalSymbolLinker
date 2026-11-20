@@ -37,3 +37,28 @@ public class When_claude_sessions_starts_with_a_project_open_and_no_cloyd_runnin
    [XF] public void cloyd_shows_the_projects_window() => story.ProjectsCloydShows.Must().SequenceEqual([story.ProjectFolder]);
    [XF] public void titled_after_the_project() => story.Title.Must().Be($"Cloyd: {Path.GetFileName(story.ProjectFolder)}");
 }
+
+/// <summary>
+///   The project's window in Cloyd is closed, as when the user closed it, and the user asks the IDE to show the project in
+///   Cloyd: Tools &gt; Show the Project in Cloyd, or Ctrl+Alt+Shift+Y. It runs the sandbox's <c>Cloyd.exe --project</c>,
+///   as opening the project does, which starts the application, as none runs.
+/// </summary>
+public class When_the_user_asks_the_ide_to_show_the_project_in_cloyd_with_its_window_closed(When_the_user_asks_the_ide_to_show_the_project_in_cloyd_with_its_window_closed.Story story)
+   : IClassFixture<When_the_user_asks_the_ide_to_show_the_project_in_cloyd_with_its_window_closed.Story>
+{
+   public sealed class Story
+   {
+      public readonly string ProjectFolder;
+      public readonly IReadOnlyList<string> ProjectsCloydShows;
+
+      public Story()
+      {
+         var ide = new ClaudeSessionsInTheSandbox();
+         ProjectFolder = ide.ProjectFolder;
+         ide.ShowTheProjectInCloydFromTheIdeWithNoCloydRunning();
+         ProjectsCloydShows = ide.ProjectsCloydShows;
+      }
+   }
+
+   [XF] public void cloyd_shows_the_projects_window() => story.ProjectsCloydShows.Must().SequenceEqual([story.ProjectFolder]);
+}

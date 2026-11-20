@@ -3,6 +3,11 @@ package dev.magnus.claudesessions.observation
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
 import com.intellij.openapi.Disposable
+import com.intellij.openapi.actionSystem.ActionManager
+import com.intellij.openapi.actionSystem.ActionPlaces
+import com.intellij.openapi.actionSystem.ex.ActionUtil
+import com.intellij.openapi.actionSystem.impl.SimpleDataContext
+import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.PathManager
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
@@ -27,6 +32,9 @@ import java.util.concurrent.Executors
  *  - `POST /plugins/refresh` — has the IDE look at its plugins folder again, so that with `idea.auto.reload.plugins` it
  *    reloads a plugin whose files changed, this one included. `/state`'s `startedAt` then tells when the new build's
  *    channel started.
+ *  - `POST /actions/perform?id=<an action's id>` — performs the action in the project open, as the user would from a
+ *    menu or by its shortcut, and answers once it has been performed: what the action starts in the background may go
+ *    on.
  *
  * What the plugin has Cloyd show, the tools see in Cloyd's own local API.
  */
@@ -46,6 +54,7 @@ class ObservationChannel : Disposable {
             executor = Executors.newCachedThreadPool()
             createContext("/state") { exchange -> answer(exchange) { state() } }
             createContext("/plugins/refresh") { exchange -> answer(exchange) { refreshThePluginsFolder() } }
+            createContext("/actions/perform") { exchange -> answer(exchange) { perform(idIn(exchange)) } }
             start()
         }
 
@@ -64,6 +73,19 @@ class ObservationChannel : Disposable {
             ?: return mapOf("error" to "The IDE's virtual file system doesn't have the plugins folder ${PathManager.getPluginsPath()}")
         VfsUtil.markDirtyAndRefresh(true, true, true, folder)
         return mapOf("refreshing" to folder.path)
+    }
+
+    private fun idIn(exchange: HttpExchange): String =
+        exchange.requestURI.query?.split('&')?.firstNotNullOfOrNull { it.removePrefix("id=").takeIf { id -> id != it } }
+            ?: error("No action's id in ${exchange.requestURI}: /actions/perform?id=<the action's id>")
+
+    private fun perform(actionId: String): Map<String, Any?> {
+        val action = ActionManager.getInstance().getAction(actionId) ?: error("The IDE has no action $actionId.")
+        val project = ProjectManager.getInstance().openProjects.single()
+        ApplicationManager.getApplication().invokeAndWait {
+            ActionUtil.invokeAction(action, SimpleDataContext.getProjectContext(project), ActionPlaces.UNKNOWN, null, null)
+        }
+        return mapOf("performed" to actionId, "project" to project.basePath)
     }
 
     /**

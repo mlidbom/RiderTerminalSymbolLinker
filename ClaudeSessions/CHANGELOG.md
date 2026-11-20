@@ -6,6 +6,11 @@ All notable changes to Claude Sessions are documented here. The format follows
 
 ## [0.2.0]
 
+### Added
+- **Tools > Show the Project in Cloyd, Ctrl+Alt+Shift+Y.** It brings the project's window in Cloyd forward, or opens it
+  when you closed it, as opening the project does. A Cloyd window on another virtual desktop stays there, as it does when
+  the project opens. Pressed again in Cloyd's window, the same keys open Cloyd's session history picker.
+
 ### Changed
 - **The sessions show in Cloyd, beside the IDE.** As a project opens, Claude Sessions has Cloyd show the project's
   window: Cloyd is an application of its own, with a window for each project, whose tabs each show a Claude Code

@@ -24,6 +24,16 @@
         <postStartupActivity implementation="dev.magnus.claudesessions.observation.ObservationStartup"/>
     </extensions>
 
+    <actions>
+        <!-- The way from the IDE to the project's window in Cloyd. Ctrl+Alt+Shift+Y was the IDE's session history picker's
+             until 0.2.0, and opens Cloyd's picker in Cloyd's window: so pressed twice, it opens the history. -->
+        <action id="dev.magnus.claudesessions.ShowTheProjectInCloyd" class="dev.magnus.claudesessions.cloyd.ShowTheProjectInCloydAction"
+                text="Show the Project in Cloyd" description="Brings the project's window in Cloyd forward, or opens it when it was closed">
+            <add-to-group group-id="ToolsMenu" anchor="last"/>
+            <keyboard-shortcut keymap="$default" first-keystroke="control alt shift Y"/>
+        </action>
+    </actions>
+
     <applicationListeners>
         <listener class="dev.magnus.claudesessions.windows.RecordTheWindowsDesktopsAsTheIdeExits" topic="com.intellij.ide.AppLifecycleListener"/>
     </applicationListeners>

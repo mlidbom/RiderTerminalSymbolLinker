@@ -49,6 +49,17 @@ public sealed class ClaudeSessionsInTheSandbox
    }
 
    /// <summary>
+   ///   Ends the sandbox's Cloyd application, as closing its last window does, then performs Tools &gt; Show the Project in
+   ///   Cloyd in the sandbox Rider, as the user would. Returns once Cloyd shows the project's window.
+   /// </summary>
+   public void ShowTheProjectInCloydFromTheIdeWithNoCloydRunning()
+   {
+      _sandbox.ItsCloyd.StopTheApplication();
+      _sandbox.ClaudeSessionsObservation.Perform(ClaudeSessionsObservationChannel.ShowTheProjectInCloyd);
+      _sandbox.WaitUntilItsCloydShows(ProjectFolder);
+   }
+
+   /// <summary>
    ///   The file in which the sandbox Rider's Claude Sessions announces its local API to other tools on the machine:
    ///   <c>&lt;its process id&gt;.json</c> in the sandbox's folder of announcements, or null while there is none.
    /// </summary>

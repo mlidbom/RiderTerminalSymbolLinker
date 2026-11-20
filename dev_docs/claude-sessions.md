@@ -31,9 +31,14 @@ Its packages, below `dev.magnus.claudesessions`, which holds what it tells the u
 
 ## Showing each project in Cloyd
 
-- **`ShowTheProjectInCloyd`,** a project activity, runs `Cloyd.exe --project <the project's folder>` as each project
-  opens (`CloydCommand`), and again as the plugin reloads, which runs the startup again. It logs what came of it to
-  `idea.log`; when Cloyd isn't installed, the command fails, or it doesn't end within 2 minutes, a notification says why.
+- **`ShowTheProjectInCloyd`,** a project activity, has Cloyd show the project's window (`ProjectWindowInCloyd`) as each
+  project opens, and again as the plugin reloads, which runs the startup again: it runs `Cloyd.exe --project <the
+  project's folder>` (`CloydCommand`). It logs what came of it to `idea.log`; when Cloyd isn't installed, the command
+  fails, or it doesn't end within 2 minutes, a notification says why.
+- **Tools > Show the Project in Cloyd, Ctrl+Alt+Shift+Y** (`ShowTheProjectInCloydAction`, since 2026-11-20): the same,
+  on the user's ask, as the way from the IDE to the project's window once it's behind others or closed. A window on
+  another virtual desktop stays there, as Cloyd's `--project` leaves it. Specified in the sandbox through the
+  observation channel's `POST /actions/perform`, which performs an action as the user would.
 - **Where Cloyd is:** `bin\Cloyd.exe` in Cloyd's folder (`CloydsFolder`): `%LOCALAPPDATA%\Cloyd`, or the folder
   `CLOYD_FOLDER` names, as the sandbox Rider's environment does. `everyday deploy` puts it there.
 - **The command** finds the Cloyd application, or starts it outside the IDE's job, and exits once the project's window
