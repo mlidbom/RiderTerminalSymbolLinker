@@ -1,9 +1,11 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
 using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Threading;
 using ClaudeTooling.SessionHost.Protocol;
+using Cloyd.Chat;
 using Cloyd.ClaudeCode;
 using Cloyd.Hub;
 using Cloyd.Saving;
@@ -14,8 +16,9 @@ namespace Cloyd.Sessions;
 
 /// <summary>
 /// A tab of a <see cref="Projects.ProjectWindow"/>: the terminal of one session host, showing its shell, and the Claude
-/// Code in the shell as Claude Code draws its TUI. Titled with the name of the session that runs in it, or ran in it
-/// last.
+/// Code in the shell as Claude Code draws its TUI; and the chat of the session that runs in it, or ran in it last. A
+/// switch at its top shows the one or the other: the terminal at first, until the chat can do all Magnus needs. Titled
+/// with the name of that session.
 /// </summary>
 sealed class SessionTab : TabItem
 {
@@ -24,22 +27,30 @@ sealed class SessionTab : TabItem
    readonly AttachmentToASessionHost _attachment;
    readonly TextBlock _title;
    readonly TextBlock _notice = new() { IsVisible = false, Foreground = Brushes.Orange, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(8, 4) };
+   readonly ToggleButton _showTheChat = SwitchTo("Chat", "Show the chat");
+   readonly ToggleButton _showTheTerminal = SwitchTo("Terminal", "Show the terminal");
 
    /// <summary>
    /// Attaches to <paramref name="host"/> at <paramref name="size"/>, which its terminal then resizes it from. Until the
    /// hub tells of the session that runs in it, its <see cref="LatestSession"/> is <paramref name="latestSession"/>, as a
    /// saved tab's, and it is titled with that session's name, or <paramref name="nameGiven"/>, as a new session was named.
+   /// Its chat follows the session's conversation through <paramref name="hub"/>.
    /// </summary>
-   public SessionTab(SessionHostOfTheHub host, ClaudeSession? latestSession, string? nameGiven, ConsoleSize size)
+   public SessionTab(SessionHostOfTheHub host, ClaudeSession? latestSession, string? nameGiven, ConsoleSize size, TheHub hub)
    {
       Host = host;
       LatestSession = latestSession;
       _attachment = AttachmentToASessionHost.To(host.Id, size);
       _attachment.Ended += why => Dispatcher.UIThread.Post(() => EndedByItself?.Invoke(this, why));
       Terminal = new TerminalOfASessionHost(_attachment);
+      Chat = new ChatOfASession(hub) { IsVisible = false };
+      Chat.Show(latestSession?.Id);
       _title = new TextBlock { Text = latestSession?.Name ?? nameGiven ?? TitleOfASessionWithNoName, VerticalAlignment = VerticalAlignment.Center };
       Header = TheHeader();
-      Content = new DockPanel { Children = { Docked(_notice, Dock.Top), Terminal } };
+      _showTheChat.Click += (_, _) => ShowTheChat(true);
+      _showTheTerminal.Click += (_, _) => ShowTheChat(false);
+      ShowTheChat(false);
+      Content = new DockPanel { Children = { Docked(_notice, Dock.Top), Docked(TheSwitch(), Dock.Top), new Panel { Children = { Terminal, Chat } } } };
    }
 
    protected override Type StyleKeyOverride => typeof(TabItem);
@@ -47,6 +58,9 @@ sealed class SessionTab : TabItem
    public SessionHostOfTheHub Host { get; }
 
    public TerminalOfASessionHost Terminal { get; }
+
+   /// <summary>The chat of the session that runs in the tab's host, or ran in it last.</summary>
+   public ChatOfASession Chat { get; }
 
    /// <summary>The tab's title: the name of the session that runs in its host, or ran in it last.</summary>
    public string Title => _title.Text!;
@@ -69,6 +83,7 @@ sealed class SessionTab : TabItem
          field = value;
          if(value is null) return;
          LatestSession = value.Session;
+         Chat.Show(value.Session.Id);
          _title.Text = value.Name ?? TitleOfASessionWithNoName;
       }
    }
@@ -97,6 +112,24 @@ sealed class SessionTab : TabItem
 
    /// <summary>Lets go of the tab's host, whose session runs on.</summary>
    public void LetGo() => _attachment.Dispose();
+
+   /// <summary>Shows the chat when <paramref name="chat"/>, else the terminal, as the switch shows.</summary>
+   void ShowTheChat(bool chat)
+   {
+      Chat.IsVisible = chat;
+      _showTheChat.IsChecked = chat;
+      Terminal.IsVisible = !chat;
+      _showTheTerminal.IsChecked = !chat;
+   }
+
+   Control TheSwitch() => new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, Spacing = 2, Margin = new Thickness(4, 2), Children = { _showTheChat, _showTheTerminal } };
+
+   static ToggleButton SwitchTo(string view, string tip)
+   {
+      var button = new ToggleButton { Content = view, Padding = new Thickness(10, 2), FontSize = 12 };
+      ToolTip.SetTip(button, tip);
+      return button;
+   }
 
    Control TheHeader()
    {

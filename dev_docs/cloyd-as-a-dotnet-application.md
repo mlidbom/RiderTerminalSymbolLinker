@@ -225,7 +225,7 @@ Claude's calls (.NET-cloyd, the session in this repository), which Magnus OK'd o
 2. **Clickable file paths and C# symbols:** what links is found, and each window keeps its files and symbols current
    (below). Showing them in the terminal is dropped (Magnus, 2026-11-20: "So better build the new UI than spend a ton
    of efforts on the UI we don't use"): the terminal "is just a backup once we get the new UI".
-3. **The chat, to the desktop app** (below), with the links in it.
+3. **The chat, to the desktop app** (below), with the links in it. Started 2026-11-20: see "The chat, as it's built".
 
 ## Clickable file paths and C# symbols: the plan
 
@@ -249,7 +249,9 @@ Claude's calls, 2026-11-20, unless marked as Magnus's:
   - a word links when it names a C# type or member of the project's solutions, and a dotted `Type.Member` as one link
     when that type has that member;
   - the Kotlin finder stays for Rider's terminal: the same rules in two languages.
-- **Built: the files and symbols of each project window** (`ProjectWindow.FilesAndSymbols`):
+- **Built: the files and symbols of each project window** (`ProjectWindow.FilesAndSymbols`), read from the first time
+  something asks what links, which nothing does until the chat links: before then, reading them would cost git's and
+  Rider's time for nothing.
   - **The project's files:** `git ls-files --cached --others --exclude-standard` in the project's folder, which lists
     the tracked files and the new ones git doesn't ignore: 48 ms for this repository, 62 ms for Compze's 2,625 files.
     Read every 5 s, so a file Claude Code just wrote links when it names it. A project that isn't a git repository has
@@ -323,6 +325,41 @@ one thing at a time is slow.
 
 Each as it is found: what the app does, what he asked for and where, and that the app's was built. Kept in
 `cloyd-chat-specification.md`, "Conflicts with Magnus's earlier wishes".
+
+### The chat, as it's built
+
+**First increment, 2026-11-20: the conversation once a turn is done, read only** (`Cloyd.Chat`).
+
+- **A switch at the top of each tab, `Chat` and `Terminal`:** the terminal at first, until the chat can do what Magnus
+  needs, as sending; then the chat, the terminal staying the backup.
+- **Where the conversation comes from:** the hub's `GET /sessions/{sessionId}/conversation/stream`
+  (`TheHub.ConversationAsWritten`), for the session that runs in the tab or ran in it last, along its line, so across a
+  `/clear`. Followed only while the chat is shown, as the hub holds a conversation in memory while a stream follows it.
+- **What it shows** (`ShownInTheChat.AllOf`), as `cloyd-chat-specification.md` has the app show it: Magnus's prompts in
+  bubbles; Claude's markdown, with LiveMarkdown.Avalonia, the spike's; tool calls one after another folded into a grey
+  line that counts them, `Read 2 files, ran 2 commands, 1 failed`, with `+9` for the lines edits added, opening to a
+  row for each, a call by itself as its row; a command's row opening to the command behind `$ ` and its output; a
+  `/compact` before its compaction's line, `Compacted session · saved 81.5K tokens`. Not shown, as in the app: Claude's
+  thinking, interruptions, a background task's notice, Claude Code's own tools for its task list.
+- **Drawn again only where it changed:** each time the hub's stream has caught up, the chat compares what it is to show
+  with what it shows, from the top, and redraws from the first difference: what is added, and nothing after a publish
+  of the hub, which sends the whole conversation again.
+- **A virtualizing list,** so that a conversation of 15,000 messages draws only what is in view. It guesses the length
+  of what it hasn't drawn, and its guesses move the view: so following the end (`FollowingTheEnd`) is told by what
+  Magnus does, the wheel, the keys and the scroll bar, not by where the view is.
+- **The dark theme,** as Cloyd's windows are dark: colours near the app's dark picture.
+- **Specified** on the headless platform with the sandbox hub: the session the app's pictures show
+  (`TheSampleSession`), drawn to `RenderedWindows/the-sample-session.png` to set beside them; a run of calls and a
+  command opened; and a tab switched to the chat of a live session of the stand-in for Claude Code.
+- **Cloyd's own, where the app wasn't seen:** a prompt from another session, a wake-up or a program as a grey line with
+  its first line; a clearing as `Cleared · a new session begins`; an edit's row opening in place to its change line by
+  line, where the app opens a pane at the side.
+- **Not yet as the app:** inline code has no grey ground, and a code block has LiveMarkdown's bar with its language,
+  which the app's hasn't.
+
+**Next increments:** the input box, sending through the hub, and then the chat as each tab's first view; while Claude
+works (the line at the end, the text as it streams, the task list); scrolling's `Scroll to bottom` button; the buttons
+and time under a turn; links in Claude's text, with `POST /files/open`; a permission prompt switching to the terminal.
 
 ## What's still open
 

@@ -4,6 +4,8 @@ using System.Net.Http.Headers;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
 using ClaudeTooling.Hub.LocalApi.Contract;
+using ClaudeTooling.Hub.LocalApi.Contract.Conversations;
+using ClaudeTooling.Hub.LocalApi.Contract.Conversations.Messages;
 using ClaudeTooling.Hub.LocalApi.Contract.HostingSessions;
 using ClaudeTooling.Hub.LocalApi.Contract.RunningSessions;
 using ClaudeTooling.Hub.LocalApi.Contract.TypingIntoRunningSessions;
@@ -128,6 +130,47 @@ sealed partial class TheHub
          await foreach(var sent in ServerSentEvent.ReadFrom(events, cancellation))
             if(sent.Name == RunningSessionsStreamEventNames.RunningSessions)
                yield return [.. JsonSerializer.Deserialize<RunningSessionsAnswer>(sent.Data, LocalApiProtocol.Json)!.RunningSessions.Select(RunningSession.InThe)];
+      }
+   }
+
+   /// <summary>
+   /// The conversation of the line of <paramref name="session"/>: the sessions a <c>/clear</c> ended before it, its own, and
+   /// the session a clear of it began, as far as Claude Code has written it. Each time the hub's
+   /// <c>GET /sessions/{sessionId}/conversation/stream</c> has sent it as written: all of it first, then after each change,
+   /// and all of it again from the next hub when a publish ends the stream, until <paramref name="cancellation"/>.
+   /// </summary>
+   /// <exception cref="RefusedByTheHub">The session has no transcript, and no Claude Code runs it.</exception>
+   public async IAsyncEnumerable<ConversationAnswer> ConversationAsWritten(ClaudeSessionId session, [EnumeratorCancellation] CancellationToken cancellation)
+   {
+      while(!cancellation.IsCancellationRequested)
+      {
+         using var answer = await Send(it => new HttpRequestMessage(HttpMethod.Get, it.AddressOf($"sessions/{session}/conversation/stream")), cancellation, HttpCompletionOption.ResponseHeadersRead);
+         if(answer.StatusCode == HttpStatusCode.ServiceUnavailable) // Asked for while the hub stops, as at a publish.
+         {
+            await Task.Delay(BetweenTries, cancellation);
+            continue;
+         }
+         if(answer.StatusCode == HttpStatusCode.NotFound) throw new RefusedByTheHub((await Read<RefusalAnswer>(answer, cancellation)).Error);
+
+         answer.EnsureSuccessStatusCode();
+         var conversation = new ConversationAsStreamed();
+         using var events = new StreamReader(await answer.Content.ReadAsStreamAsync(cancellation));
+         await foreach(var sent in ServerSentEvent.ReadFrom(events, cancellation))
+            switch(sent.Name)
+            {
+               case ConversationStreamEventNames.Message:
+                  conversation.Add(JsonSerializer.Deserialize<MessageInTheAnswer>(sent.Data, LocalApiProtocol.Json)!);
+                  break;
+               case ConversationStreamEventNames.ToolResult:
+                  conversation.Add(JsonSerializer.Deserialize<ToolResultInTheAnswer>(sent.Data, LocalApiProtocol.Json)!);
+                  break;
+               case ConversationStreamEventNames.Rewind:
+                  conversation.Take(JsonSerializer.Deserialize<RewindInTheStream>(sent.Data, LocalApiProtocol.Json)!);
+                  break;
+               case ConversationStreamEventNames.CaughtUp:
+                  yield return conversation.AsSentSoFar;
+                  break;
+            }
       }
    }
 

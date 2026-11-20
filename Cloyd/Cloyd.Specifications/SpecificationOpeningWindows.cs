@@ -37,7 +37,8 @@ public abstract class SpecificationOpeningWindows : IDisposable
             return onTheUIThread();
          }, CancellationToken.None).GetAwaiter().GetResult();
 
-   static void OnTheUIThread(Action onTheUIThread) => OnTheUIThread(() =>
+   /// <summary>Runs <paramref name="onTheUIThread"/> on the UI thread, once the jobs posted to it before have run.</summary>
+   protected static void OnTheUIThread(Action onTheUIThread) => OnTheUIThread(() =>
    {
       onTheUIThread();
       return true;

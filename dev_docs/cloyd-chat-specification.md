@@ -154,8 +154,11 @@ Picture: `13-scrolled-up-while-writing.png`.
 
 `cloyd-chat-specification/the-sample-session.jsonl` is the session's transcript with its messages only (`user`,
 `assistant` and `system` lines): the API requests, attachments and the rest, which hold the system prompt and Magnus's
-rules, are left out. Its project was a throwaway folder, `sample-shop`: `inventory.py` with a failing test. Drawing this
-transcript in Cloyd and setting it beside the pictures is the comparison.
+rules, are left out. Each entry kept names the nearest kept entry before it as its parent (`parentUuid`,
+`logicalParentUuid`), relinked on 2026-11-20: the hub reads a conversation along that chain, and read only the last
+message while it ran through entries left out. Its project was a throwaway folder, `sample-shop`: `inventory.py` with a
+failing test. Drawing this transcript in Cloyd and setting it beside the pictures is the comparison: Cloyd's
+specifications serve it from their sandbox hub (`TheSampleSession`).
 
 ## Not seen yet
 

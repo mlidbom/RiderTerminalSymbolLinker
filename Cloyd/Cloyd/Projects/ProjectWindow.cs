@@ -77,7 +77,7 @@ sealed class ProjectWindow : Window
    /// <summary>The project whose sessions the window shows.</summary>
    public Project Project { get; }
 
-   /// <summary>The project's files and C# symbols, which the output in its terminals links to: the window keeps them current while it's open.</summary>
+   /// <summary>The project's files and C# symbols, which what its chats show is to link to: the window keeps them current while it's open, from the first time something asks what links.</summary>
    public FilesAndSymbolsOfAProject FilesAndSymbols { get; }
 
    public IReadOnlyList<SessionTab> Tabs => _tabs.Items.OfType<SessionTab>().ToList();
@@ -209,7 +209,7 @@ sealed class ProjectWindow : Window
 
    SessionTab Show(SessionHostOfTheHub host, ClaudeSession? latestSession, string? nameGiven)
    {
-      var tab = new SessionTab(host, latestSession, nameGiven, SizeOfTheTerminals);
+      var tab = new SessionTab(host, latestSession, nameGiven, SizeOfTheTerminals, _hub);
       tab.ClosedByMagnus += it => _ = TellingOfFailure(() => EndTheSessionOf(it));
       tab.EndedByItself += (it, _) => Remove(it);
       _tabs.Items.Add(tab);
@@ -272,9 +272,13 @@ sealed class ProjectWindow : Window
       }
    }
 
-   /// <summary>Reads the project's files again and again until the window closes, so that a file Claude Code just wrote links once it's named.</summary>
+   /// <summary>
+   /// Reads the project's files again and again until the window closes, from the first time something asks what links,
+   /// so that a file Claude Code just wrote links once it's named.
+   /// </summary>
    async Task KeepItsFilesCurrent()
    {
+      await FilesAndSymbols.FirstAskedFor.WaitAsync(_closed.Token).ConfigureAwait(ConfigureAwaitOptions.SuppressThrowing);
       while(!_closed.IsCancellationRequested)
       {
          await TellingOfFailure(() => FilesAndSymbols.ReadTheFiles(_closed.Token));
@@ -283,11 +287,13 @@ sealed class ProjectWindow : Window
    }
 
    /// <summary>
-   /// Gathers the names of the project's C# types and members again and again until the window closes, so that those
-   /// Claude Code adds link once it names them: soon again while Rider doesn't answer.
+   /// Gathers the names of the project's C# types and members again and again until the window closes, from the first time
+   /// something asks what links, so that those Claude Code adds link once it names them: soon again while Rider doesn't
+   /// answer.
    /// </summary>
    async Task KeepItsSymbolsCurrent()
    {
+      await FilesAndSymbols.FirstAskedFor.WaitAsync(_closed.Token).ConfigureAwait(ConfigureAwaitOptions.SuppressThrowing);
       while(!_closed.IsCancellationRequested)
       {
          var riderAnswered = false;
