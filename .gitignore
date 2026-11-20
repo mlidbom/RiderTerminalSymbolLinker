@@ -24,3 +24,8 @@ obj/
 
 # What dotnet test --blame-hang leaves
 TestResults/
+
+# What a spike's runs leave in its folder, as in spikes/CloydSpike on the branch spike/dotnet-cloyd: its throwaway
+# session's folder, and what its probe drew. They stay behind in the working tree when another branch is checked out.
+spikes/*/scratch-session/
+spikes/*/probe-output/
