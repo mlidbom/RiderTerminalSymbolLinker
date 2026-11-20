@@ -21,8 +21,8 @@ under "The tools you develop with are yours, as a product". Today they are:
 - the specifications that check that in the sandbox, `dotnet test tests/RiderTerminalSymbolLinker.Specifications`, in
   seconds once the sandbox runs;
 - `everyday deploy`, the same tool's command that puts the working tree's builds in Magnus's IDEs, which reload them
-  without a restart where they run with `-Didea.auto.reload.plugins=true`, and `everyday reload`, which has them reload
-  the build they have;
+  without a restart where they run with `-Didea.auto.reload.plugins=true`, and Cloyd's in `%LOCALAPPDATA%\Cloyd\bin`,
+  and `everyday reload`, which has them reload the build they have;
 - the CI workflows under `.github/workflows/`;
 - the symbol linker's unit tests under `src/test/`.
 

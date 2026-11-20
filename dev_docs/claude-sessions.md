@@ -1,45 +1,102 @@
 # How Claude Sessions works
 
 Claude Sessions (plugin id `dev.magnus.claudesessions`, Kotlin package `dev.magnus.claudesessions`, Gradle project
-`ClaudeSessions/`) is a tool window whose tabs each run a Claude Code session, and which resumes them when the IDE
-restarts. It runs in any JetBrains IDE: it uses only the platform and the terminal plugin. Magnus asked for it on
-2026-11-17: shutting down 3-8 IDEs with 1-4 Claude sessions each, and starting them all again by hand, was a real pain.
+`ClaudeSessions/`) has Cloyd show each project's Claude Code sessions: as a project opens, it runs `Cloyd.exe --project`,
+and Cloyd, the .NET application beside the IDEs (`cloyd-as-a-dotnet-application.md`), shows the project's window. It
+also has the IDE's local API, through which the Claude tooling sees the IDE's windows and restarts it, and puts each
+project window back on its virtual desktop after a restart. It runs in any JetBrains IDE: it uses only the platform and
+its JNA. Magnus asked for it on 2026-11-17: shutting down 3-8 IDEs with 1-4 Claude sessions each, and starting them all
+again by hand, was a real pain.
+
+**Until 0.2.0, the switch to Cloyd (built 2026-11-20, deployed on Magnus's go),** it was a tool window whose tabs each
+ran a Claude Code session, with a chat and a session history picker. Magnus, 2026-11-20: "once Cloyd in .NET can even
+just show the terminals and nothing else, no UI, get rid of all the UI in java". "Until the switch: the tool window"
+below describes what it did, for porting it to Cloyd, and the traps it found.
 
 It lives in this repository as a project of its own. **Decided, not yet done (Magnus, 2026-11-19):** Claude Sessions and
 the symbol linker become one plugin, a Claude Code enhancement plugin, under the symbol linker's id,
 `dev.magnus.riderterminalsymbollinker`, with a new name, so that the symbol linker's users get it as an update. The
 symbol linking becomes an optional part, in a config file of its own that loads only when the .NET
 Analysis&Refactoring MCP plugin is installed, and the plugin runs in every JetBrains IDE. Its working name is Cloyd (Magnus,
-2026-11-19), which plays on Claude as Royder, the MCP plugin's coming name, plays on Rider. Renaming the GitHub
-repository is still Magnus's to choose. The merge comes after the chat view's first version (below).
+2026-11-19), which plays on Claude as Royder, the MCP plugin's coming name, plays on Rider; the .NET application took
+the name since. Renaming the GitHub repository is still Magnus's to choose.
 
-**The direction since 2026-11-20 (Magnus), nothing built yet:** Cloyd becomes almost all .NET, an Avalonia application
-in a window of its own beside the IDEs, the UI for all of the Claude tooling, and the plugin shrinks to what needs the
-IDE. What this document describes stays until the .NET application does better. See
-`cloyd-as-a-dotnet-application.md`.
+Its packages, below `dev.magnus.claudesessions`, which holds what it tells the user (`ClaudeSessionsNotifications`):
 
-Its packages, below `dev.magnus.claudesessions`, which holds the tool window and its tabs:
-
-- **`claudecode`:** Claude Code seen from outside: its sessions, the folder it keeps them in, the Claude Codes that
-  run, its transcripts, and the command a tab's shell runs it with.
-- **`hub`:** the Claude tooling's hub, as the plugin follows it and types through it: the one place that knows the hub's
-  local API.
-- **`saving`:** saving the tabs, each with its session and its session host, and bringing them back as the IDE starts.
-- **`sessionhosts`:** the session hosts, outside the IDE, that the tabs' shells run in, and the shell and environment
-  the IDE's terminal would give them.
-- **`newsession`:** the + and the popup that names a new session.
-- **`history`:** the session history picker.
-- **`api`:** the local API through which other tools, and other IDEs, show a session's tab, see the IDE's windows, and
-  have it restart.
+- **`cloyd`:** Cloyd as the plugin reaches it: Cloyd's folder, and the command that has it show a project.
+- **`api`:** the local API through which other tools see the IDE's windows, and have it restart.
 - **`windows`:** the IDE's project windows, their native handles and virtual desktops, and putting each back on its
   desktop after a restart.
-- **`chat`:** the chat view: a tab's two cards, the chat and the terminal, the chat itself, and the switch between
-  them. Below it, `chat.transcript`, the pane that shows the conversation; `chat.messagebox`, the box the user writes
-  in; `chat.claudecode`, what the chat needs of the Claude Code behind it, with `chat.claudecode.conversation`, the
-  conversation as the chat shows it; and `chat.saving`, each tab's chat saved as it changes, to come back as it was.
 - **`observation`:** the development observation channel, which only the sandbox IDE runs.
 
-## A tab runs a shell, and Claude Code in it
+## Showing each project in Cloyd
+
+- **`ShowTheProjectInCloyd`,** a project activity, runs `Cloyd.exe --project <the project's folder>` as each project
+  opens (`CloydCommand`), and again as the plugin reloads, which runs the startup again. It logs what came of it to
+  `idea.log`; when Cloyd isn't installed, the command fails, or it doesn't end within 2 minutes, a notification says why.
+- **Where Cloyd is:** `bin\Cloyd.exe` in Cloyd's folder (`CloydsFolder`): `%LOCALAPPDATA%\Cloyd`, or the folder
+  `CLOYD_FOLDER` names, as the sandbox Rider's environment does. `everyday deploy` puts it there.
+- **The command** finds the Cloyd application, or starts it outside the IDE's job, and exits once the project's window
+  shows: in 0.16 s when the application runs, 0.84 s when it starts it. It inherits the IDE's environment, and the
+  application it starts inherits the command's. Its output goes to a file, not a pipe, so that a command that hangs
+  can't hold the plugin past its time.
+- **The window comes in front of the IDE's:** the IDE is in front as the user opens a project, and the command, which it
+  starts, lets the application bring its window there, with Windows' `AllowSetForegroundWindow`.
+- **The sessions the tool window showed run on in their session hosts,** and Cloyd shows them by their labels:
+  the tabs the plugin saved aren't read.
+
+## The local API: the IDE's windows, and restarting the IDE, for another tool
+
+The Claude tooling sees the IDE's windows through it, and restarts the IDE. Until 0.2.0 it also showed a session's
+tab, as clicking a notification of Magnus's session tooling asked, after the tooling had brought the IDE's window
+forward: `POST /sessions/show?session=&process=` and `GET /sessions`, which went with the tabs. A click is to show the
+session in Cloyd next. The contract, agreed with tooling-owner on 2026-11-17 (protocol 1):
+
+- **`LocalApi`,** an application service that the first project's `LocalApiStartup` starts, listens on a free
+  port of the loopback address. **`LocalApiAnnouncement`** names it in
+  `%LOCALAPPDATA%\ClaudeSessions\ides\<the IDE's process id>.json`, `{"protocol": 1, "processId": …, "port": …,
+  "token": …}`, and deletes the file as the API stops.
+- **`GET /windows`** and **`POST /restart`,** for the tooling owner's tool for restarting Rider
+  (`~/.claude/dev_docs/restarting-the-ides.md`), agreed with it on 2026-11-19. `GET /windows`: each project window's
+  folder, title, native handle (`HWND`), and its virtual desktop's GUID. The hub tells whether a Rider window is in
+  front from Windows' foreground window itself (the tooling's fd212d6). `POST /restart` `{"why", "askedBy",
+  "beforeItStartsAgain"}`: 202, then `ApplicationEx.restart(SAVE | EXIT_CONFIRMED, beforeItStartsAgain)`, as
+  `restart(exitConfirmed = true)` does with no command; 409 while a modal dialog is open; one that exits already goes
+  on exiting (`Application.isExitInProgress` is internal API, which the verifier refuses). Rider may still ask on the
+  way, as whether to end running processes.
+- **`beforeItStartsAgain`,** a program and its arguments, for a deploy through the hub's restart of the IDEs (Magnus,
+  2026-11-20: "I greenlight, you install and restart"; agreed with the tooling owner the same day). Run as the
+  platform's updater runs its patch, between the IDE's exit and its start (`RestartRunningACommand`): the IDE starts a
+  helper of its own, `RunsACommandBetweenTheIdesExitAndItsStart`, plain Java on the IDE's runtime, from a copy of its
+  class in the IDE's system folder, outside the plugin whose files the command may replace; then it exits. The helper
+  waits for the IDE's process to end, five minutes at the most, else runs and starts nothing; runs the command, waits
+  for it, and starts the IDE's executable again with no arguments, in the IDE's environment, as the platform's restart
+  does; the IDE reopens its projects. Its log is `claude-sessions-restarts.log` in the IDE's log folder. Not the
+  platform's own restarter, which could run the command (`ApplicationEx.restart(flags, beforeRestart)`, `Restarter`):
+  that's internal API, which the Plugin Verifier refuses. A specification has a command wait three seconds and record
+  that the old process had gone, and finds the IDE started after it ended.
+  The new announcement comes once the first project has opened. Rider restarts its launcher without the arguments it
+  started with (`Restarter.restartOnWindows`), and reopens every solution it had open, each in its window, as "Reopen
+  projects on startup" is on by default: a specification checks it with three.
+- **Each project window goes back to its virtual desktop after every restart** (Magnus: "Every restart please :)"):
+  `RecordTheWindowsDesktopsAsTheIdeExits` records each one's desktop as the IDE exits, and
+  `PutTheWindowBackOnItsDesktop` moves it back once its project has opened and its window shows
+  (`DesktopsThroughARestart`). Through Windows' documented `IVirtualDesktopManager` (`VirtualDesktops`), over JNA's COM,
+  on a thread of its own in the multithreaded apartment: it moves only the calling process's own windows, which the
+  IDE's are, so the plugin does it rather than the hub. A desktop gone since is skipped.
+- **A token, and the `Host`:** a request that changes something, as `POST /restart` does, carries the announcement's
+  token, `Authorization: Bearer <token>`, new at each start of the IDE: 401 without it. What only reads needs none. Every request must name `127.0.0.1:<port>` or `localhost:<port>` as its `Host`, else 403: a web
+  page can't reach the API through a name of its own that resolves to the loopback address.
+- **A file left by a crash** costs the tooling up to its one-second timeout: on Windows, a connection to a loopback
+  port nothing listens on takes about two seconds to be refused.
+
+## Until the switch: the tool window
+
+What follows is Claude Sessions up to 0.1.0, which the switch to Cloyd removed: its tool window, the tabs' terminals
+and session hosts, the chat, saving and bringing back, the session history picker, surviving a reload. Kept for porting
+what it did to Cloyd, and for the traps it found; its code is in git before the switch.
+
+### A tab runs a shell, and Claude Code in it
 
 Each tab of the view (`ClaudeSessionsView`) is a reworked-terminal tab, made with the terminal's public
 `TerminalToolWindowTabsManager.createTabBuilder()`, that shows the user's shell, which runs in a session host outside
@@ -65,7 +122,7 @@ nor restores these tabs: `restoreOnProjectReopen(false)`.
   (`RunningClaudeCodes.inOrBelow`). It goes with the tool window at a reload, and its session, saved, is resumed in a
   new tab's host.
 
-## Starting a new session, named or not
+### Starting a new session, named or not
 
 The **+** in the tool window's title bar (`NewClaudeSessionAction`) opens `NewClaudeSessionPopup` below it: a text field
 for the session's name, as Magnus asked on 2026-11-19. Enter starts the session in a new tab, in the project's folder,
@@ -82,7 +139,7 @@ notification says why.
 The specifications start a session named with each character some shell acts on in each of these four, with Git Bash
 for the POSIX one, and check that the stand-in for Claude Code got the name as it was typed: the plugin and the hub, end to end.
 
-## Which session a tab runs: the hub tells
+### Which session a tab runs: the hub tells
 
 Claude Code records each running session in `sessions/<process id>.json` in its folder (`CLAUDE_CONFIG_DIR`, or
 `~/.claude`): the session id, the folder it runs in, its name and its status. It rewrites the record when `/clear`
@@ -121,7 +178,7 @@ tells of in the tab's session host, by the `sessionHost` of its running session 
 - **The record is undocumented internal state of Claude Code,** which the hub follows as each version writes it. Its
   status, `idle`, `busy`, `waiting` or `shell`, is the chat view's status line, through `TheHubBehindTheChat`.
 
-## Saving and bringing back
+### Saving and bringing back
 
 - **`ClaudeSessionKeeper`** saves the tabs, in their order, each with the session it runs and its session host
   (`SavedTab`), and the selected tab's session (`ClaudeSessionsInTheView`), every two seconds, and once more as the
@@ -142,7 +199,7 @@ tells of in the tab's session host, by the `sessionHost` of its running session 
 - **When the hub can't tell which hosts run,** the saved tabs stay saved for the next start, the keeper doesn't start,
   and a notification says why.
 
-## The session history picker
+### The session history picker
 
 `ResumeClaudeSessionAction` (the history button in the tool window's title bar, and Ctrl+Alt+Shift+Y, free in the
 default keymap, both Visual Studio keymaps and Magnus's own on 2026-11-18) opens `ClaudeSessionHistoryPicker`, a popup
@@ -168,7 +225,7 @@ over `ClaudeSessionHistory`: what Magnus asked for on 2026-11-18, with the chang
   observation channel presses them through the same listeners, as no key event reaches an IDE whose window isn't
   focused. The platform's `ClickListener` counts clicks itself, so a double click is two clicks to it.
 
-## Surviving a reload of the plugin
+### Surviving a reload of the plugin
 
 Unloading the plugin, as for an update, removes its tool window, and with it its tabs' terminals, and so their attach
 clients: the sessions run on in their hosts, as when the IDE exits. `DetachTheTabsAsTheViewGoes` has the keeper save
@@ -194,7 +251,7 @@ and their sessions are resumed in hosts. Not `everyday deploy --into-running-ide
 once, the old build parking its tabs, and the new one resuming their sessions in hosts while the parked tabs still run
 them.
 
-## Whether a session can be ended without losing anything (researched, not built)
+### Whether a session can be ended without losing anything (researched, not built)
 
 For item 27, asking before closing a tab or exiting the IDE when ending a session would lose something. Magnus's IDEs
 never ask themselves (`processCloseConfirmation=TERMINATE`, `confirmExit=false`). tooling-owner read this from Claude
@@ -226,7 +283,7 @@ Code 2.1.327's own code and five transcripts on 2026-11-18. It isn't documented,
     resume lost resident-server's session-only cron job on 2026-11-17. Whether a resume re-arms a /loop wake-up isn't
     known: 2.1.327 has code that rebuilds one from the transcript.
 
-## Talking to the hub through Tessaging (considered, not built)
+### Talking to the hub through Tessaging (considered, not built)
 
 On 2026-11-20 the tooling sessions considered moving the hub's local APIs onto Tessaging, the type-routed messaging of
 Compze. Magnus: "this is all design and considering so far. Do not start doing any significant porting effort." The
@@ -261,7 +318,7 @@ adds beyond that.
 reaches each IDE through the plugin's local API. What survives of this, and what doesn't, is in
 `cloyd-as-a-dotnet-application.md`, "What it means for the Tessaging work".
 
-## The chat view
+### The chat view
 
 Magnus's go, 2026-11-19, for a first version to test. A tab shows its session as a chat of the plugin's own: the
 conversation in an editor pane, and an input box that is an editor too, with Claude Code's own UI, the TUI, hidden in
@@ -271,7 +328,7 @@ transcript sucks ... in both the search provided by rider and the search provide
 what the chat doesn't do: "I would have access to the full / command stuff etc, but all the every day back and forth
 talking would happen in a UI that does not make me want to scream".
 
-### Who provides what: the chat is the plugin's, Claude Code the hub's
+#### Who provides what: the chat is the plugin's, Claude Code the hub's
 
 **Agreed on 2026-11-19 with the tooling owner, at Magnus's request,** in `~/.claude/dev_docs/the-claude-tooling-bundle.md`:
 the Claude tooling is one bundle, and each concept has one home in it. ClaudeTooling's resident server, the hub, owns
@@ -304,7 +361,7 @@ The sandbox IDE's tabs get the stand-in `StandInBehindTheChat` instead, which th
 observation channel, unless a story asks for the hub (`POST /chats/behind?by=hub`, `HaveTheHubBehindTheChats`). A
 plain terminal tab, with no session host, gets none, and shows its terminal alone.
 
-### What the first version does, as built
+#### What the first version does, as built
 
 - **Two cards in each tab, each under a tab of its own, "Chat" and "Terminal",** in a `JBTabbedPane`: the chat and the
   terminal (`ChatAndTerminalCards`), the tab's content in place of the terminal's component. A tab gets them as the view
@@ -462,7 +519,7 @@ plain terminal tab, with no session host, gets none, and shows its terminal alon
     say it wasn't sent.
   - **The transcript** scrolls to where it was once it shows the row, with what the user opened open.
 
-### What's left for the first version
+#### What's left for the first version
 
 The hub's side was built a step at a time, in the bundle's order of building, and the plugin follows each since
 2026-11-19: the records stream (above, "Which session a tab runs"); typing, the shell included; and the conversation of
@@ -476,7 +533,7 @@ tooling owner's stand-in for Claude Code, which the sandbox runs; the others kee
 - **Not tried with the real Claude Code:** the chat with the hub behind it; the real TUI drawn through hiding and showing
   its card (only the stand-in's sizes were seen).
 
-## The chat view: what the spikes found
+### The chat view: what the spikes found
 
 For the chat view Magnus asked about on 2026-11-19: the session's transcript, and an input box, of the plugin's own, with
 Claude Code's own UI hidden in the same tab. Two spikes in the sandbox that day, with Rider 2026.3 and Claude Code
@@ -529,7 +586,7 @@ component, the chat card shown.
 - **The real Claude Code ran with `--setting-sources project,local`,** and `--settings` with only `"tui": "fullscreen"`,
   so that none of Magnus's hooks ran, such as the notification at a turn's end.
 
-## Sessions that outlive the IDE
+### Sessions that outlive the IDE
 
 Magnus's go, 2026-11-19, on the proposal in `~/.claude/dev_docs/sessions-that-outlive-the-ide.md`: "Do it. I'm dying for
 the new workflow where I don't have to sit around trying to wait for all agents to stop working so I can restart
@@ -585,64 +642,7 @@ mode, input `0x208`):
   multi-line paste into the TUI would be sent at its first line. So the host must set them again for each new attach
   client, before the repaint: told to survive-IDE-restart.
 
-## The local API: showing a session's tab, and restarting the IDE, for another tool
-
-Clicking the notifications of Magnus's session tooling (tooling-owner's, in `~/.claude`) brings forward the IDE window
-of the session, and then asks Claude Sessions in that IDE to show the session's tab. The contract, agreed with
-tooling-owner on 2026-11-17 (protocol 1):
-
-- **`LocalApi`,** an application service that the first project's `ClaudeSessionsStartup` starts, listens on a free
-  port of the loopback address. **`LocalApiAnnouncement`** names it in
-  `%LOCALAPPDATA%\ClaudeSessions\ides\<the IDE's process id>.json`, `{"protocol": 1, "processId": …, "port": …,
-  "token": …}`, and deletes the file as the API stops. The tooling knows the IDE's process: the one that owns the window it brought
-  forward.
-- **`POST /sessions/show?session=<id>&process=<Claude Code's process id>`** selects the tab in which that Claude Code
-  runs, or else the one that runs the session or ran it last, shows the tool window, and brings the project's window in
-  front of the IDE's others: 200 `{"shown": true}`, or 404 `{"shown": false}`. Windows lets the window come forward
-  when the IDE is the active application, or the active one allowed it, and otherwise flashes its taskbar button.
-  `process` finds a tab after `/clear` gave it a new session, as the notification names the old one; `session` finds a
-  tab whose Claude Code was resumed in a new process.
-- **`GET /sessions`** lists the sessions that run in the IDE's tabs, `{"sessions": [{"session": <id>, "process":
-  <Claude Code's process id>}]}`: the session history picker of another IDE asks (2026-11-18).
-- **The tooling** brings the window forward itself, since Windows lets the process the user clicked do that, and not
-  the IDE. It asks the window's own IDE first, then every other announced one, a second each, and logs the answer to
-  `~/.claude/notifying-magnus.log`.
-- **`GET /windows`** and **`POST /restart`,** for the tooling owner's tool for restarting Rider
-  (`~/.claude/dev_docs/restarting-the-ides.md`), agreed with it on 2026-11-19. `GET /windows`: each project window's
-  folder, title, native handle (`HWND`), and its virtual desktop's GUID. The hub tells whether a Rider window is in
-  front from Windows' foreground window itself (the tooling's fd212d6). `POST /restart` `{"why", "askedBy",
-  "beforeItStartsAgain"}`: 202, then `ApplicationEx.restart(SAVE | EXIT_CONFIRMED, beforeItStartsAgain)`, as
-  `restart(exitConfirmed = true)` does with no command; 409 while a modal dialog is open; one that exits already goes
-  on exiting (`Application.isExitInProgress` is internal API, which the verifier refuses). Rider may still ask on the
-  way, as whether to end running processes.
-- **`beforeItStartsAgain`,** a program and its arguments, for a deploy through the hub's restart of the IDEs (Magnus,
-  2026-11-20: "I greenlight, you install and restart"; agreed with the tooling owner the same day). Run as the
-  platform's updater runs its patch, between the IDE's exit and its start (`RestartRunningACommand`): the IDE starts a
-  helper of its own, `RunsACommandBetweenTheIdesExitAndItsStart`, plain Java on the IDE's runtime, from a copy of its
-  class in the IDE's system folder, outside the plugin whose files the command may replace; then it exits. The helper
-  waits for the IDE's process to end, five minutes at the most, else runs and starts nothing; runs the command, waits
-  for it, and starts the IDE's executable again with no arguments, in the IDE's environment, as the platform's restart
-  does; the IDE reopens its projects. Its log is `claude-sessions-restarts.log` in the IDE's log folder. Not the
-  platform's own restarter, which could run the command (`ApplicationEx.restart(flags, beforeRestart)`, `Restarter`):
-  that's internal API, which the Plugin Verifier refuses. A specification has a command wait three seconds and record
-  that the old process had gone, and finds the IDE started after it ended.
-  The new announcement comes once the first project has opened. Rider restarts its launcher without the arguments it
-  started with (`Restarter.restartOnWindows`), and reopens every solution it had open, each in its window, as "Reopen
-  projects on startup" is on by default: a specification checks it with three.
-- **Each project window goes back to its virtual desktop after every restart** (Magnus: "Every restart please :)"):
-  `RecordTheWindowsDesktopsAsTheIdeExits` records each one's desktop as the IDE exits, and
-  `PutTheWindowBackOnItsDesktop` moves it back once its project has opened and its window shows
-  (`DesktopsThroughARestart`). Through Windows' documented `IVirtualDesktopManager` (`VirtualDesktops`), over JNA's COM,
-  on a thread of its own in the multithreaded apartment: it moves only the calling process's own windows, which the
-  IDE's are, so the plugin does it rather than the hub. A desktop gone since is skipped.
-- **A token, and the `Host`:** a request that changes something, as `POST /restart` does, carries the announcement's
-  token, `Authorization: Bearer <token>`, new at each start of the IDE: 401 without it. Showing a tab and what only
-  reads need none. Every request must name `127.0.0.1:<port>` or `localhost:<port>` as its `Host`, else 403: a web
-  page can't reach the API through a name of its own that resolves to the loopback address.
-- **A file left by a crash** costs a click up to the tooling's one-second timeout: on Windows, a connection to a loopback
-  port nothing listens on takes about two seconds to be refused.
-
-## The terminal API, and its traps
+### The terminal API, and its traps
 
 - **The reworked terminal's API is experimental** as a whole since 2025.3 (the SDK's "Embedded Terminal" page), so
   `verifyPlugin` lets experimental-API findings through, and fails on every other kind.

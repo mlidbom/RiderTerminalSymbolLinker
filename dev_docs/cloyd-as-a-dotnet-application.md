@@ -2,8 +2,9 @@
 
 ## Status
 
-**Magnus's direction, 2026-11-20. The spike is run, and step one is being built** (see "Step one, as it's built").
-Until the switch at its end, Claude Sessions stays the Kotlin plugin that `claude-sessions.md` describes.
+**Magnus's direction, 2026-11-20. The spike is run, and step one is built** (see "Step one, as it's built"): its switch
+waits for Magnus's go to deploy. Until then his IDEs run Claude Sessions 0.1.0, the Kotlin plugin with its tool window,
+as `claude-sessions.md` describes it under "Until the switch".
 
 - **Agreed (Magnus, 2026-11-20):**
   - the direction below, and the calls under "How it's to be built";
@@ -113,8 +114,26 @@ Claude's calls (.NET-cloyd, the session in this repository), which Magnus OK'd o
 
 ## Step one, as it's built
 
-**Built (3cbb526, 73cd255, 84b7525):**
+**Built (3cbb526, 73cd255, 84b7525, 2496008):**
 
+- **The switch, Claude Sessions 0.2.0, not deployed yet:**
+  - **The plugin has no UI:** as a project opens, it runs `Cloyd.exe --project <the project's folder>` from `bin` in
+    Cloyd's folder, and a notification says why when Cloyd isn't installed or doesn't show the window
+    (`claude-sessions.md`, "Showing each project in Cloyd"). It keeps the local API's `GET /windows` and
+    `POST /restart`, and puts the IDE's windows back on their virtual desktops after a restart. `GET /sessions` and
+    `POST /sessions/show` went with the tabs.
+  - **The window comes in front of the IDE's:** the command lets the application bring it there (`TheForeground`,
+    Windows' `AllowSetForegroundWindow`), and Avalonia's `Show` and `Activate` call `SetForegroundWindow`. Not specified:
+    Windows lets a process pass the right on only while it may take the foreground itself, as the IDE in front and what
+    it starts may, and a specification that took the foreground would take it from Magnus.
+  - **Every `everyday deploy` puts Cloyd in first:** published in Release into `%LOCALAPPDATA%\Cloyd\bin`, moving the
+    files in use aside. An application that runs runs on with the build it has until its last window closes.
+  - **Specified in the sandbox Rider,** which has a Cloyd of its own (`development-environment.md`, "The sandbox
+    Rider"): Claude Sessions, starting with a project open, has Cloyd start and show the project's window; Cloyd's
+    application runs on through an IDE restart, as the same process; three solutions opening each show in Cloyd.
+  - **Not seen in the sandbox: breaking away from the IDE's job.** The sandbox Rider runs in no job, as the tools start
+    it, where Magnus's Rider and IntelliJ IDEA run in one, as explorer starts them (2026-11-20). Cloyd's own
+    specification of a job that ends everything in it as it closes covers the breakaway.
 - **One Cloyd application, with every project's window** (`Cloyd.LocalApi`):
   - **`Cloyd.exe --project <folder>` is a command:** it hands the project to the Cloyd application, and exits once the
     project's window shows, 0.16 s when the application runs, 0.84 s when it starts it. Opening a project's window
@@ -163,14 +182,11 @@ Claude's calls (.NET-cloyd, the session in this repository), which Magnus OK'd o
 
 **Next, in this order:**
 
-1. **The switch:** the plugin loses its tool window, chat and history picker, and runs `Cloyd.exe --project` as the
-   project opens. It keeps the local API's `GET /windows` and `POST /restart`, and the symbol linker. Deployed with
-   Magnus's go, as it changes how every session of his is shown. The plugin's tabs saved before the switch need no
-   reading: their hosts run on, and Cloyd shows them by their labels.
-   - **To check then, in the sandbox Rider:** that the application it starts runs in no job.
-   - **Bringing the window forward over the IDE:** Windows lets the process the IDE started bring a window forward, and
-     not the application. So the command is to let the application do it (`AllowSetForegroundWindow`) before it
-     hands the project over.
+1. **Deploying the switch, on Magnus's go,** as it changes how every session of his is shown:
+   `everyday deploy --restarting-the-ides`, as the plugin's registrations change. The hub restarts his IDEs, and each
+   comes back with Claude Sessions 0.2.0, which has Cloyd show each project. His sessions run on in their hosts, and
+   Cloyd shows them by their labels: the tabs the plugin saved need no reading. Then his Cloyd application's process
+   tells whether it broke away from the IDE's job.
 2. **A notification's click shows the session in Cloyd:** the hub's side is the tooling owner's.
 
 Then clickable file paths and C# symbols in Cloyd's terminal.

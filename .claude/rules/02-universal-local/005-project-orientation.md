@@ -5,21 +5,21 @@ Two JetBrains plugins, in Kotlin, each a Gradle project of its own:
 - **The .NET Terminal Symbol Linker,** the root project, under `src/main/kotlin/dev/magnus/csl`: a Rider plugin that
   makes .NET symbol names and file paths in Rider's terminal output clickable. It gets C# symbols from the .NET
   Analysis&Refactoring MCP, the plugin it depends on (`C:\Dev\resharper-mcp`, whose session is extend-mcp).
-- **Claude Sessions,** `ClaudeSessions/`, under `src/main/kotlin/dev/magnus/claudesessions`: a tool window, in any
-  JetBrains IDE, whose tabs each run a Claude Code session, and which resumes them when the IDE restarts. A project of
-  its own so that it can move to a repository of its own: keep what's its own inside its folder.
+- **Claude Sessions,** `ClaudeSessions/`, under `src/main/kotlin/dev/magnus/claudesessions`: in any JetBrains IDE, has
+  Cloyd show each project's Claude Code sessions as the project opens, and has the IDE's local API, through which the
+  Claude tooling restarts it. Its tool window, chat and history picker went with the switch to Cloyd, 0.2.0. A project
+  of its own so that it can move to a repository of its own: keep what's its own inside its folder.
 
-And **Cloyd,** `Cloyd/Cloyd.slnx`: a .NET application in Avalonia, a window per project beside its IDE, which is to take
-over Claude Sessions' UI. Its first step shows the sessions' terminals alone; then all of the plugin's UI goes. Rider
-holds its solution, for the `jetbrains-rider` and `dotnet-analysis-and-refactoring` MCPs; IntelliJ IDEA holds the
-plugins', for `idea`.
+And **Cloyd,** `Cloyd/Cloyd.slnx`: a .NET application in Avalonia, a window per project beside its IDE, which shows the
+sessions: their terminals, for now. Rider holds its solution, for the `jetbrains-rider` and
+`dotnet-analysis-and-refactoring` MCPs; IntelliJ IDEA holds the plugins', for `idea`.
 
 The documents:
 
 - **`dev_docs/architecture.md`:** how the symbol linker links and resolves, where the symbols come from, and the MCP
   tools' and plugin.xml's traps. Read it before changing the symbol linker's code.
-- **`dev_docs/claude-sessions.md`:** how Claude Sessions knows, saves and resumes the sessions, and the terminal API's
-  traps. Read it before changing Claude Sessions' code.
+- **`dev_docs/claude-sessions.md`:** how Claude Sessions has Cloyd show the projects, and its local API; and what its
+  tool window did until the switch, for the port to Cloyd. Read it before changing Claude Sessions' code.
 - **`dev_docs/cloyd-as-a-dotnet-application.md`:** Magnus's direction since 2026-11-20, its spike's findings, and step one as it's built: Cloyd as a
   .NET application in Avalonia, beside the IDEs, with the plugin shrunk to what needs the IDE. Read it before new work on
   either plugin.

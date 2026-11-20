@@ -1,8 +1,8 @@
 # The development environment
 
 What the plugins are built, checked and deployed with: the symbol linker, and Claude Sessions
-([how it works](claude-sessions.md)). The commands are in
-`dotnet run --project tools/RiderTerminalSymbolLinker.DevelopmentTools`, which lists them.
+([how it works](claude-sessions.md)), with the Cloyd Claude Sessions runs ([Cloyd](cloyd-as-a-dotnet-application.md)).
+The commands are in `dotnet run --project tools/RiderTerminalSymbolLinker.DevelopmentTools`, which lists them.
 
 ## Building
 
@@ -51,6 +51,16 @@ platform's and the terminal's, alike in every IDE.
   and description, which the changelog edits).
   Once, right after the sandbox started, a replaced jar wasn't noticed, nor any change after it, until a restart
   (2026-11-17): not seen since, and not understood.
+- **A Cloyd of its own:** `sandbox install` publishes this working tree's Cloyd (`CloydBuild`, `Cloyd/Cloyd` in Release)
+  into `cloyd\bin` in the sandbox's folder (`InstalledCloyd`), and `CLOYD_FOLDER` names that folder in the sandbox
+  Rider's environment: so Claude Sessions there runs the sandbox's `Cloyd.exe --project` as a project opens, and the
+  application it starts serves the sandbox's folder, with the sandbox's hub, apart from Magnus's Cloyd. A new build of
+  Cloyd ends the application that runs the old one, and has Claude Sessions show the projects again, through a reload of
+  the plugin, which runs its startup again. The application outlives the sandbox Rider, as Magnus's outlives his IDEs;
+  `sandbox stop`, and the end of a specification run that started the sandbox, close its windows. Its windows go where
+  the sandbox Rider's go, after opening on the virtual desktop that's shown, as Rider's do. `sandbox cloyd` tells what
+  it shows. The sandbox Rider runs in no job, as the tools start it, where Magnus's IDEs run in the one explorer starts
+  them in (2026-11-20): Cloyd's breaking away from an IDE's job is specified in Cloyd's own specifications.
 - **JVM options of its own:** `rider64.exe.vmoptions` in the sandbox's folder, which `RIDER_VM_OPTIONS` names, holds
   `-Xmx2048m`, the installation's default heap. Without it, Rider's launcher reads the everyday Riders'
   `%APPDATA%\JetBrains\Rider2026.3\rider64.exe.vmoptions` wherever `idea.config.path` points, and the sandbox ran with
@@ -67,15 +77,17 @@ platform's and the terminal's, alike in every IDE.
   transcript. So the sandbox starts without the `CLAUDE*` variables that aren't set for the user or the machine.
 - **A stand-in for Claude Code:** the tooling owner's, which the hub's own specifications run too, published as
   `~/.claude/bin/stand-in-for-claude-code` (its source in `~/.claude/src/StandInForClaudeCode`), is copied with the
-  sandbox's hub, and first on the sandbox's `PATH`: see the sandbox's hub below. It has a `CLAUDE_CONFIG_DIR` of its
-  own, the Claude Code folder the sandbox's hub serves, records its
+  sandbox's hub, and first on the sandbox Rider's `PATH`: see the sandbox's hub below. It has a `CLAUDE_CONFIG_DIR` of
+  its own, the Claude Code folder the sandbox's hub serves, records its
   session and keeps its transcript where Claude Code does, and understands `--name`, `--resume`, `/clear`, `/rename`
-  and `/exit`. It draws an input box, which takes keys as Claude Code's does, and which the hub types the chat's
-  messages into, and answers each prompt with `Heard: <the prompt>`; `Be busy for <n> seconds` keeps it busy. Above
+  and `/exit`. It draws an input box, which takes keys as Claude Code's does, and which the hub types into, and answers
+  each prompt with `Heard: <the prompt>`; `Be busy for <n> seconds` keeps it busy. Above
   the box it says which session it runs, each prompt as `> <the prompt>`, and the size of its terminal as it starts and
-  each time it changes, the size Claude Code would draw itself at. So Claude Sessions' specifications run in seconds,
-  cost nothing, and leave nothing in Magnus's `~/.claude`. Until 2026-11-19 the sandbox ran a fake of its own,
-  `tools/FakeClaudeCode`, with no input box.
+  each time it changes, the size Claude Code would draw itself at. So specifications run in seconds,
+  cost nothing, and leave nothing in Magnus's `~/.claude`. Cloyd starts its sessions' shells in an environment of
+  their own, which hasn't the stand-in on its `PATH` until the hub puts it there (the tooling owner, 2026-11-20): a
+  session started in the sandbox's Cloyd would run the real Claude Code meanwhile. Until 2026-11-19 the sandbox ran a
+  fake of its own, `tools/FakeClaudeCode`, with no input box.
 - **No MCP Server banner above a terminal tab:** the MCP Server plugin's banner, which asks to enable the IDE's MCP
   server when `claude` starts in a tab, is dismissed in the sandbox's settings (`SandboxRiderSettings`), as Magnus's
   Riders, with the server enabled, don't show it. It takes three rows from the tab without a resize of the shell, so
@@ -94,27 +106,21 @@ reload of the plugin, whose unloading stops the server on the EDT.
   the plugin's filters make in a line, and what a click does: which file opened, where the caret and selection are, or
   which rows a picker shows. The links report what a click did through `LinkClickOutcomes`, which nothing listens to
   outside the sandbox. The `sandbox state|links|click|picker` commands call it.
-- **Claude Sessions',** `dev.magnus.claudesessions.observation.ObservationChannel` on 23872, tells the view's tabs, the
-  session host, shell and session each runs, and the saved tabs; it starts sessions, drives the New Claude Session popup
-  and the session history picker, chooses the shell the terminals run, types into a tab, shows what a tab's terminal
-  shows, and closes tabs, as their close button does, which ends their sessions. The `sandbox sessions` commands call
-  it. For a tab's chat, it tells the transcript's rows, its links and its find bar, gives the chat a conversation
-  through the stand-in, opens rows, seeks text, and renders the transcript into a PNG: `sandbox chat <tab>`,
-  `sandbox chat give <tab> <conversation.json>` and `sandbox chat picture <tab>`, for an agent to see how it looks.
-  The picture renders the transcript in a Compose scene of its own, scrolled as it is: the sandbox's window is on a
-  virtual desktop of its own, where Compose draws nothing, so painting the panel gave an empty picture. What is under
-  the transcript, the input box with its thumbnails and the lines over and under it, is Swing, which paints there:
-  `sandbox chat picture-of-the-box <tab>` paints it as it is laid out, and `sandbox chat status <tab> <status>`,
-  `sandbox chat shows <tab> <session.json>` (Claude Code's status line and turn under way, as the hub's running
-  session has them), `sandbox chat type <tab> <text>` and `sandbox chat paste-image <tab>` set it up for the picture.
+- **Claude Sessions',** `dev.magnus.claudesessions.observation.ObservationChannel` on 23872, tells when its build
+  started and the projects open, and has the IDE look at its plugins folder, for a reload. What the plugin has Cloyd
+  show, the tools read from the sandbox's Cloyd's own local API: `sandbox cloyd`. Until 0.2.0 it drove the tool window,
+  its tabs, the chat, the New Claude Session popup and the session history picker, through `sandbox sessions` and
+  `sandbox chat` commands, which went with them. Its chat's pictures rendered the transcript in a Compose scene of its
+  own: the sandbox's window is on a virtual desktop of its own, where Compose draws nothing, so painting the panel gave
+  an empty picture.
 
 ## The specifications
 
 `dotnet test tests/RiderTerminalSymbolLinker.Specifications` checks what the symbol linker links and what a click does,
-in the sandbox, against the fixture solution, and, in `ClaudeSessions/`, what Claude Sessions does with the stand-in for
-Claude Code: a new session, `/clear`, an IDE restart, with the sessions running on in their session hosts or, as after a
-reboot, without them, a plugin reload, closing a tab, and Claude Code exiting. Each story starts with no session
-hosts. A run starts a stopped sandbox, in about half a minute, and stops it again at its
+in the sandbox, against the fixture solution, and, in `ClaudeSessions/`, what Claude Sessions does: has the sandbox's
+Cloyd show each project's window as it opens, and lists the IDE's windows and restarts it through its local API, Cloyd's
+application running on through the restart (`ClaudeSessionsInTheSandbox`). Each story starts with the fixture solution
+open, and Cloyd showing it. A run starts a stopped sandbox, in about half a minute, and stops it again at its
 end: the sandbox holds about 4.6 GB of Magnus's memory, and he wants it off when it isn't in use (2026-11-17). A
 sandbox that `sandbox start` started is left running, and gets the working tree's build reloaded, so a run takes
 seconds: start it so for a stretch of work, and `sandbox stop` it when the work is done. Every click starts with no
@@ -137,42 +143,39 @@ re-highlights old output.
 
 ## The sandbox's Claude Code, git and local API
 
-- **The sandbox's hub** (`SandboxHub`), which Claude Sessions there follows for the Claude Codes that run, and which
-  starts the session hosts its tabs' sessions run in: the tooling's own sandbox hub, which
+- **The sandbox's hub** (`SandboxHub`), which the sandbox's Cloyd follows for the Claude Codes that run, and which
+  starts the session hosts its sessions run in: the tooling's own sandbox hub, which
   `~/.claude/bin/ClaudeTooling.exe hub sandbox start <folder>` runs in `hub` in the sandbox's folder, from a copy of
   the published build with its stand-in for Claude Code, as the hub's contract has it in "A sandbox's hub". The
   command prints where the hub's parts are, the contract's `SandboxHubStarted`, which the tools compile in: its Claude
   Code folder, its announcement, its log, the stand-in's folder, and the three variables that name them, which the
-  sandbox Rider gets too. The tools put the stand-in's folder first on the sandbox Rider's `PATH` themselves, as the
+  sandbox Rider gets too, and through it its Cloyd. The tools put the stand-in's folder first on the sandbox Rider's `PATH` themselves, as the
   contract asks of a client. For its Rider restart, `CLAUDE_SESSIONS_LOCAL_API_FOLDER` names the sandbox Rider's
   announcements, the only IDEs it restarts, and `DOTNET_ANALYSIS_AND_REFACTORING_MCP_PORT` the sandbox's Royder: the
   command starts the hub in the tools' environment, which has both. A hub that runs with other values of the variables
   it serves by is ended and started anew by the command. It's run as the sandbox starts, before each install into a
   running one, taking the published build anew when there is a newer one, and once in any tools process that needs a
-  part of it. It stops 5 minutes after the sandbox Rider's stream of it closes; `hub sandbox stop` ends it at once,
+  part of it. It stops 5 minutes after the last stream of it closes; `hub sandbox stop` ends it at once,
   with its session hosts and stand-ins. `sandbox status` says where it announces itself. Until 2026-11-20 the tools
   copied and started the hub themselves. `When_the_hub_restarts_rider` has it restart the sandbox
   Rider through `POST /rider-restart`, with `askedByMagnus`, so it shows Magnus no prompt: an agent's
   `ClaudeTooling.exe rider restart` shows him one while a Rider's window is Windows' foreground window, as the sandbox
   Rider's may be once it has started, or his own. Its steps are in `rider-restarts.log` in the sandbox's
   Claude Code folder.
-- **The sandbox's session hosts outlive it,** as Magnus's do his IDEs, their shells in the fixture solution's copy:
+- **The sandbox's session hosts outlive it and its Cloyd,** as Magnus's do his IDEs, their shells in the fixture
+  solution's copy:
   `sandbox stop`, and the end of a specification run that started the sandbox, end them with the hub, through
   `hub sandbox stop` (`SandboxRider.StopAndEndItsSessions`), and a start that copies the fixture solution afresh,
   which their shells would hold, ends them through the hub's local API. Their log is `session-hosts.log` in the sandbox's Claude Code folder.
 - **The stand-in's record** says `idle` or `busy`, with the time, and `interactive`: the hub leaves out a record with no
   status. It has `procStart` too, the process's creation time as a Windows FILETIME, exact to the 100 nanoseconds as
   Claude Code writes it, which the hub checks against the running process from its step 2 on: a mismatch there drops
-  the sandbox's records, and the specifications fail. The specifications wait for the hub to have told the view of a Claude Code (`RunningClaudeCodes`), which
-  takes about a tenth of a second after it writes its record.
+  the sandbox's records. The hub tells of a Claude Code about a tenth of a second after it writes its record.
 - **The stand-in** writes its transcripts in Claude Code's format, the entries Claude Sessions and the hub read: a
   `user` entry with its folder, Claude's reply and a `last-prompt` for each prompt, an `ai-title` after the first, and
   a `custom-title` for `/rename <name>`, and for `--name <name>` as it starts. `--resume` finds the transcript in any
   project's folder, as Claude Code does. The sandbox's hub copies a newly published stand-in when it next runs, moving
   the files in use aside, so a running stand-in runs on.
-- **Each story starts with no history, and in PowerShell 7:** `TheClaudeSessionsView` deletes the sandbox's
-  transcripts, and has the terminals run `pwsh.exe`, Magnus's shell, as a story may have chosen another. A story writes the
-  transcripts it needs with `SessionTranscript`, dated as it likes.
 - **`GIT_CEILING_DIRECTORIES` is the sandbox's folder:** the sandbox is in Magnus's home folder, a git repository, which
   git would otherwise take the fixture solution for part of. A story that needs git makes the solution a repository of
   its own, and deletes it after.
@@ -184,8 +187,8 @@ re-highlights old output.
   `POST /restart`, to the process whose local API announces itself next.
 - **A story can open more solutions:** `SandboxRider.AnotherCopyOfTheFixtureSolution` copies the fixture solution into
   a folder of its own, and `OpenAlso` hands it to the running sandbox, which opens it in a window of its own
-  (`confirmOpenNewProject2` is "new window" in its settings). Stop the sandbox before deleting the copies, or it opens
-  them again at its next start.
+  (`confirmOpenNewProject2` is "new window" in its settings), and Cloyd shows it too. Stop the sandbox, and its Cloyd's
+  application, before deleting the copies, or the sandbox opens them again at its next start.
 
 ## Deploying to Magnus's IDEs
 
@@ -196,6 +199,11 @@ one's folder under `%APPDATA%\JetBrains` (Rider since 2026-11-17, IDEA and PyCha
 each reloads a plugin without a restart when it next looks at its plugins folder, expected when he switches to its
 window. The deploy says for each IDE whether it does, or needs a restart: a plugin new to an IDE always does.
 
+**Every deploy puts the working tree's Cloyd in first,** which Claude Sessions runs from 0.2.0: published in Release
+into `%LOCALAPPDATA%\Cloyd\bin` (`InstalledCloyd.Everyday`), moving the files a running Cloyd application maps aside, as
+for a plugin's jar. The application that runs runs on with the build it has until its last window closes; the next
+project to open then starts the new one. `--dry-run` says which, and changes nothing.
+
 **A build that needs a restart isn't put into a running IDE that reloads,** and the deploy says `DIDN'T DEPLOY`, and
 `--dry-run` says `CLOSE <IDE> FIRST`. Such a build adds or removes a file, or changes what its plugin.xml registers, and
 the IDE reloads it as it does any changed jar, at once, but keeps the registrations it read as it started. On 2026-11-19
@@ -205,9 +213,7 @@ parked in the Terminal tool window. A build whose plugin.xml was again what they
 reload. Whether an IDE runs is told by the process its system folder's `.pid` names, such as
 `%LOCALAPPDATA%\JetBrains\Rider2026.3\.pid`, which the IDE leaves behind when it exits. `everyday deploy
 --into-running-ides` puts such a build into a running IDE all the same, for when Magnus restarts it right after: the
-plugin is broken in it until he does, and Claude Sessions brings back the tabs it saved. Not for the first build with
-session hosts: the running IDE's old build parks its tabs as it unloads, and the new one, finding no host for them,
-resumes their sessions in new ones while the parked tabs still run them. Close the IDE first.
+plugin is broken in it until he does.
 
 An agent runs in one of those IDEs, and ends with it, so it can't run such a deploy itself: `everyday deploy
 --once-the-ides-close` says what the deploy would do, and has it run once Magnus has closed his IDEs
@@ -234,7 +240,7 @@ contract is its "Restarting the IDEs"; `When_the_hub_restarts_the_ide_for_a_depl
 Rider through the sandbox's hub, with a command that records that it ran between the exit and the start.
 
 **`everyday reload <plugin> [<IDE>]` reloads the build an IDE has,** to see in Magnus's own IDEs what a reload does,
-such as whether his tabs come through it. It gives the plugin's jars the time of now, as `sandbox reload` does in the
+such as whether what it shows comes through it. It gives the plugin's jars the time of now, as `sandbox reload` does in the
 sandbox, which the IDE takes for a new build. On 2026-11-18 his Rider reloaded within 13 seconds, both times. The next
 `everyday deploy` puts the build's own times back, and so reloads the plugin once more, even if the build is the same.
 
