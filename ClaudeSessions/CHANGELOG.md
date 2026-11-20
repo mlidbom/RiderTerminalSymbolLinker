@@ -21,9 +21,11 @@ All notable changes to Claude Sessions are documented here. The format follows
   on, mid-turn included, and when the project opens again every tab comes back as it was, in the same order, showing
   its session as it is now. Closing a tab ends its session.
 - **Each tab shows its session as a chat.** In place of Claude Code's own UI, a tab shows the conversation rendered as
-  the desktop app renders it, in the IDE's theme, and an input box that is an editor. What you said shows shaded, as
-  you wrote it, and a prompt from another session, a background task or a scheduled wake-up under where it came from;
-  what Claude said shows as rendered markdown, with headings, lists, tables, code and links, and its thinking dimmed.
+  the desktop app renders it, in the IDE's theme, and an input box that is an editor, one line tall until you write
+  more, growing up to two fifths of the chat. What you said shows shaded, at the right, as you wrote it; a message from
+  another session, a background task's notice or a scheduled wake-up is one line, which says where it came from and
+  what it's about, and opens to the whole of it. What Claude said shows as rendered markdown, with headings a little
+  larger than the text, lists, tables, code and links, and its thinking dimmed.
   Each tool call is one line, which opens to its input and result, and tool calls Claude made one after the other are
   one line that counts them, such as "Ran 2 commands, read 1 file", which opens to theirs; a failed call says so in red.
   File paths and symbols are links, as in the terminal. Find works in it with the IDE's Find shortcuts, such as Ctrl+F

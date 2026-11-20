@@ -2,6 +2,7 @@ package dev.magnus.claudesessions.chat.transcript
 
 import dev.magnus.claudesessions.chat.claudecode.conversation.AssistantText
 import dev.magnus.claudesessions.chat.claudecode.conversation.Prompt
+import dev.magnus.claudesessions.chat.claudecode.conversation.PromptFromElsewhere
 import dev.magnus.claudesessions.chat.claudecode.conversation.ToolCall
 import dev.magnus.claudesessions.chat.claudecode.conversation.ToolInputField
 import dev.magnus.claudesessions.chat.claudecode.conversation.ToolResult
@@ -38,6 +39,16 @@ class TranscriptRowTest {
             rows.map { row -> row.key to ((row as? TranscriptRow.OfAToolCall)?.isOpen ?: (row as TranscriptRow.OfAToolCallRun).isOpen) },
         )
         assertEquals(listOf(false, true, true, true), rows.map { it is TranscriptRow.OfAToolCall && it.inARun })
+    }
+
+    @Test
+    fun `a prompt from elsewhere is a row of its own, open as the user opened it`() {
+        val message = PromptFromElsewhere("m1", PromptFromElsewhere.Source.AnotherSession("tooling-owner"), "Published.")
+
+        assertEquals(
+            listOf(TranscriptRow.OfAnItem(prompt), TranscriptRow.OfAPromptFromElsewhere(message, isOpen = true)),
+            TranscriptRow.of(listOf(prompt, message), opened = setOf("m1")),
+        )
     }
 
     @Test

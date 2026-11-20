@@ -295,11 +295,21 @@ plain terminal tab, with no session host, gets none, and shows its terminal alon
   and the build compiles against them (`bundledModule`) with Kotlin's Compose compiler. Jewel is below 1.0, and its
   markdown API experimental as a whole: the build opts in, and each new IDE's Jewel is to be checked.
   - **A list of rows** (`TranscriptRow`), a `LazyColumn`, which composes only the rows on the screen, its text
-    selectable across them (`SelectionContainer`): what the user said shaded, as typed; a prompt from elsewhere shaded,
-    under where it came from (`From <the session's name>`, `A background task finished`, `A scheduled wake-up`,
-    `From Claude Code`, `From a program`); what Claude said as rendered markdown, with GitHub's tables, strikethrough and
-    links of bare addresses (`ClaudesMarkdown`); thinking dimmed, under `Thinking`, shown (Magnus: "Leave it visible
-    for now"); an interruption in italics; a compaction, and a `/clear`, as a divider.
+    selectable across them (`SelectionContainer`): what the user said shaded, as typed, at the right, as wide as its
+    text up to 85% of the pane's width, as the desktop app shows it (Magnus, 2026-11-20: "If things that I type could
+    be right aligned that would also really help with visibility"); what Claude said as rendered markdown, with
+    GitHub's tables, strikethrough and links of bare addresses (`ClaudesMarkdown`); thinking dimmed, under `Thinking`,
+    shown (Magnus: "Leave it visible for now"); an interruption in italics; a compaction, and a `/clear`, as a divider.
+  - **Claude's headings** a little larger than the text, and bold, with no more space below them than between any two
+    blocks (`TranscriptMarkdownStyling`): 1.3 times the text for `#`, 1.2 for `##`, 1.1 for `###`, the text's size
+    below. Jewel's bridge styles them as GitHub does, up to twice the text with a line under them, which Magnus found
+    "truly huge, the spacing below it too" (2026-11-20).
+  - **A prompt from elsewhere as one line that opens to the prompt,** collapsed until the user opens it: where it came
+    from (`From <the session's name>`, `A background task finished`, `A scheduled wake-up`, `From Claude Code`, `From a
+    program`), then what it's about (`PromptFromElsewhereLine`): a background task's summary, such as `Agent "Fix the
+    build" finished`, which Claude Code's notice holds among the task's details, else the prompt's first line. Magnus,
+    2026-11-20: "I'd like background tasks collapsed please", and "Messaging between you I would also like collapsed".
+    Scheduled wake-ups, Claude Code's notices and programs' prompts are collapsed with them: none is what the user typed.
   - **Each tool call as one line, its header,** such as `Bash: git status` (`ToolCallHeader`: the field that says what
     it ran on, for Claude Code's own tools), with how it went (`ToolCallStatus`: ` · running`, ` · failed` in red),
     which opens to its body (`ToolCallBody`: its input, field by field, and its result). Collapsed until the user opens
@@ -321,14 +331,18 @@ plain terminal tab, with no session host, gets none, and shows its terminal alon
     disabled there, as it isn't an editor. A Swing bar above the conversation (`TranscriptFindBar`): Enter goes to the
     next place, Shift+Enter to the one before, Escape closes it. It seeks every text the transcript shows, collapsed or
     not, case aside (`TranscriptFind`), from the item at the top of the pane; going to a place opens what hides it, a
-    run or a tool call's body, and scrolls it onto the screen. Every place is highlighted, the current one in the
+    run, a tool call's body or a prompt from elsewhere, and scrolls it onto the screen. Every place is highlighted, the current one in the
     selection's color: in Claude's markdown through Jewel's inline renderer (`DecoratingInlineRenderer`), which
     `ClaudesMarkdown` tells which part of the text it renders. Its limits: a table of Claude's isn't searched, as Jewel
     keeps its table types to itself, and a code block of Claude's is searched but not highlighted; in Claude's
     markdown the place scrolls only its item onto the screen, not the place itself.
   - **The editor it replaced** had the IDE's own Find and selection across everything; Compose selects across rows less
     well, and only the rows composed, those on the screen and near it.
-- **The input box** (`MessageBox`), an editor of a plain-text `LightVirtualFile`. Ctrl+Enter sends, Shift+Enter starts
+- **The input box** (`MessageBox`), an editor of a plain-text `LightVirtualFile`, as tall as the lines it holds,
+  wrapped ones included, from one up to as many as two fifths of the chat hold, past which it scrolls (Magnus,
+  2026-11-20: "start out as a single line and grow when I add line breaks"); the chat lays it out below the transcript
+  at that height, where a splitter gave it a fifth of the chat before. No light bulb of intentions in it
+  (`isShowIntentionBulb`): Magnus, the same day, "please get rid of the context actions indicator". Ctrl+Enter sends, Shift+Enter starts
   a new line, Escape interrupts Claude Code, Shift+Tab changes its permission mode, each a key of the box's own, ahead of
   the keymap's, as Ctrl+Enter's Split Line; Ctrl+Enter, Shift+Enter and Escape go to a completion list instead while one
   shows. Enter is the editor's own, a new line. Enter sent, as in Claude Code's box, until Magnus, 2026-11-20, after an

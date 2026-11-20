@@ -15,6 +15,7 @@ import com.intellij.openapi.editor.event.CaretListener
 import com.intellij.openapi.editor.event.DocumentEvent
 import com.intellij.openapi.editor.event.DocumentListener
 import com.intellij.openapi.editor.ex.EditorEx
+import com.intellij.openapi.editor.ex.SoftWrapChangeListener
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.fileTypes.PlainTextFileType
 import com.intellij.openapi.project.DumbAwareAction
@@ -30,6 +31,8 @@ import dev.magnus.claudesessions.chat.claudecode.MessagePart
 import dev.magnus.claudesessions.chat.claudecode.PastedImage
 import dev.magnus.claudesessions.chat.claudecode.PastedText
 import dev.magnus.claudesessions.chat.claudecode.TypedText
+import java.awt.BorderLayout
+import java.awt.Dimension
 import java.awt.Image
 import java.awt.datatransfer.DataFlavor
 import java.awt.datatransfer.Transferable
@@ -37,6 +40,7 @@ import java.awt.event.InputEvent
 import java.awt.event.KeyEvent
 import java.nio.file.Path
 import javax.swing.JComponent
+import javax.swing.JPanel
 import javax.swing.KeyStroke
 
 /**
@@ -53,12 +57,15 @@ import javax.swing.KeyStroke
  * What it holds unsent, its [draft], is saved as it changes, and comes back as the IDE starts again: see
  * [dev.magnus.claudesessions.chat.saving.ChatKeeper].
  *
+ * It's as tall as the lines it holds, from one, up to [tallest] pixels, past which it scrolls: see [linesItShows].
+ *
  * Its methods run on the EDT.
  */
 class MessageBox(
     private val project: Project,
     private val typing: TypingFromTheChat,
     private val afterSending: (Message) -> Unit,
+    private val tallest: () -> Int,
     parent: Disposable,
 ) : Disposable {
     private val file = LightVirtualFile("Message to Claude.txt", PlainTextFileType.INSTANCE, "")
@@ -75,12 +82,30 @@ class MessageBox(
         settings.isCaretRowShown = false
         settings.additionalLinesCount = 0
         settings.isAdditionalPageAtBottom = false
+        // The intentions' light bulb: Magnus, 2026-11-20, "please get rid of the context actions indicator".
+        settings.isShowIntentionBulb = false
         setPlaceholder("Message Claude: Ctrl+Enter sends it")
         setShowPlaceholderWhenFocused(true)
         putUserData(KEY, this@MessageBox)
     }
 
-    val component: JComponent get() = editor.component
+    /** The box, [linesItShows] tall. */
+    val component: JComponent = object : JPanel(BorderLayout()) {
+        override fun getPreferredSize(): Dimension = super.getPreferredSize().apply { height = linesItShows * editor.lineHeight + verticalInsetsOf(editor.component, editor.scrollPane, editor.contentComponent) }
+    }.apply { add(editor.component, BorderLayout.CENTER) }
+
+    /**
+     * How many lines tall the box is: as many as it holds, wrapped ones included, from one, up to as many as [tallest]
+     * has room for. Magnus, 2026-11-20: "can the editor that I enter text in here start out as a single line and grow
+     * when I add line breaks?"
+     */
+    val linesItShows: Int get() = linesItHolds.coerceIn(1, linesItHasRoomFor)
+
+    /** How many lines [tallest] has room for: one at the least. */
+    val linesItHasRoomFor: Int get() = (tallest() / editor.lineHeight).coerceAtLeast(1)
+
+    /** The lines of the box's text, and the lines its long lines wrap onto. */
+    private val linesItHolds: Int get() = document.lineCount + editor.softWrapModel.getSoftWrapsForRange(0, document.textLength).size
 
     /** The text pasted into the box since it was last sent, each paste with whatever the user changed in it since. */
     private val pastedTexts = mutableListOf<RangeMarker>()
@@ -94,7 +119,22 @@ class MessageBox(
         MessageBoxKey(KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, InputEvent.SHIFT_DOWN_MASK), notWhileALookupShows = true) { startANewLine() }.registerOn(editor.contentComponent, this)
         MessageBoxKey(KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0), notWhileALookupShows = true) { typing.interrupt() }.registerOn(editor.contentComponent, this)
         MessageBoxKey(KeyStroke.getKeyStroke(KeyEvent.VK_TAB, InputEvent.SHIFT_DOWN_MASK), notWhileALookupShows = false) { typing.changeThePermissionMode() }.registerOn(editor.contentComponent, this)
+        growOrShrinkAsItsLinesChange()
     }
+
+    /** Has the box lay itself out anew whenever the lines it holds change: by its text, or by its lines wrapping anew. */
+    private fun growOrShrinkAsItsLinesChange() {
+        fun layOutAnew() = component.revalidate()
+        document.addDocumentListener(object : DocumentListener {
+            override fun documentChanged(event: DocumentEvent) = layOutAnew()
+        }, this)
+        editor.softWrapModel.addSoftWrapChangeListener(object : SoftWrapChangeListener {
+            override fun softWrapsChanged() = layOutAnew()
+            override fun recalculationEnds() = layOutAnew()
+        })
+    }
+
+    private fun verticalInsetsOf(vararg components: JComponent): Int = components.sumOf { it.insets.top + it.insets.bottom }
 
     /** The message's text, as the box shows it. */
     val text: String get() = document.text

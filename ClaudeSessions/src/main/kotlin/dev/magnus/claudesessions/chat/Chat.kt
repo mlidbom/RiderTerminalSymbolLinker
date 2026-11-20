@@ -4,7 +4,8 @@ import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Disposer
-import com.intellij.ui.OnePixelSplitter
+import com.intellij.ui.JBColor
+import com.intellij.util.ui.JBUI
 import dev.magnus.claudesessions.ClaudeSessionTab
 import dev.magnus.claudesessions.chat.claudecode.ClaudeCodeBehindTheChat
 import dev.magnus.claudesessions.chat.claudecode.Message
@@ -46,7 +47,7 @@ class Chat(project: Project, val claudeCode: ClaudeCodeBehindTheChat, private va
     val transcript = TranscriptPane(project, this)
     val statusLine = StatusLine()
     private val typing = TypingFromTheChat(claudeCode, scope, ::handBack, whenWhatWaitsChanges = whenItChanges)
-    val messageBox = MessageBox(project, typing, afterSending = { if (it.isASlashCommand) showTheTerminal() }, this)
+    val messageBox = MessageBox(project, typing, afterSending = { if (it.isASlashCommand) showTheTerminal() }, tallest = { component.height * 2 / 5 }, this)
 
     /**
      * The messages that were being given to Claude Code as the chat went before the IDE restarted, until the
@@ -54,12 +55,14 @@ class Chat(project: Project, val claudeCode: ClaudeCodeBehindTheChat, private va
      */
     private var maybeSentAsTheChatWent = emptyList<MessageMaybeSent>()
 
-    val component: JComponent = OnePixelSplitter(true, 0.8f).apply {
-        firstComponent = transcript.component
-        secondComponent = JPanel(BorderLayout()).apply {
+    /** The transcript, over the status line and the box, which is as tall as its lines, up to two fifths of the chat. */
+    val component: JComponent = JPanel(BorderLayout()).apply {
+        add(transcript.component, BorderLayout.CENTER)
+        add(JPanel(BorderLayout()).apply {
+            border = JBUI.Borders.customLineTop(JBColor.border())
             add(statusLine.component, BorderLayout.NORTH)
             add(messageBox.component, BorderLayout.CENTER)
-        }
+        }, BorderLayout.SOUTH)
     }
 
     /** The messages the user sent that Claude Code wasn't given yet, in their order. */

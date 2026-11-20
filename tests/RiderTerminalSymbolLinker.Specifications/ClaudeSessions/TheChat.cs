@@ -53,7 +53,7 @@ public sealed class TheChat(ClaudeSessionsObservationChannel channel, int tab)
    public string? TheActionTheShortcutRuns(string keystroke, string pressedIn) =>
       channel.TheActionTheShortcutRuns(tab, keystroke, pressedIn)["action"]?.GetValue<string>();
 
-   /// <summary>Clicks the line of the transcript's row <paramref name="row"/>, by its key: opens a tool call, or a run of them, or closes it.</summary>
+   /// <summary>Clicks the line of the transcript's row <paramref name="row"/>, by its key: opens a prompt from elsewhere, a tool call or a run of them, or closes it.</summary>
    public ChatSeen ClickTheRow(string row) => ChatSeen.From(channel.ClickTheRowInTheChat(tab, row));
 
    /// <summary>Opens the transcript's find bar, and has it seek <paramref name="text"/>, as the user types it.</summary>
@@ -120,6 +120,13 @@ public sealed class TheChat(ClaudeSessionsObservationChannel channel, int tab)
    public static class Item
    {
       public static object Prompt(string id, string text) => new { kind = "prompt", id, text };
+
+      /// <summary>A message from the session named <paramref name="name"/>, as Claude Code's <c>SendMessage</c> brings it.</summary>
+      public static object FromAnotherSession(string id, string name, string text) => new { kind = "from-another-session", id, name, text };
+
+      /// <summary>Claude Code's notice that a background task finished, in its own words, <paramref name="text"/>.</summary>
+      public static object FromABackgroundTask(string id, string text) => new { kind = "from-a-background-task", id, text };
+
       public static object AssistantText(string id, string text) => new { kind = "assistant-text", id, text };
       public static object Thinking(string id, string text) => new { kind = "thinking", id, text };
 
@@ -136,7 +143,8 @@ public sealed class TheChat(ClaudeSessionsObservationChannel channel, int tab)
 ///   null when the tab has no chat, and the card the user chose, or null when the tab chose it; the transcript's rows, the
 ///   texts the console filters' links cover, the id of the item at the top of the pane, and the transcript's find bar;
 ///   the status line, and why Claude Code didn't get what the chat last gave it, or null; the text in the input box, its
-///   parts and its caret; and the titles of the cards' tabs.
+///   parts, its caret, how many lines tall it is, and how many it has room for: two fifths of the chat's height, which
+///   in the sandbox Rider is its tool window's; and the titles of the cards' tabs.
 /// </summary>
 public sealed record ChatSeen(
    string? Card,
@@ -150,6 +158,8 @@ public sealed record ChatSeen(
    string? MessageBox,
    IReadOnlyList<MessagePartSeen> MessageBoxParts,
    int Caret,
+   int MessageBoxLines,
+   int MessageBoxRoom,
    IReadOnlyList<string> Tabs)
 {
    /// <summary>The rows' texts, each on a line of its own, as they read on the screen: the bodies of tool calls aside.</summary>
@@ -160,7 +170,7 @@ public sealed record ChatSeen(
 
    public static ChatSeen From(JsonNode chat) =>
       chat["card"] is null
-         ? new ChatSeen(null, null, [], [], null, null, null, null, null, [], 0, [])
+         ? new ChatSeen(null, null, [], [], null, null, null, null, null, [], 0, 0, 0, [])
          : new ChatSeen(chat["card"]!.GetValue<string>(),
                         chat["cardTheUserChose"]?.GetValue<string>(),
                         [.. chat["rows"]!.AsArray().Select(it => RowSeen.From(it!))],
@@ -172,14 +182,17 @@ public sealed record ChatSeen(
                         chat["messageBox"]!.GetValue<string>(),
                         [.. chat["messageBoxParts"]!.AsArray().Select(it => MessagePartSeen.From(it!))],
                         chat["caret"]!.GetValue<int>(),
+                        chat["messageBoxLines"]!.GetValue<int>(),
+                        chat["messageBoxRoom"]!.GetValue<int>(),
                         [.. chat["tabs"]!.AsArray().Select(it => it!.GetValue<string>())]);
 }
 
 /// <summary>
 ///   A row of the chat's transcript: its key; its kind, <c>prompt</c>, <c>from</c> (a prompt from elsewhere, with its
 ///   caption), <c>claude</c>, <c>thinking</c>, <c>interruption</c>, <c>compaction</c>, <c>clearing</c>, <c>tool-call</c>
-///   or <c>tool-calls</c> (the line of a run of them); and its text, as it reads on the screen. A tool call's has its
-///   body, shown or not, and says whether it's open, and whether it's in a run; a run's says whether it's open.
+///   or <c>tool-calls</c> (the line of a run of them); and its text, as it reads on the screen. A prompt from elsewhere,
+///   and a tool call, have their body, shown or not, and say whether they're open; a tool call says whether it's in a
+///   run too; a run says whether it's open.
 /// </summary>
 public sealed record RowSeen(string Key, string Kind, string Text, string? Caption, string? Body, bool Open, bool InARun)
 {

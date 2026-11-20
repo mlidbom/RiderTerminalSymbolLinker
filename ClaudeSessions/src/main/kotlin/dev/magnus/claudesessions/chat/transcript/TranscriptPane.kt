@@ -19,6 +19,7 @@ import com.intellij.openapi.wm.IdeFocusManager
 import dev.magnus.claudesessions.chat.claudecode.conversation.AssistantText
 import dev.magnus.claudesessions.chat.claudecode.conversation.Conversation
 import dev.magnus.claudesessions.chat.claudecode.conversation.ConversationItem
+import dev.magnus.claudesessions.chat.claudecode.conversation.PromptFromElsewhere
 import dev.magnus.claudesessions.chat.claudecode.conversation.ToolCall
 import dev.magnus.claudesessions.chat.transcript.find.FoundText
 import dev.magnus.claudesessions.chat.transcript.find.TranscriptFind
@@ -39,10 +40,11 @@ import org.jetbrains.jewel.foundation.enableNewSwingCompositing
 
 /**
  * The upper part of the chat: the conversation, rendered as the desktop app renders it, in Compose, with Jewel's
- * markdown renderer, styled as the IDE is. What the user said shows shaded; what Claude said as rendered markdown;
- * Claude's thinking dimmed; and each tool call as one line, its header, which opens to what it ran and got. Tool calls
- * Claude made one after the other show as one line too, which counts them, such as `Ran 2 commands, read 1 file`, and
- * opens to their lines: see [TranscriptRow].
+ * markdown renderer, styled as the IDE is. What the user said shows shaded, at the right; what Claude said as rendered
+ * markdown; Claude's thinking dimmed; and each tool call as one line, its header, which opens to what it ran and got.
+ * Tool calls Claude made one after the other show as one line too, which counts them, such as `Ran 2 commands, read 1
+ * file`, and opens to their lines; and so does each prompt the user didn't give, such as another session's message:
+ * see [TranscriptRow].
  *
  * Find seeks text in it as in an editor, with the IDE's Find shortcuts: see [TranscriptFind] and [TranscriptFindBar].
  * The console filters link what they link in a terminal, as file paths, and in Rider the symbol linker's symbols: see
@@ -69,7 +71,7 @@ class TranscriptPane(val project: Project, parent: Disposable) : Disposable {
 
     private var items: List<ConversationItem> by mutableStateOf(emptyList())
 
-    /** The keys of the rows the user opened: tool calls, and runs of them. */
+    /** The keys of the rows the user opened: tool calls, runs of them, and prompts from elsewhere. */
     private var opened: Set<String> by mutableStateOf(emptySet())
 
     /** The rows shown, in their order. */
@@ -203,8 +205,9 @@ class TranscriptPane(val project: Project, parent: Disposable) : Disposable {
     }
 
     /**
-     * Shows the place Find found, [place]: opens what hides it, a run of calls or a tool call's body, and scrolls its row
-     * onto the screen, and its text then scrolls the place itself onto it, but Claude's markdown, whose renderer can't.
+     * Shows the place Find found, [place]: opens what hides it, a run of calls, a tool call's body or a prompt from
+     * elsewhere, and scrolls its row onto the screen, and its text then scrolls the place itself onto it, but Claude's
+     * markdown, whose renderer can't.
      */
     private fun showWhatFindFound(place: FoundText) {
         val item = items.first { it.id == place.part.item }
@@ -212,6 +215,7 @@ class TranscriptPane(val project: Project, parent: Disposable) : Disposable {
             rows.filterIsInstance<TranscriptRow.OfAToolCallRun>().firstOrNull { item in it.run.calls }?.let { opened = opened + it.key }
             if (place.part.index == TranscriptTexts.BODY) opened = opened + item.id
         }
+        if (item is PromptFromElsewhere) opened = opened + item.id
         val index = rows.indexOfFirst { it.key == item.id }
         if (!isWhollyOnTheScreen(index)) scope.launch { listState.scrollToItem(index) }
         placeToShow = place.takeUnless { item is AssistantText }

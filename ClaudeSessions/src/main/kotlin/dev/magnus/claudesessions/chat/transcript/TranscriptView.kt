@@ -3,14 +3,17 @@ package dev.magnus.claudesessions.chat.transcript
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
@@ -35,6 +38,7 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import dev.magnus.claudesessions.chat.claudecode.conversation.AssistantText
 import dev.magnus.claudesessions.chat.claudecode.conversation.Clearing
@@ -47,6 +51,7 @@ import dev.magnus.claudesessions.chat.claudecode.conversation.ToolCall
 import dev.magnus.claudesessions.chat.transcript.links.TranscriptLink
 import dev.magnus.claudesessions.chat.transcript.markdown.ClaudesMarkdown
 import dev.magnus.claudesessions.chat.transcript.markdown.DecoratingInlineRenderer
+import dev.magnus.claudesessions.chat.transcript.markdown.TranscriptMarkdownStyling
 import dev.magnus.claudesessions.chat.transcript.toolcalls.ToolCallBody
 import dev.magnus.claudesessions.chat.transcript.toolcalls.ToolCallHeader
 import dev.magnus.claudesessions.chat.transcript.toolcalls.ToolCallStatus
@@ -68,8 +73,9 @@ import org.jetbrains.jewel.ui.component.VerticallyScrollableContainer
 
 /**
  * The [TranscriptPane]'s conversation, in Compose: its rows, one under the other, in a list that composes only the
- * rows on the screen, its text selectable across them. What the user said shows shaded, what Claude said as rendered
- * markdown, each tool call, or run of them, as one line that opens to what it ran and got.
+ * rows on the screen, its text selectable across them. What the user said shows shaded, at the right, what Claude said
+ * as rendered markdown, each tool call, or run of them, as one line that opens to what it ran and got, and each prompt
+ * from elsewhere as one line that opens to the prompt.
  *
  * @param listState Where the list is scrolled to: the pane's, but for a picture of it, which scrolls a copy.
  */
@@ -90,26 +96,44 @@ internal fun TranscriptView(pane: TranscriptPane, listState: LazyListState = pan
 private fun TranscriptRowView(pane: TranscriptPane, row: TranscriptRow) {
     when (row) {
         is TranscriptRow.OfAnItem -> when (val item = row.item) {
-            is Prompt -> Said(pane, ItemTextPart(item.id, 0), caption = null, item.text.trimEnd())
-            is PromptFromElsewhere -> Said(pane, ItemTextPart(item.id, 0), caption = PromptFromElsewhereCaption.of(item.from), item.text.trimEnd())
+            is Prompt -> UserSaid(pane, item)
             is AssistantText -> ClaudeSaid(pane, item)
             is Thinking -> Thought(pane, item)
             is Interruption -> DecoratedText(pane, ItemTextPart(item.id, 0), item.text.trimEnd(), JewelTheme.defaultTextStyle.copy(color = TranscriptLook.secondaryText, fontStyle = FontStyle.Italic), Modifier.padding(vertical = 4.dp))
             is Compaction -> Divider(pane, ItemTextPart(item.id, 0), TranscriptTexts.COMPACTED)
             is Clearing -> Divider(pane, ItemTextPart(item.id, 0), TranscriptTexts.CLEARED)
+            is PromptFromElsewhere -> error("A prompt from elsewhere shows in a row of its own")
             is ToolCall -> error("A tool call shows in a row of its own")
         }
+        is TranscriptRow.OfAPromptFromElsewhere -> PromptFromElsewhereView(pane, row)
         is TranscriptRow.OfAToolCall -> ToolCallView(pane, row)
         is TranscriptRow.OfAToolCallRun -> ToolCallRunView(pane, row)
     }
 }
 
-/** What the user said, or a prompt from elsewhere, under its [caption], shaded. */
+/**
+ * What the user said: shaded, at the right, as wide as its text up to most of the transcript's width, as the desktop
+ * app shows it. Magnus, 2026-11-20: "If things that I type could be right aligned that would also really help with
+ * visibility".
+ */
 @Composable
-private fun Said(pane: TranscriptPane, part: ItemTextPart, caption: String?, text: String) {
-    Column(Modifier.fillMaxWidth().padding(top = 12.dp, bottom = 6.dp).background(TranscriptLook.shaded, RoundedCornerShape(6.dp)).padding(horizontal = 10.dp, vertical = 6.dp)) {
-        if (caption != null) DisableSelection { Text(caption, color = TranscriptLook.secondaryText, style = JewelTheme.defaultTextStyle) }
-        DecoratedText(pane, part, text, JewelTheme.defaultTextStyle)
+private fun UserSaid(pane: TranscriptPane, prompt: Prompt) {
+    BoxWithConstraints(Modifier.fillMaxWidth().padding(top = 12.dp, bottom = 6.dp), contentAlignment = Alignment.CenterEnd) {
+        Box(Modifier.widthIn(max = maxWidth * 0.85f).background(TranscriptLook.shaded, RoundedCornerShape(8.dp)).padding(horizontal = 12.dp, vertical = 8.dp)) {
+            DecoratedText(pane, ItemTextPart(prompt.id, 0), prompt.text.trimEnd(), JewelTheme.defaultTextStyle)
+        }
+    }
+}
+
+/** A prompt the user didn't give: its one line, and the prompt below it while it's open. */
+@Composable
+private fun PromptFromElsewhereView(pane: TranscriptPane, row: TranscriptRow.OfAPromptFromElsewhere) {
+    val prompt = row.prompt
+    Column(Modifier.fillMaxWidth().padding(vertical = 2.dp)) {
+        Header(isOpen = row.isOpen, onClick = { pane.toggle(row.key) }) {
+            Text(PromptFromElsewhereLine.of(prompt), Modifier.weight(1f, fill = false), color = TranscriptLook.secondaryText, style = JewelTheme.defaultTextStyle, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        }
+        if (row.isOpen) OpenBody { DecoratedText(pane, ItemTextPart(prompt.id, 0), prompt.text.trimEnd(), JewelTheme.defaultTextStyle) }
     }
 }
 
@@ -118,7 +142,10 @@ private fun Said(pane: TranscriptPane, part: ItemTextPart, caption: String?, tex
 private fun ClaudeSaid(pane: TranscriptPane, item: AssistantText) {
     val markdown = pane.texts.markdownOf(item)
     val decorations = markdown.texts.indices.map { pane.decorationsOf(ItemTextPart(item.id, it)) }
-    val styling = JewelTheme.markdownStyling
+    val ofTheIde = JewelTheme.markdownStyling
+    val textStyle = JewelTheme.defaultTextStyle
+    val editorTextStyle = JewelTheme.editorTextStyle
+    val styling = remember(ofTheIde, textStyle, editorTextStyle) { TranscriptMarkdownStyling.of(ofTheIde, textStyle, editorTextStyle) }
     // Anew whenever what the pane adds to a part changes: Jewel's renderer remembers each part as it rendered it.
     key(markdown, decorations) {
         val renderer = remember(styling) { blockRendererFor(markdown, styling, decorations, pane::follow) }
@@ -156,11 +183,15 @@ private fun ToolCallView(pane: TranscriptPane, row: TranscriptRow.OfAToolCall) {
             DecoratedText(pane, ItemTextPart(call.id, TranscriptTexts.HEADER), ToolCallHeader.of(call), JewelTheme.defaultTextStyle.copy(color = TranscriptLook.secondaryText))
             Status(ToolCallStatus.of(listOf(call)))
         }
-        if (row.isOpen) {
-            Box(Modifier.fillMaxWidth().padding(start = 16.dp, top = 4.dp, bottom = 4.dp).background(TranscriptLook.shaded, RoundedCornerShape(4.dp)).padding(8.dp)) {
-                DecoratedText(pane, ItemTextPart(call.id, TranscriptTexts.BODY), ToolCallBody.of(call), JewelTheme.editorTextStyle)
-            }
-        }
+        if (row.isOpen) OpenBody { DecoratedText(pane, ItemTextPart(call.id, TranscriptTexts.BODY), ToolCallBody.of(call), JewelTheme.editorTextStyle) }
+    }
+}
+
+/** What a line that is open shows below it, indented under its chevron, shaded. */
+@Composable
+private fun OpenBody(content: @Composable () -> Unit) {
+    Box(Modifier.fillMaxWidth().padding(start = 16.dp, top = 4.dp, bottom = 4.dp).background(TranscriptLook.shaded, RoundedCornerShape(4.dp)).padding(8.dp)) {
+        content()
     }
 }
 
@@ -184,7 +215,7 @@ private fun Status(status: ToolCallStatus) {
 
 /** A line that opens and closes what is below it when clicked, with a chevron that tells which it is, as the IDE's trees do. */
 @Composable
-private fun Header(isOpen: Boolean, onClick: () -> Unit, content: @Composable () -> Unit) {
+private fun Header(isOpen: Boolean, onClick: () -> Unit, content: @Composable RowScope.() -> Unit) {
     DisableSelection {
         Row(Modifier.clickable(onClick = onClick).pointerHoverIcon(PointerIcon.Hand), verticalAlignment = Alignment.CenterVertically) {
             Icon(if (isOpen) AllIconsKeys.General.ChevronDown else AllIconsKeys.General.ChevronRight, contentDescription = null, Modifier.padding(end = 4.dp).size(16.dp))

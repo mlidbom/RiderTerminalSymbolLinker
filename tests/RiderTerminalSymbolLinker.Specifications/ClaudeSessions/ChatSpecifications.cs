@@ -93,6 +93,7 @@ public class When_the_chat_shows_a_conversation(When_the_chat_shows_a_conversati
       public readonly ChatSeen OnceTheResultCame;
       public readonly ChatSeen WithLinks;
       public readonly ChatSeen AfterARewind;
+      public readonly ChatSeen WithTheMessageOpen;
 
       public Story()
       {
@@ -103,6 +104,8 @@ public class When_the_chat_shows_a_conversation(When_the_chat_shows_a_conversati
          object[] conversation =
          [
             Item.Prompt("p1", "Fix the bug in the circle"),
+            Item.FromAnotherSession("m1", "tooling-owner", "Yes, through the hub.\nThe shape I'm having built now:"),
+            Item.FromABackgroundTask("b1", "<task-notification>\n<task-id>aba631c</task-id>\n<status>completed</status>\n<summary>Agent \"Fix the hub\" finished</summary>\n<result>Fixed.</result>\n</task-notification>"),
             Item.Thinking("k1", "The area uses the diameter."),
             Item.AssistantText("a1", "## Looking at it\n\nThe area is **wrong**:\n\n- it uses `diameter`"),
             Item.ToolCall("t1", "Bash", new Dictionary<string, string> { ["command"] = "git status", ["description"] = "Show the working tree" }, "On branch main"),
@@ -122,6 +125,7 @@ public class When_the_chat_shows_a_conversation(When_the_chat_shows_a_conversati
          WithLinks = chat.SeenOnce(it => it.Links.Count(link => link == "Shapes/Circle.cs:7") == 2, "the symbol linker's links to show");
          chat.Give([.. conversation[..^2], Item.AssistantText("a3", "Went another way.")]); // As a rewind does.
          AfterARewind = chat.SeenOnce(it => it.Transcript.Contains("Went another way."), "the conversation to go another way");
+         WithTheMessageOpen = chat.ClickTheRow("m1");
       }
    }
 
@@ -129,6 +133,16 @@ public class When_the_chat_shows_a_conversation(When_the_chat_shows_a_conversati
    const string Run = "tool calls from t2";
 
    [XF] public void a_prompt_shows_as_the_users() => story.Shown.Rows[0].Must().Be(new RowSeen("p1", "prompt", "Fix the bug in the circle", null, null, false, false));
+
+   [XF] public void another_sessions_message_shows_as_one_line_with_whose_it_is_and_its_first_line() =>
+      (story.Shown.Row("m1").Kind, story.Shown.Row("m1").Text, story.Shown.Row("m1").Open).Must().Be(("from", "From tooling-owner · Yes, through the hub.", false));
+
+   [XF] public void a_background_tasks_notice_as_one_line_with_its_summary() =>
+      (story.Shown.Row("b1").Text, story.Shown.Row("b1").Open).Must().Be(("A background task finished · Agent \"Fix the hub\" finished", false));
+
+   [XF] public void opened_the_message_shows_whole_below_its_line() =>
+      (story.WithTheMessageOpen.Row("m1").Open, story.WithTheMessageOpen.Row("m1").Body).Must().Be((true, "Yes, through the hub.\nThe shape I'm having built now:"));
+
    [XF] public void claudes_thinking_shows_too() => (story.Shown.Row("k1").Kind, story.Shown.Row("k1").Text).Must().Be(("thinking", "The area uses the diameter."));
    [XF] public void what_claude_said_shows_as_its_markdown_renders() => story.Shown.Row("a1").Text.Must().Be("Looking at it\nThe area is wrong:\nit uses diameter");
 
@@ -156,7 +170,7 @@ public class When_the_chat_shows_a_conversation(When_the_chat_shows_a_conversati
    [XF] public void the_console_filters_link_what_they_link_in_a_terminal() => story.WithLinks.Links.Must().Contain("Circle.Area").Contain("Shapes/Circle.cs:7");
 
    [XF] public void when_the_conversation_goes_another_way_what_it_left_goes() =>
-      story.AfterARewind.Rows.Select(it => it.Key).Must().Satisfy(it => it.SequenceEqual(["p1", "k1", "a1", "t1", "a2", "c1", "p2", "p3", "a3"]));
+      story.AfterARewind.Rows.Select(it => it.Key).Must().Satisfy(it => it.SequenceEqual(["p1", "m1", "b1", "k1", "a1", "t1", "a2", "c1", "p2", "p3", "a3"]));
 
    [XF] public void with_its_links() => story.AfterARewind.Links.Must().Satisfy(it => it.SequenceEqual(["Circle.Area", "Shapes/Circle.cs:7"]));
 }
@@ -208,6 +222,7 @@ public class When_the_user_seeks_a_text_in_the_transcript(When_the_user_seeks_a_
       public readonly ChatSeen AtTheSecond;
       public readonly ChatSeen AtTheThird;
       public readonly ChatSeen AtTheFourth;
+      public readonly ChatSeen AtTheFifth;
       public readonly ChatSeen PastTheLast;
       public readonly ChatSeen BackBeforeTheFirst;
       public readonly ChatSeen SeekingWhatIsntThere;
@@ -223,7 +238,8 @@ public class When_the_user_seeks_a_text_in_the_transcript(When_the_user_seeks_a_
                    Item.AssistantText("a1", "No **needle** here."),
                    Call("t1", "echo hay", "hay"),
                    Call("t2", "echo more", "a NEEDLE in the hay"),
-                   Item.AssistantText("a2", "That was the last needle."));
+                   Item.AssistantText("a2", "That was the last needle."),
+                   Item.FromAnotherSession("m1", "tooling-owner", "Look again:\nthere is a needle here too."));
          chat.SeenOnce(it => it.Card == "CHAT", "the tab to show the chat");
          CtrlFInTheTranscript = chat.TheActionTheShortcutRuns("ctrl F", "transcript");
          F3BeforeItSeeks = chat.TheActionTheShortcutRuns("F3", "transcript");
@@ -233,6 +249,7 @@ public class When_the_user_seeks_a_text_in_the_transcript(When_the_user_seeks_a_
          AtTheSecond = chat.FindNext();
          AtTheThird = chat.FindNext();
          AtTheFourth = chat.FindNext();
+         AtTheFifth = chat.FindNext();
          PastTheLast = chat.FindNext();
          BackBeforeTheFirst = chat.FindPrevious();
          SeekingWhatIsntThere = chat.Find("haystack");
@@ -248,14 +265,16 @@ public class When_the_user_seeks_a_text_in_the_transcript(When_the_user_seeks_a_
    [XF] public void and_shift_f3_to_the_one_before() => story.ShiftF3WhileItSeeks.Must().Be("ClaudeSessions.FindPreviousInTheTranscript");
 
    [XF] public void the_bar_shows_what_it_seeks() => (story.Seeking.Find!.Shown, story.Seeking.Find.Text).Must().Be((true, "needle"));
-   [XF] public void it_counts_every_place_case_aside_collapsed_or_not_and_starts_at_the_first() => story.Seeking.Find!.Count.Must().Be("1/4");
+   [XF] public void it_counts_every_place_case_aside_collapsed_or_not_and_starts_at_the_first() => story.Seeking.Find!.Count.Must().Be("1/5");
    [XF] public void the_first_is_in_what_the_user_said() => story.Seeking.Find!.CurrentItem.Must().Be("p1");
-   [XF] public void the_next_in_what_claude_said_once_rendered() => (story.AtTheSecond.Find!.Count, story.AtTheSecond.Find.CurrentItem).Must().Be(("2/4", "a1"));
+   [XF] public void the_next_in_what_claude_said_once_rendered() => (story.AtTheSecond.Find!.Count, story.AtTheSecond.Find.CurrentItem).Must().Be(("2/5", "a1"));
    [XF] public void the_third_in_a_tool_calls_body() => (story.AtTheThird.Find!.CurrentItem, story.AtTheThird.Find.CurrentPart).Must().Be(("t2", (int?)1));
    [XF] public void which_it_opens_with_the_run_it_is_in() => (story.AtTheThird.Row("tool calls from t1").Open, story.AtTheThird.Row("t2").Open).Must().Be((true, true));
-   [XF] public void the_fourth_is_the_last() => (story.AtTheFourth.Find!.Count, story.AtTheFourth.Find.CurrentItem).Must().Be(("4/4", "a2"));
-   [XF] public void past_the_last_it_goes_to_the_first() => story.PastTheLast.Find!.Count.Must().Be("1/4");
-   [XF] public void and_back_before_the_first_to_the_last() => story.BackBeforeTheFirst.Find!.Count.Must().Be("4/4");
+   [XF] public void the_fourth_in_what_claude_said_last() => (story.AtTheFourth.Find!.Count, story.AtTheFourth.Find.CurrentItem).Must().Be(("4/5", "a2"));
+   [XF] public void the_fifth_in_another_sessions_message() => (story.AtTheFifth.Find!.Count, story.AtTheFifth.Find.CurrentItem).Must().Be(("5/5", "m1"));
+   [XF] public void which_it_opens() => (story.AtTheFourth.Row("m1").Open, story.AtTheFifth.Row("m1").Open).Must().Be((false, true));
+   [XF] public void past_the_last_it_goes_to_the_first() => story.PastTheLast.Find!.Count.Must().Be("1/5");
+   [XF] public void and_back_before_the_first_to_the_last() => story.BackBeforeTheFirst.Find!.Count.Must().Be("5/5");
    [XF] public void what_isnt_there_it_says_isnt() => (story.SeekingWhatIsntThere.Find!.Count, story.SeekingWhatIsntThere.Find.CurrentItem).Must().Be(("0 results", (string?)null));
    [XF] public void closed_the_bar_hides() => story.Closed.Find!.Shown.Must().BeFalse();
 }
@@ -265,9 +284,11 @@ public class When_the_user_sends_a_message_from_the_chat(When_the_user_sends_a_m
    public sealed class Story
    {
       public readonly SentToClaudeCode Sent;
+      public readonly ChatSeen Before;
       public readonly ChatSeen After;
       public readonly ChatSeen WhileWritten;
       public readonly ChatSeen WhileWrittenOn;
+      public readonly ChatSeen WithSixtyLines;
 
       public Story()
       {
@@ -275,7 +296,7 @@ public class When_the_user_sends_a_message_from_the_chat(When_the_user_sends_a_m
          view.StartANewSession();
          var chat = view.ChatOf(0);
          chat.SayTheStatus("IDLE");
-         chat.SeenOnce(it => it.Card == "CHAT", "the tab to show the chat");
+         Before = chat.SeenOnce(it => it.Card == "CHAT", "the tab to show the chat");
          chat.Type("First line");
          chat.Press("ENTER");
          chat.Type("second line, ");
@@ -290,8 +311,18 @@ public class When_the_user_sends_a_message_from_the_chat(When_the_user_sends_a_m
          chat.Press("CTRL_ENTER");
          Sent = chat.SentOnce(it => it.Messages.Count > 0, "the message to reach Claude Code");
          After = chat.Seen;
+         WithSixtyLines = chat.Type(string.Join("\n", Enumerable.Range(1, 60)));
       }
    }
+
+   [XF] public void the_box_starts_out_one_line_tall() => story.Before.MessageBoxLines.Must().Be(1);
+   // The sandbox Rider's tool window is short: two fifths of its chat have room for three lines.
+   [XF] public void and_grows_with_each_line_written_while_it_has_room() =>
+      (story.WhileWritten.MessageBoxLines, story.WhileWrittenOn.MessageBoxLines).Must().Be((3, Math.Min(4, story.WhileWrittenOn.MessageBoxRoom)));
+
+   [XF] public void up_to_two_fifths_of_the_chat_past_which_it_scrolls() =>
+      (story.WithSixtyLines.MessageBoxLines, story.WithSixtyLines.MessageBoxRoom < 60).Must().Be((story.WithSixtyLines.MessageBoxRoom, true));
+   [XF] public void and_is_one_line_again_once_sent() => story.After.MessageBoxLines.Must().Be(1);
 
    [XF] public void enter_starts_a_new_line() => story.WhileWritten.MessageBox.Must().Be("First line\nsecond line, pasted\ntext and onetwo [Image #1]");
    [XF] public void and_so_does_shift_enter() => story.WhileWrittenOn.MessageBox.Must().Be(story.WhileWritten.MessageBox + "\nthird line");

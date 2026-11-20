@@ -46,6 +46,7 @@ import dev.magnus.claudesessions.chat.claudecode.conversation.ToolCall
 import dev.magnus.claudesessions.chat.claudecode.conversation.ToolInputField
 import dev.magnus.claudesessions.chat.claudecode.conversation.ToolResult
 import dev.magnus.claudesessions.chat.transcript.PromptFromElsewhereCaption
+import dev.magnus.claudesessions.chat.transcript.PromptFromElsewhereLine
 import dev.magnus.claudesessions.chat.transcript.toolcalls.ToolCallBody
 import dev.magnus.claudesessions.chat.transcript.toolcalls.ToolCallHeader
 import dev.magnus.claudesessions.chat.transcript.toolcalls.ToolCallStatus
@@ -83,7 +84,8 @@ class TheChatObserved(private val project: Project, private val tab: Int) {
      * The tab's chat: the card shown, or null when the tab has no chat, and the card the user chose, or null; the
      * transcript's rows, as [describe] tells each, the texts the links cover, the id of the item at the top of the pane,
      * and its find bar; the status line, and why Claude Code didn't get what the chat last gave it, or null; the text in
-     * the input box, its parts, each with its kind, and its caret; and the titles of the cards' tabs.
+     * the input box, its parts, each with its kind, its caret, how many lines tall it is, and how many it has room for;
+     * and the titles of the cards' tabs.
      */
     fun describe(): Map<String, Any?> {
         val cards = sessionTab.cards ?: return mapOf("card" to null)
@@ -101,6 +103,8 @@ class TheChatObserved(private val project: Project, private val tab: Int) {
             "statusLine" to cards.chat.statusLine.text,
             "whyNotTyped" to cards.chat.statusLine.whyNotTyped,
             "messageBox" to cards.chat.messageBox.text,
+            "messageBoxLines" to cards.chat.messageBox.linesItShows,
+            "messageBoxRoom" to cards.chat.messageBox.linesItHasRoomFor,
             "tabs" to cards.tabTitles,
         )
     }
@@ -231,7 +235,7 @@ class TheChatObserved(private val project: Project, private val tab: Int) {
         }
     }
 
-    /** Clicks the line of the transcript's row with the key [row]: opens a tool call, or a run of them, or closes it. */
+    /** Clicks the line of the transcript's row with the key [row]: opens a prompt from elsewhere, a tool call or a run of them, or closes it. */
     fun clickTheRow(row: String): Map<String, Any?> {
         val transcript = cards.chat.transcript
         check(transcript.rows.any { it.key == row && it !is TranscriptRow.OfAnItem }) { "The transcript has no line to click with the key $row" }
@@ -249,8 +253,9 @@ class TheChatObserved(private val project: Project, private val tab: Int) {
      * A row of the transcript: its `key`; its `kind`, `prompt`, `from` (a prompt from elsewhere, with its `caption`),
      * `claude`, `thinking`, `interruption`, `compaction`, `clearing`, `tool-call` or `tool-calls` (the line of a run of
      * them); and its `text`, as it reads on the screen: what Claude said once its markdown is rendered, each part on a
-     * line of its own, and the line of a tool call, or of a run, with how it went. A tool call's has its `body`, shown or
-     * not, and says whether it's `open`, and whether it's `inARun`; a run's says whether it's `open`.
+     * line of its own, and the line of a prompt from elsewhere, of a tool call, or of a run, with how it went. A prompt
+     * from elsewhere, and a tool call, have their `body`, shown or not, and say whether they're `open`; a tool call says
+     * whether it's `inARun` too; a run says whether it's `open`.
      */
     private fun describe(row: TranscriptRow, transcript: TranscriptPane): Map<String, Any?> = when (row) {
         is TranscriptRow.OfAnItem -> {
@@ -259,18 +264,25 @@ class TheChatObserved(private val project: Project, private val tab: Int) {
                 "key" to row.key,
                 "kind" to when (item) {
                     is Prompt -> "prompt"
-                    is PromptFromElsewhere -> "from"
                     is AssistantText -> "claude"
                     is Thinking -> "thinking"
                     is Interruption -> "interruption"
                     is Compaction -> "compaction"
                     is Clearing -> "clearing"
+                    is PromptFromElsewhere -> error("A prompt from elsewhere shows in a row of its own")
                     is ToolCall -> error("A tool call shows in a row of its own")
                 },
-                "caption" to (item as? PromptFromElsewhere)?.from?.let(PromptFromElsewhereCaption::of),
                 "text" to transcript.texts.of(item).joinToString("\n"),
             )
         }
+        is TranscriptRow.OfAPromptFromElsewhere -> mapOf(
+            "key" to row.key,
+            "kind" to "from",
+            "caption" to PromptFromElsewhereCaption.of(row.prompt.from),
+            "text" to PromptFromElsewhereLine.of(row.prompt),
+            "body" to transcript.texts.of(row.prompt).joinToString("\n"),
+            "open" to row.isOpen,
+        )
         is TranscriptRow.OfAToolCall -> mapOf(
             "key" to row.key,
             "kind" to "tool-call",
@@ -374,8 +386,9 @@ class TheChatObserved(private val project: Project, private val tab: Int) {
 
         /**
          * The conversation [json] describes: `{"items": [...]}`, each item an object with its `kind` and `id`:
-         * `prompt`, `assistant-text` and `thinking` with their `text`; `tool-call` with its `tool`, its `input` as an object of
-         * texts, and its `result`, `{"text": …, "isAnError": …}` or null; and `compaction`.
+         * `prompt`, `assistant-text` and `thinking` with their `text`; `from-another-session`, a prompt from elsewhere, with
+         * the session's `name` and its `text`, and `from-a-background-task` with its `text`; `tool-call` with its `tool`,
+         * its `input` as an object of texts, and its `result`, `{"text": …, "isAnError": …}` or null; and `compaction`.
          */
         fun conversationFrom(json: JsonObject): Conversation = Conversation(json.getAsJsonArray("items").map { itemFrom(it.asJsonObject) })
 
@@ -383,6 +396,8 @@ class TheChatObserved(private val project: Project, private val tab: Int) {
             val id = item.get("id").asString
             return when (val kind = item.get("kind").asString) {
                 "prompt" -> Prompt(id, item.get("text").asString)
+                "from-another-session" -> PromptFromElsewhere(id, PromptFromElsewhere.Source.AnotherSession(item.get("name").asString), item.get("text").asString)
+                "from-a-background-task" -> PromptFromElsewhere(id, PromptFromElsewhere.Source.BackgroundTask, item.get("text").asString)
                 "assistant-text" -> AssistantText(id, item.get("text").asString)
                 "thinking" -> Thinking(id, item.get("text").asString)
                 "tool-call" -> ToolCall(

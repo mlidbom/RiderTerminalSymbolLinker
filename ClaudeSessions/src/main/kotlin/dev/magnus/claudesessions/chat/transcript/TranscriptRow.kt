@@ -1,6 +1,7 @@
 package dev.magnus.claudesessions.chat.transcript
 
 import dev.magnus.claudesessions.chat.claudecode.conversation.ConversationItem
+import dev.magnus.claudesessions.chat.claudecode.conversation.PromptFromElsewhere
 import dev.magnus.claudesessions.chat.claudecode.conversation.ToolCall
 import dev.magnus.claudesessions.chat.transcript.toolcalls.ToolCallRun
 
@@ -16,10 +17,24 @@ sealed interface TranscriptRow {
     /** The items of the conversation the row shows, in their order. */
     val items: List<ConversationItem>
 
-    /** An item that isn't a tool call: what the user or Claude said, Claude's thinking, an interruption, or where the conversation was cut short. */
+    /**
+     * An item shown as it is, with no line to open it by: what the user or Claude said, Claude's thinking, an
+     * interruption, or where the conversation was cut short.
+     */
     data class OfAnItem(val item: ConversationItem) : TranscriptRow {
         override val key: String get() = item.id
         override val items: List<ConversationItem> get() = listOf(item)
+    }
+
+    /**
+     * A prompt the user didn't give, such as another session's message or a background task's notice: its one line,
+     * [PromptFromElsewhereLine], with the prompt below it while it's open. Magnus, 2026-11-20, of background tasks: "I'd
+     * like background tasks collapsed please", and of other sessions' messages: "Messaging between you I would also like
+     * collapsed".
+     */
+    data class OfAPromptFromElsewhere(val prompt: PromptFromElsewhere, val isOpen: Boolean) : TranscriptRow {
+        override val key: String get() = prompt.id
+        override val items: List<ConversationItem> get() = listOf(prompt)
     }
 
     /**
@@ -38,13 +53,13 @@ sealed interface TranscriptRow {
     }
 
     companion object {
-        /** The rows that show [items], with the calls and runs whose keys are in [opened] open. */
+        /** The rows that show [items], with the rows whose keys are in [opened] open. */
         fun of(items: List<ConversationItem>, opened: Set<String>): List<TranscriptRow> = buildList {
             var index = 0
             while (index < items.size) {
                 val item = items[index]
                 if (item !is ToolCall) {
-                    add(OfAnItem(item))
+                    add(if (item is PromptFromElsewhere) OfAPromptFromElsewhere(item, isOpen = item.id in opened) else OfAnItem(item))
                     index++
                     continue
                 }

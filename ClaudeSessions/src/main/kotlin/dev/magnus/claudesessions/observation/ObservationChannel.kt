@@ -109,7 +109,7 @@ import org.jetbrains.plugins.terminal.TerminalProjectOptionsProvider
  *    `ctrl H`, pressed `in` the chat's input box (`chat`), its `transcript`, the `terminal`, or `elsewhere`: see
  *    [TheChatObserved.theActionTheShortcutRuns].
  *  - `POST /tabs/chat/click-row?project=&tab=&row=` — clicks the line of a row of the transcript, by its key: opens a
- *    tool call, or a run of them, or closes it.
+ *    prompt from elsewhere, a tool call or a run of them, or closes it.
  *  - `POST /tabs/chat/scroll?project=&tab=&item=` — scrolls the conversation so that the item, by its id, is at the top.
  *  - `POST /tabs/chat/find?project=&tab=&text=` — opens the transcript's find bar, and has it seek the text.
  *  - `POST /tabs/chat/find-next?project=&tab=&forward=` — goes to the next place it found, or the one before.
