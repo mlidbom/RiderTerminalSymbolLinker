@@ -27,7 +27,8 @@ namespace Cloyd.Specifications.TheSandbox;
 /// <remarks>
 /// Each sandbox is a folder of its own under <c>%LOCALAPPDATA%\CloydSpecifications</c>, named by the process of its run
 /// and its number in the run, such as <c>41236-7</c>: short, as the hub's Claude Code folder names a folder by the whole
-/// path of each project's folder. As a run's first sandbox starts, the sandboxes of runs that stopped before their
+/// path of each project's folder. A sandbox's hub stops itself once its run's process has exited, however it ended
+/// (<see cref="SandboxHub.RunIn"/>). As a run's first sandbox starts, the sandboxes of runs that stopped before their
 /// scenarios ended are stopped and deleted: those named by a process that no longer runs. One run at a time does it,
 /// under a lock of the machine's, so that runs started together don't end the same sandboxes at once.
 /// </remarks>

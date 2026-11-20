@@ -26,8 +26,13 @@ sealed class SandboxHub
 
    SandboxHub(SandboxHubStarted started) => _started = started;
 
-   /// <summary>A new hub, of the folder <paramref name="folder"/>, once it runs.</summary>
-   public static SandboxHub RunIn(string folder) => new(JsonSerializer.Deserialize<SandboxHubStarted>(Printed("hub", "sandbox", "start", folder), LocalApiProtocol.Json)!);
+   /// <summary>
+   /// A new hub, of the folder <paramref name="folder"/>, once it runs. It stops itself, as <see cref="StopIn"/> stops it,
+   /// once the specifications' process has exited, however it ended: so a run that is killed, as NCrunch ends the
+   /// processes it pools, leaves no hub running.
+   /// </summary>
+   public static SandboxHub RunIn(string folder) =>
+      new(JsonSerializer.Deserialize<SandboxHubStarted>(Printed("hub", "sandbox", "start", folder, "--ending-with", System.Environment.ProcessId.ToString()), LocalApiProtocol.Json)!);
 
    /// <summary>
    /// Stops the hub of the folder <paramref name="folder"/>: its session hosts end, as closing their tabs ends them, then
