@@ -24,6 +24,9 @@ import dev.magnus.claudesessions.claudecode.ClaudeSessionId
  * away the messages after the one it keeps. At each `caught-up`, the conversation as it is then.
  *
  * A message of a kind this build doesn't know is left out, as the contract says kinds may be added.
+ *
+ * Every text of the conversation it reads has `\n` for its line separators, as the IDE's documents take only that: a
+ * text of Claude Code's is as it was written, and on Windows a tool's result, or a pasted prompt, has `\r\n`.
  */
 class TheHubsConversationStream {
     /** The messages so far, in their order, each as the hub sent it. */
@@ -36,7 +39,7 @@ class TheHubsConversationStream {
     fun read(event: ServerSentEvent): ConversationOfALine? {
         when (event.name) {
             "message" -> messages += JsonParser.parseString(event.data).asJsonObject
-            "tool-result" -> JsonParser.parseString(event.data).asJsonObject.let { results[it.get("toolUseId").asString] = ToolResult(it.get("text").asString, it.get("isError").asBoolean) }
+            "tool-result" -> JsonParser.parseString(event.data).asJsonObject.let { results[it.get("toolUseId").asString] = ToolResult(it.get("text").asText, it.get("isError").asBoolean) }
             "rewind" -> rewindTo(JsonParser.parseString(event.data).asJsonObject.get("lastMessageKept").stringOrNull())
             "caught-up" -> return ConversationOfALine(Conversation(messages.mapNotNull(::itemOf)), messages.map { ClaudeSessionId(it.get("sessionId").asString) }.toSet())
         }
@@ -55,12 +58,12 @@ class TheHubsConversationStream {
         val id = message.get("id").asString
         return when (message.get("kind").asString) {
             "promptOfMagnuss" -> Prompt(id, textOfThePrompt(message))
-            "promptFromElsewhere" -> sourceOf(message)?.let { PromptFromElsewhere(id, it, message.get("text").asString) }
-            "claudesText" -> AssistantText(id, message.get("text").asString)
-            "thinking" -> Thinking(id, message.get("text").asString)
+            "promptFromElsewhere" -> sourceOf(message)?.let { PromptFromElsewhere(id, it, message.get("text").asText) }
+            "claudesText" -> AssistantText(id, message.get("text").asText)
+            "thinking" -> Thinking(id, message.get("text").asText)
             "toolCall" -> ToolCall(id, message.get("name").asString, inputOf(message.getAsJsonObject("input")), results[message.get("toolUseId").asString])
-            "slashCommand" -> Prompt(id, message.get("asTyped").asString)
-            "interruption" -> Interruption(id, message.get("text").asString)
+            "slashCommand" -> Prompt(id, message.get("asTyped").asText)
+            "interruption" -> Interruption(id, message.get("text").asText)
             "compaction" -> Compaction(id)
             "clearing" -> Clearing(id, message.get("goesOnIn").asString)
             else -> null
@@ -75,7 +78,7 @@ class TheHubsConversationStream {
         var images = 0
         return message.getAsJsonArray("parts").joinToString("") { element ->
             val part = element.asJsonObject
-            if (part.get("kind").asString == "pastedImage") "[Image #${++images}]" else part.get("text")?.asString.orEmpty()
+            if (part.get("kind").asString == "pastedImage") "[Image #${++images}]" else part.get("text")?.asText.orEmpty()
         }
     }
 
@@ -91,7 +94,10 @@ class TheHubsConversationStream {
 
     /** A tool's input, field by field: a text as it is, anything else as its JSON. */
     private fun inputOf(input: JsonObject): List<ToolInputField> =
-        input.entrySet().map { (name, value) -> ToolInputField(name, if (value.isJsonPrimitive && value.asJsonPrimitive.isString) value.asString else value.toString()) }
+        input.entrySet().map { (name, value) -> ToolInputField(name, if (value.isJsonPrimitive && value.asJsonPrimitive.isString) value.asText else value.toString()) }
 
     private fun JsonElement?.stringOrNull(): String? = this?.takeUnless { it.isJsonNull }?.asString
+
+    /** A text of the conversation, with `\n` for every line separator, `\r\n` and a lone `\r` alike. */
+    private val JsonElement.asText: String get() = asString.replace("\r\n", "\n").replace('\r', '\n')
 }
