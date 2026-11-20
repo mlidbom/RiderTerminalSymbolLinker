@@ -26,4 +26,6 @@ The documents:
 - **`dev_docs/development-environment.md`:** building, the sandbox Rider, the observation channels, the specifications,
   and deploying to Magnus's IDEs.
 - **`dev_docs/releasing.md`:** the symbol linker's versions, which Riders it supports, CI and the Marketplace.
+- **`dev_docs/backlog.md`:** work Magnus deferred, and what waits for a time or an event to be passed on to another
+  repository, such as a recommendation for Compze: look at it when what an entry waits for comes about.
 - **The rest:** `src/test` holds the symbol linker's Kotlin unit tests, `tools/` the C# development tools, and `tests/` the fixture solution and both plugins' sandbox specifications.
