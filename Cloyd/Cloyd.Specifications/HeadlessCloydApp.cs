@@ -11,9 +11,4 @@ static class HeadlessCloydApp
       AppBuilder.Configure<CloydApp>()
                 .UseSkia()
                 .UseHeadless(new AvaloniaHeadlessPlatformOptions { UseHeadlessDrawing = false });
-
-   static readonly HeadlessUnitTestSession Session = HeadlessUnitTestSession.StartNew(typeof(HeadlessCloydApp), AvaloniaTestIsolationLevel.PerAssembly);
-
-   /// <summary>Runs <paramref name="onTheUiThread"/> on the headless platform's UI thread, and returns what it returns.</summary>
-   public static T OnTheUiThread<T>(Func<T> onTheUiThread) => Session.Dispatch(onTheUiThread, CancellationToken.None).GetAwaiter().GetResult();
 }
