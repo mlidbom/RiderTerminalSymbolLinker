@@ -17,8 +17,8 @@ namespace Cloyd.Sessions;
 /// <summary>
 /// A tab of a <see cref="Projects.ProjectWindow"/>: the terminal of one session host, showing its shell, and the Claude
 /// Code in the shell as Claude Code draws its TUI; and the chat of the session that runs in it, or ran in it last. A
-/// switch at its top shows the one or the other: the terminal at first, until the chat can do all Magnus needs. Titled
-/// with the name of that session.
+/// switch at its top shows the one or the other, as Ctrl+T does: the terminal at first, until the chat can do all Magnus
+/// needs. Titled with the name of that session.
 /// </summary>
 sealed class SessionTab : TabItem
 {
@@ -27,8 +27,8 @@ sealed class SessionTab : TabItem
    readonly AttachmentToASessionHost _attachment;
    readonly TextBlock _title;
    readonly TextBlock _notice = new() { IsVisible = false, Foreground = Brushes.Orange, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(8, 4) };
-   readonly ToggleButton _showTheChat = SwitchTo("Chat", "Show the chat");
-   readonly ToggleButton _showTheTerminal = SwitchTo("Terminal", "Show the terminal");
+   readonly ToggleButton _showTheChat = SwitchTo("Chat", TipOfTheChatsSwitch);
+   readonly ToggleButton _showTheTerminal = SwitchTo("Terminal", TipOfTheTerminalsSwitch);
 
    /// <summary>
    /// Attaches to <paramref name="host"/> at <paramref name="size"/>, which its terminal then resizes it from. Until the
@@ -47,13 +47,19 @@ sealed class SessionTab : TabItem
       Chat.Show(latestSession?.Id);
       _title = new TextBlock { Text = latestSession?.Name ?? nameGiven ?? TitleOfASessionWithNoName, VerticalAlignment = VerticalAlignment.Center };
       Header = TheHeader();
-      _showTheChat.Click += (_, _) => ShowTheChat(true);
-      _showTheTerminal.Click += (_, _) => ShowTheChat(false);
+      _showTheChat.Click += (_, _) => Show(chat: true);
+      _showTheTerminal.Click += (_, _) => Show(chat: false);
       ShowTheChat(false);
       Content = new DockPanel { Children = { Docked(_notice, Dock.Top), Docked(TheSwitch(), Dock.Top), new Panel { Children = { Terminal, Chat } } } };
    }
 
    protected override Type StyleKeyOverride => typeof(TabItem);
+
+   /// <summary>The tip of the switch's button that shows the chat: the key that switches too.</summary>
+   public const string TipOfTheChatsSwitch = "Show the chat: Ctrl+T";
+
+   /// <summary>The tip of the switch's button that shows the terminal: the key that switches too.</summary>
+   public const string TipOfTheTerminalsSwitch = "Show the terminal: Ctrl+T";
 
    public SessionHostOfTheHub Host { get; }
 
@@ -110,8 +116,28 @@ sealed class SessionTab : TabItem
       _notice.IsVisible = true;
    }
 
+   /// <summary>Shows the chat when the terminal is shown, else the terminal, as Ctrl+T does, and gives it the keyboard.</summary>
+   public void SwitchBetweenTheTerminalAndTheChat() => Show(chat: !Chat.IsVisible);
+
+   /// <summary>Gives the keyboard to what the tab shows: the terminal, which types into the session, or the chat.</summary>
+   public void FocusWhatItShows()
+   {
+      if(Chat.IsVisible) Chat.TakeTheKeyboard();
+      else Terminal.Focus();
+   }
+
    /// <summary>Lets go of the tab's host, whose session runs on.</summary>
    public void LetGo() => _attachment.Dispose();
+
+   /// <summary>
+   /// Shows the chat when <paramref name="chat"/>, else the terminal, as Magnus asks, and gives it the keyboard once it is
+   /// laid out: a chat shown for the first time isn't, and takes no focus until it is.
+   /// </summary>
+   void Show(bool chat)
+   {
+      ShowTheChat(chat);
+      Dispatcher.UIThread.Post(FocusWhatItShows, DispatcherPriority.Loaded);
+   }
 
    /// <summary>Shows the chat when <paramref name="chat"/>, else the terminal, as the switch shows.</summary>
    void ShowTheChat(bool chat)

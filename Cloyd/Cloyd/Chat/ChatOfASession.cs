@@ -59,13 +59,16 @@ sealed class ChatOfASession : UserControl
          Margin = new Thickness(16, 12),
          HorizontalAlignment = HorizontalAlignment.Center
       };
-      _scroller = new ScrollViewer { Content = _column, HorizontalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Disabled };
+      _scroller = new ScrollViewer { Content = _column, HorizontalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Disabled, Focusable = true };
       _end = new FollowingTheEnd(_scroller);
       KeepTheViewStillAsMoreIsDrawnAbove();
       _scroller.ScrollChanged += (_, changed) => { if(changed.OffsetDelta.Y < 0 && _scroller.Offset.Y <= NearTheTop) DrawMoreAboveOnceLaidOut(); };
       LookOfTheApp();
       Content = new DockPanel { Children = { Docked(_notice), _scroller } };
    }
+
+   /// <summary>Gives the chat the keyboard, as the tab shows it: its conversation then scrolls by the keys, as Page Up.</summary>
+   public void TakeTheKeyboard() => _scroller.Focus();
 
    /// <summary>The session whose conversation the chat shows, along its line: null while there is none, as before Claude Code starts in a tab.</summary>
    public ClaudeSessionId? Session { get; private set; }

@@ -25,13 +25,13 @@ public class When_Magnus_switches_a_sessions_tab_to_its_chat : SpecificationOpen
       Focus(tab.Terminal);
       Type(window, "Run a tool that prints 2 lines");
       Press(window, Key.Enter, PhysicalKey.Enter, RawInputModifiers.None);
-      Click(TheButtonWithTheTip(tab, "Show the chat"));
+      Click(TheButtonWithTheTip(tab, SessionTab.TipOfTheChatsSwitch));
       WaitUntil(() => ShownIn(tab).OfType<ShownInTheChat.RunOfToolCalls>().Any(), "the chat showed the tool call");
-      Click(TheButtonWithTheTip(tab, "Show the terminal"));
+      Click(TheButtonWithTheTip(tab, SessionTab.TipOfTheTerminalsSwitch));
       Focus(tab.Terminal);
       Type(window, "Thanks");
       Press(window, Key.Enter, PhysicalKey.Enter, RawInputModifiers.None);
-      Click(TheButtonWithTheTip(tab, "Show the chat"));
+      Click(TheButtonWithTheTip(tab, SessionTab.TipOfTheChatsSwitch));
       WaitUntil(() => ShownIn(tab).OfType<ShownInTheChat.ClaudesText>().Any(it => it.Markdown == "Heard: Thanks"), "the chat showed Claude's answer to what was sent after switching back to the terminal");
       Render(window, "a-sessions-tab-switched-to-its-chat");
       return tab;

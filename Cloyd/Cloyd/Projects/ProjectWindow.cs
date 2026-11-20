@@ -88,9 +88,10 @@ sealed class ProjectWindow : Window
       ToolTip.SetTip(_openTheHistory, TipOfTheHistoryButton);
       _openTheHistory.Click += (_, _) => _ = OpenTheHistoryPicker();
       AddHandler(KeyDownEvent, OpenTheHistoryPickerOnItsKey, RoutingStrategies.Tunnel);
+      AddHandler(KeyDownEvent, SwitchTheTabOnItsKey, RoutingStrategies.Tunnel);
       _historyPicker.Chosen += entry => _ = TellingOfFailure(() => entry.Choose(this));
-      _historyPicker.Closed += () => SelectedTab?.Terminal.Focus();
-      _tabs.SelectionChanged += (_, _) => Dispatcher.UIThread.Post(() => SelectedTab?.Terminal.Focus(), DispatcherPriority.Loaded);
+      _historyPicker.Closed += () => SelectedTab?.FocusWhatItShows();
+      _tabs.SelectionChanged += (_, _) => Dispatcher.UIThread.Post(() => SelectedTab?.FocusWhatItShows(), DispatcherPriority.Loaded);
    }
 
    /// <summary>The tip of the button that opens the session history picker: the key that does too.</summary>
@@ -438,6 +439,18 @@ sealed class ProjectWindow : Window
 
       key.Handled = true;
       _ = OpenTheHistoryPicker();
+   }
+
+   /// <summary>
+   /// Switches the selected tab between its terminal and its chat on Ctrl+T, before the terminal that has the focus takes
+   /// the key for Claude Code, whose own Ctrl+T shows its task list.
+   /// </summary>
+   void SwitchTheTabOnItsKey(object? sender, KeyEventArgs key)
+   {
+      if(key is not { Key: Key.T, KeyModifiers: KeyModifiers.Control } || SelectedTab is not {} tab) return;
+
+      key.Handled = true;
+      tab.SwitchBetweenTheTerminalAndTheChat();
    }
 
    Control TheLayout()
