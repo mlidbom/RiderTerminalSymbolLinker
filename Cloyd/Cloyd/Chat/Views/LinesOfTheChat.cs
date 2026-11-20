@@ -17,37 +17,36 @@ static class LinesOfTheChat
    /// <summary>A prompt's bubble, at the right of the column, its text in <paramref name="inlines"/>.</summary>
    public static Control Bubble(params Inline[] inlines)
    {
-      var text = new SelectableTextBlock { TextWrapping = TextWrapping.Wrap, Foreground = ColoursOfTheChat.Text };
+      var text = ColoursOfTheChat.Text.AsTheForegroundOf(new SelectableTextBlock { TextWrapping = TextWrapping.Wrap });
       text.Inlines!.AddRange(inlines);
-      return new Border
+      return ColoursOfTheChat.BubbleOfAPrompt.AsTheBackgroundOf(new Border
       {
-         Background = ColoursOfTheChat.BubbleOfAPrompt,
          CornerRadius = new CornerRadius(12),
          Padding = new Thickness(14, 10),
          HorizontalAlignment = HorizontalAlignment.Right,
          MaxWidth = WidestBubble,
          Child = text
-      };
+      });
    }
 
    /// <summary>A grey line, such as <c>Compacted session</c>.</summary>
-   public static Control Grey(string line) => new TextBlock { Text = line, Foreground = ColoursOfTheChat.Grey, TextWrapping = TextWrapping.Wrap };
+   public static Control Grey(string line) => ColoursOfTheChat.Grey.AsTheForegroundOf(new TextBlock { Text = line, TextWrapping = TextWrapping.Wrap });
 
-   /// <summary><paramref name="text"/> in the monospaced font, selectable, as a tool's output is shown.</summary>
-   public static SelectableTextBlock InMonospace(string text, IBrush? foreground = null) =>
-      new() { Text = text, FontFamily = Monospaced, FontSize = 12, TextWrapping = TextWrapping.Wrap, Foreground = foreground ?? ColoursOfTheChat.Text };
+   /// <summary><paramref name="text"/> in the monospaced font, selectable, as a tool's output is shown: in <paramref name="colour"/>, or the chat's text colour.</summary>
+   public static SelectableTextBlock InMonospace(string text, ColourOfTheChat? colour = null) =>
+      (colour ?? ColoursOfTheChat.Text).AsTheForegroundOf(new SelectableTextBlock { Text = text, FontFamily = Monospaced, FontSize = 12, TextWrapping = TextWrapping.Wrap });
 
-   /// <summary>A run of text in <paramref name="brush"/>.</summary>
-   public static Run Coloured(string text, IBrush brush) => new(text) { Foreground = brush };
+   /// <summary>A run of text in <paramref name="colour"/>.</summary>
+   public static Run Coloured(string text, ColourOfTheChat colour) => colour.AsTheForegroundOf(new Run(text));
 
    /// <summary>
    /// A line made of <paramref name="inlines"/>, followed by a chevron, that opens what <paramref name="opened"/> makes
    /// under it when clicked, and closes it when clicked again: <paramref name="isOpen"/> at first, and
    /// <paramref name="toggled"/> told each time.
    /// </summary>
-   public static Control Opening(Inline[] inlines, Func<Control> opened, bool isOpen, Action<bool>? toggled = null)
+   public static Control Opening(Inline[] inlines, Func<Control> opened, bool isOpen, Action<bool> toggled)
    {
-      var text = new TextBlock { TextWrapping = TextWrapping.Wrap, Foreground = ColoursOfTheChat.Grey };
+      var text = ColoursOfTheChat.Grey.AsTheForegroundOf(new TextBlock { TextWrapping = TextWrapping.Wrap });
       var chevron = Coloured("", ColoursOfTheChat.Grey);
       text.Inlines!.AddRange(inlines);
       text.Inlines.Add(chevron);
@@ -66,7 +65,7 @@ static class LinesOfTheChat
       line.Click += (_, _) =>
       {
          Show(under.Content is null);
-         toggled?.Invoke(under.Content is not null);
+         toggled(under.Content is not null);
       };
       return new StackPanel { Spacing = 6, Children = { line, under } };
 

@@ -12,28 +12,28 @@ namespace Cloyd.Chat.Views;
 /// </summary>
 static class ToolCallsInTheChat
 {
-   /// <summary>The view of <paramref name="run"/>: opened at first when <paramref name="isOpen"/>, and <paramref name="toggled"/> told as Magnus opens and closes it.</summary>
-   public static Control Of(ShownInTheChat.RunOfToolCalls run, bool isOpen, Action<bool> toggled) =>
+   /// <summary>The view of <paramref name="run"/>: it and its calls opened as Magnus has <paramref name="opened"/> them, which is told as he opens and closes them.</summary>
+   public static Control Of(ShownInTheChat.RunOfToolCalls run, OpenedInTheChat opened) =>
       run.IsOneCall
-         ? RowOf(run.Calls[0])
-         : Opening([Coloured(run.Counted, ColoursOfTheChat.Grey), .. LinesAddedBy(run.LinesAdded)], () => BoxOfTheRowsOf(run), isOpen, toggled);
+         ? RowOf(run.Calls[0], opened)
+         : Opening([Coloured(run.Counted, ColoursOfTheChat.Grey), .. LinesAddedBy(run.LinesAdded)], () => BoxOfTheRowsOf(run, opened), opened.IsOpen(run), isOpen => opened.Toggled(run, isOpen));
 
-   static Control BoxOfTheRowsOf(ShownInTheChat.RunOfToolCalls run)
+   static Control BoxOfTheRowsOf(ShownInTheChat.RunOfToolCalls run, OpenedInTheChat opened)
    {
       var rows = new StackPanel();
       foreach(var call in run.Calls)
       {
-         if(rows.Children.Count > 0) rows.Children.Add(new Border { Height = 1, Background = ColoursOfTheChat.Border, Margin = new Thickness(-12, 6) });
-         rows.Children.Add(RowOf(call));
+         if(rows.Children.Count > 0) rows.Children.Add(ColoursOfTheChat.Border.AsTheBackgroundOf(new Border { Height = 1, Margin = new Thickness(-12, 6) }));
+         rows.Children.Add(RowOf(call, opened));
       }
 
-      return new Border { BorderBrush = ColoursOfTheChat.Border, BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(10), Padding = new Thickness(12, 8), Child = rows };
+      return ColoursOfTheChat.Border.AsTheBorderOf(new Border { BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(10), Padding = new Thickness(12, 8), Child = rows });
    }
 
    /// <summary>The row of <paramref name="call"/>: its verb grey, what it acted on, the lines it added, how it failed, and a chevron.</summary>
-   static Control RowOf(ToolCallInTheChat call) =>
+   static Control RowOf(ToolCallInTheChat call, OpenedInTheChat opened) =>
       Opening([Coloured(call.Verb + " ", ColoursOfTheChat.Grey), Coloured(call.Target, ColoursOfTheChat.Text), .. LinesAddedBy(call.Outcome == OutcomeOfAToolCall.Done ? call.LinesAdded : 0), .. HowItEnded(call)],
-              () => WhatWasGivenAndGivenBack(call), isOpen: false);
+              () => WhatWasGivenAndGivenBack(call), opened.IsOpen(call), isOpen => opened.Toggled(call, isOpen));
 
    static Inline[] LinesAddedBy(int lines) => lines > 0 ? [Coloured($"  +{lines}", ColoursOfTheChat.Added)] : [];
 
@@ -52,7 +52,7 @@ static class ToolCallsInTheChat
    {
       var shown = new StackPanel { Spacing = 6, Margin = new Thickness(0, 0, 0, 4) };
       if(call.Command is {} command)
-         shown.Children.Add(new Border { BorderBrush = ColoursOfTheChat.Border, BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(6), Padding = new Thickness(8, 6), Child = InMonospace("$ " + command) });
+         shown.Children.Add(ColoursOfTheChat.Border.AsTheBorderOf(new Border { BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(6), Padding = new Thickness(8, 6), Child = InMonospace("$ " + command) }));
       if(call.Change is {} change && call.Outcome != OutcomeOfAToolCall.Failed)
          shown.Children.Add(LinesOf(change));
       else if(call.Result is {} result && result.Text.Length > 0)
@@ -69,9 +69,11 @@ static class ToolCallsInTheChat
          {
             WhatHappenedToTheLine.Added => ("+ ", ColoursOfTheChat.GroundOfAnAddedLine),
             WhatHappenedToTheLine.Removed => ("- ", ColoursOfTheChat.GroundOfARemovedLine),
-            _ => ("  ", null)
+            _ => ("  ", (ColourOfTheChat?)null)
          };
-         lines.Children.Add(new Border { Background = ground, Child = InMonospace(sign + line.Text) });
+         var shown = new Border { Child = InMonospace(sign + line.Text) };
+         ground?.AsTheBackgroundOf(shown);
+         lines.Children.Add(shown);
       }
 
       return lines;

@@ -85,8 +85,16 @@ sealed partial record ToolCallInTheChat(MessageInTheAnswer.ToolCall Call, ToolRe
    /// <summary>The command a <c>Bash</c> or <c>PowerShell</c> call ran: null for a call of another tool.</summary>
    public string? Command => Call.Name is "Bash" or "PowerShell" ? Text("command") : null;
 
-   /// <summary>The change the call made to a file, as an edit or a write gave it: null for a call of another tool.</summary>
-   public ChangeToAFile? Change => Call.Name switch
+   /// <summary>The change found as <see cref="Change"/>, once it has been asked for.</summary>
+   ChangeToAFile? _change;
+
+   /// <summary>
+   /// The change the call made to a file, as an edit or a write gave it: null for a call of another tool. Found once, as
+   /// it is first asked for: finding it compares the lines before with the lines after, each with each.
+   /// </summary>
+   public ChangeToAFile? Change => _change ??= ChangeItMade();
+
+   ChangeToAFile? ChangeItMade() => Call.Name switch
    {
       "Edit" => ChangeToAFile.From(Text("old_string"), Text("new_string")),
       "MultiEdit" when Call.Input.TryGetProperty("edits", out var edits) =>

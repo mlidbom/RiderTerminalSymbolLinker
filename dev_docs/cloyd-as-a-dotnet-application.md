@@ -344,10 +344,17 @@ Each as it is found: what the app does, what he asked for and where, and that th
 - **Drawn again only where it changed:** each time the hub's stream has caught up, the chat compares what it is to show
   with what it shows, from the top, and redraws from the first difference: what is added, and nothing after a publish
   of the hub, which sends the whole conversation again.
-- **A virtualizing list,** so that a conversation of 15,000 messages draws only what is in view. It guesses the length
-  of what it hasn't drawn, and its guesses move the view: so following the end (`FollowingTheEnd`) is told by what
-  Magnus does, the wheel, the keys and the scroll bar, not by where the view is.
-- **The dark theme,** as Cloyd's windows are dark: colours near the app's dark picture.
+- **The end of the conversation, as a plain list** (`DrawnEndOfTheConversation`): the last 100 things shown, and 100
+  more each time Magnus scrolls up near the top of what is drawn, what he looked at staying where it was. Not a
+  virtualizing list: it guesses the length of what it hasn't drawn, and in Magnus's own long sessions its guesses moved
+  the end without end, the chat flickering and Cloyd not answering (2026-11-20), as a chat's heights range from a line to
+  a screenful and change as Claude's markdown is laid out. Specified with the sample session a hundred times over
+  (`TheSampleSession.RepeatedInTheSandbox`).
+- **Following the end** (`FollowingTheEnd`) is told by what Magnus does, the wheel, the keys and the scroll bar, not by
+  where the view is: what is drawn grows without him.
+- **Windows' theme, as the app follows it** (Magnus, 2026-11-20): Cloyd follows it, light or dark, and the chat's
+  colours (`ColoursOfTheChat`) are near the app's in each, its code blocks in Visual Studio Code's colours for each. The
+  terminal stays dark in either, as Iciclecreek's terminal draws itself.
 - **Specified** on the headless platform with the sandbox hub: the session the app's pictures show
   (`TheSampleSession`), drawn to `RenderedWindows/the-sample-session.png` to set beside them; a run of calls and a
   command opened; and a tab switched to the chat of a live session of the stand-in for Claude Code.
@@ -357,7 +364,11 @@ Each as it is found: what the app does, what he asked for and where, and that th
 - **Not yet as the app:** inline code has no grey ground, and a code block has LiveMarkdown's bar with its language,
   which the app's hasn't.
 
-**Next increments:** the input box, sending through the hub, and then the chat as each tab's first view; while Claude
+**Next, before more of the chat: the session picker,** reopening this session and old ones. Magnus, 2026-11-20: "Not
+having a simple clear way of getting this session and old sessions opened again is a bigger problem than any polish
+that the chat UI might need."
+
+**Then the chat's next increments:** the input box, sending through the hub, and then the chat as each tab's first view; while Claude
 works (the line at the end, the text as it streams, the task list); scrolling's `Scroll to bottom` button; the buttons
 and time under a turn; links in Claude's text, with `POST /files/open`; a permission prompt switching to the terminal.
 

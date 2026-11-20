@@ -12,9 +12,9 @@ namespace Cloyd.Chat.Views;
 /// stays there as what it shows grows; once he scrolls up, it stays where he put it, until he scrolls back down to the end.
 /// </summary>
 /// <remarks>
-/// Told by what Magnus does, the wheel, the keys and a press on the scroll bar, not by where the view is: a virtualizing list guesses
-/// the length of what it hasn't drawn, and its guesses move the view up and down as it draws more, without Magnus
-/// scrolling at all. Seen in the chat of the sample session: 4,019 pixels, then 1,317, then 4,019 again.
+/// Whether Magnus scrolls is told by what he does, the wheel, the keys and a press on the scroll bar, not by where the
+/// view is: what is drawn grows without him, as the conversation goes on and as Claude's markdown is laid out after it
+/// is drawn, and leaves the view above the end.
 /// </remarks>
 sealed class FollowingTheEnd
 {

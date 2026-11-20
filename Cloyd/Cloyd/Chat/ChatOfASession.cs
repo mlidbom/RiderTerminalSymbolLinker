@@ -23,33 +23,37 @@ namespace Cloyd.Chat;
 /// It follows the conversation only while it is shown, as a tab's selected view: the hub holds every message of a
 /// conversation in memory while a stream follows it. Shown again, it reads the conversation anew, and draws only what
 /// changed meanwhile.<br/>
-/// A long conversation, such as one of Magnus's of 15,000 messages, is drawn only where it is scrolled to: a virtualizing
-/// list.
+/// A long conversation, such as one of Magnus's of 15,000 messages, is drawn only as far up as he scrolls: see
+/// <see cref="DrawnEndOfTheConversation"/>.
 /// </remarks>
 sealed class ChatOfASession : UserControl
 {
    /// <summary>The width of the column, as the app's narrow transcript width has it, in logical pixels.</summary>
    const double WidthOfTheColumn = 770;
 
+   /// <summary>How near the top of what is drawn Magnus scrolls before more is drawn above it, in logical pixels.</summary>
+   const double NearTheTop = 400;
+
    readonly TheHub _hub;
    readonly ItemsControl _column;
    readonly ScrollViewer _scroller;
    readonly TextBlock _notice = new() { IsVisible = false, Foreground = Brushes.Orange, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(8, 4) };
 
-   /// <summary>The runs of tool calls Magnus has opened, by their <see cref="ShownInTheChat.RunOfToolCalls.Id"/>: a run stays open as calls are added to it.</summary>
-   readonly HashSet<string> _openedRuns = [];
+   readonly OpenedInTheChat _opened = new();
 
    readonly FollowingTheEnd _end;
-   ObservableCollection<ShownInTheChat> _shown = [];
+   readonly DrawnEndOfTheConversation _drawn = new();
    CancellationTokenSource? _following;
+
+   /// <summary>Whether drawing more above is under way: see <see cref="DrawMoreAboveOnceLaidOut"/>.</summary>
+   bool _drawingMoreAbove;
 
    public ChatOfASession(TheHub hub)
    {
       _hub = hub;
       _column = new ItemsControl
       {
-         ItemsSource = _shown,
-         ItemsPanel = new FuncTemplate<Panel?>(() => new VirtualizingStackPanel()),
+         ItemsSource = _drawn.Drawn,
          ItemTemplate = new FuncDataTemplate<ShownInTheChat?>((shown, _) => ViewOf(shown)),
          MaxWidth = WidthOfTheColumn,
          Margin = new Thickness(16, 12),
@@ -57,15 +61,20 @@ sealed class ChatOfASession : UserControl
       };
       _scroller = new ScrollViewer { Content = _column, HorizontalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Disabled };
       _end = new FollowingTheEnd(_scroller);
-      LookOfClaudesMarkdown();
+      KeepTheViewStillAsMoreIsDrawnAbove();
+      _scroller.ScrollChanged += (_, changed) => { if(changed.OffsetDelta.Y < 0 && _scroller.Offset.Y <= NearTheTop) DrawMoreAboveOnceLaidOut(); };
+      LookOfTheApp();
       Content = new DockPanel { Children = { Docked(_notice), _scroller } };
    }
 
    /// <summary>The session whose conversation the chat shows, along its line: null while there is none, as before Claude Code starts in a tab.</summary>
    public ClaudeSessionId? Session { get; private set; }
 
-   /// <summary>What the chat shows now, in order.</summary>
-   public IReadOnlyList<ShownInTheChat> Shown => _shown;
+   /// <summary>What the chat shows now, in order, drawn or not.</summary>
+   public IReadOnlyList<ShownInTheChat> Shown => _drawn.Shown;
+
+   /// <summary>What it draws of it: the end, as far up as Magnus has scrolled.</summary>
+   public IReadOnlyList<ShownInTheChat> Drawn => _drawn.Drawn;
 
    /// <summary>Whether it follows the end of the conversation as it goes on: until Magnus scrolls up, and again once he scrolls back down to the end.</summary>
    public bool FollowsTheEnd => _end.IsFollowing;
@@ -128,24 +137,44 @@ sealed class ChatOfASession : UserControl
       });
    }
 
-   /// <summary>
-   /// Draws <paramref name="now"/>, what the chat is to show, in place of what it shows: only what differs, from the first
-   /// thing that does on, as what the conversation adds is at its end.
-   /// </summary>
+   /// <summary>Draws <paramref name="now"/>, what the chat is to show, in place of what it shows: see <see cref="DrawnEndOfTheConversation.Show"/>. Its first drawing is scrolled to the end.</summary>
    void Draw(IReadOnlyList<ShownInTheChat> now)
    {
       _notice.IsVisible = false;
-      if(_shown.Count == 0)
-      {
-         _column.ItemsSource = _shown = new ObservableCollection<ShownInTheChat>(now);
-         _end.ScrollToTheEnd();
-         return;
-      }
+      var isTheFirst = _drawn.Shown.Count == 0;
+      _drawn.Show(now);
+      if(isTheFirst) _end.ScrollToTheEnd();
+   }
 
-      var same = 0;
-      while(same < _shown.Count && same < now.Count && _shown[same].Equals(now[same])) same++;
-      while(_shown.Count > same) _shown.RemoveAt(_shown.Count - 1);
-      foreach(var added in now.Skip(same)) _shown.Add(added);
+   /// <summary>
+   /// Draws more above what is drawn, as Magnus scrolls up near its top, once the layout his scrolling started is done,
+   /// and keeps what was drawn first where it was in view: the scroll viewer's anchor doesn't, at the very top.
+   /// </summary>
+   void DrawMoreAboveOnceLaidOut()
+   {
+      if(!_drawn.HasMoreAbove || _drawingMoreAbove) return;
+      _drawingMoreAbove = true;
+      Dispatcher.UIThread.Post(() =>
+      {
+         _drawingMoreAbove = false;
+         if(_column.ContainerFromIndex(0) is not {} firstDrawn) return;
+         var whereItWas = WhereInViewIs(firstDrawn);
+         _drawn.DrawMoreAbove();
+         _scroller.UpdateLayout();
+         _scroller.Offset += new Vector(0, WhereInViewIs(firstDrawn) - whereItWas);
+      });
+
+      double WhereInViewIs(Control drawn) => drawn.TranslatePoint(default, _scroller)!.Value.Y;
+   }
+
+   /// <summary>
+   /// Has what Magnus looks at stay where it is as what is drawn above it grows as its markdown is laid out: each thing
+   /// drawn is a candidate for the scroll viewer's anchor, which it keeps in place.
+   /// </summary>
+   void KeepTheViewStillAsMoreIsDrawnAbove()
+   {
+      _column.ContainerPrepared += (_, prepared) => _scroller.RegisterAnchorCandidate(prepared.Container);
+      _column.ContainerClearing += (_, clearing) => _scroller.UnregisterAnchorCandidate(clearing.Container);
    }
 
    void Tell(string notice)
@@ -154,7 +183,7 @@ sealed class ChatOfASession : UserControl
       _notice.IsVisible = true;
    }
 
-   /// <summary>The view of <paramref name="shown"/>: none for null, which the virtualizing list asks for as it recycles a view.</summary>
+   /// <summary>The view of <paramref name="shown"/>: none for null, which the list may ask for as it clears a view.</summary>
    Control ViewOf(ShownInTheChat? shown)
    {
       if(shown is null) return new Panel();
@@ -163,7 +192,7 @@ sealed class ChatOfASession : UserControl
          ShownInTheChat.Prompt prompt => Bubble(Coloured(prompt.Text, ColoursOfTheChat.Text)),
          ShownInTheChat.SlashCommand command => Bubble(Coloured(command.Command, ColoursOfTheChat.SlashCommand), Coloured(command.Arguments, ColoursOfTheChat.Text)),
          ShownInTheChat.ClaudesText text => MarkdownOf(text.Markdown),
-         ShownInTheChat.RunOfToolCalls run => ToolCallsInTheChat.Of(run, _openedRuns.Contains(run.Id), isOpen => { if(isOpen) _openedRuns.Add(run.Id); else _openedRuns.Remove(run.Id); }),
+         ShownInTheChat.RunOfToolCalls run => ToolCallsInTheChat.Of(run, _opened),
          ShownInTheChat.Compaction compaction => Grey(compaction.Line),
          ShownInTheChat.Clearing => Grey(ShownInTheChat.Clearing.Line),
          ShownInTheChat.PromptFromElsewhere prompt => Grey(prompt.Line),
@@ -174,25 +203,28 @@ sealed class ChatOfASession : UserControl
    }
 
    /// <summary>
-   /// Has the markdown of what Claude wrote look as the app's does, through the resources LiveMarkdown's
-   /// <c>Defaults.axaml</c> defines: a <c>#</c> heading about 1.25 times the text's size, <c>##</c> and <c>###</c> the
-   /// text's own, bold; inline code in the text's colour.
+   /// Has the chat look as the app's does: in the <see cref="ColoursOfTheChat"/> of Windows' theme, and the markdown of
+   /// what Claude wrote in the sizes of the app's, through the resources LiveMarkdown's <c>Defaults.axaml</c> defines: a
+   /// <c>#</c> heading about 1.25 times the text's size, <c>##</c> and <c>###</c> the text's own, bold.
    /// </summary>
-   void LookOfClaudesMarkdown()
+   void LookOfTheApp()
    {
+      Resources.MergedDictionaries.Add(ColoursOfTheChat.AsResources());
       Resources["FontSize3Xl"] = 17.5;
       Resources["FontSize2Xl"] = 14.0;
       Resources["FontSizeXl"] = 14.0;
-      Resources["CodeInlineColor"] = ((ISolidColorBrush)ColoursOfTheChat.Text).Color;
    }
 
    static Control MarkdownOf(string markdown)
    {
       var text = new ObservableStringBuilder();
       text.Append(markdown);
-      var renderer = new MarkdownRenderer { MarkdownBuilder = text };
-      TextElement.SetForeground(renderer, ColoursOfTheChat.Text);
+      var renderer = ColoursOfTheChat.Text.AsTheForegroundOf(new MarkdownRenderer { MarkdownBuilder = text });
+      renderer.AttachedToVisualTree += (_, _) => ColourTheCode();
+      renderer.ActualThemeVariantChanged += (_, _) => ColourTheCode();
       return renderer;
+
+      void ColourTheCode() => renderer.CodeBlockColorTheme = ColoursOfTheChat.OfCodeIn(renderer.ActualThemeVariant);
    }
 
    static Control Docked(Control control)
