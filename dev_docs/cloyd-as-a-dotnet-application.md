@@ -9,7 +9,8 @@ Kotlin plugin that `claude-sessions.md` describes, and its chat stays the one Ma
   - the direction below, and the calls under "How it's to be built";
   - the input box as plain as Avalonia's editor gives it;
   - one home, later, for the Avalonia extensions the apps share;
-  - a Cloyd window per project, "for now".
+  - a Cloyd window per project, "for now";
+  - the terminals first, and then all the Kotlin UI goes (under "How it's to be built").
 - **The spike, run on 2026-11-20 on his go,** found the TUI's host and nothing against the port: see "What the spike
   found".
 - **Open, put to Magnus on 2026-11-20:** starting the .NET Cloyd itself.
@@ -95,8 +96,13 @@ Claude's calls (.NET-cloyd, the session in this repository), which Magnus OK'd o
 - **The hub and the application stay separate processes.** The hub is republished several times a day, one per Claude
   Code folder, and has no window: a UI in it would restart at every publish. So the hub's API keeps its rule that
   changes only add, as the application runs on through the hub's publishes.
-- **The Kotlin chat stays Magnus's daily driver** until the .NET one does the everyday back and forth better. New chat
-  features go into the .NET one once its work starts.
+- **The first step is the terminals alone, and then all the Kotlin UI goes** (Magnus, 2026-11-20, overriding the earlier
+  call that the Kotlin chat stays until the .NET one is better): "once Cloyd in .NET can even just show the terminals
+  and nothing else, no UI, get rid of all the UI in java". He worked with terminal tabs alone until a few days before.
+  - **Why it's simpler:** no session is ever shown by two UIs, so attaching never takes a TUI away from a tab. No parity
+    has to be reached before the switch, and the Kotlin side of it is deletion.
+  - **Why it's cheap:** the spike has most of it: the attachment, the terminal and the window.
+  - **The chat comes back afterwards,** built in .NET.
 - **The input box is Avalonia's editor, AvaloniaEdit, unpolished,** with standard Windows text editing. Magnus: "None
   of the claude UI's have a super competent input box, very few chats do. Any polishing at all of this can wait."
 - **The helper that runs a deploy between an IDE's exit and its start** can move to the .NET side, which outlives the
