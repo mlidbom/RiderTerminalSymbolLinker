@@ -39,8 +39,8 @@ import java.util.concurrent.Executors
  *    `session` finds one whose Claude Code was resumed in a new process. Either may be left out. It answers 200 with
  *    `{"shown": true}`, or 404 with `{"shown": false}` when none of this IDE's tabs runs the session.
  *  - `GET /windows`: the windows of the projects open in the IDE, as `{"windows": [{"project": <the project's folder>,
- *    "title": <the window's title>, "window": <its native handle, HWND>, "hasTheInputFocus": <whether it, or a dialog it
- *    owns, has the input focus>, "desktop": <the GUID of the virtual desktop it's on, or null>}]}`.
+ *    "title": <the window's title>, "window": <its native handle, HWND>, "desktop": <the GUID of the virtual desktop it's
+ *    on, or null>}]}`.
  *  - `POST /restart` with `{"why": <why>, "askedBy": <who asked>}`, and the announcement's token: has the IDE restart
  *    itself, as after a plugin's update, without asking the user to confirm it. It answers 202 once the restart is on
  *    its way, or 409 with `{"error": <why not>}` when a modal dialog is open. The IDE
@@ -99,7 +99,7 @@ class LocalApi : Disposable {
 
     private fun answerWithTheWindows(exchange: HttpExchange) = reply(exchange) {
         val windows = onTheEdt { ProjectWindow.ofTheOpenProjects() }.map {
-            mapOf("project" to it.project.toString(), "title" to it.title, "window" to it.handle.value, "hasTheInputFocus" to it.hasTheInputFocus, "desktop" to it.desktop?.value?.toString())
+            mapOf("project" to it.project.toString(), "title" to it.title, "window" to it.handle.value, "desktop" to it.desktop?.value?.toString())
         }
         200 to mapOf("windows" to windows)
     }

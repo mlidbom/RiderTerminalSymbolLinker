@@ -7,7 +7,7 @@ import java.awt.Window
 
 /**
  * A window's native handle, as Windows names it, its `HWND`: other tools find the window by it, as the hub does to tell
- * whether it has the input focus.
+ * whether it's the window in front.
  */
 @JvmInline
 value class WindowHandle(val value: Long) {

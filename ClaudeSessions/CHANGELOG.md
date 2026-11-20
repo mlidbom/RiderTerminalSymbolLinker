@@ -39,7 +39,7 @@ All notable changes to Claude Sessions are documented here. The format follows
   project's window is moved to the Windows virtual desktop it was on as the IDE closed, rather than opening on the one
   shown then. A desktop removed since is skipped.
 - **Other tools can restart the IDE.** Claude Sessions' local API lists the IDE's project windows, with their virtual
-  desktops and whether one has the input focus, and restarts the IDE when asked, as after a plugin update: for the
+  desktops, and restarts the IDE when asked, as after a plugin update: for the
   Claude tooling's tool that restarts Rider. Asking to restart takes a token from the API's announcement.
 - **Sessions survive a reboot.** When a tab's session host is gone too, as after a reboot, its session is resumed in a
   new tab, in its own folder, in the same order. That includes a session switched to with `/resume` or started with

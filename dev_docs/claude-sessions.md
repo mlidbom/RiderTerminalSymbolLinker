@@ -488,8 +488,8 @@ tooling-owner on 2026-11-17 (protocol 1):
   `~/.claude/notifying-magnus.log`.
 - **`GET /windows`** and **`POST /restart`,** for the tooling owner's tool for restarting Rider
   (`~/.claude/dev_docs/restarting-rider.md`), agreed with it on 2026-11-19. `GET /windows`: each project window's
-  folder, title, native handle (`HWND`), whether it or a dialog it owns has the input focus, and its virtual desktop's
-  GUID. `POST /restart` `{"why", "askedBy"}`: 202, then `ApplicationEx.restart(exitConfirmed = true)`; 409 while a
+  folder, title, native handle (`HWND`), and its virtual desktop's GUID. The hub tells whether a Rider window is in
+  front from Windows' foreground window itself (the tooling's fd212d6). `POST /restart` `{"why", "askedBy"}`: 202, then `ApplicationEx.restart(exitConfirmed = true)`; 409 while a
   modal dialog is open; one that exits already goes on exiting (`Application.isExitInProgress` is internal API, which
   the verifier refuses). Rider may still ask on the way, as whether to end running processes.
   The new announcement comes once the first project has opened. Rider restarts its launcher without the arguments it
