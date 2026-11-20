@@ -9,7 +9,7 @@ says what it is, why it waits, and what to do once it can go ahead. Remove an en
 
 **Waits for:** Magnus no longer running on API credits (Magnus, 2026-11-20: "get it passed on to Compze ASAP when we
 are no longer running on API credits"). **Then, at once:** send it to the session that works in Compze
-(`C:\Dev\Compze`, whose rep session is `compze-agent-rep`; `ListAgents` names the sessions that run), or tell Magnus
+(`C:\Dev\Compze`, whose rep session is `compze-rep`; `ListAgents` names the sessions that run), or tell Magnus
 when none runs. Once Compze publishes it, upgrade Cloyd's specifications to it (the `upgrading-compze-packages` skill)
 and remove this entry.
 
