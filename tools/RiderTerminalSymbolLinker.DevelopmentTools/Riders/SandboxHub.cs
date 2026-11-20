@@ -91,7 +91,11 @@ public sealed class SandboxHub(string folder)
       start.ArgumentList.Add("start");
       using(var client = Process.Start(start) ?? throw new InvalidOperationException($"Could not start {start.FileName}."))
       {
-         if(!client.WaitForExit(HowLongStartingMayTake)) throw new TimeoutException($"{start.FileName} hub start didn't exit within {HowLongStartingMayTake}.");
+         if(!client.WaitForExit(HowLongStartingMayTake))
+         {
+            client.Kill(); // Each later start would leave another, as on 2026-11-20, when no new console could start.
+            throw new TimeoutException($"{start.FileName} hub start didn't exit within {HowLongStartingMayTake}.");
+         }
          if(client.ExitCode != 0) throw new InvalidOperationException($"{start.FileName} hub start exited with {client.ExitCode}.");
       }
 
@@ -185,29 +189,11 @@ public sealed class SandboxHub(string folder)
          var id = host!["id"]!.GetValue<string>();
          using var answer = client.PostAsync($"/session-hosts/{id}/end", content: null).Result;
          if(answer.StatusCode is HttpStatusCode.NoContent or HttpStatusCode.NotFound) continue;
-         //todo: delete once the hub answers 204 or 404 for a session host that is already ending. Asked to end one whose tab
-         //   had just closed, it answered 500, "IOException: Pipe is broken" (2026-11-20; told the tooling owner). The host
-         //   was ending, so it is ended if the hub stops listing it.
-         if(answer.StatusCode == HttpStatusCode.InternalServerError && IsNoLongerListed(id)) continue;
          throw new InvalidOperationException($"The sandbox's hub answered ending the session host {id} with {(int)answer.StatusCode}: {answer.Content.ReadAsStringAsync().Result}");
       }
 
       return hosts.Count;
-
-      bool IsNoLongerListed(string id)
-      {
-         var clock = Stopwatch.StartNew();
-         while(clock.Elapsed < HowLongEndingAHostMayTake)
-         {
-            if(SessionHosts().All(it => it!["id"]!.GetValue<string>() != id)) return true;
-            Thread.Sleep(100);
-         }
-
-         return false;
-      }
    }
-
-   static readonly TimeSpan HowLongEndingAHostMayTake = TimeSpan.FromSeconds(5);
 
    /// <summary>A client of the hub's local API, with its token, or null when no hub runs.</summary>
    HttpClient? ClientOfTheHub()
