@@ -117,6 +117,29 @@ public sealed class InstalledCloyd(string folder)
       }
    }
 
+   /// <summary>
+   ///   Has the Cloyd application take the build in <see cref="Bin"/>, as a reload has an IDE take a plugin's: stops it,
+   ///   its windows saving their tabs, and runs <c>Cloyd.exe --project</c> for each project it showed, as Claude Sessions
+   ///   does as a project opens, which starts it again. The sessions run on in their hosts, and each window brings its tabs
+   ///   back. Returns what it did.
+   /// </summary>
+   internal string RestartTheApplication()
+   {
+      if(TheApplication() is not {} before) return $"No Cloyd application runs: the next project to open starts one with the build in {this}.";
+      var projects = ProjectsItShows();
+      StopTheApplication();
+      foreach(var project in projects) ShowTheWindowOf(project);
+      return $"Restarted the Cloyd application on the build in {this}: process {before.Id} is now {TheApplication()?.Id.ToString() ?? "none"}, showing {string.Join(", ", projects)}.";
+   }
+
+   /// <summary>Runs <c>Cloyd.exe --project <paramref name="project"/></c>, which hands the project to the application, starting it if none runs, and returns once its window shows.</summary>
+   void ShowTheWindowOf(string project)
+   {
+      using var command = Process.Start(new ProcessStartInfo(CloydExe, ["--project", project]) { UseShellExecute = false })!;
+      command.WaitForExit();
+      if(command.ExitCode != 0) throw new InvalidOperationException($"{CloydExe} --project {project} exited with {command.ExitCode}.");
+   }
+
    /// <summary>What the application's announcement says, its process, port and token: null while there is none.</summary>
    JsonNode? TheAnnouncement()
    {

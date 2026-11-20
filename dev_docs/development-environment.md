@@ -202,7 +202,10 @@ window. The deploy says for each IDE whether it does, or needs a restart: a plug
 **Every deploy puts the working tree's Cloyd in first,** which Claude Sessions runs from 0.2.0: published in Release
 into `%LOCALAPPDATA%\Cloyd\bin` (`InstalledCloyd.Everyday`), moving the files a running Cloyd application maps aside, as
 for a plugin's jar. The application that runs runs on with the build it has until its last window closes; the next
-project to open then starts the new one. `--dry-run` says which, and changes nothing.
+project to open then starts the new one. `--dry-run` says which, and changes nothing. `everyday reload Cloyd` has it
+take the new build at once: it closes its windows, each saving its tabs, and runs `Cloyd.exe --project` for each
+project it showed, which starts it again with the same windows, their tabs brought back. The sessions run on in their
+hosts. On Magnus's go, as it closes the windows he works in.
 
 **A build that needs a restart isn't put into a running IDE that reloads,** and the deploy says `DIDN'T DEPLOY`, and
 `--dry-run` says `CLOSE <IDE> FIRST`. Such a build adds or removes a file, or changes what its plugin.xml registers, and

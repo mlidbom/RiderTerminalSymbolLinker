@@ -79,6 +79,10 @@ static class Program
                                                       Has his IDEs, or only the one named, such as Rider or
                                                       "IntelliJ IDEA", reload the build of the plugin they have, when he
                                                       next switches to its window
+                          everyday reload Cloyd       Has his Cloyd application take the build in %LOCALAPPDATA%\Cloyd\bin:
+                                                      restarts it, its windows closing and opening again for the same
+                                                      projects, their tabs brought back. The sessions run on. On his
+                                                      go-ahead, as it closes the windows he works in
                         """;
 
    static int Main(string[] arguments)
@@ -128,6 +132,9 @@ static class Program
             break;
          case ["sandbox", "cloyd"]:
             foreach(var line in sandbox.WhatItsCloydShows()) Console.WriteLine(line);
+            break;
+         case ["everyday", "reload", "Cloyd"]:
+            Console.WriteLine(InstalledCloyd.Everyday.RestartTheApplication());
             break;
          case ["everyday", "reload", var plugin]:
             foreach(var line in EverydayIdes.Reload(OurPlugin.Named(plugin))) Console.WriteLine(line);
