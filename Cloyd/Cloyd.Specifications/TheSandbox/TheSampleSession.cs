@@ -66,13 +66,20 @@ static class TheSampleSession
    static string UuidOf(string entry) => Regex.Match(entry, "\"uuid\": \"([^\"]+)\"").Groups[1].Value;
 
    /// <summary>
-   /// Writes <paramref name="entries"/> as the transcript of <paramref name="session"/> in the sandbox's Claude Code folder:
-   /// beside it first, then moved into its place, so that the hub, which may follow the session already, as for an earlier
-   /// specification, never reads it half written.
+   /// Writes <paramref name="entries"/> as the transcript of <paramref name="session"/> in the sandbox's Claude Code folder,
+   /// unless it holds them already, as for every specification but the first to ask: beside it first, then moved into its
+   /// place, so that the hub, which may follow the session already, as for an earlier specification, never reads it half
+   /// written.
    /// </summary>
-   static void WriteInTheSandbox(ClaudeSessionId session, IEnumerable<string> entries)
+   /// <remarks>
+   /// Not written again when it holds them: the move over it is refused while the hub reads it, as it may for a chat that
+   /// followed it, "Access to the path is denied" (2026-11-20).
+   /// </remarks>
+   static void WriteInTheSandbox(ClaudeSessionId session, IReadOnlyList<string> entries)
    {
       var transcript = new FileInfo(Path.Combine(Sandbox.Started.HubOfTheSandbox.ClaudeCodeFolder, "projects", "C--sample-shop", $"{session}.jsonl"));
+      if(transcript.Exists && File.ReadAllLines(transcript.FullName).SequenceEqual(entries)) return;
+
       transcript.Directory!.Create();
       var written = Path.Combine(transcript.DirectoryName!, $"{session}.being-written");
       File.WriteAllLines(written, entries);
