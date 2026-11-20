@@ -18,6 +18,8 @@ public class When_the_hub_is_behind_a_tabs_chat(When_the_hub_is_behind_a_tabs_ch
       public readonly ChatSeen OnceALineWasSaid;
       public readonly ChatSeen OnceAnotherWas;
       public readonly ChatSeen OnceSentFromTheChat;
+      public readonly ChatSeen OnceAToolPrintedWindowsLines;
+      public readonly ChatSeen OnceSaidAfterThem;
 
       public Story()
       {
@@ -34,6 +36,11 @@ public class When_the_hub_is_behind_a_tabs_chat(When_the_hub_is_behind_a_tabs_ch
          chat.Press("ENTER");
          OnceSentFromTheChat = chat.SeenOnce(it => it.Transcript.Contains("Heard: And the triangle") || it.WhyNotTyped is not null,
                                              "Claude Code to answer what the chat sent, or the chat to say why it didn't get it");
+         // The stand-in records the tool's result with \r\n, as Windows' tools print and Claude Code keeps it.
+         view.Say(0, "Run a tool that prints 2 lines");
+         OnceAToolPrintedWindowsLines = chat.SeenOnce(it => it.Folds.Any(fold => fold.Folded.Contains("line 1")), "the chat to show the tool's call");
+         view.Say(0, "And the circle again");
+         OnceSaidAfterThem = chat.SeenOnce(it => it.Transcript.Contains("Heard: And the circle again"), "the chat to show what was said after the tool's lines");
       }
    }
 
@@ -53,4 +60,9 @@ public class When_the_hub_is_behind_a_tabs_chat(When_the_hub_is_behind_a_tabs_ch
       story.OnceSentFromTheChat.Transcript.Must().Be(story.OnceAnotherWas.Transcript + "## You\nAnd the triangle\n\n## Claude\nHeard: And the triangle\n\n");
 
    [XF] public void the_input_box_is_empty_again() => story.OnceSentFromTheChat.MessageBox.Must().Be("");
+
+   [XF] public void a_tools_windows_line_endings_show_as_line_breaks() =>
+      story.OnceAToolPrintedWindowsLines.Folds.Must().Satisfy(it => it.Any(fold => fold.Folded.Contains("line 1\nline 2") && !fold.Folded.Contains('\r')));
+
+   [XF] public void and_the_chat_goes_on_after_them() => story.OnceSaidAfterThem.Transcript.Must().Satisfy(it => it.EndsWith("## You\nAnd the circle again\n\n## Claude\nHeard: And the circle again\n\n"));
 }
