@@ -66,10 +66,9 @@ platform's and the terminal's, alike in every IDE.
   started in the sandbox then took itself for a child session, and neither recorded its session nor saved its
   transcript. So the sandbox starts without the `CLAUDE*` variables that aren't set for the user or the machine.
 - **A stand-in for Claude Code:** the tooling owner's, which the hub's own specifications run too, published as
-  `~/.claude/bin/stand-in-for-claude-code` (its source in `~/.claude/src/StandInForClaudeCode`), is copied into the
-  sandbox's folder as it starts, and first on its `PATH`. The copy is a mirror that moves a file in use aside: a
-  stand-in runs on in its session host through a restart of the sandbox Rider, and the tooling owner can publish anew
-  while the sandbox runs. It has a `CLAUDE_CONFIG_DIR` of its own, `claude-code` in the sandbox's folder, records its
+  `~/.claude/bin/stand-in-for-claude-code` (its source in `~/.claude/src/StandInForClaudeCode`), is copied with the
+  sandbox's hub, and first on the sandbox's `PATH`: see the sandbox's hub below. It has a `CLAUDE_CONFIG_DIR` of its
+  own, the Claude Code folder the sandbox's hub serves, records its
   session and keeps its transcript where Claude Code does, and understands `--name`, `--resume`, `/clear`, `/rename`
   and `/exit`. It draws an input box, which takes keys as Claude Code's does, and which the hub types the chat's
   messages into, and answers each prompt with `Heard: <the prompt>`; `Be busy for <n> seconds` keeps it busy. Above
@@ -139,28 +138,28 @@ re-highlights old output.
 ## The sandbox's Claude Code, git and local API
 
 - **The sandbox's hub** (`SandboxHub`), which Claude Sessions there follows for the Claude Codes that run, and which
-  starts the session hosts its tabs' sessions run in: a copy of the published hub's build, `ClaudeTooling.exe`,
-  `ClaudeTooling.Hub.exe` and `ClaudeTooling.SessionHost.exe` from `~/.claude/bin`, in `hub` in the sandbox's
-  folder, started with `ClaudeTooling.exe hub start`, with the sandbox's `CLAUDE_CONFIG_DIR`, and with
-  `CLAUDE_TOOLING_LOCAL_API_FOLDER` naming a folder of its own for its announcement, which the sandbox Rider gets too,
-  as the hub's contract says. Its log is `hub.log` there, which `CLAUDE_TOOLING_HUB_LOG` names: without it, it would
-  write to Magnus's hub's, `~/.claude/hub.log`. For its Rider
-  restart, `CLAUDE_SESSIONS_LOCAL_API_FOLDER` names the sandbox Rider's announcements, the only IDEs it restarts, and
-  `DOTNET_ANALYSIS_AND_REFACTORING_MCP_PORT` the sandbox's Royder: a hub outside `~/.claude/bin` takes both from its
-  start environment, and without the folder answers that it has no IDEs. A hub that runs with other values of these
-  five than the sandbox now sets, as after a change to the tools, is ended and started anew (`started.json` beside
-  the copy records them). It's run as the sandbox starts, and before each install into a running one, taking the published build anew when there is a newer
-  one. The copy's hub is given a write time of its own: the hub's pipe is named after it, and with the published
-  one's, the copy's client would hand its commands to Magnus's hub. It stops 5 minutes after the sandbox Rider's stream
-  of it closes. `sandbox status` shows its announcement. `When_the_hub_restarts_rider` has it restart the sandbox
+  starts the session hosts its tabs' sessions run in: the tooling's own sandbox hub, which
+  `~/.claude/bin/ClaudeTooling.exe hub sandbox start <folder>` runs in `hub` in the sandbox's folder, from a copy of
+  the published build with its stand-in for Claude Code, as the hub's contract has it in "A sandbox's hub". The
+  command prints where the hub's parts are, the contract's `SandboxHubStarted`, which the tools compile in: its Claude
+  Code folder, its announcement, its log, the stand-in's folder, and the three variables that name them, which the
+  sandbox Rider gets too. The tools put the stand-in's folder first on the sandbox Rider's `PATH` themselves, as the
+  contract asks of a client. For its Rider restart, `CLAUDE_SESSIONS_LOCAL_API_FOLDER` names the sandbox Rider's
+  announcements, the only IDEs it restarts, and `DOTNET_ANALYSIS_AND_REFACTORING_MCP_PORT` the sandbox's Royder: the
+  command starts the hub in the tools' environment, which has both. A hub that runs with other values of the variables
+  it serves by is ended and started anew by the command. It's run as the sandbox starts, before each install into a
+  running one, taking the published build anew when there is a newer one, and once in any tools process that needs a
+  part of it. It stops 5 minutes after the sandbox Rider's stream of it closes; `hub sandbox stop` ends it at once,
+  with its session hosts and stand-ins. `sandbox status` says where it announces itself. Until 2026-11-20 the tools
+  copied and started the hub themselves. `When_the_hub_restarts_rider` has it restart the sandbox
   Rider through `POST /rider-restart`, with `askedByMagnus`, so it shows Magnus no prompt: an agent's
   `ClaudeTooling.exe rider restart` shows him one while a Rider's window is Windows' foreground window, as the sandbox
   Rider's may be once it has started, or his own. Its steps are in `rider-restarts.log` in the sandbox's
   Claude Code folder.
 - **The sandbox's session hosts outlive it,** as Magnus's do his IDEs, their shells in the fixture solution's copy:
-  `sandbox stop`, and the end of a specification run that started the sandbox, end them
-  (`SandboxRider.StopAndEndItsSessions`), and so does a start that copies the fixture solution afresh, which their
-  shells would hold. Their log is `session-hosts.log` in the sandbox's Claude Code folder.
+  `sandbox stop`, and the end of a specification run that started the sandbox, end them with the hub, through
+  `hub sandbox stop` (`SandboxRider.StopAndEndItsSessions`), and a start that copies the fixture solution afresh,
+  which their shells would hold, ends them through the hub's local API. Their log is `session-hosts.log` in the sandbox's Claude Code folder.
 - **The stand-in's record** says `idle` or `busy`, with the time, and `interactive`: the hub leaves out a record with no
   status. It has `procStart` too, the process's creation time as a Windows FILETIME, exact to the 100 nanoseconds as
   Claude Code writes it, which the hub checks against the running process from its step 2 on: a mismatch there drops
@@ -169,8 +168,8 @@ re-highlights old output.
 - **The stand-in** writes its transcripts in Claude Code's format, the entries Claude Sessions and the hub read: a
   `user` entry with its folder, Claude's reply and a `last-prompt` for each prompt, an `ai-title` after the first, and
   a `custom-title` for `/rename <name>`, and for `--name <name>` as it starts. `--resume` finds the transcript in any
-  project's folder, as Claude Code does. The sandbox takes a copy of the published stand-in as it starts, so a new one
-  takes a restart of the sandbox.
+  project's folder, as Claude Code does. The sandbox's hub copies a newly published stand-in when it next runs, moving
+  the files in use aside, so a running stand-in runs on.
 - **Each story starts with no history, and in PowerShell 7:** `TheClaudeSessionsView` deletes the sandbox's
   transcripts, and has the terminals run `pwsh.exe`, Magnus's shell, as a story may have chosen another. A story writes the
   transcripts it needs with `SessionTranscript`, dated as it likes.

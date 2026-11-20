@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using ClaudeTooling.Hub.LocalApi.Contract.Sandboxes;
 using RiderTerminalSymbolLinker.DevelopmentTools.Plugin;
 using RiderTerminalSymbolLinker.DevelopmentTools.Screen;
 
@@ -68,6 +69,9 @@ public sealed class SandboxRider
    /// <summary>The hub the sandbox's Claude Sessions follows, which serves the sandbox's <see cref="ClaudeCodeFolder"/>.</summary>
    readonly SandboxHub _hub;
 
+   /// <summary>Where the parts of <see cref="_hub"/> are, as it said when this process last had it run: null until then.</summary>
+   SandboxHubStarted? _hubStarted;
+
    public SandboxRider(RiderInstallation rider)
    {
       _rider = rider;
@@ -78,31 +82,20 @@ public sealed class SandboxRider
    }
 
    /// <summary>
-   ///   Claude Code's folder in the sandbox, which <c>CLAUDE_CONFIG_DIR</c> names there: where the stand-in for Claude Code
-   ///   records the sessions it runs, as Claude Code does in the user's.
+   ///   Claude Code's folder in the sandbox, which its hub serves, and <c>CLAUDE_CONFIG_DIR</c> names there: where the
+   ///   stand-in for Claude Code records the sessions it runs, as Claude Code does in the user's.
    /// </summary>
-   public string ClaudeCodeFolder => Path.Combine(_root, "claude-code");
+   public string ClaudeCodeFolder => ItsHub.ClaudeCodeFolder;
 
    /// <summary>
-   ///   Where the tooling owner publishes the stand-in for Claude Code, a <c>claude.exe</c> that runs a session as Claude
-   ///   Code does, keeps its record and transcript as Claude Code does, and draws and takes an input box as Claude Code
-   ///   does, for the hub to type into: the hub's specifications run it too. Its source is in
-   ///   <c>~/.claude/src/StandInForClaudeCode</c>.
+   ///   The sandbox's stand-in for Claude Code, the tooling owner's <c>claude.exe</c>, which runs a session as Claude Code
+   ///   does, keeps its record and transcript as Claude Code does, and draws and takes an input box as Claude Code does,
+   ///   for the hub to type into. Its folder in the hub's copy of the build is first on the sandbox's <c>PATH</c>, so that
+   ///   Claude Sessions runs it there in place of Claude Code. This is to run one outside Claude Sessions' tabs, as in a
+   ///   plain terminal: with <c>CLAUDE_CONFIG_DIR</c> naming <see cref="ClaudeCodeFolder"/>, as the sandbox's own
+   ///   environment does. Its source is in <c>~/.claude/src/StandInForClaudeCode</c>.
    /// </summary>
-   static string StandInForClaudeCodeBuild => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".claude", "bin", "stand-in-for-claude-code");
-
-   /// <summary>
-   ///   The sandbox's copy of the <see cref="StandInForClaudeCodeBuild"/>, first on its <c>PATH</c>, so that Claude Sessions
-   ///   runs it there in place of Claude Code. A copy, taken as the sandbox starts: the build's own <c>claude.exe</c>,
-   ///   held open by the sandbox's tabs, kept the tools from building while the sandbox ran.
-   /// </summary>
-   string StandInForClaudeCodeFolder => Path.Combine(_root, "stand-in-for-claude-code");
-
-   /// <summary>
-   ///   The sandbox's stand-in for Claude Code itself, to run one outside Claude Sessions' tabs, as in a plain terminal: with
-   ///   <c>CLAUDE_CONFIG_DIR</c> naming <see cref="ClaudeCodeFolder"/>, as the sandbox's own environment does.
-   /// </summary>
-   public string StandInForClaudeCode => Path.Combine(StandInForClaudeCodeFolder, "claude.exe");
+   public string StandInForClaudeCode => Path.Combine(ItsHub.FolderOfTheStandInForClaudeCode, "claude.exe");
 
    /// <summary>
    ///   Where the sandbox's Claude Sessions announces its local API to other tools, and finds other IDEs' announcements:
@@ -250,7 +243,6 @@ public sealed class SandboxRider
          new SandboxRiderSettings(Path.Combine(_root, "config")).Write(SolutionsFolder);
          WriteTheFoldersFile();
          WriteTheJvmOptionsFile();
-         TakeTheStandInForClaudeCodeBuild();
          var process = Launch(solution);
          File.WriteAllText(ProcessFile, $"{process.Id};{process.StartTime.Ticks}");
       } else if(solution is not null)
@@ -280,59 +272,75 @@ public sealed class SandboxRider
       observation.WaitUntilReloaded(startedBefore, TimeSpan.FromMinutes(1));
    }
 
-   /// <summary>Has the <see cref="SandboxHub"/> run, in the sandbox's environment, as Claude Sessions there needs it.</summary>
-   void RunTheHub()
+   /// <summary>
+   ///   Has the <see cref="SandboxHub"/> run, in the sandbox's environment, as Claude Sessions there needs it, and gives
+   ///   this process the hub's variables on top, with its stand-in for Claude Code first on the <c>PATH</c>, for the
+   ///   sandbox Rider it starts: the hub puts the stand-in on no one's <c>PATH</c>, and the sandbox Rider's goes on to the
+   ///   shells of the sessions its Claude Sessions starts. Returns where the hub's parts are.
+   /// </summary>
+   SandboxHubStarted RunTheHub()
    {
-      TakeTheSandboxsEnvironment();
-      _hub.Run();
+      TakeTheSandboxsOwnEnvironment();
+      var hub = _hub.Start();
+      foreach(var (name, value) in hub.Environment) Environment.SetEnvironmentVariable(name, value);
+      var path = Environment.GetEnvironmentVariable("PATH")!;
+      if(!path.StartsWith(hub.FolderOfTheStandInForClaudeCode + Path.PathSeparator))
+         Environment.SetEnvironmentVariable("PATH", hub.FolderOfTheStandInForClaudeCode + Path.PathSeparator + path);
+      return _hubStarted = hub;
    }
 
+   /// <summary>Where the parts of the sandbox's hub are: it is had run first, unless this process has had it run already.</summary>
+   SandboxHubStarted ItsHub => _hubStarted ?? RunTheHub();
+
+   HubsLocalApi LocalApiOfItsHub => new(ItsHub.AnnouncementFolder);
+
    /// <summary>
-   ///   Has the sandbox's hub restart the sandbox Rider, as the published hub restarts Magnus's IDEs, its restarter running
-   ///   <paramref name="beforeItStartsAgain"/>, unless null, before it starts it again; and returns once the hub has
-   ///   started the restart: see <see cref="SandboxHub.AskToRestartTheIde"/>. <see cref="TheIdeRestartOfItsHub"/> tells
-   ///   how it goes, and <see cref="IdeRestartsLog"/> has each step.
+   ///   Has the sandbox's hub restart the sandbox Rider, as the published hub restarts Magnus's IDEs for a deploy, its
+   ///   restarter running <paramref name="beforeItStartsAgain"/>, unless null, before it starts it again; and returns once
+   ///   the hub has started the restart. <see cref="TheIdeRestartOfItsHub"/> tells how it goes, and
+   ///   <see cref="IdeRestartsLog"/> has each step.
    /// </summary>
+   /// <remarks>
+   ///   Through its local API's <c>POST /ide-restart</c>, as Magnus asks himself, so the hub shows him no prompt, whatever
+   ///   window is in front. Not as an agent asks, with <c>ClaudeTooling.exe ides restart</c>: that shows Magnus the prompt
+   ///   while a window of an IDE being restarted is Windows' foreground window, as the sandbox Rider's may be once it has
+   ///   started.
+   /// </remarks>
    public void AskItsHubToRestartTheIde(string why, string askedBy, IReadOnlyList<string>? beforeItStartsAgain)
    {
       RunTheHub();
-      _hub.AskToRestartTheIde(why, askedBy, beforeItStartsAgain);
+      LocalApiOfItsHub.AskToRestartTheIdes(why, askedBy, [EverydayIde.Rider.NameAtTheHub], beforeItStartsAgain);
    }
 
-   /// <summary>The restart of the IDE the sandbox's hub has under way, or made last: see <see cref="SandboxHub.TheIdeRestart"/>.</summary>
-   public JsonNode? TheIdeRestartOfItsHub() => _hub.TheIdeRestart();
+   /// <summary>The restart of the IDE the sandbox's hub has under way, or made last: see <see cref="HubsLocalApi.TheIdeRestart"/>.</summary>
+   public JsonNode? TheIdeRestartOfItsHub() => LocalApiOfItsHub.TheIdeRestart();
 
    /// <summary>
    ///   Tells its hub of the turn under way of the Claude Code that runs as <paramref name="claudeCode"/>, as a Claude
    ///   Code session's mod does: see <see cref="HubsLocalApi.TellOfATurn"/>.
    /// </summary>
-   public void TellItsHubOfATurn(long claudeCode, JsonNode report) => _hub.TellOfATurn(claudeCode, report);
+   public void TellItsHubOfATurn(long claudeCode, JsonNode report) => LocalApiOfItsHub.TellOfATurn(claudeCode, report);
 
    /// <summary>The log in which the sandbox's hub records each step of each restart of the IDEs it makes, with its time.</summary>
    public string IdeRestartsLog => Path.Combine(ClaudeCodeFolder, "ide-restarts.log");
 
    /// <summary>
-   ///   Copies the <see cref="StandInForClaudeCodeBuild"/> into the sandbox, where the stand-ins of sessions that outlive
-   ///   the sandbox Rider may run: Windows lets a running executable be moved, not replaced.
+   ///   Stops the sandbox, as <see cref="Stop"/> does, then its hub, with the sessions its Claude Sessions ran: they run in
+   ///   the hub's session hosts, which outlive the sandbox Rider as they do Magnus's IDEs. Returns what the hub's
+   ///   <see cref="SandboxHub.Stop"/> ended.
    /// </summary>
-   void TakeTheStandInForClaudeCodeBuild() =>
-      new FolderMirror(Path.Combine(_root, "replaced-stand-in-for-claude-code-files")).Mirror(StandInForClaudeCodeBuild, StandInForClaudeCodeFolder);
-
-   /// <summary>
-   ///   Stops the sandbox, as <see cref="Stop"/> does, and ends the sessions its Claude Sessions ran: they run in its hub's
-   ///   session hosts, which outlive the sandbox Rider as they do Magnus's IDEs. Returns how many it ended.
-   /// </summary>
-   public int StopAndEndItsSessions()
+   public string StopAndEndItsSessions()
    {
       Stop();
-      return EndItsSessions();
+      _hubStarted = null;
+      return _hub.Stop();
    }
 
    /// <summary>Ends the sessions the sandbox's Claude Sessions ran, in its hub's session hosts, and returns how many it ended.</summary>
-   public int EndItsSessions() => _hub.EndItsSessionHosts();
+   public int EndItsSessions() => LocalApiOfItsHub.EndTheSessionHosts();
 
    /// <summary>The session hosts the sandbox's sessions run in, as its hub's <c>GET /session-hosts</c> lists them.</summary>
-   public JsonArray SessionHosts() => _hub.SessionHosts();
+   public JsonArray SessionHosts() => LocalApiOfItsHub.SessionHosts();
 
    /// <summary>
    ///   Closes the sandbox's windows until it exits, as a human closing them would. The sessions its Claude Sessions ran
@@ -414,13 +422,14 @@ public sealed class SandboxRider
    {
       if(RunningProcess() is not {} running) return ["The sandbox Rider isn't running."];
 
+      var hub = ItsHub;
       return ScreenThread.Run(() => (IReadOnlyList<string>)
                               [
                                  $"The sandbox Rider runs as process {running.Id}.",
                                  .. FramesOf(running).Select(it => "  sandbox window: " + it.Description),
                                  "  development IDEA window: " + (SandboxWindowPlacement.TheDevelopmentIdeaWindow()?.Description ?? "none open"),
                                  "  MCP health: " + (TheMcpServersHealth() ?? "nothing listens on port " + McpPort),
-                                 "  hub: " + (_hub.Announcement()?.ToJsonString() ?? "none announced in " + _hub.AnnouncementFolder)
+                                 $"  hub: process {hub.ProcessId}, announced in {hub.Announcement}, its log {hub.Log}"
                               ]);
    }
 
@@ -525,19 +534,24 @@ public sealed class SandboxRider
    }
 
    /// <summary>
-   ///   Gives this process the environment the sandbox's processes start in, as they're started through the shell, which
-   ///   can't take environment variables for one start: the sandbox Rider, and its <see cref="SandboxHub"/>.
+   ///   Gives this process the environment the sandbox Rider starts in, unless it has it: it's started through the shell,
+   ///   which can't take environment variables for one start. This process has it once it has had the hub run.
    /// </summary>
    void TakeTheSandboxsEnvironment()
    {
+      if(_hubStarted is null) RunTheHub();
+   }
+
+   /// <summary>
+   ///   Gives this process the environment of the sandbox's processes, its hub's variables apart, which
+   ///   <see cref="RunTheHub"/> adds: the hub starts in it too, and serves by the folder of the IDEs' announcements and
+   ///   Royder's port.
+   /// </summary>
+   void TakeTheSandboxsOwnEnvironment()
+   {
       LeaveOutTheClaudeCodeSessionThisRunsIn();
-      Environment.SetEnvironmentVariable("CLAUDE_CONFIG_DIR", ClaudeCodeFolder);
-      Environment.SetEnvironmentVariable("CLAUDE_TOOLING_LOCAL_API_FOLDER", _hub.AnnouncementFolder);
-      Environment.SetEnvironmentVariable("CLAUDE_TOOLING_HUB_LOG", _hub.Log);
       // For the hub's Rider restart: the IDEs it restarts are those announced here, the sandbox Rider's.
       Environment.SetEnvironmentVariable("CLAUDE_SESSIONS_LOCAL_API_FOLDER", LocalApiAnnouncementsFolder);
-      var path = Environment.GetEnvironmentVariable("PATH")!;
-      if(!path.StartsWith(StandInForClaudeCodeFolder + Path.PathSeparator)) Environment.SetEnvironmentVariable("PATH", StandInForClaudeCodeFolder + Path.PathSeparator + path);
       // The sandbox is in the user's home folder, which is a git repository: without a ceiling, git takes the solutions in
       // the sandbox for part of it.
       Environment.SetEnvironmentVariable("GIT_CEILING_DIRECTORIES", _root);

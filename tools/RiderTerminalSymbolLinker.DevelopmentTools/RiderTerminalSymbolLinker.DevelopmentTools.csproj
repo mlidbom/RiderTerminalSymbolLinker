@@ -16,6 +16,9 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- What the tooling's `hub sandbox start` prints, as the hub's contract types it: see SandboxHub. The contract's
+         types are for its clients to compile in, as Cloyd does (~/.claude/dev_docs/the-hubs-local-api.md). -->
+    <Compile Include="$(USERPROFILE)\.claude\src\ClaudeTooling.Hub.LocalApi.Contract\Sandboxes\SandboxHubStarted.cs" Link="HubLocalApiContract\Sandboxes\SandboxHubStarted.cs" />
   </ItemGroup>
 
 </Project>

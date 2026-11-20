@@ -76,5 +76,32 @@ sealed class HubsLocalApi(string announcementFolder)
          throw new InvalidOperationException($"The hub answered the turn's events of {claudeCode} with {(int)answer.StatusCode}: {answer.Content.ReadAsStringAsync().Result}");
    }
 
+   /// <summary>
+   ///   The session hosts that run, as the hub's <c>GET /session-hosts</c> lists them: none when no hub runs, as none would
+   ///   have started one.
+   /// </summary>
+   public JsonArray SessionHosts()
+   {
+      using var client = Client();
+      return client is null ? [] : JsonNode.Parse(client.GetStringAsync("/session-hosts").Result)!["sessionHosts"]!.AsArray();
+   }
+
+   /// <summary>Ends every session host the hub lists, as closing its tab does, and returns how many it ended.</summary>
+   public int EndTheSessionHosts()
+   {
+      using var client = Client();
+      if(client is null) return 0;
+      var hosts = JsonNode.Parse(client.GetStringAsync("/session-hosts").Result)!["sessionHosts"]!.AsArray();
+      foreach(var host in hosts)
+      {
+         var id = host!["id"]!.GetValue<string>();
+         using var answer = client.PostAsync($"/session-hosts/{id}/end", content: null).Result;
+         if(answer.StatusCode is HttpStatusCode.NoContent or HttpStatusCode.NotFound) continue;
+         throw new InvalidOperationException($"The hub answered ending the session host {id} with {(int)answer.StatusCode}: {answer.Content.ReadAsStringAsync().Result}");
+      }
+
+      return hosts.Count;
+   }
+
    static bool IsRunning(int processId) => Process.GetProcesses().Any(it => it.Id == processId);
 }

@@ -127,7 +127,7 @@ static class Program
             using(sandbox.TakeTheTurn("`sandbox install`")) Console.WriteLine(sandbox.Install(Enum.Parse<McpBuild>(mcp, ignoreCase: true)));
             break;
          case ["sandbox", "stop"]:
-            using(sandbox.TakeTheTurn("`sandbox stop`")) Console.WriteLine($"Stopped the sandbox, and ended the {sandbox.StopAndEndItsSessions()} sessions its Claude Sessions ran.");
+            using(sandbox.TakeTheTurn("`sandbox stop`")) Console.WriteLine($"Stopped the sandbox Rider. {sandbox.StopAndEndItsSessions()}");
             break;
          case ["sandbox", "place"]:
             sandbox.PlaceWindows();
