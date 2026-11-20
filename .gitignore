@@ -29,3 +29,5 @@ TestResults/
 # session's folder, and what its probe drew. They stay behind in the working tree when another branch is checked out.
 spikes/*/scratch-session/
 spikes/*/probe-output/
+
+*.ncrunchsolution.user
