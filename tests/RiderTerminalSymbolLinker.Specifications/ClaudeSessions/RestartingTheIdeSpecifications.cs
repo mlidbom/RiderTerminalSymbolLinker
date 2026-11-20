@@ -22,31 +22,26 @@ public class When_a_tool_asks_the_ide_to_restart(When_a_tool_asks_the_ide_to_res
       public readonly (int Status, JsonNode? Body) Asked;
       public readonly int ProcessAfter;
       public readonly JsonNode WindowAfter;
-      public readonly IReadOnlyList<SessionTab> TabsBefore;
-      public readonly IReadOnlyList<SessionTab> TabsAfter;
-      public readonly ChatSeen ChatAfter;
+      public readonly int? CloydsApplicationBefore;
+      public readonly int? CloydsApplicationAfter;
+      public readonly IReadOnlyList<string> ProjectsCloydShowsAfter;
 
       public Story()
       {
-         var view = new TheClaudeSessionsView();
-         view.StartANewSession();
-         var chat = view.ChatOf(0);
-         chat.SayTheStatus("IDLE");
-         chat.SeenOnce(it => it.Card == "CHAT", "the tab to show the chat");
-         chat.Type("Written before the restart");
-         ProjectFolder = view.ProjectFolder;
-         ProcessBefore = view.SandboxProcessId;
-         WindowBefore = view.AskTheLocalApi("GET", "/windows").Body!["windows"]!.AsArray().Single()!;
-         FromAnotherHost = view.AskTheLocalApi("GET", "/windows", host: "claude-sessions.example").Status;
+         var ide = new ClaudeSessionsInTheSandbox();
+         ProjectFolder = ide.ProjectFolder;
+         ProcessBefore = ide.SandboxProcessId;
+         CloydsApplicationBefore = ide.CloydsApplication;
+         WindowBefore = ide.AskTheLocalApi("GET", "/windows").Body!["windows"]!.AsArray().Single()!;
+         FromAnotherHost = ide.AskTheLocalApi("GET", "/windows", host: "claude-sessions.example").Status;
          var restart = new { why = "A specification restarts it", askedBy = "the specifications" };
-         WithoutTheToken = view.AskTheLocalApi("POST", "/restart", restart).Status;
-         TabsBefore = view.Tabs;
-         Asked = view.AskTheLocalApi("POST", "/restart", restart, withTheToken: true);
-         view.FollowTheIdesRestart(ProcessBefore, tabsToComeBack: 1);
-         ProcessAfter = view.SandboxProcessId;
-         WindowAfter = view.AskTheLocalApi("GET", "/windows").Body!["windows"]!.AsArray().Single()!;
-         TabsAfter = view.Tabs;
-         ChatAfter = view.ChatOf(0).SeenOnce(it => it.MessageBox != "", "the box to hold what it held");
+         WithoutTheToken = ide.AskTheLocalApi("POST", "/restart", restart).Status;
+         Asked = ide.AskTheLocalApi("POST", "/restart", restart, withTheToken: true);
+         ide.FollowTheIdesRestart(ProcessBefore);
+         ProcessAfter = ide.SandboxProcessId;
+         WindowAfter = ide.AskTheLocalApi("GET", "/windows").Body!["windows"]!.AsArray().Single()!;
+         CloydsApplicationAfter = ide.CloydsApplication;
+         ProjectsCloydShowsAfter = ide.ProjectsCloydShows;
       }
    }
 
@@ -59,11 +54,8 @@ public class When_a_tool_asks_the_ide_to_restart(When_a_tool_asks_the_ide_to_res
    [XF] public void the_ide_restarts_as_another_process() => story.ProcessAfter.Must().Satisfy(it => it != story.ProcessBefore);
    [XF] public void with_its_projects_window_back() => story.WindowAfter["project"]!.GetValue<string>().Must().Be(story.WindowBefore["project"]!.GetValue<string>());
    [XF] public void on_the_virtual_desktop_it_was_on() => story.WindowAfter["desktop"]!.GetValue<string>().Must().Be(story.WindowBefore["desktop"]!.GetValue<string>());
-
-   [XF] public void with_its_tab_attached_to_its_session_again() =>
-      story.TabsAfter.Single().Must().Satisfy(it => it.SessionHost == story.TabsBefore.Single().SessionHost && it.SessionId == story.TabsBefore.Single().SessionId);
-
-   [XF] public void and_what_its_chats_box_held() => story.ChatAfter.MessageBox.Must().Be("Written before the restart");
+   [XF] public void the_cloyd_application_runs_on_through_the_restart_as_the_same_process() => story.CloydsApplicationAfter.Must().Satisfy(it => it is not null && it == story.CloydsApplicationBefore);
+   [XF] public void and_shows_the_projects_window() => story.ProjectsCloydShowsAfter.Must().SequenceEqual([story.ProjectFolder]);
 }
 
 /// <summary>
@@ -78,39 +70,31 @@ public class When_the_hub_restarts_the_ide_for_a_deploy(When_the_hub_restarts_th
    public sealed class Story
    {
       public readonly int ProcessBefore;
-      public readonly IReadOnlyList<SessionTab> TabsBefore;
       public readonly IdeRestartByTheHub Restart;
       public readonly int ProcessAfter;
-      public readonly IReadOnlyList<SessionTab> TabsAfter;
       public readonly CommandThatRecordsWhetherTheIdeRuns Command;
 
       public Story()
       {
-         var view = new TheClaudeSessionsView();
-         view.StartANewSession();
-         ProcessBefore = view.SandboxProcessId;
-         TabsBefore = view.Tabs;
+         var ide = new ClaudeSessionsInTheSandbox();
+         ProcessBefore = ide.SandboxProcessId;
          Command = new CommandThatRecordsWhetherTheIdeRuns(ProcessBefore);
-         Restart = view.HaveTheHubRestartTheIde("A specification of Claude Sessions has the hub restart Rider for a deploy", tabsToComeBack: 1, Command.Argv);
-         ProcessAfter = view.SandboxProcessId;
-         TabsAfter = view.Tabs;
+         Restart = ide.HaveTheHubRestartTheIde("A specification of Claude Sessions has the hub restart Rider for a deploy", Command.Argv);
+         ProcessAfter = ide.SandboxProcessId;
       }
    }
 
    [XF] public void the_hub_says_the_ide_is_back() => story.Restart.Outcome.Must().Be("back");
    [XF] public void as_restarted_and_back() => story.Restart.Headline.Must().Be("Restarted and back");
    [XF] public void the_ide_restarted_as_another_process() => story.ProcessAfter.Must().Satisfy(it => it != story.ProcessBefore);
-
-   [XF] public void with_its_tab_attached_to_its_session_again() =>
-      story.TabsAfter.Single().Must().Satisfy(it => it.SessionHost == story.TabsBefore.Single().SessionHost && it.SessionId == story.TabsBefore.Single().SessionId);
-
    [XF] public void the_ides_restarter_ran_the_command_once_the_ide_had_exited() => story.Command.WhatItFound.Must().Be("gone");
    [XF] public void and_started_the_ide_again_once_the_command_had_ended() => CommandThatRecordsWhetherTheIdeRuns.StartOf(story.ProcessAfter).Must().Satisfy(it => it > story.Command.Ended);
 }
 
 /// <summary>
 ///   Whether Rider's own restart reopens every solution that was open, each in its window, which the tool for restarting
-///   Rider relies on: Rider restarts without the command line it started with, and reopens the solutions it had open.
+///   Rider relies on: Rider restarts without the command line it started with, and reopens the solutions it had open. And
+///   each solution's window shows in Cloyd as it opens.
 /// </summary>
 public class When_the_ide_restarts_itself_with_three_solutions_open(When_the_ide_restarts_itself_with_three_solutions_open.Story story)
    : IClassFixture<When_the_ide_restarts_itself_with_three_solutions_open.Story>
@@ -121,31 +105,37 @@ public class When_the_ide_restarts_itself_with_three_solutions_open(When_the_ide
 
       public readonly IReadOnlyList<string> Open;
       public readonly IReadOnlyList<string> Before;
+      public readonly IReadOnlyList<string> InCloydBefore;
       public readonly IReadOnlyList<string> After;
+      public readonly IReadOnlyList<string> InCloydAfter;
 
       public Story()
       {
-         var view = new TheClaudeSessionsView();
+         var ide = new ClaudeSessionsInTheSandbox();
          string[] copies = ["Second", "Third"];
-         Open = [.. new[] { view.ProjectFolder }.Concat(copies.Select(view.OpenAnotherCopyOfTheFixtureSolution)).Order()];
-         TheClaudeSessionsView.WaitUntil(() => view.ProjectWindows.Count == 3, "the three solutions' windows to show", HowLongOpeningASolutionMayTake);
-         view.EndTheLaunchersOfTheCopies();
-         Before = view.ProjectWindows;
+         Open = [.. new[] { ide.ProjectFolder }.Concat(copies.Select(ide.OpenAnotherCopyOfTheFixtureSolution)).Order(StringComparer.OrdinalIgnoreCase)];
          try
          {
-            view.RestartTheIdeThroughItsLocalApi();
-            TheClaudeSessionsView.WaitUntil(() => view.ProjectWindows.Count == 3, "the three solutions' windows to show again", HowLongOpeningASolutionMayTake);
-            After = view.ProjectWindows;
+            ClaudeSessionsInTheSandbox.WaitUntil(() => ide.ProjectWindows.Count == 3 && ide.ProjectsCloydShows.Count == 3, "the three solutions' windows to show, in the IDE and in Cloyd", HowLongOpeningASolutionMayTake);
+            ide.EndTheLaunchersOfTheCopies();
+            Before = ide.ProjectWindows;
+            InCloydBefore = ide.ProjectsCloydShows;
+            ide.RestartTheIdeThroughItsLocalApi();
+            ClaudeSessionsInTheSandbox.WaitUntil(() => ide.ProjectWindows.Count == 3, "the three solutions' windows to show again", HowLongOpeningASolutionMayTake);
+            After = ide.ProjectWindows;
+            InCloydAfter = ide.ProjectsCloydShows;
          }
          catch(Exception)
          {
-            view.CloseTheCopiesOfTheFixtureSolution(copies); // Before the failure is reported: the next story needs the sandbox as it was.
+            ide.CloseTheCopiesOfTheFixtureSolution(copies); // Before the failure is reported: the next story needs the sandbox as it was.
             throw;
          }
-         view.CloseTheCopiesOfTheFixtureSolution(copies);
+         ide.CloseTheCopiesOfTheFixtureSolution(copies);
       }
    }
 
-   [XF] public void before_the_restart_each_solution_has_its_window() => story.Before.Must().Satisfy(it => it.SequenceEqual(story.Open));
-   [XF] public void after_it_each_has_its_window_again() => story.After.Must().Satisfy(it => it.SequenceEqual(story.Before));
+   [XF] public void before_the_restart_each_solution_has_its_window() => story.Before.Must().SequenceEqual(story.Open);
+   [XF] public void and_its_window_in_cloyd() => story.InCloydBefore.Must().SequenceEqual(story.Open);
+   [XF] public void after_it_each_has_its_window_again() => story.After.Must().SequenceEqual(story.Before);
+   [XF] public void and_its_window_in_cloyd_still() => story.InCloydAfter.Must().SequenceEqual(story.Open);
 }

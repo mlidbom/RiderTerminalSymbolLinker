@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using RiderTerminalSymbolLinker.DevelopmentTools.Cloyd;
 using RiderTerminalSymbolLinker.DevelopmentTools.Plugin;
 using static Vanara.PInvoke.User32;
 
@@ -27,18 +28,21 @@ static class DeployOnceTheIdesClose
    static readonly CopyOfTheTools Runner = new("deploy-once-the-ides-close");
 
    /// <summary>
-   ///   Says what the deploy would do, as <c>everyday deploy --dry-run</c> does, and sets the deploy waiting for the IDEs
-   ///   to close. Returns what it did, a line for each.
+   ///   Puts this working tree's Cloyd in at once, which the plugins' builds run, says what the deploy would do, as
+   ///   <c>everyday deploy --dry-run</c> does, and sets the deploy waiting for the IDEs to close. Returns what it did, a
+   ///   line for each.
    /// </summary>
    public static IReadOnlyList<string> SetUp()
    {
       if(IsWaiting()) return ["A deploy waits for the IDEs to close already: close them, and it deploys."];
+      var cloyd = InstalledCloyd.Everyday.Deploy(CloydBuild.Published(), dryRun: false);
       var wouldDo = EverydayIdes.Deploy(GradleSandbox.Filled(), dryRun: true);
       Runner.Take();
       RunTheTask();
       var running = TheIdesThatRun();
       return
       [
+         cloyd,
          .. wouldDo,
          running.Count == 0
             ? "No IDE runs: the deploy runs at once, and a message says when it's done."

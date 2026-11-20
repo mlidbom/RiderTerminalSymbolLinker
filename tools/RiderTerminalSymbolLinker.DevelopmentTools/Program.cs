@@ -1,3 +1,4 @@
+using RiderTerminalSymbolLinker.DevelopmentTools.Cloyd;
 using RiderTerminalSymbolLinker.DevelopmentTools.Plugin;
 using RiderTerminalSymbolLinker.DevelopmentTools.Riders;
 
@@ -17,13 +18,14 @@ static class Program
                                                       build, and waits until it has.
                           sandbox install [--mcp marketplace]
                                                       Builds the working tree's plugin and puts it in the sandbox's plugins
-                                                      folder, which a running sandbox reloads it from in a second. With it
+                                                      folder, which a running sandbox reloads it from in a second, and the
+                                                      working tree's Cloyd in the sandbox's Cloyd folder. With it
                                                       the .NET Analysis&Refactoring MCP: by default the build the everyday
                                                       Riders run, its plugin and its deployed tools builds; or the
                                                       Marketplace's. A running sandbox restarts when the MCP's plugin
                                                       changes, and swaps to new tools builds at its next call.
-                          sandbox stop                Closes the sandbox Rider, and ends the sessions its Claude Sessions
-                                                      ran, which run on in their session hosts outside it
+                          sandbox stop                Closes the sandbox Rider and its Cloyd application, and ends the
+                                                      sessions that ran in them, which run on in their session hosts
                           sandbox place               Puts the sandbox's windows in their place again
                           sandbox status              Whether it runs, where its windows are, what the MCP server answers
 
@@ -41,48 +43,22 @@ static class Program
                           sandbox picker choose <row> Chooses a row of the picker the last click showed, as Enter does
                           sandbox picker close        Closes that picker
 
-                        What Claude Sessions does in the sandbox, through its development observation channel on port 23872:
+                        What Claude Sessions has Cloyd do in the sandbox:
 
-                          sandbox sessions state      Each open project's Claude Sessions view: its tabs, the process and the
-                                                      Claude Code session each runs, and the sessions it has saved
-                          sandbox sessions open       Gives the view its content, as showing the tool window does
-                          sandbox sessions new        Starts a new session in a tab, as the New Claude Session action does
-                          sandbox sessions screen <tab>
-                                                      The text tab <tab>'s terminal shows, counting from 0
-                          sandbox sessions type <tab> <text>
-                                                      Types the text into tab <tab>'s terminal, counting from 0, and Enter
-                          sandbox sessions close <tab>
-                                                      Closes tab <tab>, as its close button does: its session ends
-                          sandbox chat <tab>          Tab <tab>'s chat: its cards, its transcript's rows, its find bar,
-                                                      its status line and its input box
-                          sandbox chat give <tab> <conversation.json>
-                                                      Has the stand-in behind tab <tab>'s chat give it the conversation
-                                                      in the file: {"items": [...]}, as the specifications give it
-                          sandbox chat picture <tab>  Paints tab <tab>'s chat's transcript into a PNG file, and prints
-                                                      where it is
-                          sandbox chat picture-of-the-box <tab>
-                                                      Paints what is under it, the input box and the status line, into
-                                                      a PNG file, and prints where it is
-                          sandbox chat status <tab> <status>
-                                                      Has the stand-in behind tab <tab>'s chat say Claude Code's status
-                                                      is NOT_RUNNING, IDLE, BUSY or WAITING
-                          sandbox chat shows <tab> <session.json>
-                                                      Has it say what Claude Code shows under its input box, and its
-                                                      turn under way: {"statusLine": ..., "turnUnderWay": ...}, as
-                                                      the hub's running session has them
-                          sandbox chat type <tab> <text>
-                                                      Types the text into tab <tab>'s chat's input box
-                          sandbox chat paste-image <tab>
-                                                      Pastes a small image into it, as from the clipboard
+                          sandbox cloyd               The sandbox's Cloyd application, in %LOCALAPPDATA%\RiderTerminalSymbolLinkerSandbox\cloyd,
+                                                      and the project windows it shows
 
                         Magnus's IDEs:
 
                           everyday deploy             Builds the working tree's plugins and puts each in the plugins folder
                                                       of every installed IDE it runs in: the symbol linker in Rider, Claude
                                                       Sessions in Rider, IntelliJ IDEA and PyCharm. Says for each whether it
-                                                      reloads it when he next switches to its window, or needs a restart
-                          everyday deploy --dry-run   Builds the plugins and says what deploying them would do, changing
-                                                      nothing in his IDEs: a line marked RESTART takes his go-ahead
+                                                      reloads it when he next switches to its window, or needs a restart.
+                                                      Every deploy first puts the working tree's Cloyd, which Claude
+                                                      Sessions runs, in %LOCALAPPDATA%\Cloyd\bin: a Cloyd application that
+                                                      runs runs on with the build it has until its last window closes
+                          everyday deploy --dry-run   Builds the plugins and Cloyd and says what deploying them would do,
+                                                      changing nothing: a line marked RESTART takes his go-ahead
                           everyday deploy --into-running-ides
                                                       Deploys as everyday deploy does, and also puts a build that needs a
                                                       restart into an IDE that runs and reloads, which breaks the plugin
@@ -96,7 +72,7 @@ static class Program
                                                       Deploys into the IDEs that don't run, and has the hub restart those
                                                       that run, the build going into each while it's down: for a build
                                                       that needs a restart, on Magnus's go-ahead. His windows come back on
-                                                      their desktops, and his sessions in their tabs. Each IDE's restarter
+                                                      their desktops, and Cloyd shows his sessions. Each IDE's restarter
                                                       runs everyday deploy --into-the-ides-that-closed, whose log is
                                                       %LOCALAPPDATA%\RiderTerminalSymbolLinkerDevelopment\deploys-restarting-the-ides.log
                           everyday reload RiderTerminalSymbolLinker|ClaudeSessions [<IDE>]
@@ -150,47 +126,8 @@ static class Program
          case ["sandbox", "picker", "close"]:
             Console.WriteLine(ObservationChannel.Indent(sandbox.SymbolLinkerObservation.ClosePicker()));
             break;
-         case ["sandbox", "sessions", "state"]:
-            Console.WriteLine(ObservationChannel.Indent(sandbox.ClaudeSessionsObservation.State()));
-            break;
-         case ["sandbox", "sessions", "open"]:
-            Console.WriteLine(ObservationChannel.Indent(sandbox.ClaudeSessionsObservation.OpenTheView()));
-            break;
-         case ["sandbox", "sessions", "new"]:
-            Console.WriteLine(ObservationChannel.Indent(sandbox.ClaudeSessionsObservation.StartANewSession()));
-            break;
-         case ["sandbox", "sessions", "screen", var tab]:
-            foreach(var line in sandbox.ClaudeSessionsObservation.Screen(int.Parse(tab))["lines"]!.AsArray()) Console.WriteLine(line!.GetValue<string>());
-            break;
-         case ["sandbox", "sessions", "type", var tab, var text]:
-            Console.WriteLine(ObservationChannel.Indent(sandbox.ClaudeSessionsObservation.Type(int.Parse(tab), text)));
-            break;
-         case ["sandbox", "sessions", "close", var tab]:
-            Console.WriteLine(ObservationChannel.Indent(sandbox.ClaudeSessionsObservation.Close(int.Parse(tab))));
-            break;
-         case ["sandbox", "chat", var tab]:
-            Console.WriteLine(ObservationChannel.Indent(sandbox.ClaudeSessionsObservation.TheChat(int.Parse(tab))));
-            break;
-         case ["sandbox", "chat", "give", var tab, var conversationFile]:
-            Console.WriteLine(ObservationChannel.Indent(sandbox.ClaudeSessionsObservation.GiveTheChatAConversation(int.Parse(tab), System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(conversationFile))!)));
-            break;
-         case ["sandbox", "chat", "picture", var tab]:
-            Console.WriteLine(sandbox.ClaudeSessionsObservation.PictureOfTheChat(int.Parse(tab))["file"]!.GetValue<string>());
-            break;
-         case ["sandbox", "chat", "picture-of-the-box", var tab]:
-            Console.WriteLine(sandbox.ClaudeSessionsObservation.PictureOfTheChatsInputBox(int.Parse(tab))["file"]!.GetValue<string>());
-            break;
-         case ["sandbox", "chat", "status", var tab, var status]:
-            Console.WriteLine(ObservationChannel.Indent(sandbox.ClaudeSessionsObservation.SayTheStatusToTheChat(int.Parse(tab), status)));
-            break;
-         case ["sandbox", "chat", "shows", var tab, var sessionFile]:
-            Console.WriteLine(ObservationChannel.Indent(sandbox.ClaudeSessionsObservation.SayWhatClaudeCodeShowsToTheChat(int.Parse(tab), System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(sessionFile))!)));
-            break;
-         case ["sandbox", "chat", "type", var tab, var text]:
-            Console.WriteLine(ObservationChannel.Indent(sandbox.ClaudeSessionsObservation.TypeInTheChat(int.Parse(tab), text)));
-            break;
-         case ["sandbox", "chat", "paste-image", var tab]:
-            Console.WriteLine(ObservationChannel.Indent(sandbox.ClaudeSessionsObservation.PasteAnImageInTheChat(int.Parse(tab))));
+         case ["sandbox", "cloyd"]:
+            foreach(var line in sandbox.WhatItsCloydShows()) Console.WriteLine(line);
             break;
          case ["everyday", "reload", var plugin]:
             foreach(var line in EverydayIdes.Reload(OurPlugin.Named(plugin))) Console.WriteLine(line);
@@ -199,12 +136,15 @@ static class Program
             foreach(var line in EverydayIdes.Reload(OurPlugin.Named(plugin), EverydayIde.Named(ide))) Console.WriteLine(line);
             break;
          case ["everyday", "deploy"]:
+            Console.WriteLine(InstalledCloyd.Everyday.Deploy(CloydBuild.Published(), dryRun: false));
             foreach(var line in EverydayIdes.Deploy(GradleSandbox.Filled())) Console.WriteLine(line);
             break;
          case ["everyday", "deploy", "--dry-run"]:
+            Console.WriteLine(InstalledCloyd.Everyday.Deploy(CloydBuild.Published(), dryRun: true));
             foreach(var line in EverydayIdes.Deploy(GradleSandbox.Filled(), dryRun: true)) Console.WriteLine(line);
             break;
          case ["everyday", "deploy", "--into-running-ides"]:
+            Console.WriteLine(InstalledCloyd.Everyday.Deploy(CloydBuild.Published(), dryRun: false));
             foreach(var line in EverydayIdes.Deploy(GradleSandbox.Filled(), intoRunningIdes: true)) Console.WriteLine(line);
             break;
          case ["everyday", "deploy", "--restarting-the-ides"]:

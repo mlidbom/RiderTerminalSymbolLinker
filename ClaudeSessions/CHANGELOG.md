@@ -4,6 +4,22 @@ All notable changes to Claude Sessions are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project aims to follow
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0]
+
+### Changed
+- **The sessions show in Cloyd, beside the IDE.** As a project opens, Claude Sessions has Cloyd show the project's
+  window: Cloyd is an application of its own, with a window for each project, whose tabs each show a Claude Code
+  session in its terminal. The sessions the tool window showed until now run on in their session hosts, and Cloyd shows
+  them. Cloyd runs outside the IDE, so its windows stay open as the IDE exits or restarts. Its window comes in front of
+  the IDE's as you open the project. When Cloyd isn't installed, or doesn't show the window, a notification says why.
+
+### Removed
+- **The Claude Sessions tool window, its chats, and the session history picker.** Cloyd shows the sessions in its own
+  windows, for now as their terminals alone: the chat comes back in Cloyd later. The **+**, the history button and
+  Ctrl+Alt+Shift+Y go with them.
+- **The local API's `GET /sessions` and `POST /sessions/show`.** Clicking a notification about a session brings the
+  IDE's window forward, and no longer shows the session: showing it in Cloyd comes next.
+
 ## [0.1.0]
 
 ### Added

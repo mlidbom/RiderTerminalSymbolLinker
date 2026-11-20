@@ -1,5 +1,0 @@
-HTTP/1.1 409 Conflict
-Content-Type: application/json; charset=utf-8
-Claude-Tooling-Protocol: 1
-
-{"error":"Typed the message of 1 part and 12 characters, and the input box then showed something else: left there, unsent.","reason":"inputBoxShowsOtherThanTyped"}

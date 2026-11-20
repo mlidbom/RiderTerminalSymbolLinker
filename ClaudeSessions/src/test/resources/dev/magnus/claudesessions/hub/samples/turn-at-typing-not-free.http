@@ -1,5 +1,0 @@
-HTTP/1.1 409 Conflict
-Content-Type: application/json; charset=utf-8
-Claude-Tooling-Protocol: 1
-
-{"error":"Another typist had the turn at typing into Claude Code 61812 for all of 60 seconds, as the tooling has it while it types, or another request: nothing typed. What the tooling did is in C:\\Users\\magnu\\.claude\\typing-into-sessions.log.","reason":"turnAtTypingNotFree"}

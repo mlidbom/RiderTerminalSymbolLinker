@@ -1,5 +1,0 @@
-HTTP/1.1 404 Not Found
-Content-Type: application/json; charset=utf-8
-Claude-Tooling-Protocol: 1
-
-{"error":"No Claude Code runs as process 35836: nothing typed.","reason":"noSuchClaudeCode"}

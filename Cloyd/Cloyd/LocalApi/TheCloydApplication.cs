@@ -31,6 +31,7 @@ sealed class TheCloydApplication(CloydsFolder folder)
    /// <summary>
    /// Has the application show the window of <paramref name="project"/>: brought forward when it is open, else opened.
    /// Started first when none runs, outside the jobs of whoever ran this, where they let it (<see cref="StartingTheApplication"/>).
+   /// The window comes in front of the others when this process may bring a window there (<see cref="TheForeground"/>).
    /// Returns the window once it shows.
    /// </summary>
    public WindowInTheAnswer ShowTheWindowOf(Project project)
@@ -39,6 +40,7 @@ sealed class TheCloydApplication(CloydsFolder folder)
       while(true)
       {
          var announcement = TheOneThatRunsOrStarted();
+         TheForeground.MayBeTakenBy(announcement.ProcessId);
          using var request = new HttpRequestMessage(HttpMethod.Post, announcement.AddressOf("windows/show"));
          request.Content = JsonContent.Create(new WindowToShowInTheRequest(project.Folder), options: CloydsLocalApiProtocol.Json);
          if(Answer<WindowInTheAnswer>(announcement, request) is {} shown) return shown;

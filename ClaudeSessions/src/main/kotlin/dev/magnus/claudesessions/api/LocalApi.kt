@@ -10,17 +10,12 @@ import com.intellij.openapi.application.ex.ApplicationManagerEx
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
 import com.intellij.openapi.diagnostic.thisLogger
-import com.intellij.openapi.project.ProjectManager
 import com.sun.net.httpserver.HttpExchange
 import com.sun.net.httpserver.HttpServer
-import dev.magnus.claudesessions.ClaudeSessionTab
-import dev.magnus.claudesessions.ClaudeSessionsView
-import dev.magnus.claudesessions.claudecode.ClaudeSessionId
 import dev.magnus.claudesessions.windows.DesktopsThroughARestart
 import dev.magnus.claudesessions.windows.ProjectWindow
 import java.net.InetAddress
 import java.net.InetSocketAddress
-import java.net.URLDecoder
 import java.security.SecureRandom
 import java.util.HexFormat
 import java.util.concurrent.ExecutorService
@@ -30,14 +25,6 @@ import java.util.concurrent.Executors
  * Claude Sessions' API for other tools on the same machine: an HTTP server that listens on a free port of the loopback
  * address only, and that the IDE's [LocalApiAnnouncement] names. Its requests:
  *
- *  - `GET /sessions`: the sessions that run in the IDE's tabs, as `{"sessions": [{"session": <session id>, "process":
- *    <Claude Code's process id>}]}`. Another IDE's session history picker asks, to tell a session that runs in a tab
- *    from one that runs elsewhere, as in a plain terminal.
- *  - `POST /sessions/show?session=<session id>&process=<Claude Code's process id>`: brings forward the tab that runs the
- *    session, as clicking a notification about it would want. It finds the tab in which that Claude Code runs, or else
- *    the one that runs the session, or ran it last: `process` finds a tab after `/clear` gave it a new session, and
- *    `session` finds one whose Claude Code was resumed in a new process. Either may be left out. It answers 200 with
- *    `{"shown": true}`, or 404 with `{"shown": false}` when none of this IDE's tabs runs the session.
  *  - `GET /windows`: the windows of the projects open in the IDE, as `{"windows": [{"project": <the project's folder>,
  *    "title": <the window's title>, "window": <its native handle, HWND>, "desktop": <the GUID of the virtual desktop it's
  *    on, or null>}]}`.
@@ -52,12 +39,9 @@ import java.util.concurrent.Executors
  *    applies a patch ([RestartRunningACommand]): the development tools put a build of a plugin in so, which a running
  *    IDE couldn't take.
  *
- * A tool whose notification about a session the user clicks calls `POST /sessions/show`, after it has brought the
- * IDE's window forward itself: Windows lets the process the user clicked bring a window forward, and not the IDE.
- *
  * Any process on the machine can reach a loopback port, so a request that changes something, as `POST /restart` does,
  * must carry the announcement's token, `Authorization: Bearer <token>`, new at each start of the IDE; it's answered 401
- * without it. Showing a tab, and what is only read, are harmless, and need none. Every request must name the API's own
+ * without it. What is only read is harmless, and needs none. Every request must name the API's own
  * address as its `Host`, else it's answered 403: a web page can't then reach it through a name of its own that resolves
  * to the loopback address.
  */
@@ -72,8 +56,6 @@ class LocalApi : Disposable {
         HttpServer.create(InetSocketAddress(InetAddress.getLoopbackAddress(), 0), 0).apply {
             // Each request on a thread of its own, as they wait for the EDT, which may wait for this server to stop.
             executor = Executors.newCachedThreadPool()
-            createContext("/sessions/show") { exchange -> ifItsHostIsThisApi(exchange, ::answer) }
-            createContext("/sessions") { exchange -> ifItsHostIsThisApi(exchange, ::answerWithTheSessions) }
             createContext("/windows") { exchange -> ifItsHostIsThisApi(exchange, ::answerWithTheWindows) }
             createContext("/restart") { exchange -> ifItsHostIsThisApi(exchange, ::restart) }
             start()
@@ -85,19 +67,6 @@ class LocalApi : Disposable {
         announcement.withdraw()
         server.stop(0)
         (server.executor as ExecutorService).shutdown()
-    }
-
-    private fun answer(exchange: HttpExchange) = reply(exchange) {
-        if (exchange.requestMethod != "POST") 405 to mapOf("error" to "POST it")
-        else if (show(queryOf(exchange))) 200 to mapOf("shown" to true)
-        else 404 to mapOf("shown" to false)
-    }
-
-    private fun answerWithTheSessions(exchange: HttpExchange) = reply(exchange) {
-        val sessions = onTheEdt { ProjectManager.getInstance().openProjects.flatMap { ClaudeSessionsView.getInstance(it).tabs } }
-            .mapNotNull { it.claudeCode }
-            .map { mapOf("session" to it.session.id.value, "process" to it.process.pid()) }
-        200 to mapOf("sessions" to sessions)
     }
 
     private fun answerWithTheWindows(exchange: HttpExchange) = reply(exchange) {
@@ -168,35 +137,12 @@ class LocalApi : Disposable {
         exchange.responseBody.write(bytes)
     }
 
-    /** Brings forward the tab the [query] names, and returns whether one of this IDE's tabs runs it. */
-    private fun show(query: Map<String, String>): Boolean {
-        val process = query["process"]?.toLongOrNull()
-        val session = query["session"]?.let(::ClaudeSessionId)
-        val views = onTheEdt { ProjectManager.getInstance().openProjects.map(ClaudeSessionsView::getInstance).associateWith { it.tabs } }
-        val found = views.entries.firstNotNullOfOrNull { (view, tabs) -> tabs.firstOrNull { it.runsClaudeCode(process) }?.let { view to it } }
-            ?: views.entries.firstNotNullOfOrNull { (view, tabs) -> tabs.firstOrNull { it.runs(session) }?.let { view to it } }
-            ?: return false
-        val (view, tab) = found
-        onTheEdt { view.bringForward(tab) }
-        return true
-    }
-
-    private fun ClaudeSessionTab.runsClaudeCode(process: Long?): Boolean = process != null && claudeCode?.process?.pid() == process
-
-    private fun ClaudeSessionTab.runs(session: ClaudeSessionId?): Boolean = session != null && lookAtTheSession()?.id == session
-
-    /** Runs [action] on the EDT, whatever dialog is open: the user asked for the tab, from outside the IDE. */
+    /** Runs [action] on the EDT, whatever dialog is open: another tool asks, from outside the IDE. */
     private fun <T> onTheEdt(action: () -> T): T {
         var result: Result<T>? = null
         ApplicationManager.getApplication().invokeAndWait({ result = runCatching(action) }, ModalityState.any())
         return result!!.getOrThrow()
     }
-
-    private fun queryOf(exchange: HttpExchange): Map<String, String> =
-        exchange.requestURI.rawQuery.orEmpty().split('&').filter { '=' in it }.associate {
-            val (name, value) = it.split('=', limit = 2)
-            URLDecoder.decode(name, Charsets.UTF_8) to URLDecoder.decode(value, Charsets.UTF_8)
-        }
 
     companion object {
         /** Starts the API, unless it runs already: the first project to open starts it. */

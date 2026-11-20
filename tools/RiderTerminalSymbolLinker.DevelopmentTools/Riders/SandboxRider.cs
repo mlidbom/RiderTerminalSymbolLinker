@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using ClaudeTooling.Hub.LocalApi.Contract.Sandboxes;
+using RiderTerminalSymbolLinker.DevelopmentTools.Cloyd;
 using RiderTerminalSymbolLinker.DevelopmentTools.Plugin;
 using RiderTerminalSymbolLinker.DevelopmentTools.Screen;
 
@@ -20,8 +21,8 @@ namespace RiderTerminalSymbolLinker.DevelopmentTools.Riders;
 ///   its own too, the <see cref="JvmOptionsFile"/>.<br/>
 ///   The properties file also sets <c>idea.auto.reload.plugins</c>, so that a running sandbox reloads the plugin when
 ///   <see cref="Install"/> puts a new build in its plugins folder, without a restart.<br/>
-///   Claude Sessions runs in any JetBrains IDE, and is verified in this Rider too: what it uses is the platform's and
-///   the terminal's, which every IDE has alike.
+///   Claude Sessions runs in any JetBrains IDE, and is verified in this Rider too: what it uses is the platform's,
+///   which every IDE has alike. It has a Cloyd of its own show the projects' sessions, <see cref="ItsCloyd"/>.
 /// </remarks>
 public sealed class SandboxRider
 {
@@ -66,11 +67,14 @@ public sealed class SandboxRider
    /// </summary>
    readonly McpToolsBuilds _mcpTools;
 
-   /// <summary>The hub the sandbox's Claude Sessions follows, which serves the sandbox's <see cref="ClaudeCodeFolder"/>.</summary>
+   /// <summary>The hub the sandbox's Cloyd follows, which serves the sandbox's <see cref="ClaudeCodeFolder"/>.</summary>
    readonly SandboxHub _hub;
 
    /// <summary>Where the parts of <see cref="_hub"/> are, as it said when this process last had it run: null until then.</summary>
    SandboxHubStarted? _hubStarted;
+
+   /// <summary>How long the sandbox's Cloyd may take to show a project's window once the project has opened.</summary>
+   static readonly TimeSpan HowLongCloydMayTakeToShowAProject = TimeSpan.FromMinutes(1);
 
    public SandboxRider(RiderInstallation rider)
    {
@@ -79,23 +83,22 @@ public sealed class SandboxRider
       _everyday = new EverydayRider(rider);
       _mcpTools = new McpToolsBuilds(Path.Combine(_root, "mcp-tools"));
       _hub = new SandboxHub(Path.Combine(_root, "hub"));
+      ItsCloyd = new InstalledCloyd(Path.Combine(_root, "cloyd"));
    }
+
+   /// <summary>
+   ///   The sandbox's own Cloyd, which <c>CLOYD_FOLDER</c> names there: Claude Sessions in the sandbox Rider runs its
+   ///   <c>Cloyd.exe --project</c> as a project opens, and its application shows the projects' sessions, with the
+   ///   sandbox's hub, apart from Magnus's Cloyd. It outlives the sandbox Rider, as Magnus's outlives his IDEs, and stops
+   ///   with its hub (<see cref="StopAndEndItsSessions"/>).
+   /// </summary>
+   public InstalledCloyd ItsCloyd { get; }
 
    /// <summary>
    ///   Claude Code's folder in the sandbox, which its hub serves, and <c>CLAUDE_CONFIG_DIR</c> names there: where the
    ///   stand-in for Claude Code records the sessions it runs, as Claude Code does in the user's.
    /// </summary>
-   public string ClaudeCodeFolder => ItsHub.ClaudeCodeFolder;
-
-   /// <summary>
-   ///   The sandbox's stand-in for Claude Code, the tooling owner's <c>claude.exe</c>, which runs a session as Claude Code
-   ///   does, keeps its record and transcript as Claude Code does, and draws and takes an input box as Claude Code does,
-   ///   for the hub to type into. Its folder in the hub's copy of the build is first on the sandbox's <c>PATH</c>, so that
-   ///   Claude Sessions runs it there in place of Claude Code. This is to run one outside Claude Sessions' tabs, as in a
-   ///   plain terminal: with <c>CLAUDE_CONFIG_DIR</c> naming <see cref="ClaudeCodeFolder"/>, as the sandbox's own
-   ///   environment does. Its source is in <c>~/.claude/src/StandInForClaudeCode</c>.
-   /// </summary>
-   public string StandInForClaudeCode => Path.Combine(ItsHub.FolderOfTheStandInForClaudeCode, "claude.exe");
+   string ClaudeCodeFolder => ItsHub.ClaudeCodeFolder;
 
    /// <summary>
    ///   Where the sandbox's Claude Sessions announces its local API to other tools, and finds other IDEs' announcements:
@@ -112,7 +115,7 @@ public sealed class SandboxRider
    string ProcessFile => Path.Combine(_root, "running-process.txt");
    string PluginsFolder => Path.Combine(_root, "plugins");
    string McpPluginFolder => Path.Combine(PluginsFolder, GradleSandbox.McpPluginFolderName);
-   bool HasEveryPlugin => OurPlugin.All.All(it => Directory.Exists(Path.Combine(PluginsFolder, it.Name))) && Directory.Exists(McpPluginFolder);
+   bool HasEveryPlugin => OurPlugin.All.All(it => Directory.Exists(Path.Combine(PluginsFolder, it.Name))) && Directory.Exists(McpPluginFolder) && ItsCloyd.IsInstalled;
 
    public bool IsRunning => RunningProcess() is not null;
 
@@ -127,8 +130,9 @@ public sealed class SandboxRider
 
    /// <summary>
    ///   Builds this working tree's plugins with Gradle and puts them in the sandbox's plugins folder, with the
-   ///   <paramref name="mcp"/> build of the .NET Analysis&amp;Refactoring MCP. A running sandbox is then made to reload
-   ///   those of our plugins that changed, and this returns once their new builds answer. Returns what it did.
+   ///   <paramref name="mcp"/> build of the .NET Analysis&amp;Refactoring MCP, and this working tree's Cloyd in
+   ///   <see cref="ItsCloyd"/>. A running sandbox is then made to reload those of our plugins that changed, and this
+   ///   returns once their new builds answer. Returns what it did.
    /// </summary>
    /// <remarks>
    ///   The MCP comes in two parts. Its plugin is held open by a running Rider, which can't reload it, so a running
@@ -137,11 +141,21 @@ public sealed class SandboxRider
    ///   A running sandbox is restarted too when the fixture solution changed since it copied it, so that it opens a
    ///   fresh copy.<br/>
    ///   A running sandbox's <see cref="SandboxHub"/> is made to run on the published hub's build, as a new one may have
-   ///   been published since.
+   ///   been published since.<br/>
+   ///   A new build of Cloyd ends the application that runs the old one, and Claude Sessions, reloaded, starts the new one
+   ///   as it shows the projects again: a reload runs its startup again.
    /// </remarks>
    public string Install(McpBuild mcp = McpBuild.Everyday)
    {
       _plugins.Fill();
+      var cloyd = CloydBuild.Published();
+      var cloydChanged = !ItsCloyd.Has(cloyd);
+      if(cloydChanged)
+      {
+         ItsCloyd.StopTheApplication();
+         ItsCloyd.Install(cloyd);
+      }
+
       if(IsRunning) RunTheHub();
       var mcpPlugin = TheMcpPlugin(mcp);
       var whyItRestarts = IsRunning ? WhyTheRunningSandboxMustRestart(mcpPlugin) : null;
@@ -163,12 +177,19 @@ public sealed class SandboxRider
       if(IsRunning)
       {
          var mcpTools = mcpToolsChanged ? $"Its MCP swapped to the {mcp} tools build {WaitUntilTheMcpServesItsNewestToolsBuild()}. " : "";
-         if(changed.Count == 0) return mcpTools + "The sandbox has these builds of the plugins already.";
+         if(changed.Count == 0 && cloydChanged)
+         {
+            ReloadThePlugin(OurPlugin.ClaudeSessions);
+            WaitUntilItsCloydShowsTheProjects();
+            return mcpTools + "The sandbox has these builds of the plugins already. Put Cloyd's new build in, and had Claude Sessions show the projects in it again.";
+         }
+         if(changed.Count == 0) return mcpTools + "The sandbox has these builds of the plugins and of Cloyd already.";
          if(!mirror.AddedOrRemovedAFile && !registrationsChanged)
          {
             ObservationOf(changed[0]).RefreshThePluginsFolder();
-            var reloads = changed.Select(it => $"{it} in {ObservationOf(it).WaitUntilReloaded(startedBefore[it], TimeSpan.FromMinutes(1)).TotalSeconds:0.0}s");
-            return mcpTools + $"Put the new builds in the running sandbox Rider, which reloaded {string.Join(" and ", reloads)}.";
+            var reloads = changed.Select(it => $"{it} in {ObservationOf(it).WaitUntilReloaded(startedBefore[it], TimeSpan.FromMinutes(1)).TotalSeconds:0.0}s").ToList();
+            if(changed.Contains(OurPlugin.ClaudeSessions)) WaitUntilItsCloydShowsTheProjects();
+            return mcpTools + $"Put the new builds in the running sandbox Rider, which reloaded {string.Join(" and ", reloads)}{(cloydChanged ? ", and Cloyd's new build" : "")}.";
          }
 
          Stop();
@@ -224,8 +245,9 @@ public sealed class SandboxRider
    /// <summary>
    ///   Starts the sandbox unless it's running, and places its windows. It opens <paramref name="solution"/>, or a fresh
    ///   copy of the fixture solution when it starts without one, and returns once the MCP server on
-   ///   <see cref="McpPort"/> answers with the solution loaded and indexed. A fresh copy ends the sessions that ran in the
-   ///   one it replaces, which outlive the sandbox Rider in their session hosts, their shells in its folder.
+   ///   <see cref="McpPort"/> answers with the solution loaded and indexed, and <see cref="ItsCloyd"/> shows its window. A
+   ///   fresh copy ends the sessions that ran in the one it replaces, which outlive the sandbox Rider in their session
+   ///   hosts, their shells in its folder.
    /// </summary>
    public void Start(string? solution = null)
    {
@@ -256,7 +278,26 @@ public sealed class SandboxRider
       if(solution is null) return;
 
       WaitUntil(() => TheMcpServerHasIndexed(solution), HowLongStartingMayTake, $"the MCP server on port {McpPort} to answer with {solution} loaded and indexed");
+      WaitUntilItsCloydShows(Path.GetDirectoryName(solution)!);
       PlaceWindows(); // The solution's own window has replaced Rider Home by now.
+   }
+
+   /// <summary>
+   ///   Waits until <see cref="ItsCloyd"/> shows the window of the project in <paramref name="projectFolder"/>, as Claude
+   ///   Sessions has it do as the project opens, and places it with the sandbox's windows.
+   /// </summary>
+   public void WaitUntilItsCloydShows(string projectFolder)
+   {
+      WaitUntil(() => ItsCloyd.ProjectsItShows().Contains(Path.GetFullPath(projectFolder), StringComparer.OrdinalIgnoreCase),
+                HowLongCloydMayTakeToShowAProject,
+                $"the sandbox's Cloyd, in {ItsCloyd.Folder}, to show the window of {projectFolder}: Claude Sessions runs its Cloyd.exe --project as the project opens, and logs what came of it to the sandbox's idea.log");
+      PlaceWindows();
+   }
+
+   /// <summary>Waits until <see cref="ItsCloyd"/> shows the window of every project open in the sandbox Rider, and places them.</summary>
+   void WaitUntilItsCloydShowsTheProjects()
+   {
+      foreach(var project in ClaudeSessionsObservation.State()["projects"]!.AsArray()) WaitUntilItsCloydShows(project!["basePath"]!.GetValue<string>());
    }
 
    /// <summary>
@@ -315,36 +356,29 @@ public sealed class SandboxRider
    /// <summary>The restart of the IDE the sandbox's hub has under way, or made last: see <see cref="HubsLocalApi.TheIdeRestart"/>.</summary>
    public JsonNode? TheIdeRestartOfItsHub() => LocalApiOfItsHub.TheIdeRestart();
 
-   /// <summary>
-   ///   Tells its hub of the turn under way of the Claude Code that runs as <paramref name="claudeCode"/>, as a Claude
-   ///   Code session's mod does: see <see cref="HubsLocalApi.TellOfATurn"/>.
-   /// </summary>
-   public void TellItsHubOfATurn(long claudeCode, JsonNode report) => LocalApiOfItsHub.TellOfATurn(claudeCode, report);
-
    /// <summary>The log in which the sandbox's hub records each step of each restart of the IDEs it makes, with its time.</summary>
    public string IdeRestartsLog => Path.Combine(ClaudeCodeFolder, "ide-restarts.log");
 
    /// <summary>
-   ///   Stops the sandbox, as <see cref="Stop"/> does, then its hub, with the sessions its Claude Sessions ran: they run in
-   ///   the hub's session hosts, which outlive the sandbox Rider as they do Magnus's IDEs. Returns what the hub's
-   ///   <see cref="SandboxHub.Stop"/> ended.
+   ///   Stops the sandbox, as <see cref="Stop"/> does, then <see cref="ItsCloyd"/>'s application, and its hub, with the
+   ///   sessions that ran in Cloyd: they run in the hub's session hosts, which outlive the sandbox Rider and Cloyd, as
+   ///   they do Magnus's IDEs. Returns what the hub's <see cref="SandboxHub.Stop"/> ended.
    /// </summary>
    public string StopAndEndItsSessions()
    {
       Stop();
+      ItsCloyd.StopTheApplication();
       _hubStarted = null;
       return _hub.Stop();
    }
 
-   /// <summary>Ends the sessions the sandbox's Claude Sessions ran, in its hub's session hosts, and returns how many it ended.</summary>
-   public int EndItsSessions() => LocalApiOfItsHub.EndTheSessionHosts();
-
-   /// <summary>The session hosts the sandbox's sessions run in, as its hub's <c>GET /session-hosts</c> lists them.</summary>
-   public JsonArray SessionHosts() => LocalApiOfItsHub.SessionHosts();
+   /// <summary>Ends the sessions that ran in the sandbox, in its hub's session hosts, and returns how many it ended.</summary>
+   int EndItsSessions() => LocalApiOfItsHub.EndTheSessionHosts();
 
    /// <summary>
-   ///   Closes the sandbox's windows until it exits, as a human closing them would. The sessions its Claude Sessions ran
-   ///   run on in their session hosts, as Magnus's do when his IDE exits: <see cref="StopAndEndItsSessions"/> ends them.
+   ///   Closes the sandbox's windows until it exits, as a human closing them would. <see cref="ItsCloyd"/> runs on, and
+   ///   the sessions in their session hosts, as Magnus's do when his IDE exits: <see cref="StopAndEndItsSessions"/> ends
+   ///   them.
    /// </summary>
    public void Stop()
    {
@@ -399,8 +433,8 @@ public sealed class SandboxRider
                     .FirstOrDefault(it => it is { HasExited: false } && it.ProcessName.StartsWith("rider", StringComparison.OrdinalIgnoreCase) && it.StartTime > startedAfter);
 
    /// <summary>
-   ///   Kills the sandbox Rider, as a crash ends it: nothing of it saves anything as it goes. The sessions its Claude
-   ///   Sessions ran run on in their session hosts, and the terminals that showed them end with it.
+   ///   Kills the sandbox Rider, as a crash ends it: nothing of it saves anything as it goes. <see cref="ItsCloyd"/> runs
+   ///   on, and the sessions in their session hosts.
    /// </summary>
    public void Kill()
    {
@@ -429,15 +463,22 @@ public sealed class SandboxRider
                                  .. FramesOf(running).Select(it => "  sandbox window: " + it.Description),
                                  "  development IDEA window: " + (SandboxWindowPlacement.TheDevelopmentIdeaWindow()?.Description ?? "none open"),
                                  "  MCP health: " + (TheMcpServersHealth() ?? "nothing listens on port " + McpPort),
-                                 $"  hub: process {hub.ProcessId}, announced in {hub.Announcement}, its log {hub.Log}"
+                                 $"  hub: process {hub.ProcessId}, announced in {hub.Announcement}, its log {hub.Log}",
+                                 .. WhatItsCloydShows().Select(it => "  " + it)
                               ]);
    }
 
-   /// <summary>Puts the sandbox's windows where <see cref="SandboxWindowPlacement"/> says.</summary>
+   /// <summary>Whether <see cref="ItsCloyd"/>'s application runs, and the project windows it shows.</summary>
+   public IReadOnlyList<string> WhatItsCloydShows() =>
+      ItsCloyd.TheApplication() is {} application
+         ? [$"Cloyd: the application runs as process {application.Id}, from {ItsCloyd}.", .. (ItsCloyd.Windows() ?? []).Select(it => $"  window '{it!["title"]}' of {it["project"]}")]
+         : [$"Cloyd: no application runs from {ItsCloyd}."];
+
+   /// <summary>Puts the sandbox's windows, and its Cloyd's, where <see cref="SandboxWindowPlacement"/> says.</summary>
    public void PlaceWindows()
    {
       var running = RunningProcess() ?? throw new InvalidOperationException("The sandbox Rider isn't running.");
-      SandboxWindowPlacement.Apply(FramesOf(running));
+      SandboxWindowPlacement.Apply([.. FramesOf(running), .. ItsCloyd.WindowsOnTheDesktop()]);
    }
 
    /// <summary>
@@ -552,6 +593,8 @@ public sealed class SandboxRider
       LeaveOutTheClaudeCodeSessionThisRunsIn();
       // For the hub's Rider restart: the IDEs it restarts are those announced here, the sandbox Rider's.
       Environment.SetEnvironmentVariable("CLAUDE_SESSIONS_LOCAL_API_FOLDER", LocalApiAnnouncementsFolder);
+      // Claude Sessions runs the sandbox's own Cloyd, which serves this folder, apart from Magnus's.
+      Environment.SetEnvironmentVariable("CLOYD_FOLDER", ItsCloyd.Folder);
       // The sandbox is in the user's home folder, which is a git repository: without a ceiling, git takes the solutions in
       // the sandbox for part of it.
       Environment.SetEnvironmentVariable("GIT_CEILING_DIRECTORIES", _root);

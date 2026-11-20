@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Globalization;
 using Compze.Threading;
 using Compze.Threading.Interprocess;
+using RiderTerminalSymbolLinker.DevelopmentTools.Cloyd;
 using RiderTerminalSymbolLinker.DevelopmentTools.Plugin;
 
 namespace RiderTerminalSymbolLinker.DevelopmentTools.Riders;
@@ -39,12 +40,13 @@ static class DeployRestartingTheIdes
    static readonly TimeSpan HowLongTheRestartMayTake = TimeSpan.FromMinutes(20);
 
    /// <summary>
-   ///   Builds the plugins, puts the builds into each IDE that doesn't run, and has the hub restart those that run and
-   ///   don't have them, putting them in as they're down. Writes each step, the hub's progress and the outcome to
+   ///   Puts this working tree's Cloyd in, which Claude Sessions runs, builds the plugins, puts the builds into each IDE
+   ///   that doesn't run, and has the hub restart those that run and don't have them, putting them in as they're down. Writes each step, the hub's progress and the outcome to
    ///   <paramref name="output"/>.
    /// </summary>
    public static void Run(TextWriter output)
    {
+      output.WriteLine(InstalledCloyd.Everyday.Deploy(CloydBuild.Published(), dryRun: false));
       var builds = GradleSandbox.Filled();
       foreach(var line in EverydayIdes.Deploy(builds, dryRun: true)) output.WriteLine(line);
       var staged = Stage(builds);

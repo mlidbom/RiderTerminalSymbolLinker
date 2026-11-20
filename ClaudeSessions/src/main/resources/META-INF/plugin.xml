@@ -3,115 +3,28 @@
     <name>Claude Sessions</name>
     <vendor email="magnus.lidbom@gmail.com" url="https://github.com/mlidbom/RiderTerminalSymbolLinker">Magnus Lidbom</vendor>
     <description><![CDATA[
-        A tool window whose tabs each run a <a href="https://www.anthropic.com/claude-code">Claude Code</a> session,
-        and which resumes them when the IDE restarts: every session that ran in it when the IDE closed is back in its
-        tab, in its folder.
+        Shows each project's <a href="https://www.anthropic.com/claude-code">Claude Code</a> sessions in Cloyd, the
+        application beside the IDE with a window for each project: as a project opens, Cloyd shows its window, and every
+        session that ran in it is back, in its folder.
     ]]></description>
 
     <depends>com.intellij.modules.platform</depends>
-    <!-- The reworked terminal, whose terminals the tool window's tabs are. -->
-    <depends>org.jetbrains.plugins.terminal</depends>
-    <!-- The platform's JNA, through which the session history picker lets another IDE bring its window forward. -->
+    <!-- The platform's JNA, through which each project window goes back to its virtual desktop after a restart. -->
     <depends>com.intellij.modules.jna</depends>
-    <!-- The platform's Compose UI, with Jewel, in which a chat's transcript renders the conversation's markdown. -->
-    <depends>com.intellij.modules.compose</depends>
-    <dependencies>
-        <module name="intellij.platform.jewel.markdown.core"/>
-        <module name="intellij.platform.jewel.markdown.ideLafBridgeStyling"/>
-        <module name="intellij.platform.jewel.markdown.extensions.gfmTables"/>
-        <module name="intellij.platform.jewel.markdown.extensions.gfmStrikethrough"/>
-        <module name="intellij.platform.jewel.markdown.extensions.autolink"/>
-    </dependencies>
-
-    <!-- Where a tab's chat gets the Claude Code behind it: see ClaudeCodeBehindTheChatProvider. The hub's adapter provides
-         one for every tab whose session runs in a session host; the sandbox's stand-in, first, in the sandbox IDE. -->
-    <extensionPoints>
-        <extensionPoint qualifiedName="dev.magnus.claudesessions.claudeCodeBehindTheChat"
-                        interface="dev.magnus.claudesessions.chat.claudecode.ClaudeCodeBehindTheChatProvider" dynamic="true"/>
-    </extensionPoints>
 
     <!-- defaultExtensionNs, never defaultExtensionPointName: see the symbol linker's plugin.xml. -->
     <extensions defaultExtensionNs="com.intellij">
-        <!-- Never doNotActivateOnStart: IntelliJ IDEA then hides the tool window at every start, even when it was open as
-             the IDE closed. -->
-        <toolWindow id="Claude Sessions" anchor="bottom" canCloseContents="true"
-                    icon="AllIcons.Toolwindows.ToolWindowMessages"
-                    factoryClass="dev.magnus.claudesessions.ClaudeSessionsToolWindowFactory"/>
-        <postStartupActivity implementation="dev.magnus.claudesessions.saving.ClaudeSessionsStartup"/>
+        <postStartupActivity implementation="dev.magnus.claudesessions.cloyd.ShowTheProjectInCloyd"/>
+        <postStartupActivity implementation="dev.magnus.claudesessions.api.LocalApiStartup"/>
         <postStartupActivity implementation="dev.magnus.claudesessions.windows.PutTheWindowBackOnItsDesktop"/>
-        <!-- What the plugin tells the user, such as that the Claude tooling's hub speaks a protocol it doesn't know. -->
+        <!-- What the plugin tells the user, such as that Cloyd didn't show the project's window. -->
         <notificationGroup id="Claude Sessions" displayType="BALLOON"/>
         <!-- The development observation channel: it listens only where a system property asks it to, in the sandbox
              IDE of the development tools. -->
         <postStartupActivity implementation="dev.magnus.claudesessions.observation.ObservationStartup"/>
-        <!-- The IDE's paste in a chat's input box: it knows what was pasted, and takes images. Every other editor's paste
-             is the one it had. -->
-        <editorActionHandler action="EditorPaste" implementationClass="dev.magnus.claudesessions.chat.messagebox.MessageBoxPasteHandler"
-                             order="first"/>
-        <!-- Ctrl+H switches between a tab's chat and terminal there, ahead of the other actions bound to it. -->
-        <actionPromoter implementation="dev.magnus.claudesessions.chat.TheSwitchFirstInAClaudeSessionsTab"/>
-    </extensions>
-
-    <extensions defaultExtensionNs="org.jetbrains.plugins.terminal">
-        <!-- The shortcut that switches between the chat and the terminal works in the terminal too. -->
-        <allowedActionsProvider implementation="dev.magnus.claudesessions.chat.TheChatsActionsInTheTerminal"/>
-    </extensions>
-
-    <extensions defaultExtensionNs="dev.magnus.claudesessions">
-        <!-- Only in the sandbox IDE of the development tools: a stand-in its specifications drive, ahead of the hub's. -->
-        <claudeCodeBehindTheChat implementation="dev.magnus.claudesessions.observation.StandInBehindTheChatInTheSandbox" order="first"/>
-        <!-- The Claude tooling's hub, which tells of a tab's conversation and types into its Claude Code. -->
-        <claudeCodeBehindTheChat implementation="dev.magnus.claudesessions.hub.TheHubBehindTheChatProvider"/>
     </extensions>
 
     <applicationListeners>
-        <listener class="dev.magnus.claudesessions.DetachTheTabsAsTheViewGoes" topic="com.intellij.openapi.project.ProjectCloseListener"/>
-        <listener class="dev.magnus.claudesessions.DetachTheTabsAsTheViewGoes" topic="com.intellij.ide.AppLifecycleListener"/>
-        <listener class="dev.magnus.claudesessions.DetachTheTabsAsTheViewGoes" topic="com.intellij.ide.plugins.DynamicPluginListener"/>
         <listener class="dev.magnus.claudesessions.windows.RecordTheWindowsDesktopsAsTheIdeExits" topic="com.intellij.ide.AppLifecycleListener"/>
     </applicationListeners>
-
-    <actions>
-        <action id="ClaudeSessions.NewSession"
-                class="dev.magnus.claudesessions.newsession.NewClaudeSessionAction"
-                text="New Claude Session…"
-                description="Name a new Claude Code session, or leave it unnamed, and start it in a tab of the Claude Sessions tool window"
-                icon="AllIcons.General.Add"/>
-        <action id="ClaudeSessions.ResumeSession"
-                class="dev.magnus.claudesessions.history.ResumeClaudeSessionAction"
-                text="Resume a Claude Session…"
-                description="Pick a Claude Code session from the history, and resume it in a tab of the Claude Sessions tool window"
-                icon="AllIcons.Vcs.History">
-            <!-- Free in the default keymap, both Visual Studio keymaps, and Magnus's own (2026-11-18). -->
-            <keyboard-shortcut keymap="$default" first-keystroke="shift ctrl alt Y"/>
-        </action>
-        <action id="ClaudeSessions.SwitchBetweenTheChatAndTheTerminal"
-                class="dev.magnus.claudesessions.chat.SwitchBetweenTheChatAndTheTerminalAction"
-                text="Switch Between the Chat and the Terminal"
-                description="Show the Claude Sessions tab's terminal, with Claude Code's own UI, in place of its chat, or its chat in place of its terminal"
-                icon="AllIcons.Nodes.Console">
-            <!-- Bound to Replace or Type Hierarchy too: the switch runs only in a Claude Sessions tab, put first there by
-                 TheSwitchFirstInAClaudeSessionsTab (Magnus, 2026-11-20). -->
-            <keyboard-shortcut keymap="$default" first-keystroke="ctrl H"/>
-        </action>
-        <!-- Find in a chat's transcript, with the shortcuts of Find, Find Next and Find Previous, whatever the keymap
-             binds them to: enabled only with the focus in a transcript, which isn't an editor, so Find's own are
-             disabled there. -->
-        <action id="ClaudeSessions.FindInTheTranscript"
-                class="dev.magnus.claudesessions.chat.transcript.find.FindInTheTranscriptAction"
-                text="Find in the Chat's Transcript"
-                description="Seek a text in the conversation the Claude Sessions tab's chat shows"
-                icon="AllIcons.Actions.Find"
-                use-shortcut-of="Find"/>
-        <action id="ClaudeSessions.FindNextInTheTranscript"
-                class="dev.magnus.claudesessions.chat.transcript.find.FindNextInTheTranscriptAction"
-                text="Next Occurrence in the Chat's Transcript"
-                description="Go to the next place in the chat's transcript that holds what Find seeks"
-                use-shortcut-of="FindNext"/>
-        <action id="ClaudeSessions.FindPreviousInTheTranscript"
-                class="dev.magnus.claudesessions.chat.transcript.find.FindPreviousInTheTranscriptAction"
-                text="Previous Occurrence in the Chat's Transcript"
-                description="Go to the place before in the chat's transcript that holds what Find seeks"
-                use-shortcut-of="FindPrevious"/>
-    </actions>
 </idea-plugin>

@@ -62,31 +62,7 @@ sealed class HubsLocalApi(string announcementFolder)
       return JsonNode.Parse(client.GetStringAsync("/ide-restart").Result)!["restart"];
    }
 
-   /// <summary>
-   ///   Tells the hub of the turn under way of the Claude Code that runs as <paramref name="claudeCode"/>, as the
-   ///   <c>tooling-commands</c> mod of a Claude Code session does: <paramref name="report"/> is the body of the hub's
-   ///   <c>POST /running-sessions/{processId}/turn/events</c>, the turn and its events. The contract is its "The turn under
-   ///   way".
-   /// </summary>
-   public void TellOfATurn(long claudeCode, JsonNode report)
-   {
-      using var client = Client() ?? throw new InvalidOperationException($"No hub runs: none announces itself in {AnnouncementFile}.");
-      using var answer = client.PostAsync($"/running-sessions/{claudeCode}/turn/events", JsonContent.Create(report)).Result;
-      if(answer.StatusCode != HttpStatusCode.NoContent)
-         throw new InvalidOperationException($"The hub answered the turn's events of {claudeCode} with {(int)answer.StatusCode}: {answer.Content.ReadAsStringAsync().Result}");
-   }
-
-   /// <summary>
-   ///   The session hosts that run, as the hub's <c>GET /session-hosts</c> lists them: none when no hub runs, as none would
-   ///   have started one.
-   /// </summary>
-   public JsonArray SessionHosts()
-   {
-      using var client = Client();
-      return client is null ? [] : JsonNode.Parse(client.GetStringAsync("/session-hosts").Result)!["sessionHosts"]!.AsArray();
-   }
-
-   /// <summary>Ends every session host the hub lists, as closing its tab does, and returns how many it ended.</summary>
+   /// <summary>Ends every session host the hub lists, as closing its session's tab does, and returns how many it ended.</summary>
    public int EndTheSessionHosts()
    {
       using var client = Client();

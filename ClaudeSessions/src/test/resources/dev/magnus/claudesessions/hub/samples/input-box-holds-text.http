@@ -1,5 +1,0 @@
-HTTP/1.1 409 Conflict
-Content-Type: application/json; charset=utf-8
-Claude-Tooling-Protocol: 1
-
-{"error":"Claude Code's own input box holds text: nothing of the message of 3 parts and 140 characters was typed, so that neither text is mangled.","reason":"inputBoxHoldsText"}
