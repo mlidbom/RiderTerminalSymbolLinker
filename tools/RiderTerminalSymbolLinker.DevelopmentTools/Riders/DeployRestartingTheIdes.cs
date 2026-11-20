@@ -47,9 +47,7 @@ static class DeployRestartingTheIdes
    public static void Run(TextWriter output)
    {
       output.WriteLine(InstalledCloyd.Everyday.Deploy(CloydBuild.Published(), dryRun: false));
-      var builds = GradleSandbox.Filled();
-      foreach(var line in EverydayIdes.Deploy(builds, dryRun: true)) output.WriteLine(line);
-      var staged = Stage(builds);
+      var staged = Stage(GradleSandbox.Filled());
       foreach(var line in EverydayIdes.Deploy(staged, onlyInto: it => !it.IsRunning)) output.WriteLine(line);
       var toRestart = EverydayIdes.IdesWithoutTheBuildsIn(staged).Where(it => it.IsRunning).ToList();
       if(toRestart.Count == 0)
