@@ -13,10 +13,6 @@ sealed class SavedProjectWindows(DirectoryInfo folder)
 
    readonly DirectoryInfo _folder = folder;
 
-   /// <summary>Where Cloyd saves them for Magnus: <c>%LOCALAPPDATA%\Cloyd\project-windows</c>.</summary>
-   public static SavedProjectWindows OfCloydsEnvironment() =>
-      new(new DirectoryInfo(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Cloyd", "project-windows")));
-
    /// <summary>What was saved last of <paramref name="project"/>'s window: <see cref="SavedProjectWindow.NothingSaved"/> when nothing was.</summary>
    public SavedProjectWindow Of(Project project) =>
       File.Exists(FileOf(project)) ? JsonSerializer.Deserialize<SavedProjectWindow>(File.ReadAllText(FileOf(project)), Json)! : SavedProjectWindow.NothingSaved;

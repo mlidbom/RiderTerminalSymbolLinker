@@ -30,7 +30,6 @@ sealed class ProjectWindow : Window
    static readonly TimeSpan BeforeFollowingTheRunningSessionsAgain = TimeSpan.FromSeconds(1);
    static readonly TimeSpan BetweenSaves = TimeSpan.FromSeconds(2);
 
-   readonly Project _project;
    readonly TheHub _hub;
    readonly ShellOfNewSessions _shellOfNewSessions;
    readonly SavedProjectWindows _savedWindows;
@@ -44,7 +43,7 @@ sealed class ProjectWindow : Window
 
    public ProjectWindow(Project project, TheHub hub, ShellOfNewSessions shellOfNewSessions, SavedProjectWindows savedWindows)
    {
-      _project = project;
+      Project = project;
       _hub = hub;
       _shellOfNewSessions = shellOfNewSessions;
       _savedWindows = savedWindows;
@@ -55,6 +54,9 @@ sealed class ProjectWindow : Window
       _newSession.NewSessionAsked += name => _ = TellingOfFailure(() => StartANewSession(name));
       _tabs.SelectionChanged += (_, _) => Dispatcher.UIThread.Post(() => SelectedTab?.Terminal.Focus(), DispatcherPriority.Loaded);
    }
+
+   /// <summary>The project whose sessions the window shows.</summary>
+   public Project Project { get; }
 
    public IReadOnlyList<SessionTab> Tabs => _tabs.Items.OfType<SessionTab>().ToList();
 
@@ -100,7 +102,7 @@ sealed class ProjectWindow : Window
    /// </summary>
    public async Task StartANewSession(string? name)
    {
-      var tab = await ShowANewHost(_project.Folder, latestSession: null, nameGiven: name);
+      var tab = await ShowANewHost(Project.Folder, latestSession: null, nameGiven: name);
       _tabs.SelectedItem = tab;
       await StartClaudeCodeIn(tab, ClaudeCodeCommand.OfANewSession(name));
    }
@@ -111,7 +113,7 @@ sealed class ProjectWindow : Window
    /// </summary>
    async Task BringBackTheTabs()
    {
-      var saved = _savedWindows.Of(_project);
+      var saved = _savedWindows.Of(Project);
       var hosts = await _hub.SessionHosts(_closed.Token);
       var claudeCode = await _hub.ClaudeCodeFolderItServes(_closed.Token);
       SessionTab? selected = null;
@@ -119,7 +121,7 @@ sealed class ProjectWindow : Window
          if(await BringBack(savedTab, hosts.SingleOrDefault(it => it.Id == savedTab.SessionHost), claudeCode) is {} tab && savedTab.SessionHost == saved.SelectedTab)
             selected = tab;
 
-      foreach(var host in hosts.Where(it => _project.Equals(it.Project) && !it.Attached && !IsShown(it.Id)))
+      foreach(var host in hosts.Where(it => Project.Equals(it.Project) && !it.Attached && !IsShown(it.Id)))
          Show(host, latestSession: null, nameGiven: null);
       _tabs.SelectedItem = selected ?? Tabs.FirstOrDefault();
    }
@@ -140,7 +142,7 @@ sealed class ProjectWindow : Window
    }
 
    async Task<SessionTab> ShowANewHost(string directory, ClaudeSession? latestSession, string? nameGiven) =>
-      Show(await _hub.StartASessionHost(_shellOfNewSessions, directory, SessionHostLabel.OfANewHostOf(_project), _closed.Token), latestSession, nameGiven);
+      Show(await _hub.StartASessionHost(_shellOfNewSessions, directory, SessionHostLabel.OfANewHostOf(Project), _closed.Token), latestSession, nameGiven);
 
    /// <summary>Has the hub start <paramref name="command"/> in the host of <paramref name="tab"/>: when it doesn't, the tab says why, and shows the shell at its prompt.</summary>
    async Task StartClaudeCodeIn(SessionTab tab, ClaudeCodeCommand command)
@@ -179,7 +181,7 @@ sealed class ProjectWindow : Window
       _tabs.Items.Remove(tab);
    }
 
-   void Save() => _savedWindows.Save(_project, new SavedProjectWindow([.. Tabs.Select(it => it.AsSaved)], SelectedTab?.Host.Id));
+   void Save() => _savedWindows.Save(Project, new SavedProjectWindow([.. Tabs.Select(it => it.AsSaved)], SelectedTab?.Host.Id));
 
    /// <summary>The size of the terminals shown, which a new tab's host is attached at: the default size of a host's console before any is shown.</summary>
    ConsoleSize SizeOfTheTerminals => SelectedTab?.Terminal.Size is { IsASize: true } size ? size : ConsoleSize.Default;

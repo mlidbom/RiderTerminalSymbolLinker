@@ -4,6 +4,8 @@
       <OutputType>WinExe</OutputType>
       <RootNamespace>Cloyd</RootNamespace>
       <ApplicationManifest>app.manifest</ApplicationManifest>
+      <!-- For starting the Cloyd application through CreateProcessW, as the hub is started: see StartingTheApplication. -->
+      <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
    </PropertyGroup>
    <ItemGroup>
       <PackageReference Include="Avalonia" />
@@ -11,6 +13,11 @@
       <PackageReference Include="Avalonia.Themes.Fluent" />
       <PackageReference Include="Iciclecreek.Avalonia.Terminal" />
       <PackageReference Include="Compze.Threading" />
+      <PackageReference Include="Compze.Threading.Interprocess" />
+   </ItemGroup>
+   <ItemGroup>
+      <!-- ASP.NET Core's web server, Kestrel, for Cloyd's local API, as the hub's local API is served. -->
+      <FrameworkReference Include="Microsoft.AspNetCore.App" />
    </ItemGroup>
    <ItemGroup>
       <!-- The hub's own types for what session hosts and their clients say to each other, as the hub and the attach

@@ -24,6 +24,7 @@
    <ItemGroup>
       <PackageVersion Include="Compze.Must" Version="0.9.0-alpha" />
       <PackageVersion Include="Compze.Threading" Version="0.12.0-alpha" />
+      <PackageVersion Include="Compze.Threading.Interprocess" Version="0.7.0-alpha" />
       <PackageVersion Include="Compze.xUnitBDD" Version="0.7.0-beta" />
    </ItemGroup>
 

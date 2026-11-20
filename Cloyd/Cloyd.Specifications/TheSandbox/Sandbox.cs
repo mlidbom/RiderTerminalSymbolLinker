@@ -1,3 +1,5 @@
+using System.Diagnostics;
+using Cloyd.LocalApi;
 using Cloyd.Sessions;
 
 namespace Cloyd.Specifications.TheSandbox;
@@ -10,7 +12,9 @@ namespace Cloyd.Specifications.TheSandbox;
 /// <remarks>
 /// The stand-in (<c>~/.claude/src/StandInForClaudeCode</c>) runs a session as Claude Code does: it keeps its record and
 /// transcript where <c>CLAUDE_CONFIG_DIR</c> says, which the hub reads, and draws an input box as Claude Code does. It
-/// says <c>New session &lt;id&gt;</c> as it starts, and the size of its terminal.
+/// says <c>New session &lt;id&gt;</c> as it starts, and the size of its terminal.<br/>
+/// The specifications' process takes the hub's <see cref="SandboxHub.Environment"/>, and so does every process it starts,
+/// such as a Cloyd application: what it asks of a hub it asks the sandbox's.
 /// </remarks>
 sealed class Sandbox
 {
@@ -21,6 +25,7 @@ sealed class Sandbox
    Sandbox()
    {
       HubOfTheSandbox = SandboxHub.RunIn(Path.Combine(_root, "hub"));
+      foreach(var (variable, value) in HubOfTheSandbox.Environment) Environment.SetEnvironmentVariable(variable, value);
       //todo: The tooling owner, 2026-11-20: the hub is to put the stand-in first on its sandbox sessions' PATH itself.
       //   Once it does, the sessions' shell needs no PATH of its own.
       ShellOfItsSessions = (ShellOfNewSessions.OnThisMachine() with { CommandLine = "pwsh.exe -NoLogo -NoProfile" })
@@ -42,4 +47,22 @@ sealed class Sandbox
 
    /// <summary>The folder where the specifications' projects save their windows, each in a folder of its own.</summary>
    public string SavedProjectWindowsFolder => Path.Combine(_root, "project-windows");
+
+   /// <summary>
+   /// A <see cref="CloydsFolder"/> of the specification <paramref name="name"/>'s own, with nothing in it: the Cloyd
+   /// application that serves it, left by an earlier run that stopped before it ended it, is ended first.
+   /// </summary>
+   public CloydsFolder EmptyCloydsFolder(string name)
+   {
+      var folder = new CloydsFolder(new DirectoryInfo(Path.Combine(_root, "cloyd", name)));
+      if(new TheCloydApplication(folder).ProcessId is {} left && left != Environment.ProcessId)
+         using(var application = Process.GetProcessById(left))
+         {
+            application.Kill();
+            application.WaitForExit();
+         }
+
+      if(folder.Folder.Exists) folder.Folder.Delete(recursive: true);
+      return folder;
+   }
 }

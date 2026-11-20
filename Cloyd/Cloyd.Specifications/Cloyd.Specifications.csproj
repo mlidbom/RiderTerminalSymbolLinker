@@ -3,6 +3,8 @@
         screen. -->
    <PropertyGroup>
       <IsPackable>false</IsPackable>
+      <!-- For running Cloyd.exe in a job of the specifications' own: see JobOfAnIde. -->
+      <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
    </PropertyGroup>
    <ItemGroup>
       <PackageReference Include="Avalonia.Headless" />

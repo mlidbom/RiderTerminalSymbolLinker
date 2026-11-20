@@ -29,7 +29,7 @@ sealed class SandboxHub
    /// </summary>
    public static SandboxHub RunIn(string folder)
    {
-      var client = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".claude", "bin", "ClaudeTooling.exe");
+      var client = Path.Combine(System.Environment.GetFolderPath(System.Environment.SpecialFolder.UserProfile), ".claude", "bin", "ClaudeTooling.exe");
       var start = new ProcessStartInfo(client) { RedirectStandardOutput = true, RedirectStandardError = true, ArgumentList = { "hub", "sandbox", "start", folder } };
       using var command = Process.Start(start) ?? throw new InvalidOperationException($"Could not start {client}.");
       var printed = command.StandardOutput.ReadToEndAsync();
@@ -48,6 +48,13 @@ sealed class SandboxHub
 
    /// <summary>The Claude Code folder the hub serves: its sessions keep their records and transcripts there.</summary>
    public string ClaudeCodeFolder => _started.ClaudeCodeFolder;
+
+   /// <summary>
+   /// The variables a process of the sandbox takes, on top of the environment it runs in, such as a Cloyd application the
+   /// specifications run, so that it reaches this hub: <c>CLAUDE_CONFIG_DIR</c>, <c>CLAUDE_TOOLING_LOCAL_API_FOLDER</c> and
+   /// <c>CLAUDE_TOOLING_HUB_LOG</c>.
+   /// </summary>
+   public IReadOnlyDictionary<string, string> Environment => _started.Environment;
 
    /// <summary>The folder of the sandbox's copy of the stand-in for Claude Code, a <c>claude.exe</c>: first on the <c>PATH</c> of the sessions' shells, so that <c>claude</c> there runs it.</summary>
    public string FolderOfTheStandInForClaudeCode => _started.FolderOfTheStandInForClaudeCode;

@@ -1,14 +1,19 @@
 using Avalonia;
+using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 using Cloyd.Hub;
+using Cloyd.LocalApi;
 using Cloyd.Projects;
-using Cloyd.Saving;
 using Cloyd.Sessions;
 
 namespace Cloyd;
 
-/// <summary>Cloyd, started for one project: <c>Cloyd.exe --project &lt;folder&gt;</c> opens that project's window.</summary>
+/// <summary>
+/// The Cloyd application: the one process on the machine that shows every project's window, which
+/// <c>Cloyd.exe --project</c> hands each project to through its <see cref="CloydsLocalApi"/>. It starts with no window,
+/// and ends as its last window closes.
+/// </summary>
 sealed class CloydApp : Application
 {
    public override void Initialize() => AvaloniaXamlLoader.Load(this);
@@ -16,14 +21,16 @@ sealed class CloydApp : Application
    public override void OnFrameworkInitializationCompleted()
    {
       if(ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
-         desktop.MainWindow = new ProjectWindow(ProjectNamedBy(desktop.Args ?? []), TheHub.OfCloydsEnvironment(), ShellOfNewSessions.OnThisMachine(), SavedProjectWindows.OfCloydsEnvironment());
-      base.OnFrameworkInitializationCompleted();
-   }
+      {
+         var folder = Program.FolderOfTheApplication(desktop.Args!);
+         var hub = TheHub.OfCloydsEnvironment();
+         var shell = ShellOfNewSessions.OnThisMachine();
+         var windows = new ProjectWindows(project => new ProjectWindow(project, hub, shell, folder.SavedProjectWindows));
+         desktop.ShutdownMode = ShutdownMode.OnLastWindowClose;
+         var localApi = CloydsLocalApi.Start(windows, folder);
+         desktop.Exit += (_, _) => localApi.Stop();
+      }
 
-   /// <summary>The project whose folder <c>--project &lt;folder&gt;</c> names: the current directory's when it isn't given.</summary>
-   static Project ProjectNamedBy(string[] arguments)
-   {
-      var at = Array.IndexOf(arguments, "--project");
-      return new Project(at >= 0 && at + 1 < arguments.Length ? arguments[at + 1] : Environment.CurrentDirectory);
+      base.OnFrameworkInitializationCompleted();
    }
 }
