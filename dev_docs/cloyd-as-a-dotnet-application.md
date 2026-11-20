@@ -214,7 +214,8 @@ Claude's calls (.NET-cloyd, the session in this repository), which Magnus OK'd o
   since 2026-11-20): a hub of its own, the tooling's `hub sandbox start` in a fresh folder, whose sessions run the tooling
   owner's stand-in for Claude Code, and projects, IDEs, saved windows and windows of Cloyd of its own. The sandbox is
   stopped and deleted as its scenario ends, about 0.7 s a scenario. A class whose facts only look at what its scenario
-  built builds it once for them all (`SpecificationOpeningWindows.Once`). They run in about 2 minutes 40 seconds,
+  built builds it once for them all (`SpecificationOpeningWindows.Once`). They run in about 2.5 minutes in one run,
+  and in about a minute in `Cloyd/run-the-specifications.ps1`'s runs at once (see `development-environment.md`). They
   touch no session of Magnus's, and draw each state, and each wait in vain, to `bin/.../RenderedWindows/`. One
   scenario runs the real `Cloyd.exe` in a job that ends everything in it as it closes, as an IDE's may: its
   application's window shows on the desktop for a few seconds.

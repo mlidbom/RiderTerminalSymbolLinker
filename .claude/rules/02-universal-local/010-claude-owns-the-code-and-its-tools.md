@@ -20,6 +20,8 @@ under "The tools you develop with are yours, as a product". Today they are:
   second, and tells through each plugin's development observation channel what the plugin does;
 - the specifications that check that in the sandbox, `dotnet test tests/RiderTerminalSymbolLinker.Specifications`, in
   seconds once the sandbox runs;
+- Cloyd's specifications, `pwsh Cloyd/run-the-specifications.ps1`, in several `dotnet test` runs at once, each scenario
+  with a sandbox hub of its own;
 - `everyday deploy`, the same tool's command that puts the working tree's builds in Magnus's IDEs, which reload them
   without a restart where they run with `-Didea.auto.reload.plugins=true`, and Cloyd's in `%LOCALAPPDATA%\Cloyd\bin`,
   and `everyday reload`, which has them reload the build they have;

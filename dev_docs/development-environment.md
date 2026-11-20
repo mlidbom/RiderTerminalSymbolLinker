@@ -116,7 +116,14 @@ reload of the plugin, whose unloading stops the server on the EDT.
 
 ## The specifications
 
-`dotnet test tests/RiderTerminalSymbolLinker.Specifications` checks what the symbol linker links and what a click does,
+**Cloyd's:** `pwsh Cloyd/run-the-specifications.ps1` builds once, deals the specification classes out over six
+`dotnet test` runs at once (`-Runs`), by the time each took when last measured, and says what passed, what failed and
+how long each run took; `-ShowTimes` adds each class's time, `-Filter History` takes only some classes. A run is one
+process, whose Avalonia UI thread and keyboard focus take its specifications one after another, and each scenario has a
+sandbox of its own, its hub included, so the runs share nothing else (`Cloyd.Specifications/TheSandbox`). On
+2026-11-20: about 145 s in one run, 50-80 s in 4 to 8, where the hub's slow starts under load set the pace.
+
+**The plugins':** `dotnet test tests/RiderTerminalSymbolLinker.Specifications` checks what the symbol linker links and what a click does,
 in the sandbox, against the fixture solution, and, in `ClaudeSessions/`, what Claude Sessions does: has the sandbox's
 Cloyd show each project's window as it opens, and lists the IDE's windows and restarts it through its local API, Cloyd's
 application running on through the restart (`ClaudeSessionsInTheSandbox`). Each story starts with the fixture solution

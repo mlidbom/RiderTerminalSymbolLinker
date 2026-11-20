@@ -15,7 +15,7 @@ subclasses and an assembly attribute in every consumer; the scenario as a class 
 specifications are written; or nothing. **Waits for:** Magnus's choice, there. Until then Cloyd has its own,
 `SpecificationOpeningWindows.Once`, built 2026-11-20. **If Compze publishes it:** upgrade Cloyd's specifications to it
 (the `upgrading-compze-packages` skill), move the classes on `Once` to it, measure with
-`Cloyd/time-the-specifications.ps1`, and remove this entry.
+`Cloyd/run-the-specifications.ps1 -Runs 1 -ShowTimes`, and remove this entry.
 
 **Only as an opt-in** (Magnus, 2026-11-20): "the individual specs are not actually forbidden from changing state. That
 is, I assume, one of the reasons why xunit runs full setup for every test. So changing the safe default is definitely
