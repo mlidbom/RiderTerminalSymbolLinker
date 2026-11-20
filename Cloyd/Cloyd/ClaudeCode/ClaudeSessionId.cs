@@ -1,7 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-namespace Cloyd.Hub;
+namespace Cloyd.ClaudeCode;
 
 /// <summary>
 /// The id Claude Code gives a session, such as <c>1d24f54b-3002-4132-8a65-4d7dc8977525</c>: what

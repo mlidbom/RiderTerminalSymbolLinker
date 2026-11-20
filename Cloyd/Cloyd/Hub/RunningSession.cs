@@ -1,4 +1,5 @@
 using ClaudeTooling.SessionHost.Protocol;
+using Cloyd.ClaudeCode;
 
 namespace Cloyd.Hub;
 
