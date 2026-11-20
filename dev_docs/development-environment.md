@@ -219,10 +219,10 @@ for another reason would deploy too.
 were on the same desktops." It builds, puts the builds aside with a `CopyOfTheTools` (`StagedPluginBuilds`, under
 `%LOCALAPPDATA%\RiderTerminalSymbolLinkerDevelopment\staged-plugin-builds`), deploys at once into the IDEs that don't
 run, and asks the published hub, `POST /ide-restart` (`HubsLocalApi`), to restart those that run and lack the build,
-as Magnus asks himself, so with no prompt of his. Each IDE's Claude Sessions hands the hub's `beforeItStartsAgain` to
-the IDE's restarter, which runs `everyday deploy --into-the-ides-that-closed` once the IDE has exited and starts the IDE
-when it has ended: it deploys the staged builds into every IDE that doesn't run, taking turns with the other
-restarters' through a Compze `IMutex`, and logs to `deploys-restarting-the-ides.log` beside them. The command follows
+as Magnus asks himself, so with no prompt of his. Each IDE's Claude Sessions runs the hub's `beforeItStartsAgain`,
+`everyday deploy --into-the-ides-that-closed`, once the IDE has exited, and starts the IDE when it has ended (Claude
+Sessions' `RestartRunningACommand`): it deploys the staged builds into every IDE that doesn't run, taking turns with the
+other IDEs' through a Compze `IMutex`, and logs to `deploys-restarting-the-ides.log` beside them. The command follows
 the hub's `GET /ide-restart` until every IDE is back, and prints its steps, its outcome and the log's new lines. The
 agent that runs it survives the restart, in its session host. A build that changes no registration still goes in by
 `everyday deploy`, a reload. The running IDEs need a Claude Sessions that knows `beforeItStartsAgain`, which this deploy

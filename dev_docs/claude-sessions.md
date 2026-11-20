@@ -543,11 +543,16 @@ tooling-owner on 2026-11-17 (protocol 1):
   on exiting (`Application.isExitInProgress` is internal API, which the verifier refuses). Rider may still ask on the
   way, as whether to end running processes.
 - **`beforeItStartsAgain`,** a program and its arguments, for a deploy through the hub's restart of the IDEs (Magnus,
-  2026-11-20: "I greenlight, you install and restart"; agreed with the tooling owner the same day). The IDE's own
-  `restarter.exe` runs it once the IDE has exited, waits for it to end, then starts the IDE, with the IDE's
-  environment, as the platform's updater applies a patch: the platform makes the array one command
-  (`Restarter.scheduleRestart(elevate, List.of(beforeRestart))`). A specification has a command wait three seconds and
-  record that the old process had gone, and finds the IDE started after it ended.
+  2026-11-20: "I greenlight, you install and restart"; agreed with the tooling owner the same day). Run as the
+  platform's updater runs its patch, between the IDE's exit and its start (`RestartRunningACommand`): the IDE starts a
+  helper of its own, `RunsACommandBetweenTheIdesExitAndItsStart`, plain Java on the IDE's runtime, from a copy of its
+  class in the IDE's system folder, outside the plugin whose files the command may replace; then it exits. The helper
+  waits for the IDE's process to end, five minutes at the most, else runs and starts nothing; runs the command, waits
+  for it, and starts the IDE's executable again with no arguments, in the IDE's environment, as the platform's restart
+  does; the IDE reopens its projects. Its log is `claude-sessions-restarts.log` in the IDE's log folder. Not the
+  platform's own restarter, which could run the command (`ApplicationEx.restart(flags, beforeRestart)`, `Restarter`):
+  that's internal API, which the Plugin Verifier refuses. A specification has a command wait three seconds and record
+  that the old process had gone, and finds the IDE started after it ended.
   The new announcement comes once the first project has opened. Rider restarts its launcher without the arguments it
   started with (`Restarter.restartOnWindows`), and reopens every solution it had open, each in its window, as "Reopen
   projects on startup" is on by default: a specification checks it with three.

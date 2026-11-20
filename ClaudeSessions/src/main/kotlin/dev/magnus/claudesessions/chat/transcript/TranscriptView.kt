@@ -142,10 +142,9 @@ private fun PromptFromElsewhereView(pane: TranscriptPane, row: TranscriptRow.OfA
 private fun ClaudeSaid(pane: TranscriptPane, item: AssistantText) {
     val markdown = pane.texts.markdownOf(item)
     val decorations = markdown.texts.indices.map { pane.decorationsOf(ItemTextPart(item.id, it)) }
-    val ofTheIde = JewelTheme.markdownStyling
     val textStyle = JewelTheme.defaultTextStyle
     val editorTextStyle = JewelTheme.editorTextStyle
-    val styling = remember(ofTheIde, textStyle, editorTextStyle) { TranscriptMarkdownStyling.of(ofTheIde, textStyle, editorTextStyle) }
+    val styling = remember(textStyle, editorTextStyle) { TranscriptMarkdownStyling.of(textStyle, editorTextStyle) }
     // Anew whenever what the pane adds to a part changes: Jewel's renderer remembers each part as it rendered it.
     key(markdown, decorations) {
         val renderer = remember(styling) { blockRendererFor(markdown, styling, decorations, pane::follow) }

@@ -20,18 +20,9 @@ object TranscriptMarkdownStyling {
     /** Above a heading, besides the space between any two blocks; below it, only that space. */
     private val AROUND_A_HEADING = PaddingValues(top = 6.dp)
 
-    /** [ofTheIde], the bridge's styling, with the transcript's headings, of [textStyle], and their code of [editorTextStyle]. */
-    fun of(ofTheIde: MarkdownStyling, textStyle: TextStyle, editorTextStyle: TextStyle): MarkdownStyling = MarkdownStyling(
-        ofTheIde.blockVerticalSpacing,
-        ofTheIde.paragraph,
-        headingsOf(textStyle, editorTextStyle),
-        ofTheIde.blockQuote,
-        ofTheIde.code,
-        ofTheIde.list,
-        ofTheIde.image,
-        ofTheIde.thematicBreak,
-        ofTheIde.htmlBlock,
-    )
+    /** The bridge's styling of text in [textStyle], and of code in [editorTextStyle], with the transcript's headings. */
+    fun of(textStyle: TextStyle, editorTextStyle: TextStyle): MarkdownStyling =
+        MarkdownStyling.create(baseTextStyle = textStyle, editorTextStyle = editorTextStyle, heading = headingsOf(textStyle, editorTextStyle))
 
     private fun headingsOf(textStyle: TextStyle, editorTextStyle: TextStyle): MarkdownStyling.Heading {
         fun inlines(times: Float) = InlinesStyling.create(textStyle.scaled(times).copy(fontWeight = FontWeight.SemiBold), editorTextStyle.scaled(times))

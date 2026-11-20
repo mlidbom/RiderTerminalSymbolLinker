@@ -13,8 +13,8 @@ namespace RiderTerminalSymbolLinker.DevelopmentTools.Riders;
 /// </summary>
 /// <remarks>
 ///   The hub restarts the IDEs (<c>POST /ide-restart</c>), as Magnus asks himself, so with no prompt of his, and tells the
-///   agents while they're down. Each IDE's Claude Sessions has the IDE's own restarter run
-///   <see cref="IntoTheIdesThatClosed"/> once the IDE has exited, before it starts it again: it takes the builds
+///   agents while they're down. Each IDE's Claude Sessions restarts it running <see cref="IntoTheIdesThatClosed"/> once
+///   the IDE has exited, before it starts it again (its <c>RestartRunningACommand</c>), as the IDE's restarter: it takes the builds
 ///   <see cref="Stage"/> put aside, as the working tree may build on meanwhile, and the copy of these tools it runs
 ///   from. The sessions run on in their session hosts, the tabs attach to them again, and each window goes back to its
 ///   virtual desktop.<br/>

@@ -6,7 +6,6 @@ import com.google.gson.JsonParser
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.ModalityState
-import com.intellij.openapi.application.ex.ApplicationEx
 import com.intellij.openapi.application.ex.ApplicationManagerEx
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
@@ -49,9 +48,9 @@ import java.util.concurrent.Executors
  *    processes that run, and the user may cancel it. Each project's window goes back to its virtual desktop once the
  *    project has opened again, as after every restart ([DesktopsThroughARestart]). The hub's restart of the IDEs asks,
  *    which the tooling owner builds (`~/.claude/dev_docs/restarting-the-ides.md`).
- *    The IDE's own restarter runs `beforeItStartsAgain` once the IDE has exited, and starts it again once the command
- *    has ended, as the IDE's updater applies a patch: the development tools put a build of a plugin in so, which a
- *    running IDE couldn't take.
+ *    `beforeItStartsAgain` runs once the IDE has exited, and the IDE starts again once it has ended, as the IDE's updater
+ *    applies a patch ([RestartRunningACommand]): the development tools put a build of a plugin in so, which a running
+ *    IDE couldn't take.
  *
  * A tool whose notification about a session the user clicks calls `POST /sessions/show`, after it has brought the
  * IDE's window forward itself: Windows lets the process the user clicked bring a window forward, and not the IDE.
@@ -131,11 +130,13 @@ class LocalApi : Disposable {
     }
 
     /**
-     * Has the IDE restart itself, as after a plugin's update, its restarter running the command [beforeItStartsAgain]
-     * between the IDE's exit and its start, unless it's empty: `restart(true)` restarts so, with no command.
+     * Has the IDE restart itself, as after a plugin's update, running the command [beforeItStartsAgain] between the IDE's
+     * exit and its start, unless it's empty: see [RestartRunningACommand].
      */
-    private fun restartTheIde(beforeItStartsAgain: List<String>) =
-        ApplicationManagerEx.getApplicationEx().restart(ApplicationEx.SAVE or ApplicationEx.EXIT_CONFIRMED, beforeItStartsAgain.toTypedArray())
+    private fun restartTheIde(beforeItStartsAgain: List<String>) {
+        if (beforeItStartsAgain.isEmpty()) ApplicationManagerEx.getApplicationEx().restart(true)
+        else RestartRunningACommand(beforeItStartsAgain).start()
+    }
 
     /**
      * Why the IDE can't restart now, or null when it can. On the EDT. One that exits already exits: asked to restart
