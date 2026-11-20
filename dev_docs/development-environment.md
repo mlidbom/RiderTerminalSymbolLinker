@@ -106,7 +106,8 @@ reload of the plugin, whose unloading stops the server on the EDT.
   virtual desktop of its own, where Compose draws nothing, so painting the panel gave an empty picture. What is under
   the transcript, the input box with its thumbnails and the lines over and under it, is Swing, which paints there:
   `sandbox chat picture-of-the-box <tab>` paints it as it is laid out, and `sandbox chat status <tab> <status>`,
-  `sandbox chat type <tab> <text>` and `sandbox chat paste-image <tab>` set it up for the picture.
+  `sandbox chat shows <tab> <session.json>` (Claude Code's status line and turn under way, as the hub's running
+  session has them), `sandbox chat type <tab> <text>` and `sandbox chat paste-image <tab>` set it up for the picture.
 
 ## The specifications
 

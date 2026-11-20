@@ -66,6 +66,10 @@ static class Program
                           sandbox chat status <tab> <status>
                                                       Has the stand-in behind tab <tab>'s chat say Claude Code's status
                                                       is NOT_RUNNING, IDLE, BUSY or WAITING
+                          sandbox chat shows <tab> <session.json>
+                                                      Has it say what Claude Code shows under its input box, and its
+                                                      turn under way: {"statusLine": ..., "turnUnderWay": ...}, as
+                                                      the hub's running session has them
                           sandbox chat type <tab> <text>
                                                       Types the text into tab <tab>'s chat's input box
                           sandbox chat paste-image <tab>
@@ -178,6 +182,9 @@ static class Program
             break;
          case ["sandbox", "chat", "status", var tab, var status]:
             Console.WriteLine(ObservationChannel.Indent(sandbox.ClaudeSessionsObservation.SayTheStatusToTheChat(int.Parse(tab), status)));
+            break;
+         case ["sandbox", "chat", "shows", var tab, var sessionFile]:
+            Console.WriteLine(ObservationChannel.Indent(sandbox.ClaudeSessionsObservation.SayWhatClaudeCodeShowsToTheChat(int.Parse(tab), System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(sessionFile))!)));
             break;
          case ["sandbox", "chat", "type", var tab, var text]:
             Console.WriteLine(ObservationChannel.Indent(sandbox.ClaudeSessionsObservation.TypeInTheChat(int.Parse(tab), text)));
