@@ -1,0 +1,18 @@
+﻿<SolutionConfiguration>
+  <Settings>
+    <AutoEnable>False</AutoEnable>
+    <CurrentEngineMode>Run all tests manually [Global]</CurrentEngineMode>
+    <DisabledNodes>
+      <Value>localhost:41141</Value>
+      <Value>threadripper:41141</Value>
+    </DisabledNodes>
+    <TestsWindowMenuOptions>
+      <VerticalSplitMenuOption>true</VerticalSplitMenuOption>
+      <ShowPassingTestsMenuOption>true</ShowPassingTestsMenuOption>
+      <ShowFailingTestsMenuOption>true</ShowFailingTestsMenuOption>
+      <ShowUnexecutedTestsMenuOption>true</ShowUnexecutedTestsMenuOption>
+      <ShowIgnoredTestsMenuOption>false</ShowIgnoredTestsMenuOption>
+    </TestsWindowMenuOptions>
+    <TestsWindowSplitterDistance>53.319114685058594%</TestsWindowSplitterDistance>
+  </Settings>
+</SolutionConfiguration>
