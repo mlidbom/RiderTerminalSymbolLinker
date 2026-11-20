@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+   <!-- Cloyd.exe: a window for each project, beside its IDE, showing the project's Claude Code sessions. -->
+   <PropertyGroup>
+      <OutputType>WinExe</OutputType>
+      <RootNamespace>Cloyd</RootNamespace>
+      <ApplicationManifest>app.manifest</ApplicationManifest>
+   </PropertyGroup>
+   <ItemGroup>
+      <PackageReference Include="Avalonia" />
+      <PackageReference Include="Avalonia.Desktop" />
+      <PackageReference Include="Avalonia.Themes.Fluent" />
+      <PackageReference Include="Iciclecreek.Avalonia.Terminal" />
+      <PackageReference Include="Compze.Threading" />
+   </ItemGroup>
+   <ItemGroup>
+      <!-- The hub's own types for what session hosts and their clients say to each other, as the hub and the attach
+           client compile them. -->
+      <Compile Include="$(USERPROFILE)\.claude\src\ClaudeTooling.SessionHost.Protocol\*.cs" Link="SessionHostProtocol\%(Filename)%(Extension)" />
+   </ItemGroup>
+   <ItemGroup>
+      <InternalsVisibleTo Include="Cloyd.Specifications" />
+   </ItemGroup>
+</Project>

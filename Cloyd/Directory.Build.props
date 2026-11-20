@@ -1,0 +1,19 @@
+<Project>
+   <!-- Cloyd: the Claude tooling's UI, a .NET application in Avalonia beside the IDEs. See
+        dev_docs/cloyd-as-a-dotnet-application.md. A solution of its own, so that it can move to a repository of its own. -->
+   <PropertyGroup>
+      <TargetFramework>net11.0-windows10.0.19041.0</TargetFramework>
+      <Nullable>enable</Nullable>
+      <ImplicitUsings>enable</ImplicitUsings>
+      <LangVersion>latest</LangVersion>
+      <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+      <SelfContained>false</SelfContained>
+      <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+      <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+      <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+      <!-- Generating the XML doc file makes the build check doc comments' crefs. A missing doc comment (CS1591) is not
+           checked: the code standards decide which members get one. -->
+      <GenerateDocumentationFile>true</GenerateDocumentationFile>
+      <NoWarn>$(NoWarn);CS1591</NoWarn>
+   </PropertyGroup>
+</Project>

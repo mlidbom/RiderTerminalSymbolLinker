@@ -11,6 +11,20 @@
       "url": "http://127.0.0.1:64342/stream",
       "type": "http"
     },
+    "jetbrains-rider": {
+      "type": "streamable-http",
+      "url": "http://127.0.0.1:64482/stream"
+    },
+    "dotnet-analysis-and-refactoring": {
+      "type": "http",
+      "url": "http://127.0.0.1:23751/"
+    },
+    "sherlock": {
+      "type": "stdio",
+      "command": "cmd",
+      "args": ["/c", "sherlock-mcp"],
+      "env": {}
+    },
     "windows-mcp": {
       "type": "stdio",
       "command": "windows-mcp",

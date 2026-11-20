@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<assembly manifestVersion="1.0" xmlns="urn:schemas-microsoft-com:asm.v1">
+  <!-- Without the supported OS below, Avalonia can't create a native child window, such as a web view's: "Unable to
+       create child window for native control host. Application manifest with supported OS list might be required." As
+       JAStudio.StandaloneHost's. -->
+  <assemblyIdentity version="1.0.0.0" name="Cloyd"/>
+
+  <compatibility xmlns="urn:schemas-microsoft-com:compatibility.v1">
+    <application>
+      <!-- Windows 10 and 11 -->
+      <supportedOS Id="{8e0f7a12-bfb3-4fe8-b9a5-48fd50a15a9a}" />
+    </application>
+  </compatibility>
+</assembly>

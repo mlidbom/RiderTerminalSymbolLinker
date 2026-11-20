@@ -102,7 +102,10 @@ Claude's calls (.NET-cloyd, the session in this repository), which Magnus OK'd o
   - **Why it's simpler:** no session is ever shown by two UIs, so attaching never takes a TUI away from a tab. No parity
     has to be reached before the switch, and the Kotlin side of it is deletion.
   - **Why it's cheap:** the spike has most of it: the attachment, the terminal and the window.
+  - **Clickable file paths and C# symbols come right after it** (Magnus, 2026-11-20: "Agreed"), so step one stays
+    quick. Until then, URLs and the links Claude Code writes itself (OSC 8) are what is clickable in Cloyd's terminal.
   - **The chat comes back afterwards,** built in .NET.
+  - **Built in `Cloyd/`,** a solution of its own in this repository, which can move to a repository of its own.
 - **The input box is Avalonia's editor, AvaloniaEdit, unpolished,** with standard Windows text editing. Magnus: "None
   of the claude UI's have a super competent input box, very few chats do. Any polishing at all of this can wait."
 - **The helper that runs a deploy between an IDE's exit and its start** can move to the .NET side, which outlives the
