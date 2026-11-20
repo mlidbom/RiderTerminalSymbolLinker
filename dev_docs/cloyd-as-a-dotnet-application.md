@@ -113,11 +113,27 @@ Claude's calls (.NET-cloyd, the session in this repository), which Magnus OK'd o
 
 ## Step one, as it's built
 
-**Built (3cbb526, 73cd255):**
+**Built (3cbb526, 73cd255, 84b7525):**
 
-- **A window per project,** `Cloyd.exe --project <folder>`, with a tab per session host of the project. Each tab shows
-  the host's terminal in Iciclecreek's control, attached in process (`AttachmentToASessionHost`), and is titled with
-  the name of the session the hub says runs in its host.
+- **One Cloyd application, with every project's window** (`Cloyd.LocalApi`):
+  - **`Cloyd.exe --project <folder>` is a command:** it hands the project to the Cloyd application, and exits once the
+    project's window shows, 0.16 s when the application runs, 0.84 s when it starts it. Opening a project's window
+    again brings it forward.
+  - **The application, `Cloyd.exe --application <Cloyd's folder>`,** is the one process with every project's window
+    (`ProjectWindows`). It starts with no window, and ends as its last window closes.
+  - **Its local API** (`CloydsLocalApi`), on Kestrel on a free loopback port, is announced in
+    `%LOCALAPPDATA%\Cloyd\local-api.json` as the plugin's and the hub's are: `GET /windows`, and `POST /windows/show`
+    with `{"project": <folder>}`. Every request carries the announcement's token, and names the API's own `Host`.
+  - **The command finds the application, or starts it,** in a Compze `IMutex` critical section, so that IDEs opening
+    several projects at once start one application.
+  - **It starts the application breaking away from its jobs,** with `CREATE_BREAKAWAY_FROM_JOB`, where they let it,
+    else as the hub is started: an IDE's job may end what is in it as the IDE exits. Rider's job's limits couldn't be
+    read: the process that holds it can't be opened without elevation.
+  - **Cloyd's folder,** `CloydsFolder`: `%LOCALAPPDATA%\Cloyd`, or what `CLOYD_FOLDER` names, as for a Cloyd the
+    specifications run apart from Magnus's.
+- **A window per project,** with a tab per session host of the project. Each tab shows the host's terminal in
+  Iciclecreek's control, attached in process (`AttachmentToASessionHost`), and is titled with the name of the session
+  the hub says runs in its host.
 - **The hosts it shows as it opens:** each of the project's hosts that no attach client shows. The project is told by
   the host's label (`SessionHostLabel`): Cloyd's own, `{"startedBy": "cloyd", "project": …}`, or Claude Sessions',
   `{"ideConfigFolder": …, "project": …}`, so that it takes over the plugin's sessions once no IDE's tab shows them. A
@@ -139,21 +155,23 @@ Claude's calls (.NET-cloyd, the session in this repository), which Magnus OK'd o
     in the sandbox, the hub's wait for the shell's prompt. Left out: a tab whose host ran no Claude Code, and one whose
     session's transcript is gone from the Claude Code folder the hub's announcement names (`claudeCodeFolder`).
   - **Then the project's other hosts** that no attach client shows, as before, and the selected tab is selected again.
-- **Specified** on Avalonia's headless platform, against a hub of the specifications' own, a copy of the published one
-  (`Cloyd.Specifications/TheSandbox`), whose sessions run the tooling owner's stand-in for Claude Code. They run in
-  about 2.5 minutes, touch no session of Magnus's, and draw each state, and each wait in vain, to
-  `bin/.../RenderedWindows/`.
+- **Specified** on Avalonia's headless platform, against a hub of the specifications' own, the tooling's
+  `hub sandbox start` (`Cloyd.Specifications/TheSandbox`), whose sessions run the tooling owner's stand-in for Claude
+  Code. They run in about 3 minutes, touch no session of Magnus's, and draw each state, and each wait in vain, to
+  `bin/.../RenderedWindows/`. One scenario runs the real `Cloyd.exe` in a job that ends everything in it as it closes,
+  as an IDE's may: its application's window shows on the desktop for a few seconds.
 
 **Next, in this order:**
 
-1. **One Cloyd process, outside every job, with every project's window.** `Cloyd.exe --project <folder>` hands the
-   project to the Cloyd that runs; started from an IDE, whose job would end it with the IDE, it breaks away. A local
-   API, announced like the plugin's, for the plugin and the hub.
-2. **The switch:** the plugin loses its tool window, chat and history picker, and starts the project's Cloyd window as
-   the project opens. It keeps the local API's `GET /windows` and `POST /restart`, and the symbol linker. Deployed with
+1. **The switch:** the plugin loses its tool window, chat and history picker, and runs `Cloyd.exe --project` as the
+   project opens. It keeps the local API's `GET /windows` and `POST /restart`, and the symbol linker. Deployed with
    Magnus's go, as it changes how every session of his is shown. The plugin's tabs saved before the switch need no
    reading: their hosts run on, and Cloyd shows them by their labels.
-3. **A notification's click shows the session in Cloyd:** the hub's side is the tooling owner's.
+   - **To check then, in the sandbox Rider:** that the application it starts runs in no job.
+   - **Bringing the window forward over the IDE:** Windows lets the process the IDE started bring a window forward, and
+     not the application. So the command is to let the application do it (`AllowSetForegroundWindow`) before it
+     hands the project over.
+2. **A notification's click shows the session in Cloyd:** the hub's side is the tooling owner's.
 
 Then clickable file paths and C# symbols in Cloyd's terminal.
 
@@ -179,8 +197,8 @@ Then clickable file paths and C# symbols in Cloyd's terminal.
   window also lists every session on the machine is open.
 - **Publishing:** a .NET application and a plugin. Magnus, 2026-11-19: "How, and even if, we publish this is a
   question for the future."
-- **Where the hub's contract types live** so that both `~/.claude/src` and this repository can reference them: the
-  tooling owner's question.
+- **Where the hub's contract types live: settled.** In `~/.claude/src/ClaudeTooling.Hub.LocalApi.Contract`, published
+  2026-11-20, which Cloyd compiles in.
 
 ## The spike
 
