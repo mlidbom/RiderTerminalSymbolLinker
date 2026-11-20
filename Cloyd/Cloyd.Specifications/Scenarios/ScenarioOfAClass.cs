@@ -20,7 +20,7 @@ namespace Cloyd.Specifications.Scenarios;
 /// built, kept by the call's place in the code: a nested class's scenario has a part built by its base class's constructor,
 /// and its own. A part that fails ends the scenario at once, and each of the class's facts fails with its exception.<br/>
 /// It ends once all the facts the class declares have run. When fewer run, as when a filter picks some of them, or when a
-/// constructor fails after the scenario is built, it ends with the run: see <see cref="ScenariosLeftEndWithTheRun"/>.
+/// constructor fails after the scenario is built, it ends with the run: see <see cref="WhatEndsWithTheRun"/>.
 /// </remarks>
 sealed class ScenarioOfAClass
 {

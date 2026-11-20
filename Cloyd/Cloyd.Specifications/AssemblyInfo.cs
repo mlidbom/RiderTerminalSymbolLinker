@@ -1,4 +1,4 @@
-using Cloyd.Specifications.Scenarios;
+using Cloyd.Specifications;
 using Xunit;
 
 // One collection, so one specification after another: every window is on the headless session's one UI thread, whose
@@ -6,4 +6,4 @@ using Xunit;
 // once in runs of their own, each in a process of its own.
 [assembly: CollectionBehavior(CollectionBehavior.CollectionPerAssembly)]
 
-[assembly: AssemblyFixture(typeof(ScenariosLeftEndWithTheRun))]
+[assembly: AssemblyFixture(typeof(WhatEndsWithTheRun))]

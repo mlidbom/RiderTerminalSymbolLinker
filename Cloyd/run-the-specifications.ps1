@@ -88,6 +88,7 @@ foreach ($it in $started) {
       continue
    }
 
+   $failedBefore = $failed
    $trx = [xml](Get-Content $trxFile -Raw)
    $classOf = @{}
    foreach ($test in $trx.TestRun.TestDefinitions.UnitTest) { $classOf[$test.id] = $test.TestMethod.className }
@@ -105,6 +106,12 @@ foreach ($it in $started) {
          $timed.AllPassed = $false
          $failures.Add("$($result.outcome): $($result.testName)`n$($result.Output.ErrorInfo.Message)`n$($result.Output.ErrorInfo.StackTrace)")
       }
+   }
+
+   # Such as when what ends with the run fails, after the last fact: a sandbox whose end failed.
+   if ($it.Process.ExitCode -ne 0 -and $failed -eq $failedBefore) {
+      $failures.Add("Run $($it.Run.Number) exited with $($it.Process.ExitCode), though none of its facts failed:`n$($it.Printed.Result)`n$($it.Failure.Result)")
+      $failed += 1
    }
 
    $times = $trx.TestRun.Times

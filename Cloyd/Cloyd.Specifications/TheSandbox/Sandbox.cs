@@ -13,7 +13,8 @@ namespace Cloyd.Specifications.TheSandbox;
 /// scenario starts real session hosts, with a Claude Code in each, in seconds and at no cost, sees nothing that another
 /// scenario did, and never touches a session of Magnus's. A scenario starts its sandbox as it first asks for it, through
 /// <see cref="SpecificationOpeningWindows.Sandbox"/>, and the sandbox ends with the scenario: its hub stops, and its folder
-/// is deleted.
+/// is deleted. Both happen off the scenarios' path: <see cref="SandboxesOfThisRun"/> starts each ahead, and ends it in the
+/// background.
 /// </summary>
 /// <remarks>
 /// The stand-in (<c>~/.claude/src/StandInForClaudeCode</c>) runs a session as Claude Code does: it keeps its record and
@@ -57,8 +58,11 @@ sealed class Sandbox : IDisposable
       WindowsOfCloyd = new ProjectWindows((project, _) => throw new InvalidOperationException($"The specifications open their windows themselves, through their SandboxProject, not {project}'s through the sandbox's WindowsOfCloyd."));
    }
 
-   /// <summary>A new sandbox, once its hub runs.</summary>
-   public static Sandbox Started() => new(new DirectoryInfo(Path.Combine(FolderOfTheSandboxes.FullName, $"{Environment.ProcessId}-{Interlocked.Increment(ref _startedInThisRun)}")));
+   /// <summary>A fresh sandbox, once its hub runs: the one <see cref="SandboxesOfThisRun"/> started ahead.</summary>
+   public static Sandbox Started() => SandboxesOfThisRun.Next();
+
+   /// <summary>A new sandbox, once its hub runs: started now, as <see cref="SandboxesOfThisRun"/> starts each ahead.</summary>
+   public static Sandbox StartedNow() => new(new DirectoryInfo(Path.Combine(FolderOfTheSandboxes.FullName, $"{Environment.ProcessId}-{Interlocked.Increment(ref _startedInThisRun)}")));
 
    public SandboxHub HubOfTheSandbox { get; }
 
@@ -99,12 +103,18 @@ sealed class Sandbox : IDisposable
    /// <summary>The project of the folder <paramref name="name"/> in the sandbox's <see cref="ProjectsFolder"/>, with no window saved.</summary>
    public SandboxProject Project(string name) => new(this, name);
 
-   /// <summary>Stops the sandbox's hub, with every session host it runs, and the stand-in for Rider's MCP, then deletes the sandbox's folder.</summary>
+   /// <summary>
+   /// Stops the stand-in for Rider's MCP, then has the sandbox <see cref="End"/> in the background, as its scenario has
+   /// ended: <see cref="SandboxesOfThisRun"/>.
+   /// </summary>
    public void Dispose()
    {
       if(_dotNetAnalysisAndRefactoringMcp.IsValueCreated) _dotNetAnalysisAndRefactoringMcp.Value.Dispose();
-      End(_folder);
+      SandboxesOfThisRun.EndInTheBackground(this);
    }
+
+   /// <summary>Stops the sandbox's hub, with every session host it runs, then deletes the sandbox's folder.</summary>
+   public void End() => EndTheSandboxIn(_folder);
 
    static string FolderOfTheHub(DirectoryInfo sandbox) => Path.Combine(sandbox.FullName, "hub");
 
@@ -120,7 +130,7 @@ sealed class Sandbox : IDisposable
       }
       catch
       {
-         End(folder);
+         EndTheSandboxIn(folder);
          throw;
       }
    }
@@ -134,7 +144,7 @@ sealed class Sandbox : IDisposable
       {
          using(it) return it.Id;
       }).ToHashSet();
-      foreach(var left in FolderOfTheSandboxes.EnumerateDirectories().Where(it => RunOf(it) is {} run && !running.Contains(run))) End(left);
+      foreach(var left in FolderOfTheSandboxes.EnumerateDirectories().Where(it => RunOf(it) is {} run && !running.Contains(run))) EndTheSandboxIn(left);
    }
 
    /// <summary>The process of the run whose sandbox <paramref name="folder"/> is: null for a folder that is no sandbox.</summary>
@@ -144,7 +154,7 @@ sealed class Sandbox : IDisposable
    /// Stops the hub of the sandbox <paramref name="folder"/>, if it got as far as starting one, then deletes the folder,
    /// whose git repositories' object files git writes read-only.
    /// </summary>
-   static void End(DirectoryInfo folder)
+   static void EndTheSandboxIn(DirectoryInfo folder)
    {
       if(Directory.Exists(FolderOfTheHub(folder))) SandboxHub.StopIn(FolderOfTheHub(folder));
       foreach(var file in folder.EnumerateFiles("*", SearchOption.AllDirectories)) file.Attributes = FileAttributes.Normal;
