@@ -29,18 +29,17 @@ public class When_Magnus_opens_the_session_history_picker : SpecificationOpening
    public When_Magnus_opens_the_session_history_picker() =>
       (_project, _window, _picker, _titled, _inAFolderOfTheProject, _inTheOtherWorktree, _inAnotherProject) = Once(() =>
       {
-         var project = EndWithTheScenario(SandboxProject.Named(nameof(When_Magnus_opens_the_session_history_picker)));
+         var project = Sandbox.Project("the-project");
          var otherWorktree = new DirectoryInfo(project.Project.Folder + "-other-worktree");
          GitRepositoryOfASpecification.In(new DirectoryInfo(project.Project.Folder)).HasAWorktreeIn(otherWorktree, "other-work");
-         var anotherProject = Path.Combine(Sandbox.Started.ProjectsFolder, "another-project-of-the-history");
+         var anotherProject = Path.Combine(Sandbox.ProjectsFolder, "another-project");
          var titled = new SessionOfASpecification(new ClaudeSessionId("8f1c0001-6c1e-4a51-9d0b-3a1f00000000"), project.Project.Folder, "Fix the login bug") { Title = "Fixing the login", LastUsedAgo = TimeSpan.FromHours(1) };
          var inAFolderOfTheProject = new SessionOfASpecification(new ClaudeSessionId("8f1c0002-6c1e-4a51-9d0b-3a1f00000000"), Path.Combine(project.Project.Folder, "build"), "Tidy the build script") { LastUsedAgo = TimeSpan.FromHours(2) };
          var inTheOtherWorktree = new SessionOfASpecification(new ClaudeSessionId("8f1c0003-6c1e-4a51-9d0b-3a1f00000000"), otherWorktree.FullName, "Work on the other branch") { Title = "The other worktree's work", Branch = "other-work", LastUsedAgo = TimeSpan.FromMinutes(30) };
          var inAnotherProject = new SessionOfASpecification(new ClaudeSessionId("8f1c0004-6c1e-4a51-9d0b-3a1f00000000"), anotherProject, "Start the other project") { Title = "Another project's work", LastUsedAgo = TimeSpan.FromMinutes(20) };
          var runWithClaudeP = new SessionOfASpecification(new ClaudeSessionId("8f1c0005-6c1e-4a51-9d0b-3a1f00000000"), project.Project.Folder, "Reply with ok") { RunWithClaudeP = true, LastUsedAgo = TimeSpan.FromMinutes(10) };
          var ofNoConversation = new SessionOfASpecification(new ClaudeSessionId("8f1c0006-6c1e-4a51-9d0b-3a1f00000000"), project.Project.Folder, "") { Title = "[cancelled]", HasAConversation = false, LastUsedAgo = TimeSpan.FromMinutes(5) };
-         foreach(var session in new[] { titled, inAFolderOfTheProject, inTheOtherWorktree, inAnotherProject, runWithClaudeP, ofNoConversation }) session.WriteItsTranscript();
-         WaitUntil(() => Sandbox.Started.HubOfTheSandbox.RunningSessions().All(it => it.SessionId != titled.Id), "the hub no longer listed the Claude Code an earlier run resumed the titled session in");
+         foreach(var session in new[] { titled, inAFolderOfTheProject, inTheOtherWorktree, inAnotherProject, runWithClaudeP, ofNoConversation }) session.WriteItsTranscriptFor(Sandbox.HubOfTheSandbox);
 
          var window = Open(project.Window);
          WaitUntil(() => window.BringingBackTheTabs.IsCompleted, "the window had brought back its tabs");
@@ -81,7 +80,7 @@ public class When_Magnus_opens_the_session_history_picker : SpecificationOpening
          });
 
          [XF] public void it_lists_the_other_projects_session_too() =>
-            Listed.Must().Satisfy(it => it.Intersect([_inAnotherProject.Id, _inTheOtherWorktree.Id, _titled.Id, _inAFolderOfTheProject.Id]).SequenceEqual([_inAnotherProject.Id, _inTheOtherWorktree.Id, _titled.Id, _inAFolderOfTheProject.Id]));
+            Listed.Must().Satisfy(it => it.SequenceEqual([_inAnotherProject.Id, _inTheOtherWorktree.Id, _titled.Id, _inAFolderOfTheProject.Id]));
       }
    }
 

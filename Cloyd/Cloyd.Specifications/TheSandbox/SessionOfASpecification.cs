@@ -1,16 +1,15 @@
 using System.Text.Json.Nodes;
-using System.Text.RegularExpressions;
 using Cloyd.ClaudeCode;
 
 namespace Cloyd.Specifications.TheSandbox;
 
 /// <summary>
 /// A session as if Magnus had run it with Claude Code in <paramref name="Directory"/>, giving it <paramref name="Prompt"/>:
-/// its transcript, which <see cref="WriteItsTranscript"/> writes into the sandbox hub's Claude Code folder, as Claude Code
+/// its transcript, which <see cref="WriteItsTranscriptFor"/> writes into a sandbox hub's Claude Code folder, as Claude Code
 /// 2.1.328 writes one, cut down to what the hub reads for <c>GET /sessions</c> and what the stand-in for Claude Code reads
 /// to resume it.
 /// </summary>
-/// <param name="Id">The session's id, the same in every run of the specification, so that its transcript is written over.</param>
+/// <param name="Id">The session's id.</param>
 /// <param name="Directory">The directory it ran in.</param>
 /// <param name="Prompt">The one prompt Magnus gave it.</param>
 sealed record SessionOfASpecification(ClaudeSessionId Id, string Directory, string Prompt)
@@ -30,20 +29,12 @@ sealed record SessionOfASpecification(ClaudeSessionId Id, string Directory, stri
    /// <summary>Whether it has a conversation to resume: one that has none ran only Claude Code's own commands, such as a cancelled <c>/resume</c>.</summary>
    public bool HasAConversation { get; init; } = true;
 
-   /// <summary>
-   /// Writes its transcript into the sandbox hub's Claude Code folder, in the folder of <see cref="Directory"/> as Claude
-   /// Code names it, unless it is there as it is, and dates it <see cref="LastUsedAgo"/>.
-   /// </summary>
-   public void WriteItsTranscript()
+   /// <summary>Writes its transcript into the Claude Code folder <paramref name="hub"/> serves, dated <see cref="LastUsedAgo"/>.</summary>
+   public void WriteItsTranscriptFor(SandboxHub hub)
    {
-      var transcript = new FileInfo(Path.Combine(Sandbox.Started.HubOfTheSandbox.ClaudeCodeFolder, "projects", Regex.Replace(Directory, "[^A-Za-z0-9]", "-"), $"{Id}.jsonl"));
-      var lines = Lines();
-      if(!transcript.Exists || !File.ReadAllLines(transcript.FullName).SequenceEqual(lines))
-      {
-         transcript.Directory!.Create();
-         File.WriteAllLines(transcript.FullName, lines);
-      }
-
+      var transcript = hub.TranscriptOf(Id, Directory);
+      transcript.Directory!.Create();
+      File.WriteAllLines(transcript.FullName, Lines());
       File.SetLastWriteTimeUtc(transcript.FullName, DateTime.UtcNow - LastUsedAgo);
    }
 

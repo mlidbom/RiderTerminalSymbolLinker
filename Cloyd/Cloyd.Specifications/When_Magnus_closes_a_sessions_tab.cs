@@ -14,7 +14,7 @@ public class When_Magnus_closes_a_sessions_tab : SpecificationOpeningWindows
 
    public When_Magnus_closes_a_sessions_tab() => (_project, _window, _host) = Once(() =>
    {
-      var project = EndWithTheScenario(SandboxProject.Named(nameof(When_Magnus_closes_a_sessions_tab)));
+      var project = Sandbox.Project("the-project");
       var window = Open(project.Window);
       DoneOnTheUIThread(() => window.StartANewSession("to be closed"));
       var tab = OnTheUIThread(() => window.Tabs.Single());

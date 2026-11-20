@@ -16,25 +16,22 @@ namespace Cloyd.Specifications;
 /// </summary>
 public class When_a_project_window_opens_on_a_repository_whose_solution_Rider_has_loaded : SpecificationOpeningWindows
 {
-   readonly SandboxProject _project = SandboxProject.Named(nameof(When_a_project_window_opens_on_a_repository_whose_solution_Rider_has_loaded));
-   readonly string _solutionOfTheProject;
-   readonly string _solutionElsewhere = Path.Combine(Sandbox.Started.ProjectsFolder, "Elsewhere", "Elsewhere.slnx");
    readonly ProjectWindow _window;
 
    public When_a_project_window_opens_on_a_repository_whose_solution_Rider_has_loaded()
    {
-      var repository = GitRepositoryOfASpecification.In(new DirectoryInfo(_project.Project.Folder));
+      var project = Sandbox.Project("the-project");
+      var repository = GitRepositoryOfASpecification.In(new DirectoryInfo(project.Project.Folder));
       repository.Track(@"Code\AType.cs", "");
-      _solutionOfTheProject = Path.Combine(_project.Project.Folder, "ASolution.slnx");
-      Sandbox.Started.DotNetAnalysisAndRefactoringMcp.Load(_solutionOfTheProject, new Dictionary<string, IReadOnlyList<TypeListing>>
+      Sandbox.DotNetAnalysisAndRefactoringMcp.Load(Path.Combine(project.Project.Folder, "ASolution.slnx"), new Dictionary<string, IReadOnlyList<TypeListing>>
       {
          ["Sandbox.Code"] = [new TypeListing("class", "AType", [new MemberListing("method", "AMember", null)], null)]
       });
-      Sandbox.Started.DotNetAnalysisAndRefactoringMcp.Load(_solutionElsewhere, new Dictionary<string, IReadOnlyList<TypeListing>>
+      Sandbox.DotNetAnalysisAndRefactoringMcp.Load(Path.Combine(Sandbox.ProjectsFolder, "Elsewhere", "Elsewhere.slnx"), new Dictionary<string, IReadOnlyList<TypeListing>>
       {
          ["Elsewhere"] = [new TypeListing("class", "TypeElsewhere", [], null)]
       });
-      _window = Open(_project.Window);
+      _window = Open(project.Window);
       WaitUntil(() => Links.SymbolReferencesIn("AType").Count > 0 && Links.FileReferencesIn("AType.cs").Count > 0, "the window read the project's files and symbols");
    }
 
@@ -49,12 +46,4 @@ public class When_a_project_window_opens_on_a_repository_whose_solution_Rider_ha
    [XF] public void a_type_of_a_solution_outside_the_projects_folder_doesnt_link() => Links.SymbolReferencesIn("TypeElsewhere").Must().BeEmpty();
 
    [XF] public void it_tells_of_no_failure() => OnTheUIThread(() => _window.Failure).Must().BeNull();
-
-   public override void Dispose()
-   {
-      base.Dispose();
-      Sandbox.Started.DotNetAnalysisAndRefactoringMcp.Close(_solutionOfTheProject);
-      Sandbox.Started.DotNetAnalysisAndRefactoringMcp.Close(_solutionElsewhere);
-      _project.Dispose();
-   }
 }

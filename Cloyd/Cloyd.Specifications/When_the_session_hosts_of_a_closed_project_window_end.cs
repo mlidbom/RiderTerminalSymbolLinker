@@ -20,7 +20,7 @@ public class When_the_session_hosts_of_a_closed_project_window_end : Specificati
 
    public When_the_session_hosts_of_a_closed_project_window_end() => (_project, _hostsThatEnded, _first, _second) = Once(() =>
    {
-      var project = EndWithTheScenario(SandboxProject.Named(nameof(When_the_session_hosts_of_a_closed_project_window_end)));
+      var project = Sandbox.Project("the-project");
       project.StartASessionHost(project.LabelOfCloydsHosts);
       var window = Open(project.Window);
       WaitUntil(() => window.BringingBackTheTabs.IsCompleted, "the window had brought back its tabs");
@@ -108,7 +108,7 @@ public class When_the_session_hosts_of_a_closed_project_window_end : Specificati
 
       public and_the_transcript_of_the_selected_tabs_session_is_gone_as_the_window_opens_again() => _windowAgain = Once(() =>
       {
-         SandboxProject.DeleteTheTranscriptOf(_first.Id);
+         Sandbox.HubOfTheSandbox.DeleteTheTranscriptOf(_first.Id);
          var windowAgain = Open(_project.Window);
          WaitUntil(() => windowAgain.BringingBackTheTabs.IsCompleted, "the window had brought back its tabs");
          return windowAgain;

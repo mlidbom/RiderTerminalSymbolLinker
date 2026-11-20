@@ -21,7 +21,7 @@ public class When_a_new_session_is_started_in_a_project_window : SpecificationOp
 
    public When_a_new_session_is_started_in_a_project_window() => (_project, _window, _tab, _session) = Once(() =>
    {
-      var project = EndWithTheScenario(SandboxProject.Named(nameof(When_a_new_session_is_started_in_a_project_window)));
+      var project = Sandbox.Project("the-project");
       var window = Open(project.Window);
       DoneOnTheUIThread(() => window.StartANewSession(NameGiven));
       var tab = OnTheUIThread(() => window.Tabs.Single());

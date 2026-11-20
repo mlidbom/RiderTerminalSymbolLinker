@@ -210,11 +210,14 @@ Claude's calls (.NET-cloyd, the session in this repository), which Magnus OK'd o
     in the sandbox, the hub's wait for the shell's prompt. Left out: a tab whose host ran no Claude Code, and one whose
     session's transcript is gone from the Claude Code folder the hub's announcement names (`claudeCodeFolder`).
   - **Then the project's other hosts** that no attach client shows, as before, and the selected tab is selected again.
-- **Specified** on Avalonia's headless platform, against a hub of the specifications' own, the tooling's
-  `hub sandbox start` (`Cloyd.Specifications/TheSandbox`), whose sessions run the tooling owner's stand-in for Claude
-  Code. They run in about 3 minutes, touch no session of Magnus's, and draw each state, and each wait in vain, to
-  `bin/.../RenderedWindows/`. One scenario runs the real `Cloyd.exe` in a job that ends everything in it as it closes,
-  as an IDE's may: its application's window shows on the desktop for a few seconds.
+- **Specified** on Avalonia's headless platform, each scenario in a sandbox of its own (`Cloyd.Specifications/TheSandbox`,
+  since 2026-11-20): a hub of its own, the tooling's `hub sandbox start` in a fresh folder, whose sessions run the tooling
+  owner's stand-in for Claude Code, and projects, IDEs, saved windows and windows of Cloyd of its own. The sandbox is
+  stopped and deleted as its scenario ends, about 0.7 s a scenario. A class whose facts only look at what its scenario
+  built builds it once for them all (`SpecificationOpeningWindows.Once`). They run in about 2 minutes 40 seconds,
+  touch no session of Magnus's, and draw each state, and each wait in vain, to `bin/.../RenderedWindows/`. One
+  scenario runs the real `Cloyd.exe` in a job that ends everything in it as it closes, as an IDE's may: its
+  application's window shows on the desktop for a few seconds.
 
 **Next, in this order:**
 

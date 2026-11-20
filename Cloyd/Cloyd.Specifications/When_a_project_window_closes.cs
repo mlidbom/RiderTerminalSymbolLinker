@@ -13,7 +13,7 @@ public class When_a_project_window_closes : SpecificationOpeningWindows
 
    public When_a_project_window_closes() => (_project, _host) = Once(() =>
    {
-      var project = EndWithTheScenario(SandboxProject.Named(nameof(When_a_project_window_closes)));
+      var project = Sandbox.Project("the-project");
       var window = Open(project.Window);
       DoneOnTheUIThread(() => window.StartANewSession(null));
       var tab = OnTheUIThread(() => window.Tabs.Single());

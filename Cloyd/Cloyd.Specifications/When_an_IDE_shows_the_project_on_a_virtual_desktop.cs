@@ -14,13 +14,15 @@ namespace Cloyd.Specifications;
 /// </summary>
 public class When_an_IDE_shows_the_project_on_a_virtual_desktop : SpecificationOpeningWindows
 {
-   readonly SandboxProject _project = SandboxProject.Named(nameof(When_an_IDE_shows_the_project_on_a_virtual_desktop));
-   readonly StandInIde _ide = StandInIde.Named(nameof(When_an_IDE_shows_the_project_on_a_virtual_desktop));
+   readonly SandboxProject _project;
+   readonly StandInIde _ide;
    readonly VirtualDesktop _desktopOfTheIdesWindow = new(Guid.NewGuid());
    readonly ProjectWindow _window;
 
    public When_an_IDE_shows_the_project_on_a_virtual_desktop()
    {
+      _project = Sandbox.Project("the-project");
+      _ide = EndWithTheScenario(StandInIde.In(Sandbox, "the-ide"));
       _ide.Shows(_project.Project, _desktopOfTheIdesWindow);
       _window = Open(_project.Window);
    }
@@ -64,12 +66,5 @@ public class When_an_IDE_shows_the_project_on_a_virtual_desktop : SpecificationO
       }
 
       [XF] public void the_window_stays_on_the_desktop_it_went_to() => OnTheUIThread(() => _window.DesktopOfItsIdesWindow).Must().Be(_desktopOfTheIdesWindow);
-   }
-
-   public override void Dispose()
-   {
-      base.Dispose();
-      _ide.Dispose();
-      _project.Dispose();
    }
 }

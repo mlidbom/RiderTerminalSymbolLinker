@@ -32,8 +32,8 @@ public class When_Magnus_opens_the_session_history_picker_while_sessions_run : S
    public When_Magnus_opens_the_session_history_picker_while_sessions_run() =>
       (_anotherProject, _window, _anotherProjectsWindow, _picker, _first, _exited, _takenOverByAConsole, _firsts, _seconds, _exiteds, _takenOvers, _inATerminalOfItsOwns, _anotherProjects) = Once(() =>
       {
-         var project = EndWithTheScenario(SandboxProject.Named(nameof(When_Magnus_opens_the_session_history_picker_while_sessions_run)));
-         var anotherProject = EndWithTheScenario(SandboxProject.Named(nameof(When_Magnus_opens_the_session_history_picker_while_sessions_run) + "-another-project"));
+         var project = Sandbox.Project("the-project");
+         var anotherProject = Sandbox.Project("another-project");
          var anotherProjectsWindow = Open(anotherProject.Window);
          var anotherProjects = StartedWithAPrompt(anotherProjectsWindow, "In another project").Session;
          var window = Open(project.Window);
@@ -45,9 +45,9 @@ public class When_Magnus_opens_the_session_history_picker_while_sessions_run : S
          EndWithTheScenario(AttachmentToASessionHost.To(takenOver.Host.Id, ConsoleSize.Default));
          WaitUntil(() => !window.Tabs.Contains(takenOver), "the tab let go of the host the console took over");
          var seconds = StartedWithAPrompt(window, "Second").Session;
-         var inATerminalOfItsOwn = EndWithTheScenario(ClaudeCodeInATerminalOfItsOwn.Running(project.Project.Folder, "In a terminal of its own", "Hello from a terminal of its own"));
-         WaitUntil(() => HasAConversationToResume(Sandbox.Started.HubOfTheSandbox.RunningSessions().SingleOrDefault(it => it.Process == inATerminalOfItsOwn.Process)?.SessionId), "the hub listed the session in a terminal of its own, with its prompt");
-         var inATerminalOfItsOwns = Sandbox.Started.HubOfTheSandbox.RunningSessions().Single(it => it.Process == inATerminalOfItsOwn.Process).SessionId;
+         var inATerminalOfItsOwn = EndWithTheScenario(ClaudeCodeInATerminalOfItsOwn.Running(Sandbox.HubOfTheSandbox, project.Project.Folder, "In a terminal of its own", "Hello from a terminal of its own"));
+         WaitUntil(() => HasAConversationToResume(Sandbox.HubOfTheSandbox.RunningSessions().SingleOrDefault(it => it.Process == inATerminalOfItsOwn.Process)?.SessionId), "the hub listed the session in a terminal of its own, with its prompt");
+         var inATerminalOfItsOwns = Sandbox.HubOfTheSandbox.RunningSessions().Single(it => it.Process == inATerminalOfItsOwn.Process).SessionId;
 
          var picker = OnTheUIThread(() => window.HistoryPicker);
          Press(window, Key.Y, PhysicalKey.Y, RawInputModifiers.Control | RawInputModifiers.Alt | RawInputModifiers.Shift);
@@ -72,8 +72,8 @@ public class When_Magnus_opens_the_session_history_picker_while_sessions_run : S
       return (tab, session);
    }
 
-   static bool HasAConversationToResume(ClaudeSessionId? session) =>
-      session is {} asked && Sandbox.Started.HubOfTheSandbox.TranscribedSessions().Any(it => it.Id == asked && it.HasAConversationToResume);
+   bool HasAConversationToResume(ClaudeSessionId? session) =>
+      session is {} asked && Sandbox.HubOfTheSandbox.TranscribedSessions().Any(it => it.Id == asked && it.HasAConversationToResume);
 
    /// <summary>Selects the entry of <paramref name="session"/> in the picker, as a click on it does, and presses Enter.</summary>
    private protected void Choose(ClaudeSessionId session)

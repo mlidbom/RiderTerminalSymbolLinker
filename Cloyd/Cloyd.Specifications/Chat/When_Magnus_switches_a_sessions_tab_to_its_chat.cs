@@ -2,7 +2,6 @@ using Avalonia.Input;
 using Cloyd.Chat;
 using Cloyd.Chat.ToolCalls;
 using Cloyd.Sessions;
-using Cloyd.Specifications.TheSandbox;
 using Compze.Must;
 using Compze.xUnitBDD;
 
@@ -18,7 +17,7 @@ public class When_Magnus_switches_a_sessions_tab_to_its_chat : SpecificationOpen
 
    public When_Magnus_switches_a_sessions_tab_to_its_chat() => _tab = Once(() =>
    {
-      var project = EndWithTheScenario(SandboxProject.Named(nameof(When_Magnus_switches_a_sessions_tab_to_its_chat)));
+      var project = Sandbox.Project("the-project");
       var window = Open(project.Window);
       DoneOnTheUIThread(() => window.StartANewSession(name: null));
       var tab = OnTheUIThread(() => window.Tabs.Single());

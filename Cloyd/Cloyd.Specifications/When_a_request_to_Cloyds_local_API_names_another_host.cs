@@ -16,11 +16,12 @@ public class When_a_request_to_Cloyds_local_API_names_another_host : Specificati
 {
    static readonly HttpClient Http = new();
 
-   readonly SandboxProject _project = SandboxProject.Named(nameof(When_a_request_to_Cloyds_local_API_names_another_host));
+   readonly SandboxProject _project;
    readonly HttpStatusCode _answered;
 
-   public When_a_request_to_Cloyds_local_API_names_another_host() : base(nameof(When_a_request_to_Cloyds_local_API_names_another_host))
+   public When_a_request_to_Cloyds_local_API_names_another_host()
    {
+      _project = Sandbox.Project("the-project");
       var announcement = AnnouncementOfCloydsLocalApi.In(CloydsFolder)!;
       _answered = Answered(() =>
       {

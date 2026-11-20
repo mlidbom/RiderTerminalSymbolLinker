@@ -16,15 +16,17 @@ public class When_a_chat_shows_the_session_the_desktop_apps_pictures_show : Spec
 {
    readonly ChatOfASession _chat;
 
-   public When_a_chat_shows_the_session_the_desktop_apps_pictures_show()
+   public When_a_chat_shows_the_session_the_desktop_apps_pictures_show() => _chat = Once(() =>
    {
-      var session = TheSampleSession.InTheSandbox();
-      var window = Open(() => new Window { Width = 840, Height = 7000, Content = new ChatOfASession(Sandbox.Started.HubOfTheSandbox.Hub) });
-      _chat = OnTheUIThread(() => (ChatOfASession)window.Content!);
-      OnTheUIThread(() => _chat.Show(session));
-      WaitUntil(() => _chat.Shown.Count > 0, "the chat showed the conversation");
+      var hub = Sandbox.HubOfTheSandbox;
+      var session = TheSampleSession.For(hub);
+      var window = Open(() => new Window { Width = 840, Height = 7000, Content = new ChatOfASession(hub.Hub) });
+      var chat = OnTheUIThread(() => (ChatOfASession)window.Content!);
+      OnTheUIThread(() => chat.Show(session));
+      WaitUntil(() => chat.Shown.Count > 0, "the chat showed the conversation");
       Render(window, "the-sample-session");
-   }
+      return chat;
+   });
 
    List<ShownInTheChat> Shown => OnTheUIThread(() => _chat.Shown.ToList());
 

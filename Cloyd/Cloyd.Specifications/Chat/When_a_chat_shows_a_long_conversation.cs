@@ -33,31 +33,33 @@ public class When_a_chat_shows_a_long_conversation : SpecificationOpeningWindows
    readonly int _viewsDrawnAnewWhileLeftAlone;
    readonly bool _showsTheEndOnceLeftAlone;
 
-   public When_a_chat_shows_a_long_conversation()
+   public When_a_chat_shows_a_long_conversation() => (_window, _chat, _viewsDrawnAnewWhileLeftAlone, _showsTheEndOnceLeftAlone) = Once(() =>
    {
-      var session = TheSampleSession.RepeatedInTheSandbox(TimesOver);
-      _window = Open(() => new Window { Width = 840, Height = 900, Content = new ChatOfASession(Sandbox.Started.HubOfTheSandbox.Hub) });
-      _chat = OnTheUIThread(() => (ChatOfASession)_window.Content!);
-      OnTheUIThread(() => _chat.Show(session));
-      WaitUntil(() => _chat.Shown.Count > 0 && IsAtTheEnd, "the chat showed the end of the conversation");
-      var drawnAtFirst = OnTheUIThread(() => Views.ToHashSet());
+      var hub = Sandbox.HubOfTheSandbox;
+      var session = TheSampleSession.RepeatedFor(hub, TimesOver);
+      var window = Open(() => new Window { Width = 840, Height = 900, Content = new ChatOfASession(hub.Hub) });
+      var chat = OnTheUIThread(() => (ChatOfASession)window.Content!);
+      OnTheUIThread(() => chat.Show(session));
+      WaitUntil(() => chat.Shown.Count > 0 && IsAtTheEnd(chat), "the chat showed the end of the conversation");
+      var drawnAtFirst = OnTheUIThread(() => ViewsOf(chat).ToHashSet());
       for(var frame = 0; frame < FramesLeftAlone; frame++)
          OnTheUIThread(() =>
          {
             AvaloniaHeadlessPlatform.ForceRenderTimerTick();
             Dispatcher.UIThread.RunJobs();
          });
-      _viewsDrawnAnewWhileLeftAlone = OnTheUIThread(() => Views.Count(it => !drawnAtFirst.Contains(it)));
-      _showsTheEndOnceLeftAlone = OnTheUIThread(() => IsAtTheEnd);
-      Render(_window, "a-long-conversation");
-   }
+      var viewsDrawnAnewWhileLeftAlone = OnTheUIThread(() => ViewsOf(chat).Count(it => !drawnAtFirst.Contains(it)));
+      var showsTheEndOnceLeftAlone = OnTheUIThread(() => IsAtTheEnd(chat));
+      Render(window, "a-long-conversation");
+      return (window, chat, viewsDrawnAnewWhileLeftAlone, showsTheEndOnceLeftAlone);
+   });
 
-   private protected ScrollViewer TheScroller => _chat.FindDescendantOfType<ScrollViewer>()!;
+   private protected static ScrollViewer TheScrollerOf(ChatOfASession chat) => chat.FindDescendantOfType<ScrollViewer>()!;
 
-   bool IsAtTheEnd => TheScroller.Offset.Y >= TheScroller.Extent.Height - TheScroller.Viewport.Height - 4;
+   static bool IsAtTheEnd(ChatOfASession chat) => TheScrollerOf(chat).Offset.Y >= TheScrollerOf(chat).Extent.Height - TheScrollerOf(chat).Viewport.Height - 4;
 
-   /// <summary>The views of what the chat draws.</summary>
-   IEnumerable<Control> Views => _chat.FindDescendantOfType<ItemsControl>()!.GetRealizedContainers().OfType<ContentPresenter>().Select(it => it.Child!);
+   /// <summary>The views of what <paramref name="chat"/> draws.</summary>
+   static IEnumerable<Control> ViewsOf(ChatOfASession chat) => chat.FindDescendantOfType<ItemsControl>()!.GetRealizedContainers().OfType<ContentPresenter>().Select(it => it.Child!);
 
    [XF] public void it_shows_all_of_it() => OnTheUIThread(() => _chat.Shown.Count).Must().Be(20 * TimesOver);
 
@@ -76,26 +78,26 @@ public class When_a_chat_shows_a_long_conversation : SpecificationOpeningWindows
       /// <summary>Where in view the first thing drawn was as the chat began to draw more above it, in logical pixels from the top of the view.</summary>
       readonly double _whereTheFirstWas;
 
-      public and_Magnus_scrolls_up_to_the_top_of_what_it_draws()
+      public and_Magnus_scrolls_up_to_the_top_of_what_it_draws() => (_firstDrawnBefore, _whereTheFirstWas) = Once(() =>
       {
-         _firstDrawnBefore = OnTheUIThread(() => _chat.Drawn[0]);
+         var firstDrawnBefore = OnTheUIThread(() => _chat.Drawn[0]);
          var whereTheFirstWas = 0.0;
-         OnTheUIThread(() => TheScroller.ScrollChanged += (_, _) => { if(_chat.Drawn.Count == 100) whereTheFirstWas = WhereInViewIs(_firstDrawnBefore); });
+         OnTheUIThread(() => TheScrollerOf(_chat).ScrollChanged += (_, _) => { if(_chat.Drawn.Count == 100) whereTheFirstWas = WhereInViewIs(firstDrawnBefore); });
          WaitUntil(() =>
          {
             if(_chat.Drawn.Count > 100) return true;
             _window.MouseWheel(new Point(420, 450), new Vector(0, 10), RawInputModifiers.None);
             return false;
          }, "Magnus had scrolled up to the top of what the chat drew with the mouse wheel");
-         _whereTheFirstWas = whereTheFirstWas;
          Render(_window, "a-long-conversation-scrolled-to-the-top-of-what-it-drew");
-      }
+         return (firstDrawnBefore, whereTheFirstWas);
+      });
 
       /// <summary>Where in view <paramref name="shown"/> is drawn: where it is in the column, less how far the column is scrolled.</summary>
       double WhereInViewIs(ShownInTheChat shown)
       {
          var column = _chat.FindDescendantOfType<ItemsControl>()!;
-         return column.ContainerFromItem(shown)!.TranslatePoint(default, column)!.Value.Y - TheScroller.Offset.Y;
+         return column.ContainerFromItem(shown)!.TranslatePoint(default, column)!.Value.Y - TheScrollerOf(_chat).Offset.Y;
       }
 
       [XF] public void it_draws_a_hundred_more_above() => OnTheUIThread(() => _chat.Drawn.SequenceEqual(_chat.Shown.TakeLast(200))).Must().BeTrue();

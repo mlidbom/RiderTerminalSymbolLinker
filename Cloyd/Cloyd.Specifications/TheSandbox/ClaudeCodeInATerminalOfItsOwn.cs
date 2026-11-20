@@ -16,17 +16,23 @@ sealed class ClaudeCodeInATerminalOfItsOwn : IDisposable
 
    ClaudeCodeInATerminalOfItsOwn(System.Diagnostics.Process process) => _process = process;
 
-   /// <summary>A new session named <paramref name="name"/>, in <paramref name="folder"/>, given <paramref name="prompt"/>.</summary>
-   public static ClaudeCodeInATerminalOfItsOwn Running(string folder, string name, string prompt)
+   /// <summary>
+   /// A new session named <paramref name="name"/>, in <paramref name="folder"/>, given <paramref name="prompt"/>: the stand-in
+   /// of <paramref name="hub"/>, in its <see cref="SandboxHub.Environment"/>, so that it keeps its record and transcript
+   /// where the hub reads them.
+   /// </summary>
+   public static ClaudeCodeInATerminalOfItsOwn Running(SandboxHub hub, string folder, string name, string prompt)
    {
-      var process = System.Diagnostics.Process.Start(new ProcessStartInfo(Path.Combine(Sandbox.Started.HubOfTheSandbox.FolderOfTheStandInForClaudeCode, "claude.exe"), ["--name", name])
+      var start = new ProcessStartInfo(Path.Combine(hub.FolderOfTheStandInForClaudeCode, "claude.exe"), ["--name", name])
       {
          WorkingDirectory = folder,
          RedirectStandardInput = true,
          RedirectStandardOutput = true,
          RedirectStandardError = true,
          CreateNoWindow = true
-      })!;
+      };
+      foreach(var (variable, value) in hub.Environment) start.Environment[variable] = value;
+      var process = System.Diagnostics.Process.Start(start)!;
       process.OutputDataReceived += (_, _) => {};
       process.ErrorDataReceived += (_, _) => {};
       process.BeginOutputReadLine();

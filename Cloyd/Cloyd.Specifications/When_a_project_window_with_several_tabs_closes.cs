@@ -14,7 +14,7 @@ public abstract class When_a_project_window_with_several_tabs_closes : Specifica
 
    protected When_a_project_window_with_several_tabs_closes() => (_project, _hostsInTheirOrder) = Once(() =>
    {
-      var project = EndWithTheScenario(SandboxProject.Named(nameof(When_a_project_window_with_several_tabs_closes)));
+      var project = Sandbox.Project("the-project");
       var window = Open(project.Window);
       WaitUntil(() => window.BringingBackTheTabs.IsCompleted, "the window had brought back its tabs");
       foreach(var name in new[] { "First", "Second", "Third" }) DoneOnTheUIThread(() => window.StartANewSession(name));

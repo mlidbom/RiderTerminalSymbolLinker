@@ -9,11 +9,16 @@ namespace Cloyd.Specifications;
 /// <summary>The Cloyd application runs with no window, and a project is handed to it, as <c>Cloyd.exe --project</c> hands it one.</summary>
 public class When_a_project_is_handed_to_the_Cloyd_application : SpecificationRunningTheCloydApplication
 {
-   readonly SandboxProject _theProject = SandboxProject.Named($"{nameof(When_a_project_is_handed_to_the_Cloyd_application)}.TheProject");
-   readonly SandboxProject _anotherProject = SandboxProject.Named($"{nameof(When_a_project_is_handed_to_the_Cloyd_application)}.AnotherProject");
+   readonly SandboxProject _theProject;
+   readonly SandboxProject _anotherProject;
    readonly WindowInTheAnswer _shown;
 
-   public When_a_project_is_handed_to_the_Cloyd_application() : base(nameof(When_a_project_is_handed_to_the_Cloyd_application)) => _shown = HandedOver(_theProject);
+   public When_a_project_is_handed_to_the_Cloyd_application()
+   {
+      _theProject = Sandbox.Project("the-project");
+      _anotherProject = Sandbox.Project("another-project");
+      _shown = HandedOver(_theProject);
+   }
 
    private protected override IReadOnlyList<SandboxProject> Projects => [_theProject, _anotherProject];
 

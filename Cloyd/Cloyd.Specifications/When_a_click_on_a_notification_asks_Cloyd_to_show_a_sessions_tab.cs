@@ -16,14 +16,15 @@ namespace Cloyd.Specifications;
 /// </summary>
 public class When_a_click_on_a_notification_asks_Cloyd_to_show_a_sessions_tab : SpecificationRunningTheCloydApplication
 {
-   readonly SandboxProject _project = SandboxProject.Named(nameof(When_a_click_on_a_notification_asks_Cloyd_to_show_a_sessions_tab));
+   readonly SandboxProject _project;
    readonly ProjectWindow _window;
    readonly SessionTab _first;
    readonly SessionTab _second;
    readonly RunningSession _firstsClaudeCode;
 
-   public When_a_click_on_a_notification_asks_Cloyd_to_show_a_sessions_tab() : base(nameof(When_a_click_on_a_notification_asks_Cloyd_to_show_a_sessions_tab))
+   public When_a_click_on_a_notification_asks_Cloyd_to_show_a_sessions_tab()
    {
+      _project = Sandbox.Project("the-project");
       HandedOver(_project);
       _window = OnTheUIThread(() => Windows.Open.Single());
       DoneOnTheUIThread(() => _window.StartANewSession("First"));

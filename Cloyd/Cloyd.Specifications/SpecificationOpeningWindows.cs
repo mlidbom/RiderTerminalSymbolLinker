@@ -8,14 +8,15 @@ using Avalonia.Interactivity;
 using Avalonia.LogicalTree;
 using Avalonia.Threading;
 using Cloyd.Specifications.Scenarios;
+using Cloyd.Specifications.TheSandbox;
 
 namespace Cloyd.Specifications;
 
 /// <summary>
 /// A specification that opens Cloyd's windows on Avalonia's headless platform: laid out and drawn with Skia, on no
-/// screen, on <see cref="TheHeadlessUIThread"/>, which every specification of the assembly shares. The windows it opens
-/// are closed when its scenario ends: when the fact is done, or, opened in <see cref="Once{TPart}"/>, after the last fact
-/// of its class.
+/// screen, on <see cref="TheHeadlessUIThread"/>, which every specification of the assembly shares. Each scenario has a
+/// <see cref="TheSandbox.Sandbox"/> of its own. The windows it opens are closed, and its sandbox ended, when its scenario
+/// ends: when the fact is done, or, built in <see cref="Once{TPart}"/>, after the last fact of its class.
 /// </summary>
 /// <remarks>
 /// Modelled on JAStudio's and Deskmancer's <c>SpecificationOpeningWindows</c>.
@@ -30,6 +31,12 @@ public abstract class SpecificationOpeningWindows : IDisposable
 
    /// <summary>What the scenario being set up now showed and started: the class's while <see cref="Once{TPart}"/> builds it, else this fact's.</summary>
    WhatAScenarioStarted StartedNow => _buildingTheScenarioOfTheClass ? _scenarioOfTheClass!.Started : _startedForThisFact;
+
+   /// <summary>
+   /// The sandbox of the scenario this fact runs in: its class's, once <see cref="Once{TPart}"/> has built a part of it,
+   /// else this fact's own. Started as it is first asked for, and ended as its scenario ends.
+   /// </summary>
+   private protected Sandbox Sandbox => (_scenarioOfTheClass?.Started ?? _startedForThisFact).Sandbox;
 
    /// <summary>The windows this fact's scenario, and its class's, showed and haven't closed.</summary>
    IEnumerable<Window> WindowsShown => (_scenarioOfTheClass?.Started.Windows ?? []).Concat(_startedForThisFact.Windows);

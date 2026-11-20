@@ -10,7 +10,7 @@ sealed class GitRepositoryOfASpecification
 
    public DirectoryInfo Folder { get; }
 
-   /// <summary>A repository in <paramref name="folder"/>: a new one, or the one an earlier run made there.</summary>
+   /// <summary>A new repository in <paramref name="folder"/>.</summary>
    public static GitRepositoryOfASpecification In(DirectoryInfo folder)
    {
       var repository = new GitRepositoryOfASpecification(folder);
@@ -34,14 +34,13 @@ sealed class GitRepositoryOfASpecification
    }
 
    /// <summary>
-   /// Has the repository a second worktree, in <paramref name="folder"/>, with <paramref name="branch"/> checked out: a
-   /// new one, or the one an earlier run made there. A first commit, empty, is made for it when there is none.
+   /// Has the repository a second worktree, in <paramref name="folder"/>, with <paramref name="branch"/> checked out, after
+   /// a first commit, empty, which a worktree needs.
    /// </summary>
    public void HasAWorktreeIn(DirectoryInfo folder, string branch)
    {
-      if(!Succeeds("rev-parse", "--verify", "HEAD")) Git("-c", "user.name=Specification", "-c", "user.email=specification@localhost", "-c", "commit.gpgsign=false", "commit", "--allow-empty", "--quiet", "-m", "The first commit");
-      Git("worktree", "prune");
-      if(!folder.Exists) Git("worktree", "add", "--quiet", "-B", branch, folder.FullName);
+      Git("-c", "user.name=Specification", "-c", "user.email=specification@localhost", "-c", "commit.gpgsign=false", "commit", "--allow-empty", "--quiet", "-m", "The first commit");
+      Git("worktree", "add", "--quiet", "-B", branch, folder.FullName);
    }
 
    /// <summary>Deletes the repository's folder, whose object files git writes read-only.</summary>

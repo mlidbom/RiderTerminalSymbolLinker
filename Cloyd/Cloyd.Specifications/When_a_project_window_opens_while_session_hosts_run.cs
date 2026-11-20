@@ -4,7 +4,6 @@ using Compze.xUnitBDD;
 using Cloyd.Hub;
 using Cloyd.Projects;
 using Cloyd.SessionHosts;
-using Cloyd.Specifications.TheSandbox;
 
 namespace Cloyd.Specifications;
 
@@ -16,8 +15,8 @@ public class When_a_project_window_opens_while_session_hosts_run : Specification
    public When_a_project_window_opens_while_session_hosts_run() =>
       (_startedByAnEarlierWindow, _startedByAClaudeSessionsTab, _shownByAClaudeSessionsTab, _ofAnotherProject, _ofAnotherTool, _window) = Once(() =>
       {
-         var project = EndWithTheScenario(SandboxProject.Named(nameof(When_a_project_window_opens_while_session_hosts_run)));
-         var anotherProject = EndWithTheScenario(SandboxProject.Named(nameof(When_a_project_window_opens_while_session_hosts_run) + "-another"));
+         var project = Sandbox.Project("the-project");
+         var anotherProject = Sandbox.Project("another-project");
          var startedByAnEarlierWindow = project.StartASessionHost(project.LabelOfCloydsHosts);
          var startedByAClaudeSessionsTab = project.StartASessionHost(project.LabelOfAClaudeSessionsTab);
          var shownByAClaudeSessionsTab = project.StartASessionHost(project.LabelOfAClaudeSessionsTab);

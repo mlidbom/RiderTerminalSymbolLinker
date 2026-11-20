@@ -15,11 +15,12 @@ public class When_a_request_to_Cloyds_local_API_lacks_its_token : SpecificationR
 {
    static readonly HttpClient Http = new();
 
-   readonly SandboxProject _project = SandboxProject.Named(nameof(When_a_request_to_Cloyds_local_API_lacks_its_token));
+   readonly SandboxProject _project;
    readonly HttpStatusCode _answered;
 
-   public When_a_request_to_Cloyds_local_API_lacks_its_token() : base(nameof(When_a_request_to_Cloyds_local_API_lacks_its_token))
+   public When_a_request_to_Cloyds_local_API_lacks_its_token()
    {
+      _project = Sandbox.Project("the-project");
       var announcement = AnnouncementOfCloydsLocalApi.In(CloydsFolder)!;
       _answered = Answered(() => Http.PostAsJsonAsync(announcement.AddressOf("windows/show"), new WindowToShowInTheRequest(_project.Project.Folder)).GetAwaiter().GetResult().StatusCode,
                            "the API answered");

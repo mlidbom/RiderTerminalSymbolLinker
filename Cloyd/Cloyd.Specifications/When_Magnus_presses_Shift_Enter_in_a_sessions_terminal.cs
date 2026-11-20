@@ -2,7 +2,6 @@ using Avalonia.Input;
 using Compze.Must;
 using Compze.xUnitBDD;
 using Cloyd.Sessions;
-using Cloyd.Specifications.TheSandbox;
 
 namespace Cloyd.Specifications;
 
@@ -12,12 +11,12 @@ namespace Cloyd.Specifications;
 /// </summary>
 public class When_Magnus_presses_Shift_Enter_in_a_sessions_terminal : SpecificationOpeningWindows
 {
-   readonly SandboxProject _project = SandboxProject.Named(nameof(When_Magnus_presses_Shift_Enter_in_a_sessions_terminal));
    readonly SessionTab _tab;
 
    public When_Magnus_presses_Shift_Enter_in_a_sessions_terminal()
    {
-      var window = Open(_project.Window);
+      var project = Sandbox.Project("the-project");
+      var window = Open(project.Window);
       DoneOnTheUIThread(() => window.StartANewSession(name: null));
       _tab = OnTheUIThread(() => window.Tabs.Single());
       WaitUntil(() => _tab.SessionRunningInIt is not null && _tab.Terminal.TextShown.Contains("New session"), "the tab's terminal showed the stand-in's start");
@@ -38,10 +37,4 @@ public class When_Magnus_presses_Shift_Enter_in_a_sessions_terminal : Specificat
       var first = lines.FindLastIndex(it => it.StartsWith('❯'));
       return first < 0 ? "" : string.Join("\n", lines.Skip(first).TakeWhile(it => !it.StartsWith('─')));
    });
-
-   public override void Dispose()
-   {
-      base.Dispose();
-      _project.Dispose();
-   }
 }

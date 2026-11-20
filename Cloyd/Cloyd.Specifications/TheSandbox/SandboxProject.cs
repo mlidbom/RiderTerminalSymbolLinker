@@ -1,6 +1,5 @@
 using System.Text.Json;
 using ClaudeTooling.SessionHost.Protocol;
-using Cloyd.ClaudeCode;
 using Cloyd.Hub;
 using Cloyd.Projects;
 using Cloyd.Saving;
@@ -9,60 +8,49 @@ using Cloyd.SessionHosts;
 namespace Cloyd.Specifications.TheSandbox;
 
 /// <summary>
-/// A project of a specification's own, in the <see cref="Sandbox"/>: a folder of its own, whose
-/// <see cref="ProjectWindow"/> shows the sandbox hub's session hosts, with the stand-in for Claude Code in them. Its
-/// session hosts are ended when the specification is done with it.
+/// A project of a scenario's own, in its <see cref="Sandbox"/>: a folder of its own, whose <see cref="ProjectWindow"/>
+/// shows the sandbox hub's session hosts, with the stand-in for Claude Code in them.
 /// </summary>
 /// <remarks>
 /// What it asks the hub it asks on the thread pool and waits for, so that it may be asked on the UI thread too, as a
 /// condition of <see cref="SpecificationOpeningWindows.WaitUntil"/> is: there, the hub's answer would wait for the UI
 /// thread, which waits for the answer.
 /// </remarks>
-sealed class SandboxProject : IDisposable
+sealed class SandboxProject
 {
+   readonly Sandbox _sandbox;
    readonly SavedProjectWindows _savedWindows;
 
-   SandboxProject(string name)
+   public SandboxProject(Sandbox sandbox, string name)
    {
-      var folder = Directory.CreateDirectory(Path.Combine(Sandbox.Started.ProjectsFolder, name));
-      Project = new Project(folder.FullName);
-      EndItsSessionHosts(); // Left by an earlier run that stopped before it ended them.
-      _savedWindows = new SavedProjectWindows(EmptyFolder(Path.Combine(Sandbox.Started.SavedProjectWindowsFolder, name)));
+      _sandbox = sandbox;
+      Project = new Project(Directory.CreateDirectory(Path.Combine(sandbox.ProjectsFolder, name)).FullName);
+      _savedWindows = new SavedProjectWindows(new DirectoryInfo(Path.Combine(sandbox.SavedProjectWindowsFolder, name)));
    }
-
-   /// <summary>The project of the folder <paramref name="name"/>, such as the name of the specification, with no window saved.</summary>
-   public static SandboxProject Named(string name) => new(name);
 
    public Project Project { get; }
 
-   TheHub Hub => Sandbox.Started.HubOfTheSandbox.Hub;
+   TheHub Hub => _sandbox.HubOfTheSandbox.Hub;
 
    /// <summary>
-   /// A new window of the project, not yet shown, one of the <see cref="Sandbox.WindowsOfCloyd"/> once it opens, which
-   /// saves itself where the project's next window finds it, finds the project's window in the sandbox's IDEs, and its C#
-   /// symbols in the solutions the sandbox's Rider has loaded.
+   /// A new window of the project, not yet shown, one of the sandbox's <see cref="Sandbox.WindowsOfCloyd"/> once it opens,
+   /// which saves itself where the project's next window finds it, finds the project's window in the sandbox's IDEs, and
+   /// its C# symbols in the solutions the sandbox's Rider has loaded.
    /// </summary>
-   public ProjectWindow Window() => Window(Sandbox.Started.WindowsOfCloyd);
+   public ProjectWindow Window() => Window(_sandbox.WindowsOfCloyd);
 
    /// <summary>A new window of the project, as <see cref="Window()"/>, one of <paramref name="windowsOfCloyd"/> once it opens, as a Cloyd application's.</summary>
    public ProjectWindow Window(ProjectWindows windowsOfCloyd) =>
-      new(Project, windowsOfCloyd, Hub, Sandbox.Started.Ides, Sandbox.Started.DotNetAnalysisAndRefactoringMcp.Mcp, Sandbox.Started.ShellOfItsSessions, _savedWindows);
+      new(Project, windowsOfCloyd, Hub, _sandbox.Ides, _sandbox.DotNetAnalysisAndRefactoringMcp.Mcp, _sandbox.ShellOfItsSessions, _savedWindows);
 
    /// <summary>What the project's windows saved last.</summary>
    public SavedProjectWindow SavedWindow => _savedWindows.Of(Project);
-
-   /// <summary>Deletes the transcript of <paramref name="session"/> from the sandbox's Claude Code folder, as archiving or deleting the session does.</summary>
-   public static void DeleteTheTranscriptOf(ClaudeSessionId session)
-   {
-      foreach(var transcript in Directory.EnumerateFiles(Path.Combine(Sandbox.Started.HubOfTheSandbox.ClaudeCodeFolder, "projects"), $"{session}.jsonl", SearchOption.AllDirectories))
-         File.Delete(transcript);
-   }
 
    /// <summary>Ends the session host <paramref name="id"/>, as a reboot ends them all.</summary>
    public void End(SessionHostId id) => Answer(() => Hub.End(id));
 
    /// <summary>A session host started in the project's folder, labelled <paramref name="label"/>, as another window or an IDE's tab would start it.</summary>
-   public SessionHostOfTheHub StartASessionHost(string label) => Answer(() => Hub.StartASessionHost(Sandbox.Started.ShellOfItsSessions, Project.Folder, label));
+   public SessionHostOfTheHub StartASessionHost(string label) => Answer(() => Hub.StartASessionHost(_sandbox.ShellOfItsSessions, Project.Folder, label));
 
    /// <summary>The hub's session hosts whose shells started in the project's folder.</summary>
    public IReadOnlyList<SessionHostOfTheHub> ItsSessionHosts() =>
@@ -85,24 +73,6 @@ sealed class SandboxProject : IDisposable
 
    /// <summary>The label Cloyd's windows start the project's hosts with.</summary>
    public string LabelOfCloydsHosts => SessionHostLabel.OfANewHostOf(Project);
-
-   public void Dispose() => EndItsSessionHosts();
-
-   static DirectoryInfo EmptyFolder(string path)
-   {
-      var folder = new DirectoryInfo(path);
-      if(folder.Exists) folder.Delete(recursive: true);
-      return folder;
-   }
-
-   /// <summary>
-   /// Ends the project's session hosts. The hub lists the Claude Codes that ran in them for up to 3 s more, listed in no
-   /// host: a specification that minds, as one of the history picker's, waits for the sessions it names itself.
-   /// </summary>
-   void EndItsSessionHosts()
-   {
-      foreach(var host in ItsSessionHosts()) Answer(() => Hub.End(host.Id));
-   }
 
    /// <summary>What <paramref name="asked"/> answers, asked on the thread pool, where no UI thread's context holds its continuations.</summary>
    static TAnswer Answer<TAnswer>(Func<Task<TAnswer>> asked) => Task.Run(asked).GetAwaiter().GetResult();

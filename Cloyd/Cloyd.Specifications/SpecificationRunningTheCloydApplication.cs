@@ -19,16 +19,16 @@ public abstract class SpecificationRunningTheCloydApplication : SpecificationOpe
 
    readonly CloydsLocalApi _localApi;
 
-   /// <summary>Runs the application, with a <see cref="CloydsFolder"/> named <paramref name="name"/>.</summary>
-   private protected SpecificationRunningTheCloydApplication(string name)
+   /// <summary>Runs the application, with the <see cref="TheSandbox.Sandbox.CloydsFolder"/> of the fact's sandbox.</summary>
+   private protected SpecificationRunningTheCloydApplication()
    {
-      CloydsFolder = Sandbox.Started.EmptyCloydsFolder(name);
+      CloydsFolder = Sandbox.CloydsFolder;
       Windows = OnTheUIThread(() => new ProjectWindows((project, windowsOfCloyd) => Projects.Single(it => it.Project.Equals(project)).Window(windowsOfCloyd)));
       _localApi = CloydsLocalApi.Start(Windows, CloydsFolder);
       Application = new TheCloydApplication(CloydsFolder);
    }
 
-   /// <summary>The projects handed to the application, whose windows it shows: ended with the specification.</summary>
+   /// <summary>The projects handed to the application, whose windows it shows.</summary>
    private protected abstract IReadOnlyList<SandboxProject> Projects { get; }
 
    private protected CloydsFolder CloydsFolder { get; }
@@ -81,6 +81,5 @@ public abstract class SpecificationRunningTheCloydApplication : SpecificationOpe
       _localApi.Stop();
       foreach(var window in OnTheUIThread(() => Windows.Open.ToList())) Close(window);
       base.Dispose();
-      foreach(var project in Projects) project.Dispose();
    }
 }
