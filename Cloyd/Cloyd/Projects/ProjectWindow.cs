@@ -5,8 +5,10 @@ using Avalonia.Media;
 using Avalonia.Threading;
 using ClaudeTooling.SessionHost.Protocol;
 using Cloyd.ClaudeCode;
+using Cloyd.DotNetAnalysisAndRefactoring;
 using Cloyd.Hub;
 using Cloyd.Ides;
+using Cloyd.Links;
 using Cloyd.Saving;
 using Cloyd.SessionHosts;
 using Cloyd.Sessions;
@@ -36,6 +38,13 @@ sealed class ProjectWindow : Window
    static readonly TimeSpan BeforeFollowingTheRunningSessionsAgain = TimeSpan.FromSeconds(1);
    static readonly TimeSpan BetweenSaves = TimeSpan.FromSeconds(2);
    static readonly TimeSpan BetweenLooksAtItsIdesWindow = TimeSpan.FromSeconds(2);
+   static readonly TimeSpan BetweenReadingsOfItsFiles = TimeSpan.FromSeconds(5);
+
+   /// <summary>How long the symbols the window gathered last serve: one gathering takes Compze's solution 6.4 s of Rider's time.</summary>
+   static readonly TimeSpan BetweenGatheringsOfItsSymbols = TimeSpan.FromMinutes(2);
+
+   /// <summary>How soon the window asks for the symbols again after Rider didn't answer, as while it still loads the solution, which it does as Cloyd's window opens.</summary>
+   static readonly TimeSpan BeforeAskingAgainForItsSymbols = TimeSpan.FromSeconds(10);
 
    readonly TheHub _hub;
    readonly TheIdes _ides;
@@ -49,9 +58,10 @@ sealed class ProjectWindow : Window
    /// <summary>What saves the window every <see cref="BetweenSaves"/>: null until it has brought back the saved tabs, so that it never saves a window they aren't in yet.</summary>
    DispatcherTimer? _saving;
 
-   public ProjectWindow(Project project, TheHub hub, TheIdes ides, ShellOfNewSessions shellOfNewSessions, SavedProjectWindows savedWindows)
+   public ProjectWindow(Project project, TheHub hub, TheIdes ides, DotNetAnalysisAndRefactoringMcp dotNetAnalysisAndRefactoringMcp, ShellOfNewSessions shellOfNewSessions, SavedProjectWindows savedWindows)
    {
       Project = project;
+      FilesAndSymbols = new FilesAndSymbolsOfAProject(project, dotNetAnalysisAndRefactoringMcp);
       _hub = hub;
       _ides = ides;
       _shellOfNewSessions = shellOfNewSessions;
@@ -66,6 +76,9 @@ sealed class ProjectWindow : Window
 
    /// <summary>The project whose sessions the window shows.</summary>
    public Project Project { get; }
+
+   /// <summary>The project's files and C# symbols, which the output in its terminals links to: the window keeps them current while it's open.</summary>
+   public FilesAndSymbolsOfAProject FilesAndSymbols { get; }
 
    public IReadOnlyList<SessionTab> Tabs => _tabs.Items.OfType<SessionTab>().ToList();
 
@@ -102,6 +115,8 @@ sealed class ProjectWindow : Window
       });
       _ = FollowTheRunningSessions();
       _ = FollowItsIdesWindow();
+      _ = KeepItsFilesCurrent();
+      _ = KeepItsSymbolsCurrent();
    }
 
    protected override void OnClosed(EventArgs e)
@@ -254,6 +269,30 @@ sealed class ProjectWindow : Window
             }
          });
          await Task.Delay(BetweenLooksAtItsIdesWindow, CancellationToken.None);
+      }
+   }
+
+   /// <summary>Reads the project's files again and again until the window closes, so that a file Claude Code just wrote links once it's named.</summary>
+   async Task KeepItsFilesCurrent()
+   {
+      while(!_closed.IsCancellationRequested)
+      {
+         await TellingOfFailure(() => FilesAndSymbols.ReadTheFiles(_closed.Token));
+         await Task.Delay(BetweenReadingsOfItsFiles, CancellationToken.None);
+      }
+   }
+
+   /// <summary>
+   /// Gathers the names of the project's C# types and members again and again until the window closes, so that those
+   /// Claude Code adds link once it names them: soon again while Rider doesn't answer.
+   /// </summary>
+   async Task KeepItsSymbolsCurrent()
+   {
+      while(!_closed.IsCancellationRequested)
+      {
+         var riderAnswered = false;
+         await TellingOfFailure(async () => riderAnswered = await FilesAndSymbols.GatherTheSymbols(_closed.Token));
+         await Task.Delay(riderAnswered ? BetweenGatheringsOfItsSymbols : BeforeAskingAgainForItsSymbols, CancellationToken.None);
       }
    }
 

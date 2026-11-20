@@ -52,6 +52,9 @@ sealed class Sandbox
    /// </summary>
    public TheIdes Ides => new(new DirectoryInfo(FolderOfTheIdes));
 
+   /// <summary>Rider's .NET Analysis&amp;Refactoring MCP, as the specifications' project windows see it, with the solutions they load.</summary>
+   public StandInDotNetAnalysisAndRefactoringMcp DotNetAnalysisAndRefactoringMcp { get; } = new();
+
    /// <summary>The folder in which the <see cref="StandInIde"/>s announce their local APIs.</summary>
    public string FolderOfTheIdes => Path.Combine(_root, "ides");
 

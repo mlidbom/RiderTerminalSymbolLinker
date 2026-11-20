@@ -238,13 +238,18 @@ Claude's calls, 2026-11-20, unless marked as Magnus's:
   - a word links when it names a C# type or member of the project's solutions, and a dotted `Type.Member` as one link
     when that type has that member;
   - the Kotlin finder stays for Rider's terminal: the same rules in two languages.
-- **The project's files:** `git ls-files --cached --others --exclude-standard` in the project's folder, which lists the
-  tracked files and the new ones git doesn't ignore: 115 ms for Compze's 2,625. Read again every few seconds, so a file
-  Claude Code just wrote links when it names it. A project that isn't a git repository has no file links.
-- **The C# symbols:** from Royder, as the plugin gets them: `list_solutions` for the solutions in the project's folder,
-  then `browse_namespace`. Gathered as the window opens, with no cache on disk at first: after each start of Cloyd,
-  symbols link once the gathering ends. How often to gather them again is to be measured: the symbols Claude Code adds
-  in a session are the ones it names.
+- **Built: the files and symbols of each project window** (`ProjectWindow.FilesAndSymbols`):
+  - **The project's files:** `git ls-files --cached --others --exclude-standard` in the project's folder, which lists
+    the tracked files and the new ones git doesn't ignore: 48 ms for this repository, 62 ms for Compze's 2,625 files.
+    Read every 5 s, so a file Claude Code just wrote links when it names it. A project that isn't a git repository has
+    no file links.
+  - **The C# symbols:** from Royder (`DotNetAnalysisAndRefactoringMcp`), as the plugin gets them: `list_solutions` for
+    the solutions in the project's folder or a folder in it, then `browse_namespace`. 358 ms for Cloyd's solution,
+    3.5 s for Compze's. Gathered as the window opens and every 2 minutes, so that the symbols Claude Code adds link
+    soon; every 10 s while Rider doesn't answer, as while it loads the solution as the IDE opens. No cache on disk: after
+    each start of Cloyd, symbols link once the first gathering ends.
+  - **Specified** with a stand-in Royder (`StandInDotNetAnalysisAndRefactoringMcp`) and a git repository of the
+    specification's own; and against Magnus's Rider with `Cloyd.exe --links-in` (`development-environment.md`).
 - **A click:**
   - Ctrl+click, as Iciclecreek's terminal already has for URLs, and as Windows Terminal and VS Code do;
   - a file or a symbol opens in the IDE whose open project holds it, preferring the IDE showing the window's project,

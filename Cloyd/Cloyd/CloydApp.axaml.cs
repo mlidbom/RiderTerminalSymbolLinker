@@ -2,6 +2,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
+using Cloyd.DotNetAnalysisAndRefactoring;
 using Cloyd.Hub;
 using Cloyd.Ides;
 using Cloyd.LocalApi;
@@ -27,7 +28,8 @@ sealed class CloydApp : Application
          var hub = TheHub.OfCloydsEnvironment();
          var shell = ShellOfNewSessions.OnThisMachine();
          var ides = TheIdes.OnThisMachine();
-         var windows = new ProjectWindows(project => new ProjectWindow(project, hub, ides, shell, folder.SavedProjectWindows));
+         var dotNetAnalysisAndRefactoringMcp = DotNetAnalysisAndRefactoringMcp.OnThisMachine();
+         var windows = new ProjectWindows(project => new ProjectWindow(project, hub, ides, dotNetAnalysisAndRefactoringMcp, shell, folder.SavedProjectWindows));
          desktop.ShutdownMode = ShutdownMode.OnLastWindowClose;
          var localApi = CloydsLocalApi.Start(windows, folder);
          desktop.Exit += (_, _) => localApi.Stop();

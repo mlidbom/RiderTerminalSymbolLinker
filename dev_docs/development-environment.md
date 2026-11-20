@@ -208,6 +208,12 @@ project it showed, which starts it again with the same windows, their tabs broug
 hosts. On Magnus's go, as it closes the windows he works in. `everyday cloyd` reads where its windows are, changing
 nothing: each one's virtual desktop, and its project's IDE window's, which it is to keep to (`CloydBesideTheIdes`).
 
+**What links in a line of a terminal's output,** with a project's files as git lists them now and its C# symbols as
+Magnus's Rider has them now, with no window: `Cloyd.exe --links-in <the project's folder> "<line>"`, from Cloyd's
+`bin`, Debug or the installed one. It prints how long reading each took, and each file reference and symbol reference,
+with its span; it changes nothing. On 2026-11-20 it read this repository's 265 files in 48 ms and gathered Cloyd's
+solution in 358 ms, and Compze's in 3.5 s.
+
 **A build that needs a restart isn't put into a running IDE that reloads,** and the deploy says `DIDN'T DEPLOY`, and
 `--dry-run` says `CLOSE <IDE> FIRST`. Such a build adds or removes a file, or changes what its plugin.xml registers, and
 the IDE reloads it as it does any changed jar, at once, but keeps the registrations it read as it started. On 2026-11-19

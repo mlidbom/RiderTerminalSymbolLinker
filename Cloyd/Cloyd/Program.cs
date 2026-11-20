@@ -1,11 +1,14 @@
+using System.Diagnostics;
 using Avalonia;
+using Cloyd.DotNetAnalysisAndRefactoring;
+using Cloyd.Links;
 using Cloyd.LocalApi;
 using Cloyd.Projects;
 
 namespace Cloyd;
 
 /// <summary>
-/// Cloyd.exe, run in one of two ways:
+/// Cloyd.exe, run in one of three ways:
 /// <list type="bullet">
 /// <item>
 /// <c>Cloyd.exe --project &lt;folder&gt;</c>, the command, as an IDE runs it for a project it opens: has the Cloyd
@@ -16,17 +19,25 @@ namespace Cloyd;
 /// <c>Cloyd.exe --application &lt;Cloyd's folder&gt;</c>, the Cloyd application: the one process on the machine that shows
 /// every project's window, serving the <see cref="CloydsFolder"/> given. The command starts it.
 /// </item>
+/// <item>
+/// <c>Cloyd.exe --links-in &lt;folder&gt; &lt;line&gt;</c>, a development tool: what links in the line of a terminal's
+/// output, in the project's window (<see cref="TellWhatLinksIn"/>).
+/// </item>
 /// </list>
 /// </summary>
 static class Program
 {
    const string ArgumentThatMakesItTheApplication = "--application";
+   const string ArgumentThatAsksWhatLinks = "--links-in";
 
    [STAThread]
    public static int Main(string[] arguments) =>
-      arguments is [ArgumentThatMakesItTheApplication, _]
-         ? BuildAvaloniaApp().StartWithClassicDesktopLifetime(arguments)
-         : ShowTheWindowOf(ProjectNamedBy(arguments));
+      arguments switch
+      {
+         [ArgumentThatMakesItTheApplication, _] => BuildAvaloniaApp().StartWithClassicDesktopLifetime(arguments),
+         [ArgumentThatAsksWhatLinks, var folder, var line] => TellWhatLinksIn(line, new Project(folder)),
+         _ => ShowTheWindowOf(ProjectNamedBy(arguments))
+      };
 
    /// <summary>The application on the desktop. Also found by name by Avalonia's designer.</summary>
    public static AppBuilder BuildAvaloniaApp() => AppBuilder.Configure<CloydApp>().UsePlatformDetect();
@@ -53,6 +64,26 @@ static class Program
          Console.Error.WriteLine(failure);
          return 1;
       }
+   }
+
+   /// <summary>
+   /// A development tool: prints what links in <paramref name="line"/>, a line of a terminal's output, in
+   /// <paramref name="project"/>'s window, with the project's files as git lists them now, and its C# symbols as Rider
+   /// has them now. So what links, and what doesn't, can be checked against Magnus's projects and Rider, with no window.
+   /// </summary>
+   static int TellWhatLinksIn(string line, Project project)
+   {
+      var filesAndSymbols = new FilesAndSymbolsOfAProject(project, DotNetAnalysisAndRefactoringMcp.OnThisMachine());
+      var started = Stopwatch.StartNew();
+      filesAndSymbols.ReadTheFiles(CancellationToken.None).GetAwaiter().GetResult();
+      Console.WriteLine($"Read the files of {project} in {started.ElapsedMilliseconds} ms.");
+      started.Restart();
+      Console.WriteLine(filesAndSymbols.GatherTheSymbols(CancellationToken.None).GetAwaiter().GetResult()
+                           ? $"Gathered the symbols of its solutions in {started.ElapsedMilliseconds} ms."
+                           : "Rider's .NET Analysis&Refactoring MCP didn't answer: no symbols.");
+      foreach(var file in filesAndSymbols.FileReferencesIn(line)) Console.WriteLine(file);
+      foreach(var symbol in filesAndSymbols.SymbolReferencesIn(line)) Console.WriteLine(symbol);
+      return 0;
    }
 
    /// <summary>The project whose folder <c>--project &lt;folder&gt;</c> names: the current directory's when it isn't given.</summary>
