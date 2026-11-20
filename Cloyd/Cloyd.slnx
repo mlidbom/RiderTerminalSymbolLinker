@@ -1,8 +1,0 @@
-<Solution>
-  <Folder Name="/Solution Items/">
-    <File Path="Directory.Build.props" />
-    <File Path="Directory.Packages.props" />
-  </Folder>
-  <Project Path="Cloyd/Cloyd.csproj" />
-  <Project Path="Cloyd.Specifications/Cloyd.Specifications.csproj" />
-</Solution>

@@ -10,7 +10,7 @@ Two JetBrains plugins, in Kotlin, each a Gradle project of its own:
   Claude tooling restarts it. Its tool window, chat and history picker went with the switch to Cloyd, 0.2.0. A project
   of its own so that it can move to a repository of its own: keep what's its own inside its folder.
 
-And **Cloyd,** `Cloyd/Cloyd.slnx`: a .NET application in Avalonia, a window per project beside its IDE, which shows the
+And **Cloyd,** `Cloyd.slnx` at the root, its projects under `Cloyd/`: a .NET application in Avalonia, a window per project beside its IDE, which shows the
 sessions: their terminals, for now. Rider holds its solution, for the `jetbrains-rider` and
 `dotnet-analysis-and-refactoring` MCPs; IntelliJ IDEA holds the plugins', for `idea`.
 

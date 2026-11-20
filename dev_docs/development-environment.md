@@ -127,7 +127,7 @@ sandbox of its own, its hub included, so the runs share nothing else (`Cloyd.Spe
 Tool's server in its headless mode, whose `StartSession` runs an engine of its own, apart from Rider's NCrunch, so it
 needs no IDE; it runs only once started, which nothing does at logon yet. The user-level skill `profiling-dotnet` has
 the route and its quirks. It runs the tests in processes of its own, never two at once in one, as these specifications' one UI thread a process needs, and records
-the time of every line each test ran, with no profiler to attach: `StartSession` on `Cloyd/Cloyd.slnx` with the engine mode
+the time of every line each test ran, with no profiler to attach: `StartSession` on `Cloyd.slnx` with the engine mode
 `Run all tests manually`, `SetTestSelection`, `RunTests`, `WaitForEngineWorkCompleted`, then `GetLinePerformance` for
 the tests selected. It ran all 204 in 25-37 s, and showed at once that 12 of a scenario's 12.3 s were its two 3 s waits.
 Two limits: NCrunch builds Cloyd, a WinExe, without its `Cloyd.exe`, so the 5 facts that run it fail there, and

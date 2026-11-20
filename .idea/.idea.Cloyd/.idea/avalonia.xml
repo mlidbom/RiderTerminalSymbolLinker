@@ -3,7 +3,7 @@
   <component name="AvaloniaProject">
     <option name="projectPerEditor">
       <map>
-        <entry key="Cloyd/CloydApp.axaml" value="Cloyd/Cloyd.csproj" />
+        <entry key="Cloyd/Cloyd/CloydApp.axaml" value="Cloyd/Cloyd/Cloyd.csproj" />
       </map>
     </option>
   </component>

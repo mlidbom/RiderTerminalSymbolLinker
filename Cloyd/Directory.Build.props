@@ -1,6 +1,8 @@
 <Project>
    <!-- Cloyd: the Claude tooling's UI, a .NET application in Avalonia beside the IDEs. See
-        dev_docs/cloyd-as-a-dotnet-application.md. A solution of its own, so that it can move to a repository of its own. -->
+        dev_docs/cloyd-as-a-dotnet-application.md. Its solution, Cloyd.slnx, is at the repository's root, where Rider, git
+        and Claude Code agree the project's root is; its projects stay in this folder, so that it can move to a repository
+        of its own. -->
    <PropertyGroup>
       <TargetFramework>net11.0-windows10.0.19041.0</TargetFramework>
       <Nullable>enable</Nullable>
