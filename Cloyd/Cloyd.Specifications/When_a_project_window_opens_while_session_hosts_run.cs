@@ -10,23 +10,24 @@ namespace Cloyd.Specifications;
 
 public class When_a_project_window_opens_while_session_hosts_run : SpecificationOpeningWindows
 {
-   readonly SandboxProject _project = SandboxProject.Named(nameof(When_a_project_window_opens_while_session_hosts_run));
-   readonly SandboxProject _anotherProject = SandboxProject.Named(nameof(When_a_project_window_opens_while_session_hosts_run) + "-another");
    readonly SessionHostOfTheHub _startedByAnEarlierWindow, _startedByAClaudeSessionsTab, _shownByAClaudeSessionsTab, _ofAnotherProject, _ofAnotherTool;
-   readonly AttachmentToASessionHost _theClaudeSessionsTab;
    readonly ProjectWindow _window;
 
-   public When_a_project_window_opens_while_session_hosts_run()
-   {
-      _startedByAnEarlierWindow = _project.StartASessionHost(_project.LabelOfCloydsHosts);
-      _startedByAClaudeSessionsTab = _project.StartASessionHost(_project.LabelOfAClaudeSessionsTab);
-      _shownByAClaudeSessionsTab = _project.StartASessionHost(_project.LabelOfAClaudeSessionsTab);
-      _theClaudeSessionsTab = AttachmentToASessionHost.To(_shownByAClaudeSessionsTab.Id, ConsoleSize.Default);
-      _ofAnotherProject = _project.StartASessionHost(_anotherProject.LabelOfCloydsHosts);
-      _ofAnotherTool = _project.StartASessionHost("""{"someTool":"its own"}""");
-      _window = Open(_project.Window);
-      WaitUntil(() => _window.BringingBackTheTabs.IsCompleted, "the window had brought back its tabs");
-   }
+   public When_a_project_window_opens_while_session_hosts_run() =>
+      (_startedByAnEarlierWindow, _startedByAClaudeSessionsTab, _shownByAClaudeSessionsTab, _ofAnotherProject, _ofAnotherTool, _window) = Once(() =>
+      {
+         var project = EndWithTheScenario(SandboxProject.Named(nameof(When_a_project_window_opens_while_session_hosts_run)));
+         var anotherProject = EndWithTheScenario(SandboxProject.Named(nameof(When_a_project_window_opens_while_session_hosts_run) + "-another"));
+         var startedByAnEarlierWindow = project.StartASessionHost(project.LabelOfCloydsHosts);
+         var startedByAClaudeSessionsTab = project.StartASessionHost(project.LabelOfAClaudeSessionsTab);
+         var shownByAClaudeSessionsTab = project.StartASessionHost(project.LabelOfAClaudeSessionsTab);
+         EndWithTheScenario(AttachmentToASessionHost.To(shownByAClaudeSessionsTab.Id, ConsoleSize.Default));
+         var ofAnotherProject = project.StartASessionHost(anotherProject.LabelOfCloydsHosts);
+         var ofAnotherTool = project.StartASessionHost("""{"someTool":"its own"}""");
+         var window = Open(project.Window);
+         WaitUntil(() => window.BringingBackTheTabs.IsCompleted, "the window had brought back its tabs");
+         return (startedByAnEarlierWindow, startedByAClaudeSessionsTab, shownByAClaudeSessionsTab, ofAnotherProject, ofAnotherTool, window);
+      });
 
    SessionHostId[] HostsShown => OnTheUIThread(() => _window.Tabs.Select(it => it.Host.Id).ToArray());
 
@@ -43,12 +44,4 @@ public class When_a_project_window_opens_while_session_hosts_run : Specification
    [XF] public void it_shows_no_other_host() => HostsShown.Must().HaveCount(2);
 
    [XF] public void it_selects_the_first_tab() => OnTheUIThread(() => _window.SelectedTab?.Host.Id).Must().Be(_startedByAnEarlierWindow.Id);
-
-   public override void Dispose()
-   {
-      base.Dispose();
-      _theClaudeSessionsTab.Dispose();
-      _project.Dispose();
-      _anotherProject.Dispose();
-   }
 }

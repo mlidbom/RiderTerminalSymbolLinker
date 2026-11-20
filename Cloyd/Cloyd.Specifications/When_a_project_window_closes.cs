@@ -8,19 +8,21 @@ namespace Cloyd.Specifications;
 
 public class When_a_project_window_closes : SpecificationOpeningWindows
 {
-   readonly SandboxProject _project = SandboxProject.Named(nameof(When_a_project_window_closes));
+   readonly SandboxProject _project;
    readonly SessionHostId _host;
 
-   public When_a_project_window_closes()
+   public When_a_project_window_closes() => (_project, _host) = Once(() =>
    {
-      var window = Open(_project.Window);
+      var project = EndWithTheScenario(SandboxProject.Named(nameof(When_a_project_window_closes)));
+      var window = Open(project.Window);
       DoneOnTheUIThread(() => window.StartANewSession(null));
       var tab = OnTheUIThread(() => window.Tabs.Single());
-      _host = tab.Host.Id;
+      var host = tab.Host.Id;
       WaitUntil(() => tab.SessionRunningInIt is not null, "Claude Code ran in the tab's host");
       Close(window);
-      WaitUntil(() => _project.SessionHost(_host) is { Attached: false }, "the hub listed the host as shown by no attach client");
-   }
+      WaitUntil(() => project.SessionHost(host) is { Attached: false }, "the hub listed the host as shown by no attach client");
+      return (project, host);
+   });
 
    [XF] public void its_sessions_run_on() => _project.SessionRunningIn(_host).Must().NotBeNull();
 
@@ -28,13 +30,14 @@ public class When_a_project_window_closes : SpecificationOpeningWindows
    {
       readonly ProjectWindow _windowAgain;
 
-      public and_the_project_window_opens_again()
+      public and_the_project_window_opens_again() => _windowAgain = Once(() =>
       {
-         _windowAgain = Open(_project.Window);
-         WaitUntil(() => _windowAgain.BringingBackTheTabs.IsCompleted, "the window had brought back its tabs");
-         WaitUntil(() => _windowAgain.Tabs.Single().Terminal.TextShown.Contains("New session"), "the tab showed the session's screen again");
-         Render(_windowAgain, "A-project-window-opened-again");
-      }
+         var windowAgain = Open(_project.Window);
+         WaitUntil(() => windowAgain.BringingBackTheTabs.IsCompleted, "the window had brought back its tabs");
+         WaitUntil(() => windowAgain.Tabs.Single().Terminal.TextShown.Contains("New session"), "the tab showed the session's screen again");
+         Render(windowAgain, "A-project-window-opened-again");
+         return windowAgain;
+      });
 
       [XF] public void it_shows_the_session_again_in_a_tab() => OnTheUIThread(() => _windowAgain.Tabs.Single().Host.Id).Must().Be(_host);
 
@@ -47,11 +50,5 @@ public class When_a_project_window_closes : SpecificationOpeningWindows
          name.Must().NotBeNullOrEmpty();
          OnTheUIThread(() => _windowAgain.Tabs.Single().Title).Must().Be(name!);
       }
-   }
-
-   public override void Dispose()
-   {
-      base.Dispose();
-      _project.Dispose();
    }
 }

@@ -14,30 +14,33 @@ namespace Cloyd.Specifications.Chat;
 /// </summary>
 public class When_Magnus_switches_a_sessions_tab_to_its_chat : SpecificationOpeningWindows
 {
-   readonly SandboxProject _project = SandboxProject.Named(nameof(When_Magnus_switches_a_sessions_tab_to_its_chat));
    readonly SessionTab _tab;
 
-   public When_Magnus_switches_a_sessions_tab_to_its_chat()
+   public When_Magnus_switches_a_sessions_tab_to_its_chat() => _tab = Once(() =>
    {
-      var window = Open(_project.Window);
+      var project = EndWithTheScenario(SandboxProject.Named(nameof(When_Magnus_switches_a_sessions_tab_to_its_chat)));
+      var window = Open(project.Window);
       DoneOnTheUIThread(() => window.StartANewSession(name: null));
-      _tab = OnTheUIThread(() => window.Tabs.Single());
-      WaitUntil(() => _tab.SessionRunningInIt is not null && _tab.Terminal.TextShown.Contains("New session"), "the tab's terminal showed the stand-in's start");
-      Focus(_tab.Terminal);
+      var tab = OnTheUIThread(() => window.Tabs.Single());
+      WaitUntil(() => tab.SessionRunningInIt is not null && tab.Terminal.TextShown.Contains("New session"), "the tab's terminal showed the stand-in's start");
+      Focus(tab.Terminal);
       Type(window, "Run a tool that prints 2 lines");
       Press(window, Key.Enter, PhysicalKey.Enter, RawInputModifiers.None);
-      Click(TheButtonWithTheTip(_tab, "Show the chat"));
-      WaitUntil(() => Shown.OfType<ShownInTheChat.RunOfToolCalls>().Any(), "the chat showed the tool call");
-      Click(TheButtonWithTheTip(_tab, "Show the terminal"));
-      Focus(_tab.Terminal);
+      Click(TheButtonWithTheTip(tab, "Show the chat"));
+      WaitUntil(() => ShownIn(tab).OfType<ShownInTheChat.RunOfToolCalls>().Any(), "the chat showed the tool call");
+      Click(TheButtonWithTheTip(tab, "Show the terminal"));
+      Focus(tab.Terminal);
       Type(window, "Thanks");
       Press(window, Key.Enter, PhysicalKey.Enter, RawInputModifiers.None);
-      Click(TheButtonWithTheTip(_tab, "Show the chat"));
-      WaitUntil(() => Shown.OfType<ShownInTheChat.ClaudesText>().Any(it => it.Markdown == "Heard: Thanks"), "the chat showed Claude's answer to what was sent after switching back to the terminal");
+      Click(TheButtonWithTheTip(tab, "Show the chat"));
+      WaitUntil(() => ShownIn(tab).OfType<ShownInTheChat.ClaudesText>().Any(it => it.Markdown == "Heard: Thanks"), "the chat showed Claude's answer to what was sent after switching back to the terminal");
       Render(window, "a-sessions-tab-switched-to-its-chat");
-   }
+      return tab;
+   });
 
-   IReadOnlyList<ShownInTheChat> Shown => OnTheUIThread(() => _tab.Chat.Shown.ToList());
+   IReadOnlyList<ShownInTheChat> Shown => ShownIn(_tab);
+
+   static IReadOnlyList<ShownInTheChat> ShownIn(SessionTab tab) => OnTheUIThread(() => tab.Chat.Shown.ToList());
 
    [XF] public void the_chat_is_shown_and_the_terminal_not() => OnTheUIThread(() => (_tab.Chat.IsVisible, _tab.Terminal.IsVisible)).Must().Be((true, false));
 
@@ -46,10 +49,4 @@ public class When_Magnus_switches_a_sessions_tab_to_its_chat : SpecificationOpen
 
    [XF] public void it_shows_the_command_claude_ran_as_done() =>
       Shown.OfType<ShownInTheChat.RunOfToolCalls>().Single().Calls.Single().Must().Satisfy(it => it.Kind == KindOfToolCall.Running && it.Outcome == OutcomeOfAToolCall.Done);
-
-   public override void Dispose()
-   {
-      base.Dispose();
-      _project.Dispose();
-   }
 }

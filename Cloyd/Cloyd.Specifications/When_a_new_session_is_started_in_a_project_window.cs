@@ -14,21 +14,23 @@ public class When_a_new_session_is_started_in_a_project_window : SpecificationOp
 {
    const string NameGiven = "Fixing the login bug";
 
-   readonly SandboxProject _project = SandboxProject.Named(nameof(When_a_new_session_is_started_in_a_project_window));
+   readonly SandboxProject _project;
    readonly ProjectWindow _window;
    readonly SessionTab _tab;
    readonly RunningSession _session;
 
-   public When_a_new_session_is_started_in_a_project_window()
+   public When_a_new_session_is_started_in_a_project_window() => (_project, _window, _tab, _session) = Once(() =>
    {
-      _window = Open(_project.Window);
-      DoneOnTheUIThread(() => _window.StartANewSession(NameGiven));
-      _tab = OnTheUIThread(() => _window.Tabs.Single());
-      WaitUntil(() => _tab.SessionRunningInIt is not null, "the hub told the tab of the Claude Code in its host");
-      _session = OnTheUIThread(() => _tab.SessionRunningInIt!);
-      WaitUntil(() => _tab.Terminal.TextShown.Contains($"New session {_session.SessionId}"), "the tab's terminal showed the stand-in's start");
-      Render(_window, "A-new-session-started");
-   }
+      var project = EndWithTheScenario(SandboxProject.Named(nameof(When_a_new_session_is_started_in_a_project_window)));
+      var window = Open(project.Window);
+      DoneOnTheUIThread(() => window.StartANewSession(NameGiven));
+      var tab = OnTheUIThread(() => window.Tabs.Single());
+      WaitUntil(() => tab.SessionRunningInIt is not null, "the hub told the tab of the Claude Code in its host");
+      var session = OnTheUIThread(() => tab.SessionRunningInIt!);
+      WaitUntil(() => tab.Terminal.TextShown.Contains($"New session {session.SessionId}"), "the tab's terminal showed the stand-in's start");
+      Render(window, "A-new-session-started");
+      return (project, window, tab, session);
+   });
 
    [XF] public void the_window_shows_it_in_a_tab_of_its_own_which_is_selected() => OnTheUIThread(() => _window.SelectedTab).Must().ReferenceEqual(_tab);
 
@@ -74,10 +76,4 @@ public class When_a_new_session_is_started_in_a_project_window : SpecificationOp
    /// <summary>The sizes the stand-in said its terminal was, as it started and at each resize: "The terminal is 120 columns by 30 rows".</summary>
    static IEnumerable<ConsoleSize> SizesSaid(string shown) =>
       Regex.Matches(shown, @"The terminal is (\d+) columns by (\d+) rows").Select(it => new ConsoleSize(short.Parse(it.Groups[1].Value), short.Parse(it.Groups[2].Value)));
-
-   public override void Dispose()
-   {
-      base.Dispose();
-      _project.Dispose();
-   }
 }

@@ -41,7 +41,8 @@ public abstract class SpecificationOpeningWindows : IDisposable
    /// </summary>
    /// <remarks>
    /// Only for a class whose facts only look at what the scenario built, as a fact that changes it would change it for the
-   /// facts after it. <paramref name="file"/> and <paramref name="line"/>, the place in the code of the call, are filled in by the compiler.
+   /// facts after it. A class whose base class builds its part with it builds its own with it too: else what its
+   /// constructor does is done again for each fact, to the scenario they share.<br/><paramref name="file"/> and <paramref name="line"/>, the place in the code of the call, are filled in by the compiler.
    /// </remarks>
    protected TPart Once<TPart>(Func<TPart> built, [CallerFilePath] string file = "", [CallerLineNumber] int line = 0)
    {

@@ -8,19 +8,20 @@ namespace Cloyd.Specifications;
 
 public class When_Magnus_closes_a_sessions_tab : SpecificationOpeningWindows
 {
-   readonly SandboxProject _project = SandboxProject.Named(nameof(When_Magnus_closes_a_sessions_tab));
+   readonly SandboxProject _project;
    readonly ProjectWindow _window;
    readonly SessionHostId _host;
 
-   public When_Magnus_closes_a_sessions_tab()
+   public When_Magnus_closes_a_sessions_tab() => (_project, _window, _host) = Once(() =>
    {
-      _window = Open(_project.Window);
-      DoneOnTheUIThread(() => _window.StartANewSession("to be closed"));
-      var tab = OnTheUIThread(() => _window.Tabs.Single());
-      _host = tab.Host.Id;
+      var project = EndWithTheScenario(SandboxProject.Named(nameof(When_Magnus_closes_a_sessions_tab)));
+      var window = Open(project.Window);
+      DoneOnTheUIThread(() => window.StartANewSession("to be closed"));
+      var tab = OnTheUIThread(() => window.Tabs.Single());
       WaitUntil(() => tab.SessionRunningInIt is not null, "Claude Code ran in the tab's host");
       Click(TheButtonWithTheTip(tab, "End the session"));
-   }
+      return (project, window, tab.Host.Id);
+   });
 
    [XF] public void the_tab_is_gone() => OnTheUIThread(() => _window.Tabs).Must().BeEmpty();
 
@@ -34,11 +35,5 @@ public class When_Magnus_closes_a_sessions_tab : SpecificationOpeningWindows
    {
       WaitUntil(() => _project.SessionHost(_host) is null, "the hub no longer listed the host");
       OnTheUIThread(() => _window.Failure).Must().BeNull();
-   }
-
-   public override void Dispose()
-   {
-      base.Dispose();
-      _project.Dispose();
    }
 }
