@@ -57,6 +57,9 @@ static class Program
                                                       Every deploy first puts the working tree's Cloyd, which Claude
                                                       Sessions runs, in %LOCALAPPDATA%\Cloyd\bin: a Cloyd application that
                                                       runs runs on with the build it has until its last window closes
+                          everyday deploy Cloyd       Puts the working tree's Cloyd in %LOCALAPPDATA%\Cloyd\bin alone, as
+                                                      every deploy does first: for a Cloyd to go out while the plugins'
+                                                      builds wait for a restart of the IDEs
                           everyday deploy --dry-run   Builds the plugins and Cloyd and says what deploying them would do,
                                                       changing nothing: a line marked RESTART takes his go-ahead
                           everyday deploy --into-running-ides
@@ -150,6 +153,9 @@ static class Program
          case ["everyday", "deploy"]:
             Console.WriteLine(InstalledCloyd.Everyday.Deploy(CloydBuild.Published(), dryRun: false));
             foreach(var line in EverydayIdes.Deploy(GradleSandbox.Filled())) Console.WriteLine(line);
+            break;
+         case ["everyday", "deploy", "Cloyd"]:
+            Console.WriteLine(InstalledCloyd.Everyday.Deploy(CloydBuild.Published(), dryRun: false));
             break;
          case ["everyday", "deploy", "--dry-run"]:
             Console.WriteLine(InstalledCloyd.Everyday.Deploy(CloydBuild.Published(), dryRun: true));
