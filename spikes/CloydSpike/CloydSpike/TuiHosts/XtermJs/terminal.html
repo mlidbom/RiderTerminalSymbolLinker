@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="xterm.css">
+<style>
+  html, body { margin: 0; height: 100%; background: #000; overflow: hidden; }
+  #terminal { height: 100%; }
+</style>
+<script src="xterm.js"></script>
+<script src="addon-fit.js"></script>
+</head>
+<body>
+<div id="terminal"></div>
+<script>
+  // xterm.js, VS Code's terminal emulator, showing a session host's pseudo console. The window posts what the host draws
+  // to drawn(), as base64; the page posts to the window what is typed, and the terminal's size.
+  const post = message => window.chrome.webview.postMessage(JSON.stringify(message));
+  const term = new Terminal({ fontFamily: '"Cascadia Mono", Consolas, monospace', fontSize: 14, scrollback: 5000 });
+  const fit = new FitAddon.FitAddon();
+  term.loadAddon(fit);
+  term.open(document.getElementById('terminal'));
+  fit.fit();
+  term.onData(typed => post({ typed }));
+  term.onBinary(typed => post({ typedBinary: typed }));
+  term.onResize(size => post({ columns: size.cols, rows: size.rows }));
+  new ResizeObserver(() => fit.fit()).observe(document.body);
+  window.drawn = base64 => term.write(Uint8Array.from(atob(base64), character => character.charCodeAt(0)));
+  term.focus();
+  post({ ready: true, columns: term.cols, rows: term.rows });
+</script>
+</body>
+</html>

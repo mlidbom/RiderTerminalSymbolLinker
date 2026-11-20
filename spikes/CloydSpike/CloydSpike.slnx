@@ -1,0 +1,5 @@
+<Solution>
+  <Project Path="CloydSpike/CloydSpike.csproj" />
+  <Project Path="CloydSpike.Probe/CloydSpike.Probe.csproj" />
+  <Project Path="CloydSpike.Specifications/CloydSpike.Specifications.csproj" />
+</Solution>

@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+   <!-- The spike's Cloyd: a window beside the IDEs showing a session's conversation from the hub, an input box that sends
+        through the hub, and the session's TUI in one of the candidate hosts, attached to its session host directly. -->
+   <PropertyGroup>
+      <OutputType>WinExe</OutputType>
+      <RootNamespace>CloydSpike</RootNamespace>
+      <ApplicationManifest>app.manifest</ApplicationManifest>
+   </PropertyGroup>
+   <ItemGroup>
+      <PackageReference Include="Avalonia" />
+      <PackageReference Include="Avalonia.Desktop" />
+      <PackageReference Include="Avalonia.Themes.Fluent" />
+      <PackageReference Include="Avalonia.Controls.WebView" />
+      <PackageReference Include="Avalonia.AvaloniaEdit" />
+      <PackageReference Include="LiveMarkdown.Avalonia" />
+      <PackageReference Include="Iciclecreek.Avalonia.Terminal" />
+      <PackageReference Include="AgentSpace.Avalonia.XTerm" />
+      <PackageReference Include="Compze.Threading" />
+   </ItemGroup>
+   <ItemGroup>
+      <!-- The hub's own types for what session hosts and their clients say, as the hub and the attach client compile them. -->
+      <Compile Include="$(USERPROFILE)\.claude\src\ClaudeTooling.SessionHost.Protocol\*.cs" Link="SessionHostProtocol\%(Filename)%(Extension)" />
+   </ItemGroup>
+   <ItemGroup>
+      <Content Include="TuiHosts\XtermJs\**" CopyToOutputDirectory="PreserveNewest" />
+      <InternalsVisibleTo Include="CloydSpike.Specifications" />
+      <InternalsVisibleTo Include="CloydSpike.Probe" />
+   </ItemGroup>
+</Project>

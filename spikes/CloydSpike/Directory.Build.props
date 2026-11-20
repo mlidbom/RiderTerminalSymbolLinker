@@ -1,0 +1,16 @@
+<Project>
+   <!-- The spike of a .NET Cloyd (dev_docs/cloyd-as-a-dotnet-application.md, "The spike proposed"): throwaway, on the
+        branch spike/dotnet-cloyd. -->
+   <PropertyGroup>
+      <TargetFramework>net11.0-windows10.0.19041.0</TargetFramework>
+      <Nullable>enable</Nullable>
+      <ImplicitUsings>enable</ImplicitUsings>
+      <LangVersion>latest</LangVersion>
+      <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+      <SelfContained>false</SelfContained>
+      <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+      <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+      <!-- The terminal controls' packages target net10.0, and bring Porta.Pty at two versions. -->
+      <NoWarn>$(NoWarn);CS1591;NU1608</NoWarn>
+   </PropertyGroup>
+</Project>

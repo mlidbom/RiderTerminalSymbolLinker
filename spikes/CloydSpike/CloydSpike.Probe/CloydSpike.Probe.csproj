@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+   <!-- The spike's probe: each candidate for the TUI's host that draws on Avalonia's headless platform, attached to the
+        throwaway session's host, driven with keys, pastes, resizes and the mouse wheel, each step drawn to an image beside
+        what the session's own console shows. And the conversations, drawn. See ../README.md. -->
+   <PropertyGroup>
+      <OutputType>Exe</OutputType>
+   </PropertyGroup>
+   <ItemGroup>
+      <PackageReference Include="Avalonia.Headless" />
+   </ItemGroup>
+   <ItemGroup>
+      <ProjectReference Include="..\CloydSpike\CloydSpike.csproj" />
+   </ItemGroup>
+</Project>
