@@ -521,6 +521,8 @@ survive-IDE-restart built the hub's side; its contract is `the-hubs-local-api.md
   terminal on the host's `attachCommand`, and has the hub type `claude` into the host's shell. The tab opens once the
   host answers, a fraction of a second, so `startNewSession` and `resumeInTheProjectsFolder` answer a `Deferred` of
   the tab, or of null, with a notification, when no host started.
+  - **A 500 is tried once more,** since 2026-11-20: the hub answers it when the host hasn't told of itself within 20 s,
+    as on a very busy machine, and has ended it with all it started. The plugin waits 30 s for an answer.
   - **`shell`:** the terminal's shell setting, `TerminalProjectOptionsProvider.shellPath`, which has no
     shell-integration arguments (`TheTerminalsShell`).
   - **`environment`:** the one the terminal's internal `LocalOptionsConfigurer` builds in 2026.3: the IDE's own (unless

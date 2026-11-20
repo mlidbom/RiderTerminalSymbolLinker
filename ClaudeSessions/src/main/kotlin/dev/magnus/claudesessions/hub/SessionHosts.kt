@@ -19,6 +19,10 @@ class SessionHosts internal constructor(private val requests: RequestsToTheHub) 
      * Starts a session host whose console runs [shell], the shell's command line, in [directory], with [environment] on
      * top of the one Windows gives a process started afresh, labelled [label], and returns it once it listens. Its console
      * starts at the hub's size, 120 by 30, until its first attach client gives it the tab's.
+     *
+     * A host that hasn't told the hub of itself 20 seconds after it started, as one slow on a very busy machine, as
+     * when the view resumes many sessions at once, is tried once more: the hub has ended the first, with all it
+     * started, and a second try usually starts.
      */
     suspend fun start(shell: String, directory: Path, environment: Map<String, String>, label: SessionHostLabel): SessionHostsAnswer<SessionHost> {
         val body = JsonObject().apply {
@@ -27,15 +31,20 @@ class SessionHosts internal constructor(private val requests: RequestsToTheHub) 
             add("environment", JsonObject().apply { environment.forEach(::addProperty) })
             addProperty("label", label.text)
         }
-        return when (val answer = requests.post("/session-hosts", body, ANSWERING_MAY_TAKE)) {
+        val firstTry = requests.post("/session-hosts", body, ANSWERING_MAY_TAKE)
+        val answer = if (firstTry.saysTheHostDidNotTellOfItselfInTime) requests.post("/session-hosts", body, ANSWERING_MAY_TAKE) else firstTry
+        return when (answer) {
             is HubAnswer.NoHubAnswered -> SessionHostsAnswer.NotDone(answer.why)
             is HubAnswer.Answered -> when (answer.status) {
                 201 -> SessionHostsAnswer.Done(hostIn(JsonParser.parseString(answer.body).asJsonObject.getAsJsonObject("sessionHost")))
-                400 -> SessionHostsAnswer.NotDone(errorIn(answer))
+                400, 500 -> SessionHostsAnswer.NotDone(errorIn(answer))
                 else -> notDoneOrABug(answer, "start a session host")
             }
         }
     }
+
+    /** The hub's 500 to a start: the host didn't tell of itself within 20 seconds, and the hub has ended it. */
+    private val HubAnswer.saysTheHostDidNotTellOfItselfInTime: Boolean get() = this is HubAnswer.Answered && status == 500
 
     /** The session hosts that run, in the order they started. */
     suspend fun running(): SessionHostsAnswer<List<SessionHost>> =

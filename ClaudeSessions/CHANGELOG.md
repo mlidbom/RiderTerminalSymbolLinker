@@ -19,7 +19,8 @@ All notable changes to Claude Sessions are documented here. The format follows
 - **Sessions run on when the IDE exits, crashes or restarts.** Each tab's shell, and Claude Code in it, runs in a
   session host of the Claude tooling's hub, outside the IDE, and the tab shows it. When the IDE goes, the sessions run
   on, mid-turn included, and when the project opens again every tab comes back as it was, in the same order, showing
-  its session as it is now. Closing a tab ends its session.
+  its session as it is now. Closing a tab ends its session. A session host that a very busy machine doesn't start
+  within 20 seconds is tried once more before a notification says the session didn't start.
 - **Each tab shows its session as a chat.** In place of Claude Code's own UI, a tab shows the conversation rendered as
   the desktop app renders it, in the IDE's theme, and an input box that is an editor, one line tall until you write
   more, growing up to two fifths of the chat. The box is rounded, as the desktop app's is, with a send button at its
