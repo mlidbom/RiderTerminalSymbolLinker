@@ -15,22 +15,16 @@ sealed class SavedProjectWindows(DirectoryInfo folder)
 
    /// <summary>What was saved last of <paramref name="project"/>'s window: <see cref="SavedProjectWindow.NothingSaved"/> when nothing was.</summary>
    public SavedProjectWindow Of(Project project) =>
-      File.Exists(FileOf(project)) ? JsonSerializer.Deserialize<SavedProjectWindow>(File.ReadAllText(FileOf(project)), Json)! : SavedProjectWindow.NothingSaved;
+      FileOf(project).Text() is {} json ? JsonSerializer.Deserialize<SavedProjectWindow>(json, Json)! : SavedProjectWindow.NothingSaved;
 
    /// <summary>Replaces what is saved of <paramref name="project"/>'s window with <paramref name="window"/>, at once: a reader never finds half of it.</summary>
-   public void Save(Project project, SavedProjectWindow window)
-   {
-      _folder.Create();
-      var writing = $"{FileOf(project)}.writing";
-      File.WriteAllText(writing, JsonSerializer.Serialize(window, Json));
-      File.Move(writing, FileOf(project), overwrite: true);
-   }
+   public void Save(Project project, SavedProjectWindow window) => FileOf(project).Write(JsonSerializer.Serialize(window, Json));
 
    /// <summary>
    /// The file of <paramref name="project"/>'s window, named as Claude Code names a project's folder of transcripts: each
    /// character of its folder that is neither a letter nor a digit made a <c>-</c>. In lower case, since Windows' paths
    /// ignore case, as a <see cref="Project"/>'s equality does.
    /// </summary>
-   string FileOf(Project project) =>
-      Path.Combine(_folder.FullName, $"{new string([.. project.Folder.ToLowerInvariant().Select(it => char.IsAsciiLetterOrDigit(it) ? it : '-')])}.json");
+   FileWrittenWhole FileOf(Project project) =>
+      new(Path.Combine(_folder.FullName, $"{new string([.. project.Folder.ToLowerInvariant().Select(it => char.IsAsciiLetterOrDigit(it) ? it : '-')])}.json"));
 }

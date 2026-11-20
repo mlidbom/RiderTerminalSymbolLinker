@@ -140,12 +140,17 @@ public sealed class InstalledCloyd(string folder)
       if(command.ExitCode != 0) throw new InvalidOperationException($"{CloydExe} --project {project} exited with {command.ExitCode}.");
    }
 
-   /// <summary>What the application's announcement says, its process, port and token: null while there is none.</summary>
+   /// <summary>
+   ///   What the application's announcement says, its process, port and token: null while there is none. Read sharing
+   ///   delete access, as the application moves it into place: a read that doesn't share it fails at that moment, and
+   ///   makes the move fail.
+   /// </summary>
    JsonNode? TheAnnouncement()
    {
       try
       {
-         return JsonNode.Parse(File.ReadAllText(Path.Combine(Folder, "local-api.json")));
+         using var announcement = new FileStream(Path.Combine(Folder, "local-api.json"), FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+         return JsonNode.Parse(announcement);
       }
       catch(Exception failure) when(failure is FileNotFoundException or DirectoryNotFoundException)
       {

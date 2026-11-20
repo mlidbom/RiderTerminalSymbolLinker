@@ -29,32 +29,16 @@ sealed record AnnouncementOfCloydsLocalApi([property: JsonPropertyName("protocol
    public Uri AddressOf(string path) => new($"http://127.0.0.1:{Port}/{path}");
 
    /// <summary>The announcement in <paramref name="folder"/>: null while there is none, as while no application runs.</summary>
-   public static AnnouncementOfCloydsLocalApi? In(CloydsFolder folder)
-   {
-      string json;
-      try
-      {
-         json = File.ReadAllText(FileIn(folder));
-      }
-      catch(Exception failure) when(failure is FileNotFoundException or DirectoryNotFoundException)
-      {
-         return null; // The application deletes its announcement as it stops, and writes it whole by renaming it into place.
-      }
-
-      return JsonSerializer.Deserialize<AnnouncementOfCloydsLocalApi>(json, CloydsLocalApiProtocol.Json);
-   }
+   public static AnnouncementOfCloydsLocalApi? In(CloydsFolder folder) =>
+      FileIn(folder).Text() is {} json ? JsonSerializer.Deserialize<AnnouncementOfCloydsLocalApi>(json, CloydsLocalApiProtocol.Json) : null;
 
    /// <summary>Writes the announcement in <paramref name="folder"/>, whole at once.</summary>
-   public void WriteIn(CloydsFolder folder)
-   {
-      folder.Folder.Create();
-      var writing = $"{FileIn(folder)}.writing";
-      File.WriteAllText(writing, JsonSerializer.Serialize(this, CloydsLocalApiProtocol.Json));
-      File.Move(writing, FileIn(folder), overwrite: true);
-   }
+   public void WriteIn(CloydsFolder folder) => FileIn(folder).Write(JsonSerializer.Serialize(this, CloydsLocalApiProtocol.Json));
 
    /// <summary>Deletes the announcement in <paramref name="folder"/>, as the API stops.</summary>
-   public static void WithdrawFrom(CloydsFolder folder) => File.Delete(FileIn(folder));
+   public static void WithdrawFrom(CloydsFolder folder) => File.Delete(PathIn(folder));
 
-   static string FileIn(CloydsFolder folder) => Path.Combine(folder.Folder.FullName, FileName);
+   static FileWrittenWhole FileIn(CloydsFolder folder) => new(PathIn(folder));
+
+   static string PathIn(CloydsFolder folder) => Path.Combine(folder.Folder.FullName, FileName);
 }

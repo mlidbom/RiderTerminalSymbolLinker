@@ -1,4 +1,3 @@
-using System.Text.Json;
 using ClaudeTooling.Hub.LocalApi.Contract;
 using Cloyd.ClaudeCode;
 
@@ -28,18 +27,6 @@ sealed record AnnouncementOfTheHub(WhatTheAnnouncementSays Says)
    /// The announcement in <paramref name="folder"/>: null while there is none, as while no hub runs, and for a few tenths
    /// of a second at each publish, between the old hub's going and the new one's start.
    /// </summary>
-   public static AnnouncementOfTheHub? In(DirectoryInfo folder)
-   {
-      string json;
-      try
-      {
-         json = File.ReadAllText(Path.Combine(folder.FullName, WhatTheAnnouncementSays.FileName));
-      }
-      catch(Exception failure) when(failure is FileNotFoundException or DirectoryNotFoundException)
-      {
-         return null; // The hub deletes its announcement as it stops, and writes it whole by renaming it into place.
-      }
-
-      return new(JsonSerializer.Deserialize<WhatTheAnnouncementSays>(json, LocalApiProtocol.Json)!);
-   }
+   public static AnnouncementOfTheHub? In(DirectoryInfo folder) =>
+      WhatTheAnnouncementSays.ReadFrom(Path.Combine(folder.FullName, WhatTheAnnouncementSays.FileName)) is {} says ? new(says) : null;
 }

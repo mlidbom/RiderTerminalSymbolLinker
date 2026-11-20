@@ -11,17 +11,8 @@ namespace Cloyd.Ides;
 sealed record AnnouncementOfAnIdesLocalApi(int ProcessId, int Port)
 {
    /// <summary>What <paramref name="file"/> announces: null when its IDE deleted it as it exited, after the folder was listed.</summary>
-   public static AnnouncementOfAnIdesLocalApi? In(string file)
-   {
-      try
-      {
-         return JsonSerializer.Deserialize<AnnouncementOfAnIdesLocalApi>(File.ReadAllText(file), JsonSerializerOptions.Web)!;
-      }
-      catch(FileNotFoundException) // Its IDE exited between the listing and the reading, as an IDE that restarts does.
-      {
-         return null;
-      }
-   }
+   public static AnnouncementOfAnIdesLocalApi? In(string file) =>
+      new FileWrittenWhole(file).Text() is {} json ? JsonSerializer.Deserialize<AnnouncementOfAnIdesLocalApi>(json, JsonSerializerOptions.Web)! : null;
 
    /// <summary>Whether the IDE's process runs: a file a crashed IDE left names one that doesn't.</summary>
    public bool ItsIdeRuns

@@ -3,6 +3,7 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json.Nodes;
+using ClaudeTooling.Hub.LocalApi.Contract;
 
 namespace RiderTerminalSymbolLinker.DevelopmentTools.Riders;
 
@@ -17,20 +18,20 @@ sealed class HubsLocalApi(string announcementFolder)
    public static HubsLocalApi OfThePublishedHub =>
       new(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "ClaudeTooling"));
 
-   public string AnnouncementFile => Path.Combine(announcementFolder, "local-api.json");
+   public string AnnouncementFile => Path.Combine(announcementFolder, WhatTheAnnouncementSays.FileName);
 
-   /// <summary>What the hub's announcement says, or null while it has none.</summary>
-   public JsonNode? Announcement() => File.Exists(AnnouncementFile) ? JsonNode.Parse(File.ReadAllText(AnnouncementFile)) : null;
+   /// <summary>What the hub's announcement says, or null while it has none: read as the contract says, sharing delete access with the hub's move.</summary>
+   public WhatTheAnnouncementSays? Announcement() => WhatTheAnnouncementSays.ReadFrom(AnnouncementFile);
 
    /// <summary>The process of the hub the announcement names, if it runs.</summary>
-   public int? RunningProcessId() => Announcement()?["processId"]!.GetValue<int>() is {} processId && IsRunning(processId) ? processId : null;
+   public int? RunningProcessId() => Announcement() is {} announcement && IsRunning(announcement.ProcessId) ? announcement.ProcessId : null;
 
    /// <summary>A client of the hub's local API, with its token, or null when no hub runs.</summary>
    public HttpClient? Client()
    {
-      if(Announcement() is not {} announcement || !IsRunning(announcement["processId"]!.GetValue<int>())) return null;
-      var client = new HttpClient { BaseAddress = new Uri($"http://127.0.0.1:{announcement["port"]!.GetValue<int>()}"), Timeout = TimeSpan.FromSeconds(30) };
-      client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", announcement["token"]!.GetValue<string>());
+      if(Announcement() is not {} announcement || !IsRunning(announcement.ProcessId)) return null;
+      var client = new HttpClient { BaseAddress = new Uri($"http://127.0.0.1:{announcement.Port}"), Timeout = TimeSpan.FromSeconds(30) };
+      client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", announcement.Token);
       return client;
    }
 
