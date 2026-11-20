@@ -2,8 +2,8 @@ namespace RiderTerminalSymbolLinker.DevelopmentTools.Plugin;
 
 /// <summary>Makes one folder hold exactly what another does, touching only the files that differ.</summary>
 /// <remarks>
-///   A running Rider maps its plugins' jars into memory, and Windows refuses to overwrite or delete a mapped file, but
-///   lets it be moved. So a file that is replaced or removed is moved to a set-aside folder first, and deleted from
+///   A running Rider maps its plugins' jars into memory, as a running Cloyd application does its DLLs, and Windows
+///   refuses to overwrite or delete a mapped file, but lets it be moved. So a file that is replaced or removed is moved to a set-aside folder first, and deleted from
 ///   there by a later mirror, once nothing maps it any more.
 /// </remarks>
 sealed class FolderMirror
@@ -94,7 +94,9 @@ sealed class FolderMirror
          {
             File.Delete(file);
          }
-         catch(IOException) // A Rider that hasn't unloaded the jar yet still maps it: a later mirror deletes it.
+         // Something still holds it, and a later mirror deletes it: a Rider that hasn't unloaded the jar, which Windows
+         // refuses as a sharing violation, or a Cloyd application that runs the DLL, which it refuses as access denied.
+         catch(Exception heldStill) when(heldStill is IOException or UnauthorizedAccessException)
          {
          }
       }
