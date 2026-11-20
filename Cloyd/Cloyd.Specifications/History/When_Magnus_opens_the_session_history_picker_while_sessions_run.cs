@@ -20,43 +20,42 @@ namespace Cloyd.Specifications.History;
 /// </summary>
 public class When_Magnus_opens_the_session_history_picker_while_sessions_run : SpecificationOpeningWindows
 {
-   readonly SandboxProject _project = SandboxProject.Named(nameof(When_Magnus_opens_the_session_history_picker_while_sessions_run));
-   readonly SandboxProject _anotherProject = SandboxProject.Named(nameof(When_Magnus_opens_the_session_history_picker_while_sessions_run) + "-another-project");
+   readonly SandboxProject _anotherProject;
    private protected readonly ProjectWindow _window;
    private protected readonly ProjectWindow _anotherProjectsWindow;
    private protected readonly ClaudeSessionHistoryPicker _picker;
    private protected readonly SessionTab _first;
    private protected readonly SessionTab _exited;
    private protected readonly SessionHostId _takenOverByAConsole;
-   readonly AttachmentToASessionHost _console;
-   readonly ClaudeCodeInATerminalOfItsOwn _inATerminalOfItsOwn;
    private protected readonly ClaudeSessionId _firsts, _seconds, _exiteds, _takenOvers, _inATerminalOfItsOwns, _anotherProjects;
 
-   public When_Magnus_opens_the_session_history_picker_while_sessions_run()
-   {
-      _anotherProjectsWindow = Open(_anotherProject.Window);
-      _anotherProjects = StartedWithAPrompt(_anotherProjectsWindow, "In another project").Session;
-      _window = Open(_project.Window);
-      (_first, _firsts) = StartedWithAPrompt(_window, "First");
-      (_exited, _exiteds) = StartedWithAPrompt(_window, "Exited");
-      DoneOnTheUIThread(() => _exited.Terminal.SendInputAsync("/exit\r"));
-      WaitUntil(() => _exited.SessionRunningInIt is null, "the hub told the tab its Claude Code had exited");
-      var (takenOver, takenOvers) = StartedWithAPrompt(_window, "Taken over");
-      _takenOvers = takenOvers;
-      _takenOverByAConsole = takenOver.Host.Id;
-      _console = AttachmentToASessionHost.To(_takenOverByAConsole, ConsoleSize.Default);
-      WaitUntil(() => !_window.Tabs.Contains(takenOver), "the tab let go of the host the console took over");
-      _seconds = StartedWithAPrompt(_window, "Second").Session;
-      _inATerminalOfItsOwn = ClaudeCodeInATerminalOfItsOwn.Running(_project.Project.Folder, "In a terminal of its own", "Hello from a terminal of its own");
-      WaitUntil(() => HasAConversationToResume(Sandbox.Started.HubOfTheSandbox.RunningSessions().SingleOrDefault(it => it.Process == _inATerminalOfItsOwn.Process)?.SessionId), "the hub listed the session in a terminal of its own, with its prompt");
-      _inATerminalOfItsOwns = Sandbox.Started.HubOfTheSandbox.RunningSessions().Single(it => it.Process == _inATerminalOfItsOwn.Process).SessionId;
+   public When_Magnus_opens_the_session_history_picker_while_sessions_run() =>
+      (_anotherProject, _window, _anotherProjectsWindow, _picker, _first, _exited, _takenOverByAConsole, _firsts, _seconds, _exiteds, _takenOvers, _inATerminalOfItsOwns, _anotherProjects) = Once(() =>
+      {
+         var project = EndWithTheScenario(SandboxProject.Named(nameof(When_Magnus_opens_the_session_history_picker_while_sessions_run)));
+         var anotherProject = EndWithTheScenario(SandboxProject.Named(nameof(When_Magnus_opens_the_session_history_picker_while_sessions_run) + "-another-project"));
+         var anotherProjectsWindow = Open(anotherProject.Window);
+         var anotherProjects = StartedWithAPrompt(anotherProjectsWindow, "In another project").Session;
+         var window = Open(project.Window);
+         var (first, firsts) = StartedWithAPrompt(window, "First");
+         var (exited, exiteds) = StartedWithAPrompt(window, "Exited");
+         DoneOnTheUIThread(() => exited.Terminal.SendInputAsync("/exit\r"));
+         WaitUntil(() => exited.SessionRunningInIt is null, "the hub told the tab its Claude Code had exited");
+         var (takenOver, takenOvers) = StartedWithAPrompt(window, "Taken over");
+         EndWithTheScenario(AttachmentToASessionHost.To(takenOver.Host.Id, ConsoleSize.Default));
+         WaitUntil(() => !window.Tabs.Contains(takenOver), "the tab let go of the host the console took over");
+         var seconds = StartedWithAPrompt(window, "Second").Session;
+         var inATerminalOfItsOwn = EndWithTheScenario(ClaudeCodeInATerminalOfItsOwn.Running(project.Project.Folder, "In a terminal of its own", "Hello from a terminal of its own"));
+         WaitUntil(() => HasAConversationToResume(Sandbox.Started.HubOfTheSandbox.RunningSessions().SingleOrDefault(it => it.Process == inATerminalOfItsOwn.Process)?.SessionId), "the hub listed the session in a terminal of its own, with its prompt");
+         var inATerminalOfItsOwns = Sandbox.Started.HubOfTheSandbox.RunningSessions().Single(it => it.Process == inATerminalOfItsOwn.Process).SessionId;
 
-      _picker = OnTheUIThread(() => _window.HistoryPicker);
-      Press(_window, Key.Y, PhysicalKey.Y, RawInputModifiers.Control | RawInputModifiers.Alt | RawInputModifiers.Shift);
-      WaitUntil(() => _picker.Scopes.Count > 0, "the picker showed the history");
-      OnTheUIThread(() => _picker.List(ClaudeSessionHistoryScope.AllProjects));
-      Render(_window, "the-session-history-picker-while-sessions-run");
-   }
+         var picker = OnTheUIThread(() => window.HistoryPicker);
+         Press(window, Key.Y, PhysicalKey.Y, RawInputModifiers.Control | RawInputModifiers.Alt | RawInputModifiers.Shift);
+         WaitUntil(() => picker.Scopes.Count > 0, "the picker showed the history");
+         OnTheUIThread(() => picker.List(ClaudeSessionHistoryScope.AllProjects));
+         Render(window, "the-session-history-picker-while-sessions-run");
+         return (anotherProject, window, anotherProjectsWindow, picker, first, exited, takenOver.Host.Id, firsts, seconds, exiteds, takenOvers, inATerminalOfItsOwns, anotherProjects);
+      });
 
    /// <summary>
    /// A new session started in a tab of <paramref name="window"/>, named <paramref name="name"/>, which Magnus gave a
@@ -96,7 +95,7 @@ public class When_Magnus_opens_the_session_history_picker_while_sessions_run : S
 
    public class and_chooses_a_session_that_runs_in_another_tab : When_Magnus_opens_the_session_history_picker_while_sessions_run
    {
-      public and_chooses_a_session_that_runs_in_another_tab() => Choose(_firsts);
+      public and_chooses_a_session_that_runs_in_another_tab() => Once(() => Choose(_firsts));
 
       [XF] public void the_window_selects_its_tab() => OnTheUIThread(() => _window.SelectedTab).Must().ReferenceEqual(_first);
 
@@ -105,7 +104,7 @@ public class When_Magnus_opens_the_session_history_picker_while_sessions_run : S
 
    public class and_chooses_a_session_that_runs_in_another_projects_window : When_Magnus_opens_the_session_history_picker_while_sessions_run
    {
-      public and_chooses_a_session_that_runs_in_another_projects_window() => Choose(_anotherProjects);
+      public and_chooses_a_session_that_runs_in_another_projects_window() => Once(() => Choose(_anotherProjects));
 
       [XF] public void the_other_window_is_brought_forward() => OnTheUIThread(() => _anotherProjectsWindow.IsActive).Must().BeTrue();
 
@@ -114,11 +113,11 @@ public class When_Magnus_opens_the_session_history_picker_while_sessions_run : S
 
    public class and_chooses_a_session_whose_Claude_Code_exited_in_a_tab : When_Magnus_opens_the_session_history_picker_while_sessions_run
    {
-      public and_chooses_a_session_whose_Claude_Code_exited_in_a_tab()
+      public and_chooses_a_session_whose_Claude_Code_exited_in_a_tab() => Once(() =>
       {
          Choose(_exiteds);
          WaitUntil(() => _exited.SessionRunningInIt?.SessionId == _exiteds, "the session was resumed in its tab");
-      }
+      });
 
       [XF] public void it_resumes_it_in_that_tab_which_is_selected() => OnTheUIThread(() => _window.SelectedTab).Must().ReferenceEqual(_exited);
 
@@ -127,11 +126,11 @@ public class When_Magnus_opens_the_session_history_picker_while_sessions_run : S
 
    public class and_chooses_a_session_whose_host_a_console_took_over : When_Magnus_opens_the_session_history_picker_while_sessions_run
    {
-      public and_chooses_a_session_whose_host_a_console_took_over()
+      public and_chooses_a_session_whose_host_a_console_took_over() => Once(() =>
       {
          Choose(_takenOvers);
          WaitUntil(() => _window.Tabs.Any(it => it.Host.Id == _takenOverByAConsole), "the window showed the host in a tab");
-      }
+      });
 
       [XF] public void it_shows_the_host_in_a_new_tab_which_is_selected() => OnTheUIThread(() => _window.SelectedTab!.Host.Id).Must().Be(_takenOverByAConsole);
 
@@ -140,19 +139,10 @@ public class When_Magnus_opens_the_session_history_picker_while_sessions_run : S
 
    public class and_presses_Enter_on_a_session_that_runs_in_a_terminal_of_its_own : When_Magnus_opens_the_session_history_picker_while_sessions_run
    {
-      public and_presses_Enter_on_a_session_that_runs_in_a_terminal_of_its_own() => Choose(_inATerminalOfItsOwns);
+      public and_presses_Enter_on_a_session_that_runs_in_a_terminal_of_its_own() => Once(() => Choose(_inATerminalOfItsOwns));
 
       [XF] public void the_picker_stays_open() => OnTheUIThread(() => _picker.IsOpen).Must().BeTrue();
 
       [XF] public void it_adds_no_tab() => Tabs.Count.Must().Be(3);
-   }
-
-   public override void Dispose()
-   {
-      base.Dispose();
-      _console.Dispose();
-      _inATerminalOfItsOwn.Dispose();
-      _project.Dispose();
-      _anotherProject.Dispose();
    }
 }

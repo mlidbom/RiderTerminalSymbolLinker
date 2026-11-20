@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using Avalonia.Controls;
 using Avalonia.Media.Imaging;
 using Avalonia.Headless;
@@ -6,13 +7,15 @@ using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.LogicalTree;
 using Avalonia.Threading;
+using Cloyd.Specifications.Scenarios;
 
 namespace Cloyd.Specifications;
 
 /// <summary>
 /// A specification that opens Cloyd's windows on Avalonia's headless platform: laid out and drawn with Skia, on no
-/// screen, on the one UI thread of the headless session, which every specification of the assembly shares. The windows
-/// it opens are closed when it is done.
+/// screen, on <see cref="TheHeadlessUIThread"/>, which every specification of the assembly shares. The windows it opens
+/// are closed when its scenario ends: when the fact is done, or, opened in <see cref="Once{TPart}"/>, after the last fact
+/// of its class.
 /// </summary>
 /// <remarks>
 /// Modelled on JAStudio's and Deskmancer's <c>SpecificationOpeningWindows</c>.
@@ -21,28 +24,65 @@ public abstract class SpecificationOpeningWindows : IDisposable
 {
    static readonly TimeSpan HowLongWaitingMayTake = TimeSpan.FromSeconds(30);
 
-   static readonly HeadlessUnitTestSession HeadlessSession = HeadlessUnitTestSession.StartNew(typeof(HeadlessCloydApp), AvaloniaTestIsolationLevel.PerAssembly);
+   readonly WhatAScenarioStarted _startedForThisFact = new();
+   ScenarioOfAClass? _scenarioOfTheClass;
+   bool _buildingTheScenarioOfTheClass;
 
-   static readonly Thread TheUIThread = HeadlessSession.Dispatch(() => Thread.CurrentThread, CancellationToken.None).GetAwaiter().GetResult();
+   /// <summary>What the scenario being set up now showed and started: the class's while <see cref="Once{TPart}"/> builds it, else this fact's.</summary>
+   WhatAScenarioStarted StartedNow => _buildingTheScenarioOfTheClass ? _scenarioOfTheClass!.Started : _startedForThisFact;
 
-   readonly List<Window> _opened = [];
+   /// <summary>The windows this fact's scenario, and its class's, showed and haven't closed.</summary>
+   IEnumerable<Window> WindowsShown => (_scenarioOfTheClass?.Started.Windows ?? []).Concat(_startedForThisFact.Windows);
+
+   /// <summary>
+   /// What <paramref name="built"/> builds, as a part of the <see cref="ScenarioOfAClass"/> that all the facts of this
+   /// specification's class share: built by the first, and kept for the others. The windows it shows, and what it has
+   /// <see cref="EndWithTheScenario{TStarted}"/>, end after the class's last fact.
+   /// </summary>
+   /// <remarks>
+   /// Only for a class whose facts only look at what the scenario built, as a fact that changes it would change it for the
+   /// facts after it. <paramref name="file"/> and <paramref name="line"/>, the place in the code of the call, are filled in by the compiler.
+   /// </remarks>
+   protected TPart Once<TPart>(Func<TPart> built, [CallerFilePath] string file = "", [CallerLineNumber] int line = 0)
+   {
+      _scenarioOfTheClass ??= ScenarioOfAClass.Of(GetType());
+      return _scenarioOfTheClass.Part($"{file}:{line}", () =>
+      {
+         _buildingTheScenarioOfTheClass = true;
+         try
+         {
+            return built();
+         }
+         finally
+         {
+            _buildingTheScenarioOfTheClass = false;
+         }
+      });
+   }
+
+   /// <summary>Does <paramref name="done"/> once for all the facts of this specification's class, as <see cref="Once{TPart}"/> builds a part.</summary>
+   protected void Once(Action done, [CallerFilePath] string file = "", [CallerLineNumber] int line = 0) =>
+      Once(() =>
+      {
+         done();
+         return true;
+      }, file, line);
+
+   /// <summary>
+   /// <paramref name="started"/>, ended as the scenario that started it ends: its class's, when started in
+   /// <see cref="Once{TPart}"/>, else this fact's, when it is done.
+   /// </summary>
+   protected TStarted EndWithTheScenario<TStarted>(TStarted started) where TStarted : IDisposable
+   {
+      StartedNow.Started(started);
+      return started;
+   }
 
    /// <summary>Runs <paramref name="onTheUIThread"/> on the UI thread, once the jobs posted to it before have run, and returns what it returns.</summary>
-   protected static TResult OnTheUIThread<TResult>(Func<TResult> onTheUIThread) =>
-      Thread.CurrentThread == TheUIThread
-         ? onTheUIThread()
-         : HeadlessSession.Dispatch(() =>
-         {
-            Dispatcher.UIThread.RunJobs();
-            return onTheUIThread();
-         }, CancellationToken.None).GetAwaiter().GetResult();
+   protected static TResult OnTheUIThread<TResult>(Func<TResult> onTheUIThread) => TheHeadlessUIThread.Run(onTheUIThread);
 
    /// <summary>Runs <paramref name="onTheUIThread"/> on the UI thread, once the jobs posted to it before have run.</summary>
-   protected static void OnTheUIThread(Action onTheUIThread) => OnTheUIThread(() =>
-   {
-      onTheUIThread();
-      return true;
-   });
+   protected static void OnTheUIThread(Action onTheUIThread) => TheHeadlessUIThread.Run(onTheUIThread);
 
    /// <summary>Starts <paramref name="doing"/> on the UI thread and waits until it is done, as a click's handler would run it.</summary>
    protected void DoneOnTheUIThread(Func<Task> doing)
@@ -69,7 +109,7 @@ public abstract class SpecificationOpeningWindows : IDisposable
       {
          if(clock.Elapsed > HowLongWaitingMayTake)
          {
-            var windows = OnTheUIThread(() => _opened.Where(it => it.IsVisible).ToList());
+            var windows = OnTheUIThread(() => WindowsShown.Where(it => it.IsVisible).ToList());
             for(var at = 0; at < windows.Count; at++) Render(windows[at], $"{GetType().Name}-waited-in-vain-{at + 1}");
             throw new TimeoutException($"Waited {HowLongWaitingMayTake.TotalSeconds:0} s in vain until {what}. The windows open then are drawn in {Path.Combine(AppContext.BaseDirectory, "RenderedWindows")}.");
          }
@@ -78,14 +118,18 @@ public abstract class SpecificationOpeningWindows : IDisposable
       }
    }
 
-   /// <summary>Shows the window <paramref name="window"/> makes, on the UI thread: it is closed when the specification is done.</summary>
-   protected TWindow Open<TWindow>(Func<TWindow> window) where TWindow : Window => OnTheUIThread(() =>
+   /// <summary>Shows the window <paramref name="window"/> makes, on the UI thread: it is closed as the scenario that showed it ends.</summary>
+   protected TWindow Open<TWindow>(Func<TWindow> window) where TWindow : Window
    {
-      var opened = window();
-      opened.Show();
-      _opened.Add(opened);
-      return opened;
-   });
+      var startedNow = StartedNow;
+      return OnTheUIThread(() =>
+      {
+         var opened = window();
+         opened.Show();
+         startedNow.Showed(opened);
+         return opened;
+      });
+   }
 
    /// <summary>The one button in <paramref name="within"/> whose tooltip is <paramref name="tip"/>, as Magnus finds it by hovering.</summary>
    protected static Button TheButtonWithTheTip(Control within, string tip) =>
@@ -125,12 +169,11 @@ public abstract class SpecificationOpeningWindows : IDisposable
       window.CaptureRenderedFrame()?.Save(Path.Combine(folder.FullName, $"{name}.png"), PngBitmapEncoderOptions.Default);
    });
 
+   /// <summary>Ends this fact's scenario, and tells its class's that the fact is done.</summary>
    public virtual void Dispose()
    {
-      OnTheUIThread(() =>
-      {
-         foreach(var window in _opened) window.Close();
-      });
+      _startedForThisFact.Dispose();
+      _scenarioOfTheClass?.AFactIsDone();
       GC.SuppressFinalize(this);
    }
 }
