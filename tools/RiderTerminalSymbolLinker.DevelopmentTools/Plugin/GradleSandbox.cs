@@ -18,8 +18,16 @@ namespace RiderTerminalSymbolLinker.DevelopmentTools.Plugin;
 ///   The sandbox Rider doesn't load its plugins from here: a running Rider holds the MCP plugin's DLL open, and
 ///   <c>prepareSandbox</c> copies every file again, so Gradle couldn't build while it runs.
 /// </remarks>
-sealed class GradleSandbox
+sealed class GradleSandbox : IPluginBuilds
 {
+   /// <summary>The plugins folders, once <see cref="Fill"/> has built this working tree's plugins into them.</summary>
+   public static GradleSandbox Filled()
+   {
+      var builds = new GradleSandbox();
+      builds.Fill();
+      return builds;
+   }
+
    /// <summary>The name of the .NET Analysis&amp;Refactoring MCP's folder in a plugins folder.</summary>
    public const string McpPluginFolderName = "DotNetAnalysisAndRefactoringMcp";
 

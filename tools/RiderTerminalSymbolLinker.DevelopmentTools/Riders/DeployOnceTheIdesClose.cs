@@ -11,9 +11,9 @@ namespace RiderTerminalSymbolLinker.DevelopmentTools.Riders;
 /// </summary>
 /// <remarks>
 ///   It waits in a one-shot scheduled task, which closing the IDEs doesn't end, as it does the agent's session, and which
-///   runs in Magnus's desktop session, where he sees its window and its message. The task runs a copy of these tools, in
-///   <see cref="RunnerFolder"/> beside their build output, so that building them meanwhile isn't refused for files in
-///   use. Once done, it removes itself.
+///   runs in Magnus's desktop session, where he sees its window and its message. The task runs a
+///   <see cref="CopyOfTheTools"/>, so that building them meanwhile isn't refused for files in use. Once done, it removes
+///   itself.
 /// </remarks>
 static class DeployOnceTheIdesClose
 {
@@ -23,8 +23,8 @@ static class DeployOnceTheIdesClose
 
    static readonly TimeSpan HowLongTheIdesTakeToLetGo = TimeSpan.FromSeconds(5);
 
-   /// <summary>Where the task's copy of these tools runs from: inside the repository, so that they find it.</summary>
-   static string RunnerFolder => Path.Combine(RepositoryRoot.Folder, "tools", "RiderTerminalSymbolLinker.DevelopmentTools", "bin", "deploy-once-the-ides-close");
+   /// <summary>The copy of these tools the task runs.</summary>
+   static readonly CopyOfTheTools Runner = new("deploy-once-the-ides-close");
 
    /// <summary>
    ///   Says what the deploy would do, as <c>everyday deploy --dry-run</c> does, and sets the deploy waiting for the IDEs
@@ -33,8 +33,8 @@ static class DeployOnceTheIdesClose
    public static IReadOnlyList<string> SetUp()
    {
       if(IsWaiting()) return ["A deploy waits for the IDEs to close already: close them, and it deploys."];
-      var wouldDo = EverydayIdes.Deploy(new GradleSandbox(), dryRun: true);
-      TakeACopyOfTheTools();
+      var wouldDo = EverydayIdes.Deploy(GradleSandbox.Filled(), dryRun: true);
+      Runner.Take();
       RunTheTask();
       var running = TheIdesThatRun();
       return
@@ -72,7 +72,7 @@ static class DeployOnceTheIdesClose
 
          Thread.Sleep(HowLongTheIdesTakeToLetGo);
          Console.WriteLine("No IDE runs. Deploying.");
-         var did = EverydayIdes.Deploy(new GradleSandbox());
+         var did = EverydayIdes.Deploy(GradleSandbox.Filled());
          foreach(var line in did) Console.WriteLine(line);
          TellMagnus($"Deployed. Start your IDEs again.\n\n{string.Join("\n\n", did)}", MB_FLAGS.MB_ICONINFORMATION);
       }
@@ -91,24 +91,11 @@ static class DeployOnceTheIdesClose
 
    static bool IsWaiting() => RunSilently("schtasks.exe", ["/Query", "/TN", TaskName]) == 0;
 
-   /// <summary>Copies these tools' build output to <see cref="RunnerFolder"/>, in place of an earlier copy.</summary>
-   static void TakeACopyOfTheTools()
-   {
-      if(Directory.Exists(RunnerFolder)) Directory.Delete(RunnerFolder, recursive: true);
-      foreach(var file in Directory.GetFiles(AppContext.BaseDirectory, "*", SearchOption.AllDirectories))
-      {
-         var copy = Path.Combine(RunnerFolder, Path.GetRelativePath(AppContext.BaseDirectory, file));
-         Directory.CreateDirectory(Path.GetDirectoryName(copy)!);
-         File.Copy(file, copy);
-      }
-   }
-
    /// <summary>Registers the one-shot task that runs <see cref="WaitThenDeploy"/> from the copy, in Magnus's desktop session, and starts it.</summary>
    static void RunTheTask()
    {
-      var tools = Path.Combine(RunnerFolder, Path.GetFileName(Environment.ProcessPath!));
       var script = $"""
-                    $action = New-ScheduledTaskAction -Execute '{tools.Replace("'", "''")}' -Argument 'everyday deploy --after-the-ides-close' -WorkingDirectory '{RepositoryRoot.Folder.Replace("'", "''")}'
+                    $action = New-ScheduledTaskAction -Execute '{Runner.Executable.Replace("'", "''")}' -Argument 'everyday deploy --after-the-ides-close' -WorkingDirectory '{RepositoryRoot.Folder.Replace("'", "''")}'
                     $principal = New-ScheduledTaskPrincipal -UserId "$env:USERDOMAIN\$env:USERNAME" -LogonType Interactive
                     $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -ExecutionTimeLimit (New-TimeSpan -Hours 4)
                     Register-ScheduledTask -TaskName '{TaskName}' -Action $action -Principal $principal -Settings $settings -Force | Out-Null

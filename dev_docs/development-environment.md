@@ -214,6 +214,22 @@ task runs a copy of the tools in `bin/deploy-once-the-ides-close`, so that build
 removes itself when done. It's set up only on Magnus's go-ahead, as any deploy that needs a restart: closing his IDEs
 for another reason would deploy too.
 
+**`everyday deploy --restarting-the-ides` has the hub restart the IDEs, the build going in while each is down**
+(`DeployRestartingTheIdes`): Magnus, 2026-11-20, "I greenlight, you install and restart. My IDEs come back just as they
+were on the same desktops." It builds, puts the builds aside with a `CopyOfTheTools` (`StagedPluginBuilds`, under
+`%LOCALAPPDATA%\RiderTerminalSymbolLinkerDevelopment\staged-plugin-builds`), deploys at once into the IDEs that don't
+run, and asks the published hub, `POST /ide-restart` (`HubsLocalApi`), to restart those that run and lack the build,
+as Magnus asks himself, so with no prompt of his. Each IDE's Claude Sessions hands the hub's `beforeItStartsAgain` to
+the IDE's restarter, which runs `everyday deploy --into-the-ides-that-closed` once the IDE has exited and starts the IDE
+when it has ended: it deploys the staged builds into every IDE that doesn't run, taking turns with the other
+restarters' through a Compze `IMutex`, and logs to `deploys-restarting-the-ides.log` beside them. The command follows
+the hub's `GET /ide-restart` until every IDE is back, and prints its steps, its outcome and the log's new lines. The
+agent that runs it survives the restart, in its session host. A build that changes no registration still goes in by
+`everyday deploy`, a reload. The running IDEs need a Claude Sessions that knows `beforeItStartsAgain`, which this deploy
+can't bring itself: an older one restarts without the command, and the IDE comes back with the build it had. The hub's
+contract is its "Restarting the IDEs"; `When_the_hub_restarts_the_ide_for_a_deploy` runs such a restart of the sandbox
+Rider through the sandbox's hub, with a command that records that it ran between the exit and the start.
+
 **`everyday reload <plugin> [<IDE>]` reloads the build an IDE has,** to see in Magnus's own IDEs what a reload does,
 such as whether his tabs come through it. It gives the plugin's jars the time of now, as `sandbox reload` does in the
 sandbox, which the IDE takes for a new build. On 2026-11-18 his Rider reloaded within 13 seconds, both times. The next

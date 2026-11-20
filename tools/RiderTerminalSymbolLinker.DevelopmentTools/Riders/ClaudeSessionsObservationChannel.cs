@@ -152,10 +152,9 @@ public sealed class ClaudeSessionsObservationChannel(int port) : ObservationChan
    public JsonNode TheActionTheShortcutRuns(int tab, string keystroke, string pressedIn, string? project = null) =>
       Get("tabs/chat/shortcut", project, $"tab={tab}&keystroke={Uri.EscapeDataString(keystroke)}&in={pressedIn}");
 
-   /// <summary>Clicks the line of the transcript's row <paramref name="row"/>, by its key: opens a tool call, or a run of them, or closes it.</summary>
+   /// <summary>Clicks the line of the transcript's row <paramref name="row"/>, by its key: opens a prompt from elsewhere, a tool call or a run of them, or closes it.</summary>
    public JsonNode ClickTheRowInTheChat(int tab, string row, string? project = null) =>
       Post("tabs/chat/click-row", project, new { }, $"tab={tab}&row={Uri.EscapeDataString(row)}");
-
    /// <summary>Opens the transcript's find bar, and has it seek <paramref name="text"/>.</summary>
    public JsonNode FindInTheChat(int tab, string text, string? project = null) =>
       Post("tabs/chat/find", project, new { }, $"tab={tab}&text={Uri.EscapeDataString(text)}");

@@ -6,8 +6,9 @@ namespace RiderTerminalSymbolLinker.DevelopmentTools.Riders;
 static class EverydayIdes
 {
    /// <summary>
-   ///   Builds this working tree's plugins and puts each in the plugins folder of every installed IDE it
-   ///   <see cref="OurPlugin.RunsIn"/>, in place of the build there. Returns what it did, a line for each.
+   ///   Puts each plugin's build in <paramref name="builds"/> in the plugins folder of every installed IDE it
+   ///   <see cref="OurPlugin.RunsIn"/>, or of those of them <paramref name="onlyInto"/> chooses, in place of the build
+   ///   there. Returns what it did, a line for each.
    /// </summary>
    /// <remarks>
    ///   An IDE with <see cref="EverydayIde.ReloadsChangedPlugins"/> reloads a plugin whose files changed when Magnus next
@@ -18,25 +19,33 @@ static class EverydayIdes
    ///   <br/>It also names the Marketplace as where the plugin gets its updates from, in the IDE's
    ///   <see cref="PluginUpdateSources"/>, where no source is named: a plugin installed from disk has none, and the IDE
    ///   warns about it as it starts.
-   ///   <br/>With <paramref name="dryRun"/>, it builds the plugins and says what deploying them would do, changing
-   ///   nothing in the IDEs: a deploy that takes a restart waits for Magnus's go-ahead.
+   ///   <br/>With <paramref name="dryRun"/>, it says what deploying the builds would do, changing nothing in the IDEs: a
+   ///   deploy that takes a restart waits for Magnus's go-ahead.
    ///   <br/>With <paramref name="intoRunningIdes"/>, it puts such a build into an IDE that runs and reloads too, for
    ///   Magnus to restart it right after: the plugin is broken in it until he does. The restart loads the build, and
    ///   Claude Sessions brings back the tabs it saved.
    /// </remarks>
-   public static IReadOnlyList<string> Deploy(GradleSandbox builds, bool dryRun = false, bool intoRunningIdes = false)
+   public static IReadOnlyList<string> Deploy(IPluginBuilds builds, bool dryRun = false, bool intoRunningIdes = false, Func<EverydayIde, bool>? onlyInto = null)
    {
-      builds.Fill();
       var setAside = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "RiderTerminalSymbolLinkerDevelopment", "replaced-everyday-plugin-files");
       return
       [
          .. from plugin in OurPlugin.All
             from ide in plugin.RunsIn
-            where ide.IsInstalled
+            where ide.IsInstalled && (onlyInto is null || onlyInto(ide))
             from line in DeployTo(ide, plugin, builds.BuildOf(plugin), new FolderMirror(setAside), dryRun, intoRunningIdes)
             select line
       ];
    }
+
+   /// <summary>The installed IDEs that don't have the builds in <paramref name="builds"/> of every plugin that runs in them.</summary>
+   public static IReadOnlyList<EverydayIde> IdesWithoutTheBuildsIn(IPluginBuilds builds) =>
+   [
+      .. (from plugin in OurPlugin.All
+          from ide in plugin.RunsIn
+          where ide.IsInstalled && !FolderMirror.HoldTheSame(builds.BuildOf(plugin), Path.Combine(ide.PluginsFolder, plugin.Name))
+          select ide).Distinct()
+   ];
 
    /// <summary>
    ///   Has the installed IDEs that <paramref name="plugin"/> <see cref="OurPlugin.RunsIn"/>, or only

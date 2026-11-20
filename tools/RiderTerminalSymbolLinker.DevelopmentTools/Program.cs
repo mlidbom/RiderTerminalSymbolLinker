@@ -77,6 +77,13 @@ static class Program
                                                       his IDEs, in a scheduled task that outlives them and the session
                                                       that asked: a message then tells him to start them again. For a
                                                       build that needs the IDEs closed, which an agent in one can't deploy
+                          everyday deploy --restarting-the-ides
+                                                      Deploys into the IDEs that don't run, and has the hub restart those
+                                                      that run, the build going into each while it's down: for a build
+                                                      that needs a restart, on Magnus's go-ahead. His windows come back on
+                                                      their desktops, and his sessions in their tabs. Each IDE's restarter
+                                                      runs everyday deploy --into-the-ides-that-closed, whose log is
+                                                      %LOCALAPPDATA%\RiderTerminalSymbolLinkerDevelopment\deploys-restarting-the-ides.log
                           everyday reload RiderTerminalSymbolLinker|ClaudeSessions [<IDE>]
                                                       Has his IDEs, or only the one named, such as Rider or
                                                       "IntelliJ IDEA", reload the build of the plugin they have, when he
@@ -162,13 +169,19 @@ static class Program
             foreach(var line in EverydayIdes.Reload(OurPlugin.Named(plugin), EverydayIde.Named(ide))) Console.WriteLine(line);
             break;
          case ["everyday", "deploy"]:
-            foreach(var line in EverydayIdes.Deploy(new GradleSandbox())) Console.WriteLine(line);
+            foreach(var line in EverydayIdes.Deploy(GradleSandbox.Filled())) Console.WriteLine(line);
             break;
          case ["everyday", "deploy", "--dry-run"]:
-            foreach(var line in EverydayIdes.Deploy(new GradleSandbox(), dryRun: true)) Console.WriteLine(line);
+            foreach(var line in EverydayIdes.Deploy(GradleSandbox.Filled(), dryRun: true)) Console.WriteLine(line);
             break;
          case ["everyday", "deploy", "--into-running-ides"]:
-            foreach(var line in EverydayIdes.Deploy(new GradleSandbox(), intoRunningIdes: true)) Console.WriteLine(line);
+            foreach(var line in EverydayIdes.Deploy(GradleSandbox.Filled(), intoRunningIdes: true)) Console.WriteLine(line);
+            break;
+         case ["everyday", "deploy", "--restarting-the-ides"]:
+            DeployRestartingTheIdes.Run(Console.Out);
+            break;
+         case ["everyday", "deploy", "--into-the-ides-that-closed"]:
+            DeployRestartingTheIdes.IntoTheIdesThatClosed();
             break;
          case ["everyday", "deploy", "--once-the-ides-close"]:
             foreach(var line in DeployOnceTheIdesClose.SetUp()) Console.WriteLine(line);

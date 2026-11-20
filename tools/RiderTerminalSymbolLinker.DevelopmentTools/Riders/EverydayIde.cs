@@ -9,11 +9,15 @@ namespace RiderTerminalSymbolLinker.DevelopmentTools.Riders;
 /// </summary>
 /// <param name="Name">The IDE's name, as Magnus would say it.</param>
 /// <param name="InstallationFolderName">Its folder in <c>%LOCALAPPDATA%\Programs</c>.</param>
-public sealed record EverydayIde(string Name, string InstallationFolderName)
+/// <param name="NameAtTheHub">
+///   The name the Claude tooling's hub knows it by, as a restart of the IDEs names them, told from the executable the IDE
+///   runs as: <c>rider</c>, <c>idea</c> or <c>pycharm</c>.
+/// </param>
+public sealed record EverydayIde(string Name, string InstallationFolderName, string NameAtTheHub)
 {
-   public static readonly EverydayIde Rider = new("Rider", "Rider");
-   public static readonly EverydayIde IntelliJIdea = new("IntelliJ IDEA", "IntelliJ IDEA");
-   public static readonly EverydayIde PyCharm = new("PyCharm", "PyCharm");
+   public static readonly EverydayIde Rider = new("Rider", "Rider", "rider");
+   public static readonly EverydayIde IntelliJIdea = new("IntelliJ IDEA", "IntelliJ IDEA", "idea");
+   public static readonly EverydayIde PyCharm = new("PyCharm", "PyCharm", "pycharm");
 
    public static IReadOnlyList<EverydayIde> All { get; } = [Rider, IntelliJIdea, PyCharm];
 

@@ -228,22 +228,23 @@ public sealed class TheClaudeSessionsView
    }
 
    /// <summary>
-   ///   Has the sandbox's hub restart the sandbox Rider, as Claude Sessions asks it for a button Magnus presses, so with no
-   ///   prompt of his, and returns once <paramref name="tabsToComeBack"/> tabs are back with their sessions and the hub has
-   ///   an outcome: see <see cref="SandboxRider.AskItsHubToRestartRider"/>.
+   ///   Has the sandbox's hub restart the sandbox Rider, as Magnus asks it himself, so with no prompt of his, its restarter
+   ///   running <paramref name="beforeItStartsAgain"/>, unless null, before it starts it again, as a deploy has it; and
+   ///   returns once <paramref name="tabsToComeBack"/> tabs are back with their sessions and the hub has an outcome: see
+   ///   <see cref="SandboxRider.AskItsHubToRestartTheIde"/>.
    /// </summary>
-   public RiderRestartByTheHub HaveTheHubRestartTheIde(string why, int tabsToComeBack)
+   public IdeRestartByTheHub HaveTheHubRestartTheIde(string why, int tabsToComeBack, IReadOnlyList<string>? beforeItStartsAgain = null)
    {
       var before = SandboxProcessId;
-      _sandbox.AskItsHubToRestartRider(why, askedBy: "Claude Sessions' specifications");
+      _sandbox.AskItsHubToRestartTheIde(why, askedBy: "Claude Sessions' specifications", beforeItStartsAgain);
       FollowTheIdesRestart(before, tabsToComeBack);
-      WaitUntil(() => _sandbox.TheRiderRestartOfItsHub()?["stage"]?.GetValue<string>() == "done", "the hub to say how the restart went",
+      WaitUntil(() => _sandbox.TheIdeRestartOfItsHub()?["stage"]?.GetValue<string>() == "done", "the hub to say how the restart went",
                 HowLongTheHubMayTakeToSayRiderIsBack);
-      var restart = _sandbox.TheRiderRestartOfItsHub()!;
-      return new RiderRestartByTheHub(restart["outcome"]!["kind"]!.GetValue<string>(),
-                                      restart["outcome"]!["headline"]!.GetValue<string>(),
-                                      [.. restart["progress"]!.AsArray().Select(it => it!["text"]!.GetValue<string>())],
-                                      File.Exists(_sandbox.RiderRestartsLog) ? File.ReadAllText(_sandbox.RiderRestartsLog) : "");
+      var restart = _sandbox.TheIdeRestartOfItsHub()!;
+      return new IdeRestartByTheHub(restart["outcome"]!["kind"]!.GetValue<string>(),
+                                    restart["outcome"]!["headline"]!.GetValue<string>(),
+                                    [.. restart["progress"]!.AsArray().Select(it => it!["text"]!.GetValue<string>())],
+                                    File.Exists(_sandbox.IdeRestartsLog) ? File.ReadAllText(_sandbox.IdeRestartsLog) : "");
    }
 
    /// <summary>How long the hub may take, once the sandbox Rider runs again, to find it back: its projects open and Royder done indexing them.</summary>

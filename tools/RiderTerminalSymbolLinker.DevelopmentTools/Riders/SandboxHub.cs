@@ -74,7 +74,7 @@ public sealed class SandboxHub(string folder)
    /// </summary>
    public string AnnouncementFolder => Path.Combine(folder, "local-api");
 
-   string AnnouncementFile => Path.Combine(AnnouncementFolder, "local-api.json");
+   HubsLocalApi LocalApi => new(AnnouncementFolder);
 
    /// <summary>
    ///   Has the hub run, on the published build, and returns once it has announced its local API. It
@@ -103,40 +103,28 @@ public sealed class SandboxHub(string folder)
       while(!AnnouncesTheBuildCopied())
       {
          if(clock.Elapsed > HowLongStartingMayTake)
-            throw new TimeoutException($"Gave up after {HowLongStartingMayTake} waiting for the sandbox's hub to announce its local API in {AnnouncementFile}. Its log is {Log}.");
+            throw new TimeoutException($"Gave up after {HowLongStartingMayTake} waiting for the sandbox's hub to announce its local API in {LocalApi.AnnouncementFile}. Its log is {Log}.");
          Thread.Sleep(100);
       }
 
-      File.WriteAllText(StartedFile, new JsonObject { ["processId"] = RunningProcessId(), ["environment"] = TheEnvironmentItStartsIn() }.ToJsonString());
+      File.WriteAllText(StartedFile, new JsonObject { ["processId"] = LocalApi.RunningProcessId(), ["environment"] = TheEnvironmentItStartsIn() }.ToJsonString());
    }
 
    /// <summary>
-   ///   Asks the hub to restart the sandbox Rider, through its local API's <c>POST /rider-restart</c>, as Claude Sessions
-   ///   asks for a button Magnus presses himself: <c>askedByMagnus</c>, so the hub shows him no prompt, whatever window
-   ///   is in front. Returns once the hub has started the restart; <see cref="TheRiderRestart"/> tells how it goes.
+   ///   Asks the hub to restart the sandbox Rider, as the published hub restarts Magnus's IDEs for a deploy: through its
+   ///   local API's <c>POST /ide-restart</c>, as Magnus asks himself, so the hub shows him no prompt, whatever window is in
+   ///   front, the IDE's restarter running <paramref name="beforeItStartsAgain"/>, unless null, before it starts it again.
+   ///   Returns once the hub has started the restart; <see cref="TheIdeRestart"/> tells how it goes.
    /// </summary>
    /// <remarks>
-   ///   Not as an agent asks, with <c>ClaudeTooling.exe rider restart</c>: that shows Magnus the prompt while a Rider's
-   ///   window is Windows' foreground window, as the sandbox Rider's may be once it has started, or his own.
+   ///   Not as an agent asks, with <c>ClaudeTooling.exe ides restart</c>: that shows Magnus the prompt while a window of
+   ///   an IDE being restarted is Windows' foreground window, as the sandbox Rider's may be once it has started.
    /// </remarks>
-   public void AskToRestartRider(string why, string askedBy)
-   {
-      using var client = ClientOfTheHub() ?? throw new InvalidOperationException("The sandbox's hub doesn't run.");
-      using var answer = client.PostAsync("/rider-restart", JsonContent.Create(new { why, askedBy, askedByMagnus = true })).Result;
-      if(answer.StatusCode != HttpStatusCode.Accepted)
-         throw new InvalidOperationException($"The sandbox's hub answered the request to restart Rider with {(int)answer.StatusCode}: {answer.Content.ReadAsStringAsync().Result}");
-   }
+   public void AskToRestartTheIde(string why, string askedBy, IReadOnlyList<string>? beforeItStartsAgain) =>
+      LocalApi.AskToRestartTheIdes(why, askedBy, [EverydayIde.Rider.NameAtTheHub], beforeItStartsAgain);
 
-   /// <summary>
-   ///   The Rider restart under way, else the last one since the hub started, else null, as the hub's
-   ///   <c>GET /rider-restart</c> tells of it: its <c>stage</c>, <c>done</c> at the end, the <c>progress</c> of each step,
-   ///   and its <c>outcome</c>.
-   /// </summary>
-   public JsonNode? TheRiderRestart()
-   {
-      using var client = ClientOfTheHub() ?? throw new InvalidOperationException("The sandbox's hub doesn't run.");
-      return JsonNode.Parse(client.GetStringAsync("/rider-restart").Result)!["restart"];
-   }
+   /// <summary>The restart of the IDE under way, else the last one since the hub started, else null: see <see cref="HubsLocalApi.TheIdeRestart"/>.</summary>
+   public JsonNode? TheIdeRestart() => LocalApi.TheIdeRestart();
 
    /// <summary>
    ///   Ends the hub that runs, if the copy didn't start it in the environment this process would start it in, or doesn't
@@ -145,7 +133,7 @@ public sealed class SandboxHub(string folder)
    /// </summary>
    void EndTheHubIfItRunsInAnotherEnvironment()
    {
-      if(RunningProcessId() is not {} running) return;
+      if(LocalApi.RunningProcessId() is not {} running) return;
       var started = File.Exists(StartedFile) ? JsonNode.Parse(File.ReadAllText(StartedFile)) : null;
       if(started?["processId"]?.GetValue<int>() == running && JsonNode.DeepEquals(started["environment"], TheEnvironmentItStartsIn())) return;
 
@@ -156,13 +144,10 @@ public sealed class SandboxHub(string folder)
       hub.WaitForExit();
    }
 
-   /// <summary>The process of the hub the announcement names, if it runs.</summary>
-   int? RunningProcessId() => Announcement()?["processId"]!.GetValue<int>() is {} processId && IsRunning(processId) ? processId : null;
-
    static JsonObject TheEnvironmentItStartsIn() => new(TheVariablesItServesBy.Select(it => KeyValuePair.Create(it, (JsonNode?)Environment.GetEnvironmentVariable(it))));
 
    /// <summary>What the hub's announcement says, or null while it has none.</summary>
-   public JsonNode? Announcement() => File.Exists(AnnouncementFile) ? JsonNode.Parse(File.ReadAllText(AnnouncementFile)) : null;
+   public JsonNode? Announcement() => LocalApi.Announcement();
 
    /// <summary>
    ///   The session hosts of the sandbox's Claude Code folder that run, as the hub's <c>GET /session-hosts</c> lists them:
@@ -196,23 +181,15 @@ public sealed class SandboxHub(string folder)
    }
 
    /// <summary>A client of the hub's local API, with its token, or null when no hub runs.</summary>
-   HttpClient? ClientOfTheHub()
-   {
-      if(Announcement() is not {} announcement || !IsRunning(announcement["processId"]!.GetValue<int>())) return null;
-      var client = new HttpClient { BaseAddress = new Uri($"http://127.0.0.1:{announcement["port"]!.GetValue<int>()}"), Timeout = TimeSpan.FromSeconds(30) };
-      client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", announcement["token"]!.GetValue<string>());
-      return client;
-   }
+   HttpClient? ClientOfTheHub() => LocalApi.Client();
 
    /// <summary>Whether the announcement names a hub that runs, of the build copied.</summary>
    bool AnnouncesTheBuildCopied()
    {
       if(Announcement() is not {} announcement) return false;
       var build = DateTime.Parse(announcement["build"]!.GetValue<string>(), CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind);
-      return build == File.GetLastWriteTimeUtc(Hub) && IsRunning(announcement["processId"]!.GetValue<int>());
+      return build == File.GetLastWriteTimeUtc(Hub) && LocalApi.RunningProcessId() is not null;
    }
-
-   static bool IsRunning(int processId) => Process.GetProcesses().Any(it => it.Id == processId);
 
    /// <summary>Copies the published hub's build, unless the copy is of it already.</summary>
    void TakeThePublishedBuild()

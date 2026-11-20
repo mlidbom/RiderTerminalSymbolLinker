@@ -288,21 +288,22 @@ public sealed class SandboxRider
    }
 
    /// <summary>
-   ///   Has the sandbox's hub restart the sandbox Rider, as the published hub restarts Magnus's, and returns once the hub
-   ///   has started the restart: see <see cref="SandboxHub.AskToRestartRider"/>. <see cref="TheRiderRestartOfItsHub"/>
-   ///   tells how it goes, and <see cref="RiderRestartsLog"/> has each step.
+   ///   Has the sandbox's hub restart the sandbox Rider, as the published hub restarts Magnus's IDEs, its restarter running
+   ///   <paramref name="beforeItStartsAgain"/>, unless null, before it starts it again; and returns once the hub has
+   ///   started the restart: see <see cref="SandboxHub.AskToRestartTheIde"/>. <see cref="TheIdeRestartOfItsHub"/> tells
+   ///   how it goes, and <see cref="IdeRestartsLog"/> has each step.
    /// </summary>
-   public void AskItsHubToRestartRider(string why, string askedBy)
+   public void AskItsHubToRestartTheIde(string why, string askedBy, IReadOnlyList<string>? beforeItStartsAgain)
    {
       RunTheHub();
-      _hub.AskToRestartRider(why, askedBy);
+      _hub.AskToRestartTheIde(why, askedBy, beforeItStartsAgain);
    }
 
-   /// <summary>The Rider restart the sandbox's hub has under way, or made last: see <see cref="SandboxHub.TheRiderRestart"/>.</summary>
-   public JsonNode? TheRiderRestartOfItsHub() => _hub.TheRiderRestart();
+   /// <summary>The restart of the IDE the sandbox's hub has under way, or made last: see <see cref="SandboxHub.TheIdeRestart"/>.</summary>
+   public JsonNode? TheIdeRestartOfItsHub() => _hub.TheIdeRestart();
 
-   /// <summary>The log in which the sandbox's hub records each step of each Rider restart it makes, with its time.</summary>
-   public string RiderRestartsLog => Path.Combine(ClaudeCodeFolder, "rider-restarts.log");
+   /// <summary>The log in which the sandbox's hub records each step of each restart of the IDEs it makes, with its time.</summary>
+   public string IdeRestartsLog => Path.Combine(ClaudeCodeFolder, "ide-restarts.log");
 
    /// <summary>
    ///   Copies the <see cref="StandInForClaudeCodeBuild"/> into the sandbox, where the stand-ins of sessions that outlive
