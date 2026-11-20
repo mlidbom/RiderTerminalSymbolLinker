@@ -128,10 +128,10 @@ public sealed class InstalledCloyd(string folder)
    {
       if(TheApplication() is not {} before) return $"No Cloyd application runs: the next project to open starts one with the build in {this}.";
       var projects = ProjectsItShows();
-      var desktops = DesktopsOfTheWindows();
+      var desktops = ScreenThread.Run(DesktopsOfTheWindows);
       StopTheApplication();
       foreach(var project in projects) ShowTheWindowOf(project);
-      var putBack = PutTheWindowsBackOn(desktops);
+      var putBack = ScreenThread.Run(() => PutTheWindowsBackOn(desktops));
       return $"Restarted the Cloyd application on the build in {this}: process {before.Id} is now {TheApplication()?.Id.ToString() ?? "none"}, showing {string.Join(", ", projects)}.{putBack}";
    }
 
