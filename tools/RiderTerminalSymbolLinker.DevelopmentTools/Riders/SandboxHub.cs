@@ -123,6 +123,9 @@ public sealed class SandboxHub(string folder)
    public void AskToRestartTheIde(string why, string askedBy, IReadOnlyList<string>? beforeItStartsAgain) =>
       LocalApi.AskToRestartTheIdes(why, askedBy, [EverydayIde.Rider.NameAtTheHub], beforeItStartsAgain);
 
+   /// <summary>Tells the hub of a turn under way, as a Claude Code session's mod does: see <see cref="HubsLocalApi.TellOfATurn"/>.</summary>
+   public void TellOfATurn(long claudeCode, JsonNode report) => LocalApi.TellOfATurn(claudeCode, report);
+
    /// <summary>The restart of the IDE under way, else the last one since the hub started, else null: see <see cref="HubsLocalApi.TheIdeRestart"/>.</summary>
    public JsonNode? TheIdeRestart() => LocalApi.TheIdeRestart();
 

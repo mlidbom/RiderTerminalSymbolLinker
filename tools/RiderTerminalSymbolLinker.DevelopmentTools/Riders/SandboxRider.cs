@@ -302,6 +302,12 @@ public sealed class SandboxRider
    /// <summary>The restart of the IDE the sandbox's hub has under way, or made last: see <see cref="SandboxHub.TheIdeRestart"/>.</summary>
    public JsonNode? TheIdeRestartOfItsHub() => _hub.TheIdeRestart();
 
+   /// <summary>
+   ///   Tells its hub of the turn under way of the Claude Code that runs as <paramref name="claudeCode"/>, as a Claude
+   ///   Code session's mod does: see <see cref="HubsLocalApi.TellOfATurn"/>.
+   /// </summary>
+   public void TellItsHubOfATurn(long claudeCode, JsonNode report) => _hub.TellOfATurn(claudeCode, report);
+
    /// <summary>The log in which the sandbox's hub records each step of each restart of the IDEs it makes, with its time.</summary>
    public string IdeRestartsLog => Path.Combine(ClaudeCodeFolder, "ide-restarts.log");
 
