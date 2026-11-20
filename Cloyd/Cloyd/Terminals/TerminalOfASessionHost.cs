@@ -97,8 +97,13 @@ sealed class TerminalOfASessionHost : TerminalControl
    /// <summary>
    /// The session host, as the pseudo console the control would run a process in itself: it reads what the host draws,
    /// types into the host, and resizes the host's console. The host's processes are no process of Cloyd's, so it tells
-   /// of none.
+   /// of none, but it has exited, as a process would, once the attachment has ended.
    /// </summary>
+   /// <remarks>
+   /// The control waits for the process to exit once what it draws has ended, calling <see cref="WaitForExit"/> again and
+   /// again for up to 30 s, and counting on each call to wait as long as it asks: until 2026-11-20 it answered at once,
+   /// and each terminal whose attachment ended kept a processor core busy for 30 s.
+   /// </remarks>
    sealed class SessionHostAsAPseudoConsole : IPtyConnection
    {
       readonly AttachmentToASessionHost _attachment;
@@ -112,8 +117,8 @@ sealed class TerminalOfASessionHost : TerminalControl
       public int Pid => 0;
       public int ExitCode => 0;
       public int ExitSignal => 0;
-      public bool HasExited => false;
-      public bool WaitForExit(int milliseconds) => false;
+      public bool HasExited => _attachment.EndsWithin(TimeSpan.Zero);
+      public bool WaitForExit(int milliseconds) => _attachment.EndsWithin(TimeSpan.FromMilliseconds(milliseconds));
       public void Resize(int columns, int rows) => _attachment.Resize(new ConsoleSize((short)columns, (short)rows));
 
       /// <summary>Lets go of the host, as killing would end a process of the control's own: the session runs on.</summary>

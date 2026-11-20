@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.Reflection;
 using System.Runtime.ExceptionServices;
 using Compze.xUnitBDD;
+using Xunit;
 
 namespace Cloyd.Specifications.Scenarios;
 
@@ -83,8 +84,12 @@ sealed class ScenarioOfAClass
       Started.Dispose();
    }
 
-   /// <summary>The facts that run in <paramref name="specification"/>: those it declares itself, as xUnitBDD's <see cref="XFAttribute"/> runs a fact only in the class that declares it, unless skipped.</summary>
+   /// <summary>
+   /// The facts that run in <paramref name="specification"/>, unless skipped: each xUnit <see cref="FactAttribute"/> it has,
+   /// those of its base classes included, but an <see cref="ExclusiveFactAttribute"/>, such as an <see cref="XFAttribute"/>,
+   /// only in the class that declares it, as xUnitBDD runs one.
+   /// </summary>
    static int FactsThatRunIn(Type specification) =>
-      specification.GetMethods(BindingFlags.Instance | BindingFlags.Public | BindingFlags.DeclaredOnly)
-                   .Count(it => it.GetCustomAttribute<XFAttribute>() is { Skip: null, Explicit: false });
+      specification.GetMethods(BindingFlags.Instance | BindingFlags.Public)
+                   .Count(it => it.GetCustomAttribute<FactAttribute>() is { Skip: null, Explicit: false } fact && (fact is not ExclusiveFactAttribute || it.DeclaringType == specification));
 }

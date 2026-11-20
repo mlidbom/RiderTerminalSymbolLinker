@@ -20,6 +20,9 @@ sealed class AttachmentToASessionHost : IDisposable
 
    readonly ConnectionToASessionHost _connection;
 
+   /// <summary>The thread that relays what the host draws, and ends as the attachment does.</summary>
+   readonly Thread _relaying;
+
    /// <summary>Holds what the host draws until the terminal reads it: the relay waits when the terminal is that far behind.</summary>
    readonly Pipe _drawn = new(new PipeOptions(pauseWriterThreshold: 4 << 20, resumeWriterThreshold: 2 << 20));
 
@@ -28,12 +31,13 @@ sealed class AttachmentToASessionHost : IDisposable
    /// <summary>The size the host's pseudo console was last given.</summary>
    ConsoleSize _size;
 
-   AttachmentToASessionHost(ConnectionToASessionHost connection, ConsoleSize size)
+   AttachmentToASessionHost(SessionHostId host, ConnectionToASessionHost connection, ConsoleSize size)
    {
       _connection = connection;
       _size = size;
       Drawn = _drawn.Reader.AsStream();
       Typed = new StreamTypedIntoTheHost(this);
+      _relaying = new Thread(RelayWhatTheHostSends) { IsBackground = true, Name = $"Relaying what session host {host} draws" };
    }
 
    /// <summary>What the host's pseudo console draws, as VT sequences in UTF-8: the terminal modes first, then the whole screen, then each change.</summary>
@@ -49,6 +53,12 @@ sealed class AttachmentToASessionHost : IDisposable
    public event Action<string>? Ended;
 
    /// <summary>
+   /// Whether the attachment has ended, or ends within <paramref name="time"/>: once the host has let it go, or it was
+   /// disposed, and all the host drew has been handed on to <see cref="Drawn"/>.
+   /// </summary>
+   public bool EndsWithin(TimeSpan time) => _relaying.Join(time);
+
+   /// <summary>
    /// Attaches to <paramref name="host"/>, which resizes its pseudo console to <paramref name="size"/> and draws it all
    /// again: an <see cref="InvalidOperationException"/> when no host listens as <paramref name="host"/>.
    /// </summary>
@@ -56,8 +66,8 @@ sealed class AttachmentToASessionHost : IDisposable
    {
       var connection = ConnectionToASessionHost.TryConnect(host, HowLongAHostMayTakeToAnswer) ?? throw new InvalidOperationException($"No session host listens as {host}.");
       connection.Send(SessionHostFrame.Hello(HelloToTheSessionHost.OfAnAttachClient(size)));
-      var attachment = new AttachmentToASessionHost(connection, size);
-      new Thread(attachment.RelayWhatTheHostSends) { IsBackground = true, Name = $"Relaying what session host {host} draws" }.Start();
+      var attachment = new AttachmentToASessionHost(host, connection, size);
+      attachment._relaying.Start();
       return attachment;
    }
 

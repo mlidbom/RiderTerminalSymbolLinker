@@ -2,6 +2,7 @@ using System.Diagnostics;
 using ClaudeTooling.SessionHost.Protocol;
 using Compze.Must;
 using Compze.xUnitBDD;
+using Xunit;
 using Cloyd.Projects;
 using Cloyd.SessionHosts;
 using Cloyd.Sessions;
@@ -9,6 +10,11 @@ using Cloyd.Specifications.TheSandbox;
 
 namespace Cloyd.Specifications;
 
+/// <summary>
+/// A session's tab is let go by its host, for one of the reasons its nested classes give. The facts of this class are
+/// xUnit's own <see cref="FactAttribute"/>s, which run in each nested class, as an <see cref="XFAttribute"/> runs only in
+/// the class that declares it, and this one has no instance.
+/// </summary>
 public abstract class When_a_sessions_tab_is_let_go_by_its_host : SpecificationOpeningWindows
 {
    readonly SandboxProject _project;
@@ -24,12 +30,27 @@ public abstract class When_a_sessions_tab_is_let_go_by_its_host : SpecificationO
       WaitUntil(() => _tab.SessionRunningInIt is not null, "Claude Code ran in the tab's host");
    }
 
-   [XF] public void the_tab_closes() => WaitUntil(() => _window.Tabs.Count == 0, "the tab had closed");
+   [Fact] public void the_tab_closes() => WaitUntil(() => _window.Tabs.Count == 0, "the tab had closed");
 
-   [XF] public void the_window_tells_of_no_failure()
+   [Fact] public void the_window_tells_of_no_failure()
    {
       WaitUntil(() => _window.Tabs.Count == 0, "the tab had closed");
       OnTheUIThread(() => _window.Failure).Must().BeNull();
+   }
+
+   /// <summary>
+   /// The processor time the specifications' process takes in the second after the tab has closed, which nothing else
+   /// asks of it: its terminal, which waits for the pseudo console it showed to exit, took a core of its own for 30 s
+   /// until 2026-11-20.
+   /// </summary>
+   [Fact] public void its_terminal_keeps_no_processor_busy()
+   {
+      WaitUntil(() => _window.Tabs.Count == 0, "the tab had closed");
+      using var process = Process.GetCurrentProcess();
+      var before = process.TotalProcessorTime;
+      Thread.Sleep(TimeSpan.FromSeconds(1));
+      process.Refresh();
+      (process.TotalProcessorTime - before).Must().Satisfy(it => it < TimeSpan.FromMilliseconds(300));
    }
 
    public class because_another_attach_client_took_the_session_over : When_a_sessions_tab_is_let_go_by_its_host
