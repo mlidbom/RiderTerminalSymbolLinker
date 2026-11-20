@@ -38,6 +38,7 @@ public class When_Magnus_opens_the_session_history_picker : SpecificationOpening
       var runWithClaudeP = new SessionOfASpecification(new ClaudeSessionId("8f1c0005-6c1e-4a51-9d0b-3a1f00000000"), _project.Project.Folder, "Reply with ok") { RunWithClaudeP = true, LastUsedAgo = TimeSpan.FromMinutes(10) };
       var ofNoConversation = new SessionOfASpecification(new ClaudeSessionId("8f1c0006-6c1e-4a51-9d0b-3a1f00000000"), _project.Project.Folder, "") { Title = "[cancelled]", HasAConversation = false, LastUsedAgo = TimeSpan.FromMinutes(5) };
       foreach(var session in new[] { _titled, _inAFolderOfTheProject, _inTheOtherWorktree, _inAnotherProject, runWithClaudeP, ofNoConversation }) session.WriteItsTranscript();
+      WaitUntil(() => Sandbox.Started.HubOfTheSandbox.RunningSessions().All(it => it.SessionId != _titled.Id), "the hub no longer listed the Claude Code an earlier run resumed the titled session in");
 
       _window = Open(_project.Window);
       WaitUntil(() => _window.BringingBackTheTabs.IsCompleted, "the window had brought back its tabs");

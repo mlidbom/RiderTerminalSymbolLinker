@@ -96,25 +96,13 @@ sealed class SandboxProject : IDisposable
    }
 
    /// <summary>
-   /// Ends the project's session hosts, and waits until the hub no longer lists the Claude Codes that ran in them: a Claude
-   /// Code outlives its host for a moment, listed in no host, and a history picker opened then takes its session for one
-   /// that runs outside Cloyd.
+   /// Ends the project's session hosts. The hub lists the Claude Codes that ran in them for up to 3 s more, listed in no
+   /// host: a specification that minds, as one of the history picker's, waits for the sessions it names itself.
    /// </summary>
    void EndItsSessionHosts()
    {
-      var hosts = ItsSessionHosts().Select(it => it.Id).ToHashSet();
-      var claudeCodes = Answer(() => Hub.RunningSessions()).Where(it => it.SessionHost is {} host && hosts.Contains(host)).Select(it => it.Process).ToHashSet();
-      foreach(var host in hosts) Answer(() => Hub.End(host));
-      var clock = System.Diagnostics.Stopwatch.StartNew();
-      while(Answer(() => Hub.RunningSessions()).Any(it => claudeCodes.Contains(it.Process)))
-      {
-         if(clock.Elapsed > HowLongAClaudeCodeMayOutliveItsHost)
-            throw new TimeoutException($"The hub still listed a Claude Code of a session host of {Project} {HowLongAClaudeCodeMayOutliveItsHost.TotalSeconds:0} s after it ended the host.");
-         Thread.Sleep(50);
-      }
+      foreach(var host in ItsSessionHosts()) Answer(() => Hub.End(host.Id));
    }
-
-   static readonly TimeSpan HowLongAClaudeCodeMayOutliveItsHost = TimeSpan.FromSeconds(15);
 
    /// <summary>What <paramref name="asked"/> answers, asked on the thread pool, where no UI thread's context holds its continuations.</summary>
    static TAnswer Answer<TAnswer>(Func<Task<TAnswer>> asked) => Task.Run(asked).GetAwaiter().GetResult();
