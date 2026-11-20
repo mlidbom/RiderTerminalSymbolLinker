@@ -13,10 +13,12 @@ import dev.magnus.claudesessions.chat.saving.ChatKeeper
 import dev.magnus.claudesessions.chat.saving.SavedChat
 import dev.magnus.claudesessions.chat.saving.SavedChats
 import dev.magnus.claudesessions.sessionhosts.SessionHostId
-import java.awt.CardLayout
+import com.intellij.icons.AllIcons
+import com.intellij.ui.components.JBTabbedPane
+import com.intellij.util.ui.JBUI
 import java.awt.KeyboardFocusManager
 import javax.swing.JComponent
-import javax.swing.JPanel
+import javax.swing.SwingConstants
 import javax.swing.SwingUtilities
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -26,7 +28,8 @@ import kotlinx.coroutines.launch
 
 /**
  * The content of a [ClaudeSessionTab] that has a [Chat]: two cards, the chat of [claudeCode] and the tab's terminal,
- * in a `CardLayout`, one shown at a time. The [SwitchBetweenTheChatAndTheTerminalAction] shows the other.
+ * one shown at a time, each under a tab of its own, "Chat" and "Terminal", so that both are in sight. Clicking a tab
+ * shows its card, as does the [SwitchBetweenTheChatAndTheTerminalAction], Ctrl+H, the other.
  *
  * **What the tab shows by itself:** the chat while Claude Code runs, busy or idle, and the terminal while it doesn't,
  * and while it waits for the user in a dialog, which only its own UI draws: a permission prompt, a question, or a
@@ -56,7 +59,21 @@ class ChatAndTerminalCards(
 ) : Disposable {
     private val terminal: JComponent = content.component
     private val terminalsFocus: JComponent? = content.preferredFocusableComponent
-    private val cards = JPanel(CardLayout())
+
+    /**
+     * The cards, each under its tab. Its tabs take no focus when clicked: the card shown takes it, as when the user
+     * switches by the shortcut.
+     */
+    private val cards = JBTabbedPane(SwingConstants.TOP).apply {
+        isFocusable = false
+        tabComponentInsets = JBUI.emptyInsets()
+    }
+
+    /** The component that holds the cards, under their tabs: it's the tab's content. */
+    val component: JComponent get() = cards
+
+    /** Whether the cards are being shown by the code, not by the user clicking a tab. */
+    private var showing = false
 
     private val keeper = ChatKeeper(savedChats, savedAs, chatAsItIs = { asItIs }).also { Disposer.register(this, it) }
 
@@ -78,13 +95,17 @@ class ChatAndTerminalCards(
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.EDT)
 
     init {
-        cards.add(chat.component, TabCard.CHAT.name)
-        cards.add(terminal, TabCard.TERMINAL.name)
+        cards.addTab("Chat", AllIcons.Toolwindows.ToolWindowMessages, chat.component)
+        cards.addTab("Terminal", AllIcons.Nodes.Console, terminal)
         show(TabCard.TERMINAL)
+        cards.addChangeListener { if (!showing) theUserChose(TabCard.entries[cards.selectedIndex]) }
         content.component = cards
         asItWas?.let(::bringBack)
         scope.launch { chat.claudeCode.status.collect(::follow) }
     }
+
+    /** The titles of the cards' tabs, in their order. For the development observation channel. */
+    val tabTitles: List<String> get() = (0 until cards.tabCount).map(cards::getTitleAt)
 
     /** What the tab's chat holds, as it's saved. */
     private val asItIs: SavedChat
@@ -110,18 +131,18 @@ class ChatAndTerminalCards(
     fun forgetTheSavedChat() = keeper.forget()
 
     /** Shows the other card, as the user chose it: it stays shown until what the tab would show by itself changes. */
-    fun switch() {
-        theTabChoseTheCardShown = false
-        show(shown.other, focusIt = true)
-    }
+    fun switch() = theUserChose(shown.other)
 
     /**
      * Shows the terminal, as the user chose it, as after a slash command sent from the chat, or a message Claude Code
      * didn't get for what its own UI shows.
      */
-    fun showTheTerminal() {
+    fun showTheTerminal() = theUserChose(TabCard.TERMINAL)
+
+    /** Shows [card], with the focus in it, as the user chose it, by its tab or the shortcut, or as if they had. */
+    private fun theUserChose(card: TabCard) {
         theTabChoseTheCardShown = false
-        show(TabCard.TERMINAL, focusIt = true)
+        show(card, focusIt = true)
     }
 
     private fun follow(status: ClaudeCodeStatus) {
@@ -135,7 +156,12 @@ class ChatAndTerminalCards(
     }
 
     private fun show(card: TabCard, focusIt: Boolean = false) {
-        (cards.layout as CardLayout).show(cards, card.name)
+        showing = true
+        try {
+            cards.selectedIndex = card.ordinal
+        } finally {
+            showing = false
+        }
         shown = card
         val focus = focusOf(card)
         content.preferredFocusableComponent = focus
@@ -143,7 +169,13 @@ class ChatAndTerminalCards(
         keeper.changed()
     }
 
-    private fun focusOf(card: TabCard): JComponent = when (card) {
+    /** Selects [card]'s tab, as the user clicking it does. For the development observation channel. */
+    fun clickTheTabOf(card: TabCard) {
+        cards.selectedIndex = card.ordinal
+    }
+
+    /** The component that takes the focus when [card] is shown: the chat's input box, or the terminal's. */
+    fun focusOf(card: TabCard): JComponent = when (card) {
         TabCard.CHAT -> chat.messageBox.editor.contentComponent
         TabCard.TERMINAL -> terminalsFocus ?: terminal
     }

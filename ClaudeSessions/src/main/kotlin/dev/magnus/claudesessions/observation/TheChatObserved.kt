@@ -3,13 +3,18 @@ package dev.magnus.claudesessions.observation
 import com.google.gson.JsonObject
 import com.intellij.ide.DataManager
 import com.intellij.openapi.actionSystem.ActionManager
+import com.intellij.openapi.actionSystem.ActionPlaces
+import com.intellij.openapi.actionSystem.ActionPromoter
 import com.intellij.openapi.actionSystem.ActionUiKind
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.KeyboardShortcut
 import com.intellij.openapi.actionSystem.ex.ActionUtil
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.editor.EditorModificationUtil
+import com.intellij.openapi.keymap.KeymapManager
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.wm.WindowManager
+import dev.magnus.claudesessions.chat.TabCard
 import com.intellij.openapi.util.TextRange
 import com.intellij.util.ui.ImageUtil
 import dev.magnus.claudesessions.ClaudeSessionTab
@@ -60,7 +65,7 @@ class TheChatObserved(private val project: Project, private val tab: Int) {
      * conversation's text, each fold of it with its header line, its folded text and whether it is open, the texts the
      * links cover, and the id of the item at the top of the pane; the status line, and why Claude Code didn't get what
      * the chat last gave it, or null; the text in the input box, its parts, each with its kind, and its caret; and the
-     * button's text.
+     * titles of the cards' tabs.
      */
     fun describe(): Map<String, Any?> {
         val cards = sessionTab.cards ?: return mapOf("card" to null)
@@ -86,7 +91,7 @@ class TheChatObserved(private val project: Project, private val tab: Int) {
             "statusLine" to cards.chat.statusLine.text,
             "whyNotTyped" to cards.chat.statusLine.whyNotTyped,
             "messageBox" to cards.chat.messageBox.text,
-            "button" to buttonText(),
+            "tabs" to cards.tabTitles,
         )
     }
 
@@ -164,13 +169,47 @@ class TheChatObserved(private val project: Project, private val tab: Int) {
         return describe()
     }
 
-    /** Switches between the chat and the terminal, as the button in the tool window's title bar does. */
+    /** Switches between the chat and the terminal, as the action does from Find Action. */
     fun switch(): Map<String, Any?> {
         val view = ClaudeSessionsView.getInstance(project)
         view.show(sessionTab)
         // From the tab's content, which shows whichever card is shown: the IDE runs no action from a hidden component.
         ActionManager.getInstance().tryToExecute(ActionManager.getInstance().getAction(SwitchBetweenTheChatAndTheTerminalAction.ID), null, sessionTab.content.component, PLACE, true)
         return describe()
+    }
+
+    /** Shows [card], `CHAT` or `TERMINAL`, as clicking its tab does. */
+    fun clickTheTabOf(card: String): Map<String, Any?> {
+        cards.clickTheTabOf(TabCard.valueOf(card))
+        return describe()
+    }
+
+    /**
+     * The id of the action the IDE would run for [keystroke], such as `ctrl H`, pressed in the chat's input box (`chat`),
+     * in the terminal (`terminal`), or elsewhere in the IDE's window (`elsewhere`), or null when none: of the actions
+     * the active keymap binds it to, the first enabled for a key pressed there, once every action promoter has put them
+     * in its order, as the IDE's key dispatcher chooses. Not the terminal's own handling of keys, which lets through
+     * only the actions its `allowedActionsProvider` extensions list.
+     */
+    fun theActionTheShortcutRuns(keystroke: String, pressedIn: String): Map<String, Any?> {
+        val component = when (pressedIn) {
+            "chat" -> cards.focusOf(TabCard.CHAT)
+            "terminal" -> cards.focusOf(TabCard.TERMINAL)
+            "elsewhere" -> WindowManager.getInstance().getFrame(project)!!.rootPane
+            else -> error("No place $pressedIn to press a key in")
+        }
+        val key = KeyStroke.getKeyStroke(keystroke)!!
+        val actionManager = ActionManager.getInstance()
+        val bound = KeymapManager.getInstance().activeKeymap.getActionIds(key).mapNotNull(actionManager::getAction)
+        val context = DataManager.getInstance().getDataContext(component)
+        val inTheirOrder = ActionPromoter.EP_NAME.extensionList.fold(bound) { actions, promoter -> promoter.promote(actions, context).orEmpty().let { promoted -> promoted + (actions - promoted.toSet()) } }
+        val pressed = KeyEvent(component, KeyEvent.KEY_PRESSED, System.currentTimeMillis(), key.modifiers, key.keyCode, KeyEvent.CHAR_UNDEFINED)
+        val chosen = inTheirOrder.firstOrNull { action ->
+            val event = AnActionEvent.createEvent(context, null, ActionPlaces.KEYBOARD_SHORTCUT, ActionUiKind.NONE, pressed)
+            ActionUtil.updateAction(action, event)
+            event.presentation.isEnabled
+        }
+        return mapOf("action" to chosen?.let(actionManager::getId), "bound" to bound.mapNotNull(actionManager::getId))
     }
 
     /** Opens the fold [fold], by its place among the folds, or closes it when not [open]. */
@@ -184,13 +223,6 @@ class TheChatObserved(private val project: Project, private val tab: Int) {
     fun scrollTheTranscriptTo(item: String): Map<String, Any?> {
         cards.chat.transcript.showAtTheTop(item, linesIntoIt = 0)
         return describe()
-    }
-
-    private fun buttonText(): String? {
-        val action = ActionManager.getInstance().getAction(SwitchBetweenTheChatAndTheTerminalAction.ID)
-        val event = AnActionEvent.createEvent(DataManager.getInstance().getDataContext(cards.chat.component), null, PLACE, ActionUiKind.NONE, null)
-        ActionUtil.updateAction(action, event)
-        return event.presentation.text
     }
 
     private fun describe(message: Message): Map<String, Any?> = mapOf(

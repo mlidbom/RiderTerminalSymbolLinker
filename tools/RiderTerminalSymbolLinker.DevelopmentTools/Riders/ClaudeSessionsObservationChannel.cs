@@ -138,8 +138,19 @@ public sealed class ClaudeSessionsObservationChannel(int port) : ObservationChan
    /// <summary>Presses <paramref name="key"/>, <c>ENTER</c>, <c>SHIFT_ENTER</c>, <c>ESCAPE</c> or <c>SHIFT_TAB</c>, in the chat's input box.</summary>
    public JsonNode PressInTheChat(int tab, string key, string? project = null) => Post("tabs/chat/press", project, new { }, $"tab={tab}&key={key}");
 
-   /// <summary>Switches tab <paramref name="tab"/> between its chat and its terminal, as the button in the tool window's title bar does.</summary>
+   /// <summary>Switches tab <paramref name="tab"/> between its chat and its terminal, as the action does from Find Action.</summary>
    public JsonNode SwitchBetweenTheChatAndTheTerminal(int tab, string? project = null) => Post("tabs/chat/switch", project, new { }, $"tab={tab}");
+
+   /// <summary>Shows tab <paramref name="tab"/>'s card <paramref name="card"/>, <c>CHAT</c> or <c>TERMINAL</c>, as clicking its tab does.</summary>
+   public JsonNode ClickTheTabOfTheCard(int tab, string card, string? project = null) => Post("tabs/chat/click-tab", project, new { }, $"tab={tab}&card={card}");
+
+   /// <summary>
+   ///   The action the IDE would run for <paramref name="keystroke"/>, such as <c>ctrl H</c>, pressed in tab
+   ///   <paramref name="tab"/>'s <c>chat</c> or <c>terminal</c>, or <c>elsewhere</c> in the IDE's window, and the actions
+   ///   the keymap binds it to.
+   /// </summary>
+   public JsonNode TheActionTheShortcutRuns(int tab, string keystroke, string pressedIn, string? project = null) =>
+      Get("tabs/chat/shortcut", project, $"tab={tab}&keystroke={Uri.EscapeDataString(keystroke)}&in={pressedIn}");
 
    /// <summary>Opens the conversation's fold <paramref name="fold"/>, by its place, or closes it when not <paramref name="open"/>.</summary>
    public JsonNode OpenTheFoldInTheChat(int tab, int fold, bool open = true, string? project = null) =>

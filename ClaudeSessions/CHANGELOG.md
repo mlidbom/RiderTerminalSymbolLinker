@@ -27,9 +27,10 @@ All notable changes to Claude Sessions are documented here. The format follows
   thinking is folded too; file paths and symbols are links, as in the terminal. A `/clear` shows as a divider, with the
   conversation going on below it. Enter sends, Shift+Enter starts a new line, Escape interrupts Claude, Shift+Tab changes
   its permission mode, and the IDE's paste takes text and images. The box is free for the next message at once; a
-  message Claude Code doesn't get comes back into the box, and the status line says why. Claude Code's own UI is a key
-  away, Ctrl+Alt+Shift+Z or the button in the tool window's title bar, and the tab shows it by itself while Claude Code
-  waits in a dialog, and for a slash command.
+  message Claude Code doesn't get comes back into the box, and the status line says why. Claude Code's own UI is under
+  the tab's Terminal tab, beside its Chat tab, and Ctrl+H switches between them in a Claude Sessions tab, where it
+  takes the place of Replace; the tab shows the terminal by itself while Claude Code waits in a dialog, and for a slash
+  command. Texts with Windows line endings, such as a tool's output, show as any other.
 - **Nothing written in a chat is lost when the IDE goes.** What is in a chat's input box is saved half a second after
   each change, and as the IDE closes, and comes back as it was after a restart, a crash or a plugin update, the caret
   included. Messages that waited to be given to Claude Code come back into the box, marked as not sent, and are never

@@ -39,6 +39,8 @@
              is the one it had. -->
         <editorActionHandler action="EditorPaste" implementationClass="dev.magnus.claudesessions.chat.messagebox.MessageBoxPasteHandler"
                              order="first"/>
+        <!-- Ctrl+H switches between a tab's chat and terminal there, ahead of the other actions bound to it. -->
+        <actionPromoter implementation="dev.magnus.claudesessions.chat.TheSwitchFirstInAClaudeSessionsTab"/>
     </extensions>
 
     <extensions defaultExtensionNs="org.jetbrains.plugins.terminal">
@@ -79,8 +81,9 @@
                 text="Switch Between the Chat and the Terminal"
                 description="Show the Claude Sessions tab's terminal, with Claude Code's own UI, in place of its chat, or its chat in place of its terminal"
                 icon="AllIcons.Nodes.Console">
-            <!-- Free in the default keymap, both Visual Studio keymaps, and Magnus's own (2026-11-19). -->
-            <keyboard-shortcut keymap="$default" first-keystroke="shift ctrl alt Z"/>
+            <!-- Bound to Replace or Type Hierarchy too: the switch runs only in a Claude Sessions tab, put first there by
+                 TheSwitchFirstInAClaudeSessionsTab (Magnus, 2026-11-20). -->
+            <keyboard-shortcut keymap="$default" first-keystroke="ctrl H"/>
         </action>
     </actions>
 </idea-plugin>

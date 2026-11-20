@@ -266,19 +266,27 @@ plain terminal tab, with no session host, gets none, and shows its terminal alon
 
 ### What the first version does, as built
 
-- **Two cards in each tab, in a `CardLayout`:** the chat and the terminal (`ChatAndTerminalCards`), the tab's content
-  in place of the terminal's component. A tab gets them as the view opens it, and gives them up, its content the
-  terminal again, as it closes.
+- **Two cards in each tab, each under a tab of its own, "Chat" and "Terminal",** in a `JBTabbedPane`: the chat and the
+  terminal (`ChatAndTerminalCards`), the tab's content in place of the terminal's component. A tab gets them as the view
+  opens it, and gives them up, its content the terminal again, as it closes. They were in a `CardLayout` with a button
+  in the title bar until 2026-11-20, when Magnus's first look at the chat found an empty pane and no sign of the
+  terminal behind it: tabs keep both in sight. Clicking a tab is the user's choice, as the switch is.
   - **What the tab shows by itself:** the chat while Claude Code is busy or idle, and the terminal while it doesn't
     run, and while it's `waiting`: Claude Code's record says so whenever a dialog is open, a permission prompt, a
     question, or a picker a slash command opened (`function B4o` in Claude Code 2.1.328's code), which only the TUI
     draws. When that changes, the tab switches, and back to the chat once Claude Code is busy or idle again, only if it
     was the tab that switched: a card the user chose stays. The terminal's card is shown until Claude Code runs, so a
     tab's attach client, which starts only once its terminal is shown, starts, at its size.
-  - **The switch:** `SwitchBetweenTheChatAndTheTerminalAction`, a button in the tool window's title bar, and
-    **Ctrl+Alt+Shift+Z**, free in the default keymap, both Visual Studio keymaps and Magnus's own on 2026-11-19 (a
-    specification checks the bundled ones). Its shortcut works in the terminal too, through the terminal's
-    `allowedActionsProvider` extension point, as the terminal otherwise sends keys to the program it runs.
+  - **The switch:** `SwitchBetweenTheChatAndTheTerminalAction`, **Ctrl+H** (Magnus, 2026-11-20: the key under his
+    right index finger in Dvorak, and the only one on that home row Claude Code doesn't bind). The keymaps bind Ctrl+H
+    to Replace or Type Hierarchy too: the switch is enabled for a key only with the focus in the shown tab's cards, and
+    `TheSwitchFirstInAClaudeSessionsTab`, an `actionPromoter`, puts it first, so the IDE runs it there and the others
+    everywhere else. In the terminal it takes Claude Code's Ctrl+H, a Backspace. Its shortcut works in the terminal
+    through the terminal's `allowedActionsProvider` extension point, as the terminal otherwise sends keys to the
+    program it runs. A specification checks which action the IDE would choose for Ctrl+H in the chat, the terminal and
+    elsewhere (`GET /tabs/chat/shortcut`), from the keymap, the promoters and each action's enablement: the IDE's key
+    dispatcher reads the real focus, which a specification can't count on in the sandbox IDE, so the key itself, and
+    the terminal's letting it through, are seen only in use.
 - **The transcript pane** (`TranscriptPane`), a read-only editor: the IDE's search, selection and shortcuts work in it.
   Its text is markdown, highlighted as markdown where the IDE has the Markdown file type, found by name, so no
   dependency on the Markdown plugin.

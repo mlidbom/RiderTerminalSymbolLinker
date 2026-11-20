@@ -19,6 +19,9 @@ public class When_a_tab_with_a_chat_opens(When_a_tab_with_a_chat_opens.Story sto
       public readonly ChatSeen OnceClaudeCodeRuns;
       public readonly IReadOnlyList<string> TheSwitchsShortcutInTheDefaultKeymap;
       public readonly IReadOnlyList<string> TheSwitchsShortcutInVisualStudio2022;
+      public readonly string? TheShortcutInTheChat;
+      public readonly string? TheShortcutInTheTerminal;
+      public readonly string? TheShortcutElsewhere;
 
       public Story()
       {
@@ -30,19 +33,55 @@ public class When_a_tab_with_a_chat_opens(When_a_tab_with_a_chat_opens.Story sto
          OnceClaudeCodeRuns = chat.SeenOnce(it => it.Card == "CHAT", "the tab to show the chat");
          TheSwitchsShortcutInTheDefaultKeymap = view.ActionsBoundTo(SwitchShortcut, "$default");
          TheSwitchsShortcutInVisualStudio2022 = view.ActionsBoundTo(SwitchShortcut, "Visual Studio 2022");
+         TheShortcutInTheChat = chat.TheActionTheShortcutRuns(SwitchShortcut, "chat");
+         TheShortcutInTheTerminal = chat.TheActionTheShortcutRuns(SwitchShortcut, "terminal");
+         TheShortcutElsewhere = chat.TheActionTheShortcutRuns(SwitchShortcut, "elsewhere");
       }
    }
 
-   const string SwitchShortcut = "ctrl alt shift Z";
+   const string SwitchShortcut = "ctrl H";
    const string SwitchAction = "ClaudeSessions.SwitchBetweenTheChatAndTheTerminal";
 
    [XF] public void it_shows_its_terminal_until_claude_code_runs() => story.BeforeClaudeCodeRuns.Card.Must().Be("TERMINAL");
    [XF] public void then_its_chat() => story.OnceClaudeCodeRuns.Card.Must().Be("CHAT");
-   [XF] public void the_button_offers_the_terminal_while_the_chat_shows() => story.OnceClaudeCodeRuns.Button.Must().Be("Show the Terminal");
+   [XF] public void each_under_a_tab_of_its_own() => story.OnceClaudeCodeRuns.Tabs.Must().Satisfy(it => it.SequenceEqual(["Chat", "Terminal"]));
    [XF] public void the_status_line_says_claude_is_idle() => story.OnceClaudeCodeRuns.StatusLine.Must().Be("Claude is idle");
 
-   [XF] public void the_switchs_shortcut_is_its_alone_in_the_default_keymap() => story.TheSwitchsShortcutInTheDefaultKeymap.Must().Satisfy(it => it.SequenceEqual([SwitchAction]));
-   [XF] public void and_in_visual_studio_2022s() => story.TheSwitchsShortcutInVisualStudio2022.Must().Satisfy(it => it.SequenceEqual([SwitchAction]));
+   [XF] public void ctrl_h_is_the_switchs_shortcut_in_the_default_keymap() => story.TheSwitchsShortcutInTheDefaultKeymap.Must().Satisfy(it => it.Contains(SwitchAction));
+   [XF] public void and_in_visual_studio_2022s() => story.TheSwitchsShortcutInVisualStudio2022.Must().Satisfy(it => it.Contains(SwitchAction));
+   [XF] public void pressed_in_the_chat_it_switches() => story.TheShortcutInTheChat.Must().Be(SwitchAction);
+   [XF] public void and_in_the_terminal() => story.TheShortcutInTheTerminal.Must().Be(SwitchAction);
+   [XF] public void but_not_elsewhere_in_the_ide() => story.TheShortcutElsewhere.Must().Satisfy(it => it != SwitchAction);
+}
+
+public class When_the_user_clicks_the_tab_of_a_card(When_the_user_clicks_the_tab_of_a_card.Story story) : IClassFixture<When_the_user_clicks_the_tab_of_a_card.Story>
+{
+   public sealed class Story
+   {
+      public readonly ChatSeen AfterTheTerminalsTab;
+      public readonly ChatSeen ThroughADialog;
+      public readonly ChatSeen AfterTheChatsTab;
+
+      public Story()
+      {
+         var view = new TheClaudeSessionsView();
+         view.StartANewSession();
+         var chat = view.ChatOf(0);
+         chat.SayTheStatus("IDLE");
+         chat.SeenOnce(it => it.Card == "CHAT", "the tab to show the chat");
+         AfterTheTerminalsTab = chat.ClickTheTabOf("TERMINAL");
+         chat.SayTheStatus("WAITING");
+         chat.SayTheStatus("IDLE");
+         Thread.Sleep(500);
+         ThroughADialog = chat.Seen;
+         AfterTheChatsTab = chat.ClickTheTabOf("CHAT");
+      }
+   }
+
+   [XF] public void the_terminals_tab_shows_the_terminal() => story.AfterTheTerminalsTab.Card.Must().Be("TERMINAL");
+   [XF] public void as_the_users_choice() => story.AfterTheTerminalsTab.CardTheUserChose.Must().Be("TERMINAL");
+   [XF] public void which_stays_through_a_dialog() => story.ThroughADialog.Card.Must().Be("TERMINAL");
+   [XF] public void the_chats_tab_shows_the_chat() => story.AfterTheChatsTab.Card.Must().Be("CHAT");
 }
 
 public class When_the_chat_shows_a_conversation(When_the_chat_shows_a_conversation.Story story) : IClassFixture<When_the_chat_shows_a_conversation.Story>
@@ -340,7 +379,7 @@ public class When_claude_code_waits_for_the_user_in_a_dialog(When_claude_code_wa
    [XF] public void the_tab_shows_the_terminal_where_the_dialog_is() => story.WhileItWaits.Card.Must().Be("TERMINAL");
    [XF] public void the_status_line_says_so() => story.WhileItWaits.StatusLine.Must().Be("Claude is waiting for you in the terminal");
    [XF] public void and_the_chat_again_once_claude_code_goes_on() => story.OnceItGoesOn.Card.Must().Be("CHAT");
-   [XF] public void the_button_shows_the_other_card() => story.TheTerminalTheUserChose.Card.Must().Be("TERMINAL");
+   [XF] public void the_switch_shows_the_other_card() => story.TheTerminalTheUserChose.Card.Must().Be("TERMINAL");
    [XF] public void a_terminal_the_user_chose_stays_through_a_dialog() => (story.WhileItWaitsAgain.Card, story.OnceItGoesOnAgain.Card).Must().Be(("TERMINAL", "TERMINAL"));
 }
 

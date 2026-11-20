@@ -40,8 +40,18 @@ public sealed class TheChat(ClaudeSessionsObservationChannel channel, int tab)
    /// <summary>Presses <paramref name="key"/>, <c>ENTER</c>, <c>SHIFT_ENTER</c>, <c>ESCAPE</c> or <c>SHIFT_TAB</c>, in the input box.</summary>
    public ChatSeen Press(string key) => ChatSeen.From(channel.PressInTheChat(tab, key));
 
-   /// <summary>Switches between the chat and the terminal, as the button in the tool window's title bar does.</summary>
+   /// <summary>Switches between the chat and the terminal, as the action does from Find Action.</summary>
    public ChatSeen Switch() => ChatSeen.From(channel.SwitchBetweenTheChatAndTheTerminal(tab));
+
+   /// <summary>Shows the card <paramref name="card"/>, <c>CHAT</c> or <c>TERMINAL</c>, as clicking its tab does.</summary>
+   public ChatSeen ClickTheTabOf(string card) => ChatSeen.From(channel.ClickTheTabOfTheCard(tab, card));
+
+   /// <summary>
+   ///   The id of the action the IDE would run for <paramref name="keystroke"/>, such as <c>ctrl H</c>, pressed in the
+   ///   <c>chat</c> or the <c>terminal</c>, or <c>elsewhere</c> in the IDE's window, or null when it would run none.
+   /// </summary>
+   public string? TheActionTheShortcutRuns(string keystroke, string pressedIn) =>
+      channel.TheActionTheShortcutRuns(tab, keystroke, pressedIn)["action"]?.GetValue<string>();
 
    /// <summary>Opens the conversation's fold <paramref name="fold"/>, by its place among the folds.</summary>
    public ChatSeen OpenTheFold(int fold) => ChatSeen.From(channel.OpenTheFoldInTheChat(tab, fold));
@@ -113,7 +123,7 @@ public sealed class TheChat(ClaudeSessionsObservationChannel channel, int tab)
 ///   null when the tab has no chat, and the card the user chose, or null when the tab chose it; the conversation's text,
 ///   its folds, the texts its links cover, and the id of the item at the top of the pane; the status line, and why
 ///   Claude Code didn't get what the chat last gave it, or null; the text in the input box, its parts and its caret;
-///   and the switch button's text.
+///   and the titles of the cards' tabs.
 /// </summary>
 public sealed record ChatSeen(
    string? Card,
@@ -127,11 +137,11 @@ public sealed record ChatSeen(
    string? MessageBox,
    IReadOnlyList<MessagePartSeen> MessageBoxParts,
    int Caret,
-   string? Button)
+   IReadOnlyList<string> Tabs)
 {
    public static ChatSeen From(JsonNode chat) =>
       chat["card"] is null
-         ? new ChatSeen(null, null, "", [], [], null, null, null, null, [], 0, null)
+         ? new ChatSeen(null, null, "", [], [], null, null, null, null, [], 0, [])
          : new ChatSeen(chat["card"]!.GetValue<string>(),
                         chat["cardTheUserChose"]?.GetValue<string>(),
                         chat["transcript"]!.GetValue<string>(),
@@ -143,7 +153,7 @@ public sealed record ChatSeen(
                         chat["messageBox"]!.GetValue<string>(),
                         [.. chat["messageBoxParts"]!.AsArray().Select(it => MessagePartSeen.From(it!))],
                         chat["caret"]!.GetValue<int>(),
-                        chat["button"]?.GetValue<string>());
+                        [.. chat["tabs"]!.AsArray().Select(it => it!.GetValue<string>())]);
 }
 
 /// <summary>A fold of the chat's conversation: the line it starts on, up to it, the text it folds away, and whether it's open.</summary>

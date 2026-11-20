@@ -90,7 +90,7 @@ import org.jetbrains.plugins.terminal.TerminalProjectOptionsProvider
  * A tab's chat, through [TheChatObserved], each answering as `GET /tabs/chat` does:
  *  - `GET /tabs/chat?project=&tab=` — the card shown, or null for a tab without a chat, and the card the user chose; the
  *    conversation's text, its folds, its links, and the item at the top of the pane; the status line; the text in the
- *    input box, part by part, and its caret; and the switch button's text.
+ *    input box, part by part, and its caret; and the titles of the cards' tabs.
  *  - `POST /tabs/chat/conversation?project=&tab=` with `{"items": [...]}` — has the tab's stand-in give the chat that
  *    conversation: see [TheChatObserved.giveTheConversation].
  *  - `POST /tabs/chat/status?project=&tab=&status=` — has the stand-in say Claude Code's status, such as `IDLE`.
@@ -102,7 +102,10 @@ import org.jetbrains.plugins.terminal.TerminalProjectOptionsProvider
  *  - `POST /tabs/chat/paste?project=&tab=` with `{"text": …}` — pastes the text into it, as from the clipboard.
  *  - `POST /tabs/chat/paste-image?project=&tab=` — pastes a small image into it, as from the clipboard.
  *  - `POST /tabs/chat/press?project=&tab=&key=` — presses `ENTER`, `SHIFT_ENTER`, `ESCAPE` or `SHIFT_TAB` in it.
- *  - `POST /tabs/chat/switch?project=&tab=` — switches between the chat and the terminal, as the button does.
+ *  - `POST /tabs/chat/switch?project=&tab=` — switches between the chat and the terminal, as the action does.
+ *  - `POST /tabs/chat/click-tab?project=&tab=&card=` — shows the card, `CHAT` or `TERMINAL`, as clicking its tab does.
+ *  - `GET /tabs/chat/shortcut?project=&tab=&keystroke=&in=` — the action the IDE would run for the keystroke, such as
+ *    `ctrl H`, pressed `in` the chat, the terminal, or `elsewhere`: see [TheChatObserved.theActionTheShortcutRuns].
  *  - `POST /tabs/chat/fold?project=&tab=&fold=&open=` — opens a fold of the conversation, by its place, or closes it.
  *  - `POST /tabs/chat/scroll?project=&tab=&item=` — scrolls the conversation so that the item, by its id, is at the top.
  *  - `POST /chats/behind?by=` — has the tabs opened from then on get `standIn`, a [StandInBehindTheChat], behind their
@@ -196,6 +199,10 @@ class ObservationChannel : Disposable {
             }
             createContext("/tabs/chat/press") { exchange -> answer(exchange) { inTheChat(exchange) { it.press(query(exchange, "key")!!) } } }
             createContext("/tabs/chat/switch") { exchange -> answer(exchange) { inTheChat(exchange) { it.switch() } } }
+            createContext("/tabs/chat/click-tab") { exchange -> answer(exchange) { inTheChat(exchange) { it.clickTheTabOf(query(exchange, "card")!!) } } }
+            createContext("/tabs/chat/shortcut") { exchange ->
+                answer(exchange) { inTheChat(exchange) { it.theActionTheShortcutRuns(query(exchange, "keystroke")!!, query(exchange, "in")!!) } }
+            }
             createContext("/tabs/chat/fold") { exchange ->
                 answer(exchange) { inTheChat(exchange) { it.openTheFold(query(exchange, "fold")!!.toInt(), query(exchange, "open") != "false") } }
             }
