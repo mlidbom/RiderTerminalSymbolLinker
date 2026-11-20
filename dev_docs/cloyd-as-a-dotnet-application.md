@@ -11,7 +11,9 @@ as `claude-sessions.md` describes it under "Until the switch".
   - the input box as plain as Avalonia's editor gives it;
   - one home, later, for the Avalonia extensions the apps share;
   - a Cloyd window per project, "for now";
-  - the terminals first, and then all the Kotlin UI goes (under "How it's to be built").
+  - the terminals first, and then all the Kotlin UI goes (under "How it's to be built");
+  - the desktop app's Code tab as the chat's specification, over his own earlier wishes (see "The chat, when it comes
+    back: the desktop app is its specification").
 - **The spike, run on 2026-11-20 on his go,** found the TUI's host and nothing against the port: see "What the spike
   found".
 - **Started on Magnus's go, 2026-11-20:** "Yes :)" to step one, built in `Cloyd/` from Rider.
@@ -55,7 +57,7 @@ words:
 
   | Package | Lines | In the .NET Cloyd |
   |---|---|---|
-  | `chat` | 3,100 | rewritten. `claude-sessions.md`, "The chat view", is in effect its specification: what each part does, and Magnus's words on why. |
+  | `chat` | 3,100 | rewritten, to the desktop app's Code tab as its specification (see "The chat, when it comes back"). `claude-sessions.md`, "The chat view", holds Magnus's earlier wishes, which give way to the app's. |
   | `hub` | 1,100 | mostly replaced by the hub's own C# types |
   | `observation` | 1,000 | replaced by specifications on Avalonia's headless platform |
   | `history` | 460 | ported |
@@ -105,7 +107,8 @@ Claude's calls (.NET-cloyd, the session in this repository), which Magnus OK'd o
   - **Why it's cheap:** the spike has most of it: the attachment, the terminal and the window.
   - **Clickable file paths and C# symbols come right after it** (Magnus, 2026-11-20: "Agreed"), so step one stays
     quick. Until then, URLs and the links Claude Code writes itself (OSC 8) are what is clickable in Cloyd's terminal.
-  - **The chat comes back afterwards,** built in .NET.
+  - **The chat comes back afterwards,** built in .NET, to the desktop app as its specification (see "The chat, when
+    it comes back: the desktop app is its specification").
   - **Built in `Cloyd/`,** a solution of its own in this repository, which can move to a repository of its own.
 - **The input box is Avalonia's editor, AvaloniaEdit, unpolished,** with standard Windows text editing. Magnus: "None
   of the claude UI's have a super competent input box, very few chats do. Any polishing at all of this can wait."
@@ -190,6 +193,58 @@ Claude's calls (.NET-cloyd, the session in this repository), which Magnus OK'd o
 2. **A notification's click shows the session in Cloyd:** the hub's side is the tooling owner's.
 
 Then clickable file paths and C# symbols in Cloyd's terminal.
+
+## The chat, when it comes back: the desktop app is its specification
+
+**Magnus, 2026-11-20:** "Once we start building the real .NET UI I think we should copy the look, feel, and
+functionality of the claude desktop app by default. So I figure that once we start that, the desktop app becomes your
+spec for how the chat view should look and behave." Only the transcript, how it looks and behaves: "Not the whole
+application." Close, not exact: "Exactly matching look is not required though. Don't put in a ton of effort to try to
+look exactly the same." And over his own earlier wishes: "Actually I think the desktop app UI is the spec for now, not
+what I have said. I think it solves everything that I was trying to solve and does so well. Record any conflicts, but
+build to the app as the spec." Why: one reference holds all the app's small decisions at once, where Magnus asking for
+one thing at a time is slow.
+
+- **The specification:** the Claude desktop app's Code tab, as it shows one Claude Code conversation: how it looks, and
+  how it behaves when clicked, hovered and scrolled, and while Claude writes. Not its sidebar, nor its input box, nor the
+  rest of the app: Cloyd's input box stays AvaloniaEdit, unpolished (under "How it's to be built").
+- **It overrides Magnus's earlier wishes for the Kotlin chat** (`claude-sessions.md`, "The transcript pane"). Where they
+  differ, build as the app does, and record the conflict below, for him.
+- **What the app doesn't have is no conflict:** clickable file paths and C# symbols (under "How it's to be built") are
+  Cloyd's own, and stay.
+- **Close, not exact:** the app's layout, structure and behaviour; its spacing, sizes and colours near enough. Its fonts
+  and icons are Anthropic's: similar ones, not copies.
+
+### How it's built to the app
+
+- **Looking at the app takes nothing of Magnus's screen:** `ClaudeTooling.exe window capture --process <the app's
+  process id> <png>` draws its window at its full size in pixels, on another virtual desktop or covered, without
+  activating it. Checked on 2026-11-20: 2900 × 1878 pixels, its text and code legible. Not while it's minimized.
+- **The same conversation in both:** a Code session of the app writes an ordinary Claude Code transcript to
+  `~/.claude/projects`, as the CLI does (checked 2026-11-20), so Cloyd draws a session the app ran. The app also offers
+  to import the CLI's sessions.
+- **What the app shows and does, found on 2026-11-20, with its pictures and the session they show:**
+  `cloyd-chat-specification.md`.
+- **A reference, captured once for each part:** the app showing a conversation made for the purpose, so that no private
+  conversation lands in the repository: tool calls one by one and in runs, a failed call, thinking, Claude's markdown
+  (headings, lists, tables, code), a diff, an interruption, a compaction, and a conversation long enough to scroll. Kept
+  beside the specifications.
+- **Then working towards it takes no desktop:** the specifications draw each state to an image on Avalonia's headless
+  platform (`RenderedWindows/`). Cloyd draws the same conversation, compared with the reference, in seconds.
+- **Behaviour takes driving the app, on Magnus's screen, when he says he's ready.** The sessions needn't be short
+  (Magnus). Windows-MCP drives the real desktop: the real mouse and keys, and the window in front. So, as far as is
+  known, does Claude's own computer use, which acts on pictures of the screen. With the app on the current virtual
+  desktop, its UI Automation tree names its buttons and texts, read from PowerShell without touching it; on another
+  virtual desktop, it found no window.
+- **Chromium's remote debugging, which would take no screen, the app refuses:** started with
+  `--remote-debugging-port` or `--remote-debugging-pipe`, through its alias `claude-desktop.exe`, it quits within a
+  second, where an unknown switch leaves it running (2026-11-20, app 6.6395). Getting around that, as through Node's
+  `--inspect`, would undo what the app does on purpose, and wasn't tried.
+
+### Conflicts with Magnus's earlier wishes
+
+Each as it is found: what the app does, what he asked for and where, and that the app's was built. Kept in
+`cloyd-chat-specification.md`, "Conflicts with Magnus's earlier wishes".
 
 ## What's still open
 
