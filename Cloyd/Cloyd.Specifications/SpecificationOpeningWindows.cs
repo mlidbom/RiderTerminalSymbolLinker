@@ -169,12 +169,20 @@ public abstract class SpecificationOpeningWindows : IDisposable
    /// Draws <paramref name="window"/> to <c>RenderedWindows/&lt;name&gt;.png</c> beside the specifications' assembly, for
    /// an agent to look at what the specification saw.
    /// </summary>
+   /// <remarks>
+   /// Written beside it first, then moved into its place: runs at once may draw the same picture, as each class nested in
+   /// a specification's class builds the scenario that draws it anew, and the last one drawn is the one kept.
+   /// </remarks>
    protected static void Render(Window window, string name) => OnTheUIThread(() =>
    {
       AvaloniaHeadlessPlatform.ForceRenderTimerTick();
       Dispatcher.UIThread.RunJobs();
-      var folder = Directory.CreateDirectory(Path.Combine(AppContext.BaseDirectory, "RenderedWindows"));
-      window.CaptureRenderedFrame()?.Save(Path.Combine(folder.FullName, $"{name}.png"), PngBitmapEncoderOptions.Default);
+      if(window.CaptureRenderedFrame() is not {} frame) return;
+
+      var picture = Path.Combine(Directory.CreateDirectory(Path.Combine(AppContext.BaseDirectory, "RenderedWindows")).FullName, $"{name}.png");
+      var beingDrawn = $"{picture}.{Environment.ProcessId}.being-drawn";
+      frame.Save(beingDrawn, PngBitmapEncoderOptions.Default);
+      File.Move(beingDrawn, picture, overwrite: true);
    });
 
    /// <summary>Ends this fact's scenario, and tells its class's that the fact is done.</summary>

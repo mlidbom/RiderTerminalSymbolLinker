@@ -1,4 +1,6 @@
 using System.Diagnostics;
+using Compze.Threading;
+using Compze.Threading.Interprocess;
 using Cloyd.Ides;
 using Cloyd.Projects;
 using Cloyd.Sessions;
@@ -25,7 +27,8 @@ namespace Cloyd.Specifications.TheSandbox;
 /// Each sandbox is a folder of its own under <c>%LOCALAPPDATA%\CloydSpecifications</c>, named by the process of its run
 /// and its number in the run, such as <c>41236-7</c>: short, as the hub's Claude Code folder names a folder by the whole
 /// path of each project's folder. As a run's first sandbox starts, the sandboxes of runs that stopped before their
-/// scenarios ended are stopped and deleted: those named by a process that no longer runs.
+/// scenarios ended are stopped and deleted: those named by a process that no longer runs. One run at a time does it,
+/// under a lock of the machine's, so that runs started together don't end the same sandboxes at once.
 /// </remarks>
 sealed class Sandbox : IDisposable
 {
@@ -36,22 +39,17 @@ sealed class Sandbox : IDisposable
    readonly DirectoryInfo _folder;
    readonly Lazy<StandInDotNetAnalysisAndRefactoringMcp> _dotNetAnalysisAndRefactoringMcp = new(() => new StandInDotNetAnalysisAndRefactoringMcp());
 
-   /// <summary>Stops and deletes the sandboxes of the runs that stopped before their scenarios ended, before this run's first starts.</summary>
+   /// <summary>Ends the sandboxes of the runs that stopped before their scenarios ended, before this run's first starts.</summary>
    static Sandbox()
    {
-      if(!FolderOfTheSandboxes.Exists) return;
-
-      var running = Process.GetProcesses().Select(it =>
-      {
-         using(it) return it.Id;
-      }).ToHashSet();
-      foreach(var left in FolderOfTheSandboxes.EnumerateDirectories().Where(it => RunOf(it) is {} run && !running.Contains(run))) End(left);
+      using var endingThem = IMutex.Local("Cloyd.Specifications.EndingTheSandboxesOfRunsThatEnded", LockTimeout.Seconds(120));
+      endingThem.Locked(EndThoseOfRunsThatEnded);
    }
 
    Sandbox(DirectoryInfo folder)
    {
       _folder = folder;
-      HubOfTheSandbox = SandboxHub.RunIn(FolderOfTheHub(folder));
+      HubOfTheSandbox = HubStartedIn(folder);
       //todo: The tooling owner, 2026-11-20: the hub is to put the stand-in first on its sandbox sessions' PATH itself.
       //   Once it does, the sessions' shell needs no PATH of its own.
       ShellOfItsSessions = (ShellOfNewSessions.OnThisMachine() with { CommandLine = "pwsh.exe -NoLogo -NoProfile" })
@@ -109,6 +107,35 @@ sealed class Sandbox : IDisposable
    }
 
    static string FolderOfTheHub(DirectoryInfo sandbox) => Path.Combine(sandbox.FullName, "hub");
+
+   /// <summary>
+   /// The hub of the sandbox <paramref name="folder"/>, once it runs. A start that fails ends what it started of the
+   /// sandbox, which no scenario has to end, and fails.
+   /// </summary>
+   static SandboxHub HubStartedIn(DirectoryInfo folder)
+   {
+      try
+      {
+         return SandboxHub.RunIn(FolderOfTheHub(folder));
+      }
+      catch
+      {
+         End(folder);
+         throw;
+      }
+   }
+
+   /// <summary>Stops and deletes the sandboxes named by a process that no longer runs: those of runs that stopped before their scenarios ended.</summary>
+   static void EndThoseOfRunsThatEnded()
+   {
+      if(!FolderOfTheSandboxes.Exists) return;
+
+      var running = Process.GetProcesses().Select(it =>
+      {
+         using(it) return it.Id;
+      }).ToHashSet();
+      foreach(var left in FolderOfTheSandboxes.EnumerateDirectories().Where(it => RunOf(it) is {} run && !running.Contains(run))) End(left);
+   }
 
    /// <summary>The process of the run whose sandbox <paramref name="folder"/> is: null for a folder that is no sandbox.</summary>
    static int? RunOf(DirectoryInfo folder) => folder.Name.Split('-') is [var run, var number] && int.TryParse(run, out var process) && int.TryParse(number, out _) ? process : null;
