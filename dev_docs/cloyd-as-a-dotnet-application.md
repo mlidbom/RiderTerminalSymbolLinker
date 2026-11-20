@@ -105,9 +105,8 @@ Claude's calls (.NET-cloyd, the session in this repository), which Magnus OK'd o
     has to be reached before the switch, and the Kotlin side of it is deletion.
   - **Why it's cheap:** the spike has most of it: the attachment, the terminal and the window.
   - **Clickable file paths and C# symbols come right after it** (Magnus, 2026-11-20: "Agreed"), so step one stays
-    quick. Until then, URLs and the links Claude Code writes itself (OSC 8) are underlined when hovered in Cloyd's
-    terminal, but a Ctrl+click on one does nothing: Iciclecreek's terminal raises `UrlClicked` and "never opens it", and
-    Cloyd doesn't handle it yet.
+    quick. Until then, URLs and the links Claude Code writes itself (OSC 8) are what is clickable in Cloyd's terminal:
+    underlined under the pointer, and a Ctrl+click opens a web page's in the browser (below).
   - **The chat comes back afterwards,** built in .NET, to the desktop app as its specification (see "The chat, when
     it comes back: the desktop app is its specification").
   - **Built in `Cloyd/`,** a solution of its own in this repository, which can move to a repository of its own.
@@ -183,6 +182,10 @@ Claude's calls (.NET-cloyd, the session in this repository), which Magnus OK'd o
     Magnus to each one's desktop in turn. A notification's click still does, as is its purpose.
   - **Specified** with a stand-in IDE (`StandInIde`), which serves `GET /windows`: the desktop the window went to. The
     move itself can't be specified on the headless platform, whose windows Windows doesn't know.
+- **A Ctrl+click on a URL opens it in the browser** (`TerminalOfASessionHost`), as Iciclecreek's terminal leaves to its
+  host: it raises `UrlClicked`, and "never opens it". Only `http` and `https`: a link Claude Code writes itself (OSC 8)
+  can have any scheme, such as `file:` for a program. Until 2026-11-20 nothing handled the click, and it did nothing. Not
+  specified, as the headless platform opens nothing.
 - **Shift+Enter types a new line** in Claude Code's input box, as a line feed, which Claude Code takes as Ctrl+J
   (`TerminalOfASessionHost`): Claude Code ignores the Shift on Enter in a Windows console, and sent the message
   (Magnus, 2026-11-20, his first hour in Cloyd).

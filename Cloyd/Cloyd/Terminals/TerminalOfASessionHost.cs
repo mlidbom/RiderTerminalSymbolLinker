@@ -1,3 +1,4 @@
+using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Media;
@@ -43,6 +44,7 @@ sealed class TerminalOfASessionHost : TerminalControl
       };
       AddHandler(KeyDownEvent, TypeANewLineOnShiftEnter, RoutingStrategies.Tunnel);
       AddHandler(KeyUpEvent, LetGoOfShiftEnter, RoutingStrategies.Tunnel);
+      UrlClicked += OpenAWebPagesUrlInTheBrowser;
    }
 
    protected override Type StyleKeyOverride => typeof(TerminalControl);
@@ -78,6 +80,18 @@ sealed class TerminalOfASessionHost : TerminalControl
       if(key.Key != Key.Enter || !_shiftEnterHeld) return;
       key.Handled = true;
       _shiftEnterHeld = false;
+   }
+
+   /// <summary>
+   /// Opens the URL of a link Magnus Ctrl+clicked in the browser, when it's a web page's: Iciclecreek's terminal never
+   /// opens one itself. Only <c>http</c> and <c>https</c>: a link Claude Code's output writes itself (OSC 8) can have
+   /// any scheme, such as <c>file:</c> for a program, or <c>ms-settings:</c>.
+   /// </summary>
+   /// <remarks>Not specified: Avalonia's headless platform opens nothing, and has no way to see what would be opened.</remarks>
+   void OpenAWebPagesUrlInTheBrowser(object? sender, UrlClickedEventArgs click)
+   {
+      if(Uri.TryCreate(click.Url, UriKind.Absolute, out var url) && (url.Scheme == Uri.UriSchemeHttps || url.Scheme == Uri.UriSchemeHttp))
+         _ = TopLevel.GetTopLevel(this)!.Launcher.LaunchUriAsync(url);
    }
 
    /// <summary>
