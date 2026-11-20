@@ -58,7 +58,18 @@ static class Program
                           sandbox chat give <tab> <conversation.json>
                                                       Has the stand-in behind tab <tab>'s chat give it the conversation
                                                       in the file: {"items": [...]}, as the specifications give it
-                          sandbox chat picture <tab>  Paints tab <tab>'s chat into a PNG file, and prints where it is
+                          sandbox chat picture <tab>  Paints tab <tab>'s chat's transcript into a PNG file, and prints
+                                                      where it is
+                          sandbox chat picture-of-the-box <tab>
+                                                      Paints what is under it, the input box and the status line, into
+                                                      a PNG file, and prints where it is
+                          sandbox chat status <tab> <status>
+                                                      Has the stand-in behind tab <tab>'s chat say Claude Code's status
+                                                      is NOT_RUNNING, IDLE, BUSY or WAITING
+                          sandbox chat type <tab> <text>
+                                                      Types the text into tab <tab>'s chat's input box
+                          sandbox chat paste-image <tab>
+                                                      Pastes a small image into it, as from the clipboard
 
                         Magnus's IDEs:
 
@@ -161,6 +172,18 @@ static class Program
             break;
          case ["sandbox", "chat", "picture", var tab]:
             Console.WriteLine(sandbox.ClaudeSessionsObservation.PictureOfTheChat(int.Parse(tab))["file"]!.GetValue<string>());
+            break;
+         case ["sandbox", "chat", "picture-of-the-box", var tab]:
+            Console.WriteLine(sandbox.ClaudeSessionsObservation.PictureOfTheChatsInputBox(int.Parse(tab))["file"]!.GetValue<string>());
+            break;
+         case ["sandbox", "chat", "status", var tab, var status]:
+            Console.WriteLine(ObservationChannel.Indent(sandbox.ClaudeSessionsObservation.SayTheStatusToTheChat(int.Parse(tab), status)));
+            break;
+         case ["sandbox", "chat", "type", var tab, var text]:
+            Console.WriteLine(ObservationChannel.Indent(sandbox.ClaudeSessionsObservation.TypeInTheChat(int.Parse(tab), text)));
+            break;
+         case ["sandbox", "chat", "paste-image", var tab]:
+            Console.WriteLine(ObservationChannel.Indent(sandbox.ClaudeSessionsObservation.PasteAnImageInTheChat(int.Parse(tab))));
             break;
          case ["everyday", "reload", var plugin]:
             foreach(var line in EverydayIdes.Reload(OurPlugin.Named(plugin))) Console.WriteLine(line);

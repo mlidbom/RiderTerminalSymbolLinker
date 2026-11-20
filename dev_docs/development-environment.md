@@ -103,7 +103,10 @@ reload of the plugin, whose unloading stops the server on the EDT.
   through the stand-in, opens rows, seeks text, and renders the transcript into a PNG: `sandbox chat <tab>`,
   `sandbox chat give <tab> <conversation.json>` and `sandbox chat picture <tab>`, for an agent to see how it looks.
   The picture renders the transcript in a Compose scene of its own, scrolled as it is: the sandbox's window is on a
-  virtual desktop of its own, where Compose draws nothing, so painting the panel gave an empty picture.
+  virtual desktop of its own, where Compose draws nothing, so painting the panel gave an empty picture. What is under
+  the transcript, the input box with its thumbnails and the lines over and under it, is Swing, which paints there:
+  `sandbox chat picture-of-the-box <tab>` paints it as it is laid out, and `sandbox chat status <tab> <status>`,
+  `sandbox chat type <tab> <text>` and `sandbox chat paste-image <tab>` set it up for the picture.
 
 ## The specifications
 
