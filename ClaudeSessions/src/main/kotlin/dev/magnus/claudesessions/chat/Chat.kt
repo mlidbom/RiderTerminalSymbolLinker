@@ -4,7 +4,7 @@ import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Disposer
-import com.intellij.ui.JBColor
+import com.intellij.openapi.editor.colors.EditorColorsManager
 import com.intellij.util.ui.JBUI
 import dev.magnus.claudesessions.ClaudeSessionTab
 import dev.magnus.claudesessions.chat.claudecode.ClaudeCodeBehindTheChat
@@ -26,7 +26,7 @@ import kotlinx.coroutines.launch
 
 /**
  * The chat of a [ClaudeSessionTab]: its session's conversation, in the [TranscriptPane], and the [MessageBox] the user
- * writes to Claude in, with the [StatusLine] between them. Everyday talk with Claude happens here, in the IDE's own
+ * writes to Claude in, with the [WorkingLine] over it while Claude works, and the [StatusLine] under it. Everyday talk with Claude happens here, in the IDE's own
  * editors, and Claude Code's own UI, in the tab's terminal, is a key away, for what the chat doesn't do. It shows what
  * [claudeCode] gives it, and sends through it, by way of [TypingFromTheChat].
  *
@@ -46,6 +46,7 @@ class Chat(project: Project, val claudeCode: ClaudeCodeBehindTheChat, private va
 
     val transcript = TranscriptPane(project, this)
     val statusLine = StatusLine()
+    val workingLine = WorkingLine(this)
     private val typing = TypingFromTheChat(claudeCode, scope, ::handBack, whenWhatWaitsChanges = whenItChanges)
     val messageBox = MessageBox(project, typing, afterSending = { if (it.isASlashCommand) showTheTerminal() }, tallest = { component.height * 2 / 5 }, this)
 
@@ -55,14 +56,23 @@ class Chat(project: Project, val claudeCode: ClaudeCodeBehindTheChat, private va
      */
     private var maybeSentAsTheChatWent = emptyList<MessageMaybeSent>()
 
-    /** The transcript, over the status line and the box, which is as tall as its lines, up to two fifths of the chat. */
+    /**
+     * What is under the transcript: the box, which is as tall as its lines, up to two fifths of the chat, with the
+     * working line over it while Claude works, and the status line under it, on the transcript's background, as in
+     * Claude's desktop app.
+     */
+    val underTheTranscript: JComponent = JPanel(BorderLayout()).apply {
+        background = EditorColorsManager.getInstance().globalScheme.defaultBackground
+        border = JBUI.Borders.empty(4, 10, 0, 10)
+        add(workingLine.component, BorderLayout.NORTH)
+        add(messageBox.component, BorderLayout.CENTER)
+        add(statusLine.component, BorderLayout.SOUTH)
+    }
+
+    /** The transcript, over [underTheTranscript]. */
     val component: JComponent = JPanel(BorderLayout()).apply {
         add(transcript.component, BorderLayout.CENTER)
-        add(JPanel(BorderLayout()).apply {
-            border = JBUI.Borders.customLineTop(JBColor.border())
-            add(statusLine.component, BorderLayout.NORTH)
-            add(messageBox.component, BorderLayout.CENTER)
-        }, BorderLayout.SOUTH)
+        add(underTheTranscript, BorderLayout.SOUTH)
     }
 
     /** The messages the user sent that Claude Code wasn't given yet, in their order. */
@@ -78,11 +88,17 @@ class Chat(project: Project, val claudeCode: ClaudeCodeBehindTheChat, private va
         scope.launch {
             claudeCode.conversation.filterNotNull().collect { conversation ->
                 transcript.show(conversation)
-                statusLine.show(conversation)
+                workingLine.show(conversation)
                 putBackWhatClaudeCodeDidNotGet(conversation)
             }
         }
-        scope.launch { claudeCode.status.collect(statusLine::show) }
+        scope.launch {
+            claudeCode.status.collect {
+                statusLine.show(it)
+                workingLine.show(it)
+                messageBox.show(it)
+            }
+        }
     }
 
     /**

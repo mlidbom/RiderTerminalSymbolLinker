@@ -135,7 +135,10 @@ public sealed class ClaudeSessionsObservationChannel(int port) : ObservationChan
    /// <summary>Pastes a small image into the chat's input box, as from the clipboard.</summary>
    public JsonNode PasteAnImageInTheChat(int tab, string? project = null) => Post("tabs/chat/paste-image", project, new { }, $"tab={tab}");
 
-   /// <summary>Presses <paramref name="key"/>, <c>ENTER</c>, <c>CTRL_ENTER</c>, <c>SHIFT_ENTER</c>, <c>ESCAPE</c> or <c>SHIFT_TAB</c>, in the chat's input box.</summary>
+   /// <summary>Clicks the thumbnail <paramref name="at"/>, counting from 0, over the chat's input box, and tells which file the IDE's editor then shows.</summary>
+   public JsonNode ClickTheThumbnailInTheChat(int tab, int at, string? project = null) => Post("tabs/chat/click-thumbnail", project, new { }, $"tab={tab}&at={at}");
+
+   /// <summary>Presses <paramref name="key"/>, <c>ENTER</c>, <c>CTRL_ENTER</c>, <c>SHIFT_ENTER</c>, <c>ESCAPE</c>, <c>SHIFT_TAB</c> or <c>BACKSPACE</c>, in the chat's input box.</summary>
    public JsonNode PressInTheChat(int tab, string key, string? project = null) => Post("tabs/chat/press", project, new { }, $"tab={tab}&key={key}");
 
    /// <summary>Switches tab <paramref name="tab"/> between its chat and its terminal, as the action does from Find Action.</summary>
@@ -166,8 +169,14 @@ public sealed class ClaudeSessionsObservationChannel(int port) : ObservationChan
    /// <summary>Closes the transcript's find bar.</summary>
    public JsonNode CloseTheFindInTheChat(int tab, string? project = null) => Post("tabs/chat/close-find", project, new { }, $"tab={tab}");
 
-   /// <summary>Paints tab <paramref name="tab"/>'s chat into a PNG file, and tells where it is: <c>file</c>. For an agent to look at.</summary>
+   /// <summary>Paints tab <paramref name="tab"/>'s chat's transcript into a PNG file, and tells where it is: <c>file</c>. For an agent to look at.</summary>
    public JsonNode PictureOfTheChat(int tab, string? project = null) => Get("tabs/chat/picture", project, $"tab={tab}");
+
+   /// <summary>Paints what is under tab <paramref name="tab"/>'s chat's transcript, the input box and the status line, into a PNG file, and tells where it is: <c>file</c>.</summary>
+   public JsonNode PictureOfTheChatsInputBox(int tab, string? project = null) => Get("tabs/chat/picture-of-the-box", project, $"tab={tab}");
+
+   /// <summary>Clicks the send button of tab <paramref name="tab"/>'s chat's input box.</summary>
+   public JsonNode ClickTheSendButtonInTheChat(int tab, string? project = null) => Post("tabs/chat/click-send", project, new { }, $"tab={tab}");
 
    /// <summary>
    ///   Has the tabs opened from now on get the claude tooling's hub behind their chats, when <paramref name="hub"/>, as

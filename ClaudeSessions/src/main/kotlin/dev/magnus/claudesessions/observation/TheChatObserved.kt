@@ -18,6 +18,7 @@ import com.intellij.openapi.actionSystem.KeyboardShortcut
 import com.intellij.openapi.actionSystem.ex.ActionUtil
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.editor.EditorModificationUtil
+import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.keymap.KeymapManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.wm.WindowManager
@@ -63,6 +64,7 @@ import java.awt.event.InputEvent
 import java.awt.event.KeyEvent
 import java.awt.image.BufferedImage
 import java.nio.file.Files
+import javax.imageio.ImageIO
 import javax.swing.JComponent
 import javax.swing.KeyStroke
 
@@ -83,9 +85,11 @@ class TheChatObserved(private val project: Project, private val tab: Int) {
     /**
      * The tab's chat: the card shown, or null when the tab has no chat, and the card the user chose, or null; the
      * transcript's rows, as [describe] tells each, the texts the links cover, the id of the item at the top of the pane,
-     * and its find bar; the status line, and why Claude Code didn't get what the chat last gave it, or null; the text in
-     * the input box, its parts, each with its kind, its caret, how many lines tall it is, and how many it has room for;
-     * and the titles of the cards' tabs.
+     * and its find bar; the working line, or null while it doesn't show; the status line, and why Claude Code didn't get
+     * what the chat last gave it, or null; the text in
+     * the input box, its parts, each with its kind, its caret, how many lines tall it is, and how many it has room for,
+     * the thumbnails over it, each with its caption and its image's file, and what its send button does, `SEND`, `STOP`
+     * or `NOTHING`; and the titles of the cards' tabs.
      */
     fun describe(): Map<String, Any?> {
         val cards = sessionTab.cards ?: return mapOf("card" to null)
@@ -101,10 +105,13 @@ class TheChatObserved(private val project: Project, private val tab: Int) {
             "find" to describeTheFindOf(transcript),
             "links" to transcript.linkedTexts,
             "statusLine" to cards.chat.statusLine.text,
+            "workingLine" to cards.chat.workingLine.text,
             "whyNotTyped" to cards.chat.statusLine.whyNotTyped,
             "messageBox" to cards.chat.messageBox.text,
             "messageBoxLines" to cards.chat.messageBox.linesItShows,
             "messageBoxRoom" to cards.chat.messageBox.linesItHasRoomFor,
+            "thumbnails" to cards.chat.messageBox.thumbnails.shown.map { mapOf("caption" to it.text, "file" to it.file.toString()) },
+            "sendButton" to cards.chat.messageBox.sendButton.does.name,
             "tabs" to cards.tabTitles,
         )
     }
@@ -171,8 +178,24 @@ class TheChatObserved(private val project: Project, private val tab: Int) {
         return describe()
     }
 
+    /** Clicks the input box's send button, as the user would: it sends, stops Claude, or does nothing, as it shows. */
+    fun clickTheSendButton(): Map<String, Any?> {
+        cards.chat.messageBox.sendButton.click()
+        return describe()
+    }
+
     /**
-     * Presses [key], `ENTER`, `CTRL_ENTER`, `SHIFT_ENTER`, `ESCAPE` or `SHIFT_TAB`, in the input box: runs the action the
+     * Clicks the thumbnail [at], counting from 0, over the input box, as the user would, and tells which file the IDE's
+     * editor then shows, `selectedEditorFile`: the image's, at full size.
+     */
+    fun clickTheThumbnail(at: Int): Map<String, Any?> {
+        val thumbnails = cards.chat.messageBox.thumbnails
+        thumbnails.open(thumbnails.shown[at])
+        return mapOf("selectedEditorFile" to FileEditorManager.getInstance(project).selectedFiles.firstOrNull()?.toNioPath()?.toString())
+    }
+
+    /**
+     * Presses [key], `ENTER`, `CTRL_ENTER`, `SHIFT_ENTER`, `ESCAPE`, `SHIFT_TAB` or `BACKSPACE`, in the input box: runs the action the
      * IDE would run for it there, as [theActionTheIdeRunsFor] chooses it: the box's own, or else the editor's, as Enter's.
      */
     fun press(key: String): Map<String, Any?> {
@@ -349,6 +372,25 @@ class TheChatObserved(private val project: Project, private val tab: Int) {
         return mapOf("file" to file.toString())
     }
 
+    /**
+     * Paints what is under the chat's transcript, the input box and the status line under it, as they are, into a PNG
+     * file at the screen's scale, and tells where the file is, `file`: a picture for an agent to look at. Painted by
+     * Swing, which paints whatever virtual desktop the window is on.
+     */
+    fun pictureOfTheBox(): Map<String, Any?> {
+        val under = cards.chat.underTheTranscript
+        val scale = JBUIScale.sysScale(under).toDouble()
+        val image = BufferedImage((under.width * scale).toInt(), (under.height * scale).toInt(), BufferedImage.TYPE_INT_ARGB)
+        image.createGraphics().run {
+            scale(scale, scale)
+            under.paint(this)
+            dispose()
+        }
+        val file = Files.createTempFile("claude-sessions-input-box-", ".png")
+        ImageIO.write(image, "png", file.toFile())
+        return mapOf("file" to file.toString())
+    }
+
     private fun describe(message: Message): Map<String, Any?> = mapOf(
         "parts" to message.parts.map { part ->
             when (part) {
@@ -382,6 +424,7 @@ class TheChatObserved(private val project: Project, private val tab: Int) {
             "SHIFT_ENTER" to KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, InputEvent.SHIFT_DOWN_MASK),
             "ESCAPE" to KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0),
             "SHIFT_TAB" to KeyStroke.getKeyStroke(KeyEvent.VK_TAB, InputEvent.SHIFT_DOWN_MASK),
+            "BACKSPACE" to KeyStroke.getKeyStroke(KeyEvent.VK_BACK_SPACE, 0),
         )
 
         /**

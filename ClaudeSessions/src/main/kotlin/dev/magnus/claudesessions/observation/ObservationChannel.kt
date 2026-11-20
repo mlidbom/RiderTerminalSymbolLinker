@@ -101,8 +101,11 @@ import org.jetbrains.plugins.terminal.TerminalProjectOptionsProvider
  *  - `POST /tabs/chat/type?project=&tab=` with `{"text": …}` — types the text into the input box.
  *  - `POST /tabs/chat/paste?project=&tab=` with `{"text": …}` — pastes the text into it, as from the clipboard.
  *  - `POST /tabs/chat/paste-image?project=&tab=` — pastes a small image into it, as from the clipboard.
- *  - `POST /tabs/chat/press?project=&tab=&key=` — presses `ENTER`, `CTRL_ENTER`, `SHIFT_ENTER`, `ESCAPE` or `SHIFT_TAB`
- *    in it.
+ *  - `POST /tabs/chat/click-send?project=&tab=` — clicks its send button.
+ *  - `POST /tabs/chat/click-thumbnail?project=&tab=&at=` — clicks the thumbnail at that index over it, and tells which
+ *    file the IDE's editor then shows.
+ *  - `POST /tabs/chat/press?project=&tab=&key=` — presses `ENTER`, `CTRL_ENTER`, `SHIFT_ENTER`, `ESCAPE`, `SHIFT_TAB` or
+ *    `BACKSPACE` in it.
  *  - `POST /tabs/chat/switch?project=&tab=` — switches between the chat and the terminal, as the action does.
  *  - `POST /tabs/chat/click-tab?project=&tab=&card=` — shows the card, `CHAT` or `TERMINAL`, as clicking its tab does.
  *  - `GET /tabs/chat/shortcut?project=&tab=&keystroke=&in=` — the action the IDE would run for the keystroke, such as
@@ -114,7 +117,9 @@ import org.jetbrains.plugins.terminal.TerminalProjectOptionsProvider
  *  - `POST /tabs/chat/find?project=&tab=&text=` — opens the transcript's find bar, and has it seek the text.
  *  - `POST /tabs/chat/find-next?project=&tab=&forward=` — goes to the next place it found, or the one before.
  *  - `POST /tabs/chat/close-find?project=&tab=` — closes the find bar.
- *  - `GET /tabs/chat/picture?project=&tab=` — paints the chat into a PNG file, and tells where it is.
+ *  - `GET /tabs/chat/picture?project=&tab=` — paints the chat's transcript into a PNG file, and tells where it is.
+ *  - `GET /tabs/chat/picture-of-the-box?project=&tab=` — paints what is under the transcript, the input box and the
+ *    status line, into a PNG file, and tells where it is.
  *  - `POST /chats/behind?by=` — has the tabs opened from then on get `standIn`, a [StandInBehindTheChat], behind their
  *    chats, as they do unless asked otherwise, or the `hub`'s adapter, as outside the sandbox.
  */
@@ -197,6 +202,9 @@ class ObservationChannel : Disposable {
                     inTheChat(exchange) { it.type(text) }
                 }
             }
+            createContext("/tabs/chat/click-send") { exchange -> answer(exchange) { inTheChat(exchange) { it.clickTheSendButton() } } }
+            createContext("/tabs/chat/picture-of-the-box") { exchange -> answer(exchange) { inTheChat(exchange) { it.pictureOfTheBox() } } }
+            createContext("/tabs/chat/click-thumbnail") { exchange -> answer(exchange) { inTheChat(exchange) { it.clickTheThumbnail(query(exchange, "at")!!.toInt()) } } }
             createContext("/tabs/chat/paste-image") { exchange -> answer(exchange) { inTheChat(exchange) { it.pasteAnImage() } } }
             createContext("/tabs/chat/paste") { exchange ->
                 answer(exchange) {

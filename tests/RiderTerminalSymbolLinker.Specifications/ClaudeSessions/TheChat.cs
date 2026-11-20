@@ -37,7 +37,13 @@ public sealed class TheChat(ClaudeSessionsObservationChannel channel, int tab)
    /// <summary>Pastes a small image into the input box, as from the clipboard.</summary>
    public ChatSeen PasteAnImage() => ChatSeen.From(channel.PasteAnImageInTheChat(tab));
 
-   /// <summary>Presses <paramref name="key"/>, <c>ENTER</c>, <c>CTRL_ENTER</c>, <c>SHIFT_ENTER</c>, <c>ESCAPE</c> or <c>SHIFT_TAB</c>, in the input box.</summary>
+   /// <summary>Clicks the input box's send button: it sends, stops Claude, or does nothing, as it shows.</summary>
+   public ChatSeen ClickTheSendButton() => ChatSeen.From(channel.ClickTheSendButtonInTheChat(tab));
+
+   /// <summary>Clicks the thumbnail <paramref name="at"/>, counting from 0, over the input box, and returns the file the IDE's editor then shows.</summary>
+   public string? ClickTheThumbnail(int at) => channel.ClickTheThumbnailInTheChat(tab, at)["selectedEditorFile"]?.GetValue<string>();
+
+   /// <summary>Presses <paramref name="key"/>, <c>ENTER</c>, <c>CTRL_ENTER</c>, <c>SHIFT_ENTER</c>, <c>ESCAPE</c>, <c>SHIFT_TAB</c> or <c>BACKSPACE</c>, in the input box.</summary>
    public ChatSeen Press(string key) => ChatSeen.From(channel.PressInTheChat(tab, key));
 
    /// <summary>Switches between the chat and the terminal, as the action does from Find Action.</summary>
@@ -142,9 +148,10 @@ public sealed class TheChat(ClaudeSessionsObservationChannel channel, int tab)
 ///   A tab's chat as the observation channel tells of it: the card the tab shows, <c>CHAT</c> or <c>TERMINAL</c>, or
 ///   null when the tab has no chat, and the card the user chose, or null when the tab chose it; the transcript's rows, the
 ///   texts the console filters' links cover, the id of the item at the top of the pane, and the transcript's find bar;
-///   the status line, and why Claude Code didn't get what the chat last gave it, or null; the text in the input box, its
+///   the working line, or null while it doesn't show; the status line, and why Claude Code didn't get what the chat last gave it, or null; the text in the input box, its
 ///   parts, its caret, how many lines tall it is, and how many it has room for: two fifths of the chat's height, which
-///   in the sandbox Rider is its tool window's; and the titles of the cards' tabs.
+///   in the sandbox Rider is its tool window's; the thumbnails over it, and what its send button does, <c>SEND</c>,
+///   <c>STOP</c> or <c>NOTHING</c>; and the titles of the cards' tabs.
 /// </summary>
 public sealed record ChatSeen(
    string? Card,
@@ -153,6 +160,7 @@ public sealed record ChatSeen(
    IReadOnlyList<string> Links,
    string? ItemAtTheTop,
    FindSeen? Find,
+   string? WorkingLine,
    string? StatusLine,
    string? WhyNotTyped,
    string? MessageBox,
@@ -160,6 +168,8 @@ public sealed record ChatSeen(
    int Caret,
    int MessageBoxLines,
    int MessageBoxRoom,
+   IReadOnlyList<ThumbnailSeen> Thumbnails,
+   string? SendButton,
    IReadOnlyList<string> Tabs)
 {
    /// <summary>The rows' texts, each on a line of its own, as they read on the screen: the bodies of tool calls aside.</summary>
@@ -170,13 +180,14 @@ public sealed record ChatSeen(
 
    public static ChatSeen From(JsonNode chat) =>
       chat["card"] is null
-         ? new ChatSeen(null, null, [], [], null, null, null, null, null, [], 0, 0, 0, [])
+         ? new ChatSeen(null, null, [], [], null, null, null, null, null, null, [], 0, 0, 0, [], null, [])
          : new ChatSeen(chat["card"]!.GetValue<string>(),
                         chat["cardTheUserChose"]?.GetValue<string>(),
                         [.. chat["rows"]!.AsArray().Select(it => RowSeen.From(it!))],
                         [.. chat["links"]!.AsArray().Select(it => it!.GetValue<string>())],
                         chat["itemAtTheTop"]?.GetValue<string>(),
                         FindSeen.From(chat["find"]!),
+                        chat["workingLine"]?.GetValue<string>(),
                         chat["statusLine"]!.GetValue<string>(),
                         chat["whyNotTyped"]?.GetValue<string>(),
                         chat["messageBox"]!.GetValue<string>(),
@@ -184,7 +195,15 @@ public sealed record ChatSeen(
                         chat["caret"]!.GetValue<int>(),
                         chat["messageBoxLines"]!.GetValue<int>(),
                         chat["messageBoxRoom"]!.GetValue<int>(),
+                        [.. chat["thumbnails"]!.AsArray().Select(it => ThumbnailSeen.From(it!))],
+                        chat["sendButton"]!.GetValue<string>(),
                         [.. chat["tabs"]!.AsArray().Select(it => it!.GetValue<string>())]);
+}
+
+/// <summary>A thumbnail over the chat's input box, of an image it holds: its caption, the image's place-holder, and the image's file.</summary>
+public sealed record ThumbnailSeen(string Caption, string File)
+{
+   public static ThumbnailSeen From(JsonNode thumbnail) => new(thumbnail["caption"]!.GetValue<string>(), thumbnail["file"]!.GetValue<string>());
 }
 
 /// <summary>

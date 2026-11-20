@@ -341,7 +341,11 @@ plain terminal tab, with no session host, gets none, and shows its terminal alon
 - **The input box** (`MessageBox`), an editor of a plain-text `LightVirtualFile`, as tall as the lines it holds,
   wrapped ones included, from one up to as many as two fifths of the chat hold, past which it scrolls (Magnus,
   2026-11-20: "start out as a single line and grow when I add line breaks"); the chat lays it out below the transcript
-  at that height, where a splitter gave it a fifth of the chat before. No light bulb of intentions in it
+  at that height, where a splitter gave it a fifth of the chat before. It looks like the composer of Claude's desktop
+  app (Magnus, 2026-11-20: "Could it get to look something like this?", and "Do not spend effort on anything
+  particularly hard"): a `RoundedBox`, filled with the panels' background, a shade off the transcript's, outlined in the
+  focus color while it has the focus, with a round `SendButton` at its right, Claude's orange: an arrow that sends, or,
+  while Claude is busy and the box is empty, a square that interrupts, as Escape does. No light bulb of intentions in it
   (`isShowIntentionBulb`): Magnus, the same day, "please get rid of the context actions indicator". Ctrl+Enter sends, Shift+Enter starts
   a new line, Escape interrupts Claude Code, Shift+Tab changes its permission mode, each a key of the box's own, ahead of
   the keymap's, as Ctrl+Enter's Split Line; Ctrl+Enter, Shift+Enter and Escape go to a completion list instead while one
@@ -352,6 +356,12 @@ plain terminal tab, with no session host, gets none, and shows its terminal alon
     `EditorPaste`: text is inserted and marked as pasted; an image with no text on the clipboard is saved as PNG by
     `PastedImages`, in the IDE's system folder, kept a week, and shown as `[Image #n]`. Every other editor's paste is the
     one it had.
+  - **Thumbnails of the images** the box holds, over its editor (`PastedImageThumbnails`), each captioned with its
+    place-holder's text, in the place-holders' order; clicking one opens the PNG in the IDE's image viewer, at full size
+    (Magnus, 2026-11-20: "Could thumbnails appear above the text editor itself with the names beneath them "[Image #1]"
+    and clicking them shows them full size?"). One goes when its place-holder is deleted, as its image does from the
+    message, and all as the message is sent. The viewer is the IDE's, rather than a pane of the plugin's, as it zooms
+    and fits for free.
   - **The message's parts:** each stretch of the text as what it came in as, typed, pasted, or an image, the innermost
     paste deciding; two pastes side by side stay two, as in Claude Code's box.
   - **A message that starts with `/`** shows the terminal, as if the user chose it, where the command shows what it does.
@@ -364,8 +374,14 @@ plain terminal tab, with no session host, gets none, and shows its terminal alon
     When what is in the way shows in Claude Code's own UI, a dialog or text in its own input box, the tab shows the
     terminal. A message the hub typed and left unsent in Claude Code's own box (`inputBoxShowsOtherThanTyped`,
     `notSentByEnter`) isn't put back: the terminal shows it there.
-- **A status line** above the input box: whether Claude is busy, idle or waiting in the terminal, and how many commands
-  the turn has run, counted from the conversation.
+- **A status line** under the input box, as the desktop app has its model and modes there: whether Claude is busy, idle
+  or waiting in the terminal.
+- **A working line** over the input box while Claude is busy (`WorkingLine`), as Claude Code's own UI, the desktop app
+  and claude.ai show that Claude works: a spinner, the tool call under way, the last of the turn's with no result yet,
+  or else "Working…", how long the turn has taken since the line saw Claude Code turn busy, and how many commands it has
+  run, counted from the conversation. Magnus, 2026-11-20: "The lack of any information about that in the new UI is what
+  keeps me switching back to the TUI constantly at the moment, to see what is going on." Over the box rather than at
+  the transcript's end, so that it shows however the transcript is scrolled, as the TUI's does.
 - **Nothing the user wrote is lost when the IDE goes, and the chat comes back where it was,** after a restart, a crash
   or a plugin reload. Magnus asked for it on 2026-11-19, for the Rider restart tool: "make sure that anything that I had
   typed into one of the chat input boxes it has built will survive this restart".

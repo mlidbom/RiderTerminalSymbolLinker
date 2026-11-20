@@ -25,13 +25,19 @@ import com.intellij.openapi.util.Key
 import com.intellij.openapi.util.TextRange
 import com.intellij.openapi.util.text.StringUtil
 import com.intellij.testFramework.LightVirtualFile
+import com.intellij.ui.JBColor
+import com.intellij.util.ui.JBUI
 import dev.magnus.claudesessions.chat.TypingFromTheChat
+import dev.magnus.claudesessions.chat.claudecode.ClaudeCodeStatus
 import dev.magnus.claudesessions.chat.claudecode.Message
 import dev.magnus.claudesessions.chat.claudecode.MessagePart
 import dev.magnus.claudesessions.chat.claudecode.PastedImage
 import dev.magnus.claudesessions.chat.claudecode.PastedText
 import dev.magnus.claudesessions.chat.claudecode.TypedText
 import java.awt.BorderLayout
+import java.awt.Color
+import java.awt.event.FocusAdapter
+import java.awt.event.FocusEvent
 import java.awt.Dimension
 import java.awt.Image
 import java.awt.datatransfer.DataFlavor
@@ -52,7 +58,8 @@ import javax.swing.KeyStroke
  * It knows which parts of the message were pasted, so that Claude Code gets them as pasted: Ctrl+V, or any other
  * shortcut of the IDE's paste, goes through [paste], by way of the [MessageBoxPasteHandler]. An image on the clipboard,
  * with no text on it, is saved to a file by [PastedImages], and the box shows a place-holder for it, such as
- * `[Image #1]`: Claude Code attaches an image whose file's path is pasted into its box by itself.
+ * `[Image #1]`: Claude Code attaches an image whose file's path is pasted into its box by itself. Over the editor, the
+ * [thumbnails] show the images it holds.
  *
  * What it holds unsent, its [draft], is saved as it changes, and comes back as the IDE starts again: see
  * [dev.magnus.claudesessions.chat.saving.ChatKeeper].
@@ -84,15 +91,39 @@ class MessageBox(
         settings.isAdditionalPageAtBottom = false
         // The intentions' light bulb: Magnus, 2026-11-20, "please get rid of the context actions indicator".
         settings.isShowIntentionBulb = false
+        backgroundColor = FILL
+        setBorder(JBUI.Borders.empty())
         setPlaceholder("Message Claude: Ctrl+Enter sends it")
         setShowPlaceholderWhenFocused(true)
         putUserData(KEY, this@MessageBox)
     }
 
-    /** The box, [linesItShows] tall. */
-    val component: JComponent = object : JPanel(BorderLayout()) {
+    /** The thumbnails of the images the box holds, over its editor. */
+    val thumbnails = PastedImageThumbnails(project)
+
+    /** The editor, [linesItShows] tall. */
+    private val editorAsTallAsItsLines: JComponent = object : JPanel(BorderLayout()) {
         override fun getPreferredSize(): Dimension = super.getPreferredSize().apply { height = linesItShows * editor.lineHeight + verticalInsetsOf(editor.component, editor.scrollPane, editor.contentComponent) }
     }.apply { add(editor.component, BorderLayout.CENTER) }
+
+    /** The button that sends what the box holds, or stops Claude while it's busy and the box is empty. */
+    internal val sendButton = SendButton(send = ::send, interrupt = { typing.interrupt() })
+
+    /** Whether Claude Code is busy, as the chat last told the box: see [show]. */
+    private var claudeIsBusy = false
+
+    /**
+     * The box: a rounded frame, as in Claude's desktop app, around the [thumbnails] of the images it holds, over the
+     * editor, with the [sendButton] at its right.
+     */
+    val component: JComponent = RoundedBox(FILL, isFocused = { editor.contentComponent.hasFocus() }).apply {
+        add(thumbnails.component, BorderLayout.NORTH)
+        add(editorAsTallAsItsLines, BorderLayout.CENTER)
+        add(JPanel(BorderLayout()).apply {
+            isOpaque = false
+            add(sendButton, BorderLayout.SOUTH)
+        }, BorderLayout.EAST)
+    }
 
     /**
      * How many lines tall the box is: as many as it holds, wrapped ones included, from one, up to as many as [tallest]
@@ -120,11 +151,29 @@ class MessageBox(
         MessageBoxKey(KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0), notWhileALookupShows = true) { typing.interrupt() }.registerOn(editor.contentComponent, this)
         MessageBoxKey(KeyStroke.getKeyStroke(KeyEvent.VK_TAB, InputEvent.SHIFT_DOWN_MASK), notWhileALookupShows = false) { typing.changeThePermissionMode() }.registerOn(editor.contentComponent, this)
         growOrShrinkAsItsLinesChange()
+        document.addDocumentListener(object : DocumentListener {
+            override fun documentChanged(event: DocumentEvent) {
+                showTheThumbnails()
+                showWhatTheSendButtonDoes()
+            }
+        }, this)
+        editor.contentComponent.addFocusListener(object : FocusAdapter() {
+            override fun focusGained(event: FocusEvent) = component.repaint()
+            override fun focusLost(event: FocusEvent) = component.repaint()
+        })
     }
+
+    /** Shows what Claude Code's [status] is, as the [sendButton] does: while it's busy, it stops Claude. */
+    fun show(status: ClaudeCodeStatus) {
+        claudeIsBusy = status == ClaudeCodeStatus.BUSY
+        showWhatTheSendButtonDoes()
+    }
+
+    private fun showWhatTheSendButtonDoes() = sendButton.show(boxIsEmpty = document.text.isBlank(), isBusy = claudeIsBusy)
 
     /** Has the box lay itself out anew whenever the lines it holds change: by its text, or by its lines wrapping anew. */
     private fun growOrShrinkAsItsLinesChange() {
-        fun layOutAnew() = component.revalidate()
+        fun layOutAnew() = editorAsTallAsItsLines.revalidate()
         document.addDocumentListener(object : DocumentListener {
             override fun documentChanged(event: DocumentEvent) = layOutAnew()
         }, this)
@@ -133,6 +182,18 @@ class MessageBox(
             override fun recalculationEnds() = layOutAnew()
         })
     }
+
+    /**
+     * Has [thumbnails] show the images the box holds: each pasted one whose place-holder is still in it, in their order,
+     * with the place-holder's text.
+     */
+    private fun showTheThumbnails() {
+        val holds = pastedImages.filterKeys(::isInTheBox).entries.sortedBy { it.key.startOffset }
+        thumbnails.show(holds.map { (placeHolder, file) -> PastedImage(file, document.getText(placeHolder.textRange)) })
+    }
+
+    /** Whether what [paste] came in as is still in the box, some of it at least. */
+    private fun isInTheBox(paste: RangeMarker): Boolean = paste.isValid && !paste.textRange.isEmpty
 
     private fun verticalInsetsOf(vararg components: JComponent): Int = components.sumOf { it.insets.top + it.insets.bottom }
 
@@ -170,6 +231,7 @@ class MessageBox(
             contents.isDataFlavorSupported(DataFlavor.imageFlavor) -> {
                 val file = PastedImages.save(contents.getTransferData(DataFlavor.imageFlavor) as Image)
                 pastedImages[insertAtTheCaret("[Image #${pastedImages.size + 1}]")] = file
+                showTheThumbnails()
             }
         }
     }
@@ -185,6 +247,7 @@ class MessageBox(
         (pastedTexts + pastedImages.keys).forEach(RangeMarker::dispose)
         pastedTexts.clear()
         pastedImages.clear()
+        showTheThumbnails()
         typing.send(message)
         afterSending(message)
     }
@@ -207,6 +270,7 @@ class MessageBox(
             }
             if (wasEmpty) editor.caretModel.moveToOffset(document.textLength)
         }
+        showTheThumbnails()
     }
 
     /** Starts a new line at the caret, as Enter does in an editor, in place of what is selected. */
@@ -220,7 +284,7 @@ class MessageBox(
      * stay two parts, as in Claude Code's own box. An image whose place-holder the user deleted is left out with it.
      */
     private fun message(): Message {
-        val pastes = (pastedTexts + pastedImages.keys).filter { it.isValid && !it.textRange.isEmpty }
+        val pastes = (pastedTexts + pastedImages.keys).filter(::isInTheBox)
         val cuts = (listOf(0, document.textLength) + pastes.flatMap { listOf(it.startOffset, it.endOffset) }).toSortedSet()
         val stretches = mutableListOf<Pair<RangeMarker?, TextRange>>()
         for ((start, end) in cuts.zipWithNext()) {
@@ -285,6 +349,9 @@ class MessageBox(
     }
 
     companion object {
+        /** What the box is filled with, a little lighter or darker than the transcript around it: the panels' background. */
+        private val FILL: Color = JBColor.PanelBackground
+
         /** The [MessageBox] whose editor an editor is, as its user data. */
         val KEY: Key<MessageBox> = Key.create("dev.magnus.claudesessions.chat.messagebox.MessageBox")
     }

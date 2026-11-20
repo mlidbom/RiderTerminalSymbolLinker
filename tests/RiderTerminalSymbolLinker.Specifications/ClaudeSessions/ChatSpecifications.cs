@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using Compze.Must;
 using Compze.xUnitBDD;
 using Xunit;
@@ -94,6 +95,7 @@ public class When_the_chat_shows_a_conversation(When_the_chat_shows_a_conversati
       public readonly ChatSeen WithLinks;
       public readonly ChatSeen AfterARewind;
       public readonly ChatSeen WithTheMessageOpen;
+      public readonly ChatSeen OnceClaudeIsIdle;
 
       public Story()
       {
@@ -126,6 +128,8 @@ public class When_the_chat_shows_a_conversation(When_the_chat_shows_a_conversati
          chat.Give([.. conversation[..^2], Item.AssistantText("a3", "Went another way.")]); // As a rewind does.
          AfterARewind = chat.SeenOnce(it => it.Transcript.Contains("Went another way."), "the conversation to go another way");
          WithTheMessageOpen = chat.ClickTheRow("m1");
+         chat.SayTheStatus("IDLE");
+         OnceClaudeIsIdle = chat.SeenOnce(it => it.StatusLine == "Claude is idle", "the chat to show that Claude is idle");
       }
    }
 
@@ -155,7 +159,15 @@ public class When_the_chat_shows_a_conversation(When_the_chat_shows_a_conversati
 
    [XF] public void collapsed_too_with_no_rows_of_their_own() => (story.Shown.Row(Run).Open, story.Shown.Rows.Any(it => it.Key is "t2" or "t3")).Must().Be((false, false));
    [XF] public void a_compaction_shows_as_a_divider() => (story.Shown.Row("c1").Kind, story.Shown.Row("c1").Text).Must().Be(("compaction", "The conversation was compacted here"));
-   [XF] public void the_status_line_counts_the_commands_of_the_turn() => story.Shown.StatusLine.Must().Be("Claude is busy · 2 commands this turn");
+   [XF] public void the_status_line_says_claude_is_busy() => story.Shown.StatusLine.Must().Be("Claude is busy");
+
+   [XF] public void the_working_line_says_which_tool_call_runs_how_long_the_turn_has_taken_and_counts_its_commands() =>
+      story.Shown.WorkingLine.Must().Satisfy(it => it is not null && Regex.IsMatch(it, @"^Running Bash: dotnet test · \d+s · 2 commands$"));
+
+   [XF] public void once_the_call_has_its_result_it_says_claude_works() =>
+      story.OnceTheResultCame.WorkingLine.Must().Satisfy(it => it is not null && Regex.IsMatch(it, @"^Working… · \d+s · 2 commands$"));
+
+   [XF] public void and_shows_no_more_once_claude_is_idle() => story.OnceClaudeIsIdle.WorkingLine.Must().BeNull();
 
    [XF] public void opened_the_run_shows_its_calls_below_it() =>
       story.WithTheRunOpen.Rows.Select(it => (it.Key, it.Text, it.InARun)).TakeLast(2).Must().Satisfy(it => it.SequenceEqual([("t2", @"Read: C:\Some\File.cs", true), ("t3", "Bash: dotnet test · running", true)]));
@@ -337,6 +349,89 @@ public class When_the_user_sends_a_message_from_the_chat(When_the_user_sends_a_m
    [XF] public void the_image_as_a_file_of_its_own() => story.Sent.Messages[0].Single(it => it.Kind == "image").Must().Satisfy(it => it.FileExists && it.File!.EndsWith(".png"));
    [XF] public void the_box_is_empty_after() => story.After.MessageBox.Must().Be("");
    [XF] public void the_chat_stays_shown() => story.After.Card.Must().Be("CHAT");
+}
+
+public class When_the_user_pastes_images_into_the_chat(When_the_user_pastes_images_into_the_chat.Story story) : IClassFixture<When_the_user_pastes_images_into_the_chat.Story>
+{
+   public sealed class Story
+   {
+      public readonly ChatSeen Before;
+      public readonly ChatSeen WithTwo;
+      public readonly string? OpenedByAClick;
+      public readonly ChatSeen WithTheSecondsPlaceHolderDeleted;
+      public readonly ChatSeen AfterSending;
+      public readonly SentToClaudeCode Sent;
+
+      public Story()
+      {
+         var view = new TheClaudeSessionsView();
+         view.StartANewSession();
+         var chat = view.ChatOf(0);
+         chat.SayTheStatus("IDLE");
+         Before = chat.SeenOnce(it => it.Card == "CHAT", "the tab to show the chat");
+         chat.PasteAnImage();
+         chat.Type(" and ");
+         WithTwo = chat.PasteAnImage();
+         OpenedByAClick = chat.ClickTheThumbnail(1);
+         chat.Type(" end");
+         foreach(var _ in Enumerable.Range(0, " end".Length + "[Image #2]".Length)) chat.Press("BACKSPACE");
+         WithTheSecondsPlaceHolderDeleted = chat.Seen;
+         chat.Press("CTRL_ENTER");
+         Sent = chat.SentOnce(it => it.Messages.Count > 0, "the message to reach Claude Code");
+         AfterSending = chat.Seen;
+      }
+   }
+
+   [XF] public void no_thumbnail_shows_while_the_box_holds_no_image() => story.Before.Thumbnails.Must().BeEmpty();
+
+   [XF] public void each_image_shows_as_a_thumbnail_over_the_box_captioned_with_its_place_holder() =>
+      story.WithTwo.Thumbnails.Select(it => it.Caption).Must().Satisfy(it => it.SequenceEqual(["[Image #1]", "[Image #2]"]));
+
+   [XF] public void of_the_file_the_image_was_saved_to() =>
+      story.WithTwo.Thumbnails.Select(it => it.File).Must().Satisfy(it => it.SequenceEqual(story.WithTwo.MessageBoxParts.Where(part => part.Kind == "image").Select(part => part.File!)));
+
+   [XF] public void clicking_one_shows_its_image_in_the_ides_editor() => story.OpenedByAClick.Must().Be(story.WithTwo.Thumbnails[1].File);
+   [XF] public void a_thumbnail_goes_with_its_place_holder() => story.WithTheSecondsPlaceHolderDeleted.Thumbnails.Select(it => it.Caption).Must().Satisfy(it => it.SequenceEqual(["[Image #1]"]));
+   [XF] public void and_its_image_with_the_message() => story.Sent.Messages.Single().Where(it => it.Kind == "image").Select(it => it.Text).Must().Satisfy(it => it.SequenceEqual(["[Image #1]"]));
+   [XF] public void none_shows_once_the_message_is_sent() => story.AfterSending.Thumbnails.Must().BeEmpty();
+}
+
+public class When_the_user_clicks_the_send_button(When_the_user_clicks_the_send_button.Story story) : IClassFixture<When_the_user_clicks_the_send_button.Story>
+{
+   public sealed class Story
+   {
+      public readonly ChatSeen WhileTheBoxIsEmpty;
+      public readonly ChatSeen WithAMessage;
+      public readonly ChatSeen AfterTheClick;
+      public readonly ChatSeen WhileClaudeIsBusy;
+      public readonly ChatSeen WhileClaudeIsBusyWithAMessage;
+      public readonly SentToClaudeCode Sent;
+
+      public Story()
+      {
+         var view = new TheClaudeSessionsView();
+         view.StartANewSession();
+         var chat = view.ChatOf(0);
+         chat.SayTheStatus("IDLE");
+         WhileTheBoxIsEmpty = chat.SeenOnce(it => it.Card == "CHAT", "the tab to show the chat");
+         WithAMessage = chat.Type("Hello");
+         AfterTheClick = chat.ClickTheSendButton();
+         chat.SentOnce(it => it.Messages.Count > 0, "the message to reach Claude Code");
+         chat.SayTheStatus("BUSY");
+         WhileClaudeIsBusy = chat.SeenOnce(it => it.StatusLine?.StartsWith("Claude is busy") == true, "the chat to show that Claude is busy");
+         chat.ClickTheSendButton();
+         Sent = chat.SentOnce(it => it.Interruptions > 0, "the interruption to reach Claude Code");
+         WhileClaudeIsBusyWithAMessage = chat.Type("And then");
+      }
+   }
+
+   [XF] public void it_does_nothing_while_the_box_is_empty() => story.WhileTheBoxIsEmpty.SendButton.Must().Be("NOTHING");
+   [XF] public void it_sends_once_the_box_holds_a_message() => story.WithAMessage.SendButton.Must().Be("SEND");
+   [XF] public void clicked_it_sends_the_message() => story.Sent.Messages.Single().Must().Satisfy(it => it.SequenceEqual([new MessagePartSeen("typed", "Hello")]));
+   [XF] public void and_the_box_is_empty_after() => story.AfterTheClick.MessageBox.Must().Be("");
+   [XF] public void while_claude_is_busy_and_the_box_empty_it_stops_claude() => story.WhileClaudeIsBusy.SendButton.Must().Be("STOP");
+   [XF] public void clicked_it_interrupts_claude_code() => story.Sent.Interruptions.Must().Be(1);
+   [XF] public void with_a_message_in_the_box_it_sends_it_while_claude_is_busy_too() => story.WhileClaudeIsBusyWithAMessage.SendButton.Must().Be("SEND");
 }
 
 public class When_the_user_sends_a_slash_command_or_keys_from_the_chat(When_the_user_sends_a_slash_command_or_keys_from_the_chat.Story story)

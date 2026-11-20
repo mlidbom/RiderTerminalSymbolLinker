@@ -22,7 +22,10 @@ All notable changes to Claude Sessions are documented here. The format follows
   its session as it is now. Closing a tab ends its session.
 - **Each tab shows its session as a chat.** In place of Claude Code's own UI, a tab shows the conversation rendered as
   the desktop app renders it, in the IDE's theme, and an input box that is an editor, one line tall until you write
-  more, growing up to two fifths of the chat. What you said shows shaded, at the right, as you wrote it; a message from
+  more, growing up to two fifths of the chat. The box is rounded, as the desktop app's is, with a send button at its
+  right, which stops Claude instead while Claude is busy and the box is empty. While Claude works on a turn, a line over
+  the box says so, with a spinner, the tool call under way, how long the turn has taken and how many commands it has
+  run; a line under the box says whether Claude is busy, idle or waiting for you in the terminal. What you said shows shaded, at the right, as you wrote it; a message from
   another session, a background task's notice or a scheduled wake-up is one line, which says where it came from and
   what it's about, and opens to the whole of it. What Claude said shows as rendered markdown, with headings a little
   larger than the text, lists, tables, code and links, and its thinking dimmed.
@@ -32,7 +35,9 @@ All notable changes to Claude Sessions are documented here. The format follows
   and F3, and opens what hides the text it finds. A `/clear` shows as a divider, with the conversation going on below
   it. Ctrl+Enter sends, Enter starts a new line, as in any editor, and so does Shift+Enter,
   as in Claude Code's own box; Escape interrupts Claude, Shift+Tab changes
-  its permission mode, and the IDE's paste takes text and images. The box is free for the next message at once; a
+  its permission mode, and the IDE's paste takes text and images. Each image pasted shows as a thumbnail over the box,
+  captioned with its place-holder, such as `[Image #1]`; clicking it opens the image at full size in the IDE's image
+  viewer. The box is free for the next message at once; a
   message Claude Code doesn't get comes back into the box, and the status line says why. Claude Code's own UI is under
   the tab's Terminal tab, beside its Chat tab, and Ctrl+H switches between them in a Claude Sessions tab, where it
   takes the place of Replace; the tab shows the terminal by itself while Claude Code waits in a dialog, and for a slash
