@@ -1,3 +1,5 @@
+using Avalonia.Input;
+using Avalonia.Interactivity;
 using Avalonia.Media;
 using ClaudeTooling.SessionHost.Protocol;
 using Cloyd.SessionHosts;
@@ -16,7 +18,17 @@ sealed class TerminalOfASessionHost : TerminalControl
    /// <summary>How many lines scrolled off the top it keeps.</summary>
    const int LinesItKeeps = 5000;
 
+   /// <summary>
+   /// What Shift+Enter types: a line feed, which Claude Code takes from a pseudo console as Ctrl+J, its key for a new line
+   /// in its input box, as the IDE's terminal typing one found (claude-sessions.md, "The chat view: what the spikes
+   /// found").
+   /// </summary>
+   const string ANewLineInClaudeCodesInputBox = "\n";
+
    bool _attached;
+
+   /// <summary>Whether the Enter now held was pressed with Shift, and typed a new line: its release is then no key of the terminal's.</summary>
+   bool _shiftEnterHeld;
 
    public TerminalOfASessionHost(AttachmentToASessionHost attachment)
    {
@@ -29,6 +41,8 @@ sealed class TerminalOfASessionHost : TerminalControl
          _attached = true;
          AttachConnection(new SessionHostAsAPseudoConsole(attachment));
       };
+      AddHandler(KeyDownEvent, TypeANewLineOnShiftEnter, RoutingStrategies.Tunnel);
+      AddHandler(KeyUpEvent, LetGoOfShiftEnter, RoutingStrategies.Tunnel);
    }
 
    protected override Type StyleKeyOverride => typeof(TerminalControl);
@@ -44,6 +58,27 @@ sealed class TerminalOfASessionHost : TerminalControl
    /// <see cref="TerminalControl.Terminal"/>: a tab not yet shown has none, and reading it then throws.
    /// </summary>
    bool HasBeenLaidOut => _attached;
+
+   /// <summary>
+   /// Has Shift+Enter type a new line, as it does in every editor, and did in the IDE's terminal: in a Windows console
+   /// Claude Code ignores the Shift on Enter, even with the Shift that win32 input mode carries, and would send the
+   /// message (the spike, 2026-11-20).
+   /// </summary>
+   void TypeANewLineOnShiftEnter(object? sender, KeyEventArgs key)
+   {
+      if(key.Key != Key.Enter || key.KeyModifiers != KeyModifiers.Shift) return;
+      key.Handled = true;
+      _shiftEnterHeld = true;
+      _ = SendInputAsync(ANewLineInClaudeCodesInputBox);
+   }
+
+   /// <summary>Keeps the release of a Shift+Enter that typed a new line from the terminal, which saw no press of it.</summary>
+   void LetGoOfShiftEnter(object? sender, KeyEventArgs key)
+   {
+      if(key.Key != Key.Enter || !_shiftEnterHeld) return;
+      key.Handled = true;
+      _shiftEnterHeld = false;
+   }
 
    /// <summary>
    /// The session host, as the pseudo console the control would run a process in itself: it reads what the host draws,

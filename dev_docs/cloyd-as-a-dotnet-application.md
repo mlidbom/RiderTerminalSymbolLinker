@@ -159,6 +159,9 @@ Claude's calls (.NET-cloyd, the session in this repository), which Magnus OK'd o
 - **A window per project,** with a tab per session host of the project. Each tab shows the host's terminal in
   Iciclecreek's control, attached in process (`AttachmentToASessionHost`), and is titled with the name of the session
   the hub says runs in its host.
+- **Shift+Enter types a new line** in Claude Code's input box, as a line feed, which Claude Code takes as Ctrl+J
+  (`TerminalOfASessionHost`): Claude Code ignores the Shift on Enter in a Windows console, and sent the message
+  (Magnus, 2026-11-20, his first hour in Cloyd).
 - **The hosts it shows as it opens:** each of the project's hosts that no attach client shows. The project is told by
   the host's label (`SessionHostLabel`): Cloyd's own, `{"startedBy": "cloyd", "project": …}`, or Claude Sessions',
   `{"ideConfigFolder": …, "project": …}`, so that it takes over the plugin's sessions once no IDE's tab shows them. A
@@ -189,7 +192,10 @@ Claude's calls (.NET-cloyd, the session in this repository), which Magnus OK'd o
 **Next, in this order:**
 
 1. **A notification's click shows the session in Cloyd:** the hub's side is the tooling owner's.
-2. **Clickable file paths and C# symbols in Cloyd's terminal** (Magnus, 2026-11-20, keeping the order: the links before
+2. **Each project's window on its IDE window's virtual desktop** (Magnus, 2026-11-20: "do"): after the switch's restart
+   all four opened on the desktop he was on. Windows' documented virtual-desktop API tells any window's desktop, and
+   moves the calling process's own windows; the IDE's local API lists its project windows.
+3. **Clickable file paths and C# symbols in Cloyd's terminal** (Magnus, 2026-11-20, keeping the order: the links before
    the chat, which needs the same link finder).
 
 Then the chat, to the desktop app (below).

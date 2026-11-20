@@ -2,6 +2,7 @@ using System.Diagnostics;
 using Avalonia.Controls;
 using Avalonia.Media.Imaging;
 using Avalonia.Headless;
+using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.LogicalTree;
 using Avalonia.Threading;
@@ -91,6 +92,22 @@ public abstract class SpecificationOpeningWindows : IDisposable
 
    /// <summary>Clicks <paramref name="button"/> on the UI thread: what handles its click runs as for Magnus's.</summary>
    protected static void Click(Button button) => OnTheUIThread(() => button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent)));
+
+   /// <summary>Gives <paramref name="control"/> the keyboard focus, as Magnus does by clicking into it.</summary>
+   protected static void Focus(Control control) => OnTheUIThread(() => control.Focus());
+
+   /// <summary>Types <paramref name="text"/> into what has the keyboard focus in <paramref name="window"/>, as Magnus types it.</summary>
+   protected static void Type(Window window, string text) => OnTheUIThread(() => window.KeyTextInput(text));
+
+   /// <summary>
+   /// Presses and releases <paramref name="key"/>, the key at <paramref name="physicalKey"/>, with
+   /// <paramref name="modifiers"/> held, as Magnus does, into what has the keyboard focus in <paramref name="window"/>.
+   /// </summary>
+   protected static void Press(Window window, Key key, PhysicalKey physicalKey, RawInputModifiers modifiers) => OnTheUIThread(() =>
+   {
+      window.KeyPress(key, modifiers, physicalKey, keySymbol: null);
+      window.KeyRelease(key, modifiers, physicalKey, keySymbol: null);
+   });
 
    /// <summary>Closes <paramref name="window"/> on the UI thread, as Magnus closes a window.</summary>
    protected static void Close(Window window) => OnTheUIThread(window.Close);
