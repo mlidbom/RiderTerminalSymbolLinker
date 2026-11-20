@@ -6,6 +6,7 @@ import com.intellij.openapi.actionSystem.ActionManager
 import com.intellij.openapi.actionSystem.ActionPlaces
 import com.intellij.openapi.actionSystem.ActionPromoter
 import com.intellij.openapi.actionSystem.ActionUiKind
+import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.KeyboardShortcut
 import com.intellij.openapi.actionSystem.ex.ActionUtil
@@ -13,14 +14,14 @@ import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.editor.EditorModificationUtil
 import com.intellij.openapi.keymap.KeymapManager
 import com.intellij.openapi.project.Project
-import com.intellij.openapi.wm.WindowManager
-import dev.magnus.claudesessions.chat.TabCard
 import com.intellij.openapi.util.TextRange
+import com.intellij.openapi.wm.WindowManager
 import com.intellij.util.ui.ImageUtil
 import dev.magnus.claudesessions.ClaudeSessionTab
 import dev.magnus.claudesessions.ClaudeSessionsView
 import dev.magnus.claudesessions.chat.ChatAndTerminalCards
 import dev.magnus.claudesessions.chat.SwitchBetweenTheChatAndTheTerminalAction
+import dev.magnus.claudesessions.chat.TabCard
 import dev.magnus.claudesessions.chat.claudecode.ClaudeCodeStatus
 import dev.magnus.claudesessions.chat.claudecode.Message
 import dev.magnus.claudesessions.chat.claudecode.PastedImage
@@ -36,6 +37,7 @@ import dev.magnus.claudesessions.chat.claudecode.conversation.ToolCall
 import dev.magnus.claudesessions.chat.claudecode.conversation.ToolInputField
 import dev.magnus.claudesessions.chat.claudecode.conversation.ToolResult
 import java.awt.Color
+import java.awt.Component
 import java.awt.Image
 import java.awt.datatransfer.DataFlavor
 import java.awt.datatransfer.StringSelection
@@ -44,6 +46,7 @@ import java.awt.event.InputEvent
 import java.awt.event.KeyEvent
 import java.awt.image.BufferedImage
 import java.nio.file.Files
+import javax.swing.JComponent
 import javax.swing.KeyStroke
 
 /**
@@ -158,13 +161,12 @@ class TheChatObserved(private val project: Project, private val tab: Int) {
     }
 
     /**
-     * Presses [key], `ENTER`, `SHIFT_ENTER`, `ESCAPE` or `SHIFT_TAB`, in the input box: runs the action the box binds it
-     * to, if it's enabled, as the IDE does for a key pressed in it.
+     * Presses [key], `ENTER`, `CTRL_ENTER`, `SHIFT_ENTER`, `ESCAPE` or `SHIFT_TAB`, in the input box: runs the action the
+     * IDE would run for it there, as [theActionTheIdeRunsFor] chooses it: the box's own, or else the editor's, as Enter's.
      */
     fun press(key: String): Map<String, Any?> {
-        val keyStroke = KEYS.getValue(key)
         val component = cards.chat.messageBox.editor.contentComponent
-        val action = ActionUtil.getActions(component).single { action -> action.shortcutSet.shortcuts.any { it is KeyboardShortcut && it.firstKeyStroke == keyStroke } }
+        val action = theActionTheIdeRunsFor(KEYS.getValue(key), component) ?: error("The IDE runs nothing for $key in the input box")
         ActionManager.getInstance().tryToExecute(action, null, component, PLACE, true)
         return describe()
     }
@@ -186,10 +188,9 @@ class TheChatObserved(private val project: Project, private val tab: Int) {
 
     /**
      * The id of the action the IDE would run for [keystroke], such as `ctrl H`, pressed in the chat's input box (`chat`),
-     * in the terminal (`terminal`), or elsewhere in the IDE's window (`elsewhere`), or null when none: of the actions
-     * the active keymap binds it to, the first enabled for a key pressed there, once every action promoter has put them
-     * in its order, as the IDE's key dispatcher chooses. Not the terminal's own handling of keys, which lets through
-     * only the actions its `allowedActionsProvider` extensions list.
+     * in the terminal (`terminal`), or elsewhere in the IDE's window (`elsewhere`), or null when none: see
+     * [theActionTheIdeRunsFor]. Not the terminal's own handling of keys, which lets through only the actions its
+     * `allowedActionsProvider` extensions list.
      */
     fun theActionTheShortcutRuns(keystroke: String, pressedIn: String): Map<String, Any?> {
         val component = when (pressedIn) {
@@ -198,18 +199,28 @@ class TheChatObserved(private val project: Project, private val tab: Int) {
             "elsewhere" -> WindowManager.getInstance().getFrame(project)!!.rootPane
             else -> error("No place $pressedIn to press a key in")
         }
-        val key = KeyStroke.getKeyStroke(keystroke)!!
-        val actionManager = ActionManager.getInstance()
-        val bound = KeymapManager.getInstance().activeKeymap.getActionIds(key).mapNotNull(actionManager::getAction)
+        return mapOf("action" to theActionTheIdeRunsFor(KeyStroke.getKeyStroke(keystroke)!!, component)?.let(ActionManager.getInstance()::getId))
+    }
+
+    /**
+     * The action the IDE would run for [key] pressed in [component], as its key dispatcher chooses, which reads the real
+     * focus, which a specification can't count on in the sandbox IDE: of the actions bound to the key, by [component] or
+     * a component it's in, and then by the active keymap, the first enabled for a key pressed there, once every action
+     * promoter has put them in its order. Null when none is.
+     */
+    private fun theActionTheIdeRunsFor(key: KeyStroke, component: JComponent): AnAction? {
+        val local = generateSequence<Component>(component) { it.parent }.filterIsInstance<JComponent>()
+            .flatMap { ActionUtil.getActions(it) }
+            .filter { action -> action.shortcutSet.shortcuts.any { it is KeyboardShortcut && it.firstKeyStroke == key && it.secondKeyStroke == null } }
+        val bound = local.toList() + KeymapManager.getInstance().activeKeymap.getActionIds(key).mapNotNull(ActionManager.getInstance()::getAction)
         val context = DataManager.getInstance().getDataContext(component)
         val inTheirOrder = ActionPromoter.EP_NAME.extensionList.fold(bound) { actions, promoter -> promoter.promote(actions, context).orEmpty().let { promoted -> promoted + (actions - promoted.toSet()) } }
         val pressed = KeyEvent(component, KeyEvent.KEY_PRESSED, System.currentTimeMillis(), key.modifiers, key.keyCode, KeyEvent.CHAR_UNDEFINED)
-        val chosen = inTheirOrder.firstOrNull { action ->
+        return inTheirOrder.firstOrNull { action ->
             val event = AnActionEvent.createEvent(context, null, ActionPlaces.KEYBOARD_SHORTCUT, ActionUiKind.NONE, pressed)
             ActionUtil.updateAction(action, event)
             event.presentation.isEnabled
         }
-        return mapOf("action" to chosen?.let(actionManager::getId), "bound" to bound.mapNotNull(actionManager::getId))
     }
 
     /** Opens the fold [fold], by its place among the folds, or closes it when not [open]. */
@@ -248,6 +259,7 @@ class TheChatObserved(private val project: Project, private val tab: Int) {
 
         val KEYS = mapOf(
             "ENTER" to KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, 0),
+            "CTRL_ENTER" to KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, InputEvent.CTRL_DOWN_MASK),
             "SHIFT_ENTER" to KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, InputEvent.SHIFT_DOWN_MASK),
             "ESCAPE" to KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0),
             "SHIFT_TAB" to KeyStroke.getKeyStroke(KeyEvent.VK_TAB, InputEvent.SHIFT_DOWN_MASK),

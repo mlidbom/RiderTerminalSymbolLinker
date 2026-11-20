@@ -135,7 +135,7 @@ public sealed class ClaudeSessionsObservationChannel(int port) : ObservationChan
    /// <summary>Pastes a small image into the chat's input box, as from the clipboard.</summary>
    public JsonNode PasteAnImageInTheChat(int tab, string? project = null) => Post("tabs/chat/paste-image", project, new { }, $"tab={tab}");
 
-   /// <summary>Presses <paramref name="key"/>, <c>ENTER</c>, <c>SHIFT_ENTER</c>, <c>ESCAPE</c> or <c>SHIFT_TAB</c>, in the chat's input box.</summary>
+   /// <summary>Presses <paramref name="key"/>, <c>ENTER</c>, <c>CTRL_ENTER</c>, <c>SHIFT_ENTER</c>, <c>ESCAPE</c> or <c>SHIFT_TAB</c>, in the chat's input box.</summary>
    public JsonNode PressInTheChat(int tab, string key, string? project = null) => Post("tabs/chat/press", project, new { }, $"tab={tab}&key={key}");
 
    /// <summary>Switches tab <paramref name="tab"/> between its chat and its terminal, as the action does from Find Action.</summary>

@@ -41,8 +41,9 @@ import javax.swing.KeyStroke
 
 /**
  * The lower part of the chat: the box the user writes a message to Claude in, an editor, so that every editing
- * feature and shortcut of the IDE works in it. As in Claude Code's own input box, Enter sends the message, Shift+Enter
- * starts a new line, Escape interrupts Claude Code, and Shift+Tab changes its permission mode.
+ * feature and shortcut of the IDE works in it. Ctrl+Enter sends the message, and Enter starts a new line, as in any
+ * editor, and so does Shift+Enter, as in Claude Code's own input box: Magnus, 2026-11-20, after an Enter sent a message
+ * he hadn't finished. As in Claude Code's box, Escape interrupts Claude Code, and Shift+Tab changes its permission mode.
  *
  * It knows which parts of the message were pasted, so that Claude Code gets them as pasted: Ctrl+V, or any other
  * shortcut of the IDE's paste, goes through [paste], by way of the [MessageBoxPasteHandler]. An image on the clipboard,
@@ -74,7 +75,7 @@ class MessageBox(
         settings.isCaretRowShown = false
         settings.additionalLinesCount = 0
         settings.isAdditionalPageAtBottom = false
-        setPlaceholder("Message Claude: Enter sends it, Shift+Enter starts a new line")
+        setPlaceholder("Message Claude: Ctrl+Enter sends it")
         setShowPlaceholderWhenFocused(true)
         putUserData(KEY, this@MessageBox)
     }
@@ -89,7 +90,7 @@ class MessageBox(
 
     init {
         Disposer.register(parent, this)
-        MessageBoxKey(KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, 0), notWhileALookupShows = true) { send() }.registerOn(editor.contentComponent, this)
+        MessageBoxKey(KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, InputEvent.CTRL_DOWN_MASK), notWhileALookupShows = true) { send() }.registerOn(editor.contentComponent, this)
         MessageBoxKey(KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, InputEvent.SHIFT_DOWN_MASK), notWhileALookupShows = true) { startANewLine() }.registerOn(editor.contentComponent, this)
         MessageBoxKey(KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0), notWhileALookupShows = true) { typing.interrupt() }.registerOn(editor.contentComponent, this)
         MessageBoxKey(KeyStroke.getKeyStroke(KeyEvent.VK_TAB, InputEvent.SHIFT_DOWN_MASK), notWhileALookupShows = false) { typing.changeThePermissionMode() }.registerOn(editor.contentComponent, this)

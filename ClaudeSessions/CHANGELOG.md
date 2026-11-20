@@ -25,7 +25,8 @@ All notable changes to Claude Sessions are documented here. The format follows
   under `## You`, each turn of Claude's under `## Claude`, and a prompt from another session, a background task or a
   scheduled wake-up under where it came from. Each tool call is one line, its input and result folded below it, and
   thinking is folded too; file paths and symbols are links, as in the terminal. A `/clear` shows as a divider, with the
-  conversation going on below it. Enter sends, Shift+Enter starts a new line, Escape interrupts Claude, Shift+Tab changes
+  conversation going on below it. Ctrl+Enter sends, Enter starts a new line, as in any editor, and so does Shift+Enter,
+  as in Claude Code's own box; Escape interrupts Claude, Shift+Tab changes
   its permission mode, and the IDE's paste takes text and images. The box is free for the next message at once; a
   message Claude Code doesn't get comes back into the box, and the status line says why. Claude Code's own UI is under
   the tab's Terminal tab, beside its Chat tab, and Ctrl+H switches between them in a Claude Sessions tab, where it

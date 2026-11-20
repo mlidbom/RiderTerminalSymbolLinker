@@ -158,6 +158,7 @@ public class When_the_user_sends_a_message_from_the_chat(When_the_user_sends_a_m
       public readonly SentToClaudeCode Sent;
       public readonly ChatSeen After;
       public readonly ChatSeen WhileWritten;
+      public readonly ChatSeen WhileWrittenOn;
 
       public Story()
       {
@@ -167,7 +168,7 @@ public class When_the_user_sends_a_message_from_the_chat(When_the_user_sends_a_m
          chat.SayTheStatus("IDLE");
          chat.SeenOnce(it => it.Card == "CHAT", "the tab to show the chat");
          chat.Type("First line");
-         chat.Press("SHIFT_ENTER");
+         chat.Press("ENTER");
          chat.Type("second line, ");
          chat.Paste("pasted\r\ntext");
          chat.Type(" and ");
@@ -175,21 +176,25 @@ public class When_the_user_sends_a_message_from_the_chat(When_the_user_sends_a_m
          chat.Paste("two");
          chat.Type(" ");
          WhileWritten = chat.PasteAnImage();
-         chat.Press("ENTER");
+         chat.Press("SHIFT_ENTER");
+         WhileWrittenOn = chat.Type("third line");
+         chat.Press("CTRL_ENTER");
          Sent = chat.SentOnce(it => it.Messages.Count > 0, "the message to reach Claude Code");
          After = chat.Seen;
       }
    }
 
-   [XF] public void shift_enter_starts_a_new_line() => story.WhileWritten.MessageBox.Must().Be("First line\nsecond line, pasted\ntext and onetwo [Image #1]");
+   [XF] public void enter_starts_a_new_line() => story.WhileWritten.MessageBox.Must().Be("First line\nsecond line, pasted\ntext and onetwo [Image #1]");
+   [XF] public void and_so_does_shift_enter() => story.WhileWrittenOn.MessageBox.Must().Be(story.WhileWritten.MessageBox + "\nthird line");
+   [XF] public void neither_sends_it() => story.WhileWrittenOn.MessageBox.Must().Satisfy(it => it.StartsWith("First line"));
 
-   [XF] public void enter_sends_it_as_one_message() => story.Sent.Messages.Count.Must().Be(1);
+   [XF] public void ctrl_enter_sends_it_as_one_message() => story.Sent.Messages.Count.Must().Be(1);
 
    // Two pastes side by side stay two, as in Claude Code's own box.
    [XF] public void each_part_as_it_came_into_the_box_typed_pasted_or_an_image() =>
-      story.Sent.Messages[0].Select(it => (it.Kind, it.Text)).Must().Satisfy(it => it.SequenceEqual([("typed", "First line\nsecond line, "), ("pasted", "pasted\ntext"), ("typed", " and "), ("pasted", "one"), ("pasted", "two"), ("typed", " "), ("image", "[Image #1]")]));
+      story.Sent.Messages[0].Select(it => (it.Kind, it.Text)).Must().Satisfy(it => it.SequenceEqual([("typed", "First line\nsecond line, "), ("pasted", "pasted\ntext"), ("typed", " and "), ("pasted", "one"), ("pasted", "two"), ("typed", " "), ("image", "[Image #1]"), ("typed", "\nthird line")]));
 
-   [XF] public void the_image_as_a_file_of_its_own() => story.Sent.Messages[0][^1].Must().Satisfy(it => it.FileExists && it.File!.EndsWith(".png"));
+   [XF] public void the_image_as_a_file_of_its_own() => story.Sent.Messages[0].Single(it => it.Kind == "image").Must().Satisfy(it => it.FileExists && it.File!.EndsWith(".png"));
    [XF] public void the_box_is_empty_after() => story.After.MessageBox.Must().Be("");
    [XF] public void the_chat_stays_shown() => story.After.Card.Must().Be("CHAT");
 }
@@ -214,7 +219,7 @@ public class When_the_user_sends_a_slash_command_or_keys_from_the_chat(When_the_
          chat.Press("SHIFT_TAB");
          chat.Press("SHIFT_TAB");
          chat.Type("/model");
-         AfterTheCommand = chat.Press("ENTER");
+         AfterTheCommand = chat.Press("CTRL_ENTER");
          chat.SayTheStatus("BUSY");
          Thread.Sleep(500);
          OnceClaudeCodeIsBusy = chat.Seen;
@@ -252,11 +257,11 @@ public class When_claude_code_gets_nothing_of_a_message_from_the_chat(When_claud
          chat.Paste("pasted");
          chat.Type(" and ");
          chat.PasteAnImage();
-         chat.Press("ENTER");
+         chat.Press("CTRL_ENTER");
          AfterSending = chat.SeenOnce(it => it.WhyNotTyped is not null, "the chat to say why Claude Code didn't get it");
          Sent = chat.Sent;
          chat.HaveClaudeCodeGetIt();
-         chat.Press("ENTER");
+         chat.Press("CTRL_ENTER");
          SentAgain = chat.SentOnce(it => it.Messages.Count > 0, "the message to reach Claude Code");
          AfterSendingAgain = chat.SeenOnce(it => it.WhyNotTyped is null, "the chat to stop saying why");
       }
@@ -293,11 +298,11 @@ public class When_what_keeps_claude_code_from_getting_a_message_shows_in_the_ter
          chat.SeenOnce(it => it.Card == "CHAT", "the tab to show the chat");
          chat.HaveClaudeCodeGetNothingOfIt("Claude Code's own input box holds text.", theTerminalShowsWhy: true);
          chat.Type("Refused");
-         chat.Press("ENTER");
+         chat.Press("CTRL_ENTER");
          AfterARefusal = chat.SeenOnce(it => it.Card == "TERMINAL", "the tab to show the terminal");
          BackInTheChat = chat.Switch();
          chat.HaveClaudeCodeLeaveItUnsent(WhyLeftUnsent);
-         chat.Press("ENTER");
+         chat.Press("CTRL_ENTER");
          AfterLeftUnsent = chat.SeenOnce(it => it.WhyNotTyped == WhyLeftUnsent, "the chat to say why the message was left unsent");
       }
    }
@@ -327,9 +332,9 @@ public class When_claude_code_gets_nothing_of_a_message_with_more_sent_after_it(
          chat.SeenOnce(it => it.Card == "CHAT", "the tab to show the chat");
          chat.Hold();
          chat.Type("First");
-         chat.Press("ENTER");
+         chat.Press("CTRL_ENTER");
          chat.Type("Second");
-         chat.Press("ENTER");
+         chat.Press("CTRL_ENTER");
          chat.Press("ESCAPE");
          WhileTheFirstIsGiven = chat.Type("Third, not sent yet");
          chat.HaveClaudeCodeGetNothingOfIt("The tooling typed into the session for all of 10 minutes.", theTerminalShowsWhy: false);
@@ -441,7 +446,7 @@ public class When_the_ide_restarts_with_a_message_written_in_a_chat(When_the_ide
          chat = view.ChatOf(0);
          After = chat.SeenOnce(it => it.MessageBox != "", "the box to hold what it held");
          chat.SayTheStatus("IDLE");
-         chat.Press("ENTER");
+         chat.Press("CTRL_ENTER");
          SentAfter = chat.SentOnce(it => it.Messages.Count == 1, "Claude Code to get the message");
       }
    }
@@ -501,9 +506,9 @@ public class When_the_ide_restarts_with_messages_waiting_to_be_given_to_claude_c
             chat.SeenOnce(it => it.Card == "CHAT", "the tab to show the chat");
             chat.Hold();
             chat.Type("Being given");
-            chat.Press("ENTER");
+            chat.Press("CTRL_ENTER");
             chat.Type("Waiting");
-            chat.Press("ENTER");
+            chat.Press("CTRL_ENTER");
             chat.Type("Written since");
          }
          view.RestartTheIde(tabsToComeBack: 2);

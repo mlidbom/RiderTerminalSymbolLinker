@@ -305,9 +305,12 @@ plain terminal tab, with no session host, gets none, and shows its terminal alon
     itself**, as the terminal runs them: a filter's result ends the filtering of its line unless it says otherwise
     (`Filter.NextAction.EXIT` by default), so a `CompositeFilter` let the symbol linker's symbol links hide its file
     links on the same line. Links over text taken away go with it.
-- **The input box** (`MessageBox`), an editor of a plain-text `LightVirtualFile`. Enter sends, Shift+Enter starts a new
-  line, Escape interrupts Claude Code, Shift+Tab changes its permission mode, each a key of the box's own, ahead of the
-  keymap's; Enter, Shift+Enter and Escape go to a completion list instead while one shows.
+- **The input box** (`MessageBox`), an editor of a plain-text `LightVirtualFile`. Ctrl+Enter sends, Shift+Enter starts
+  a new line, Escape interrupts Claude Code, Shift+Tab changes its permission mode, each a key of the box's own, ahead of
+  the keymap's, as Ctrl+Enter's Split Line; Ctrl+Enter, Shift+Enter and Escape go to a completion list instead while one
+  shows. Enter is the editor's own, a new line. Enter sent, as in Claude Code's box, until Magnus, 2026-11-20, after an
+  Enter sent a message he hadn't finished: "I was not expecting an ordinary enter to send when in a text editor
+  control."
   - **The IDE's paste,** whatever the keymap binds it to, goes through `MessageBoxPasteHandler`, the first handler of
     `EditorPaste`: text is inserted and marked as pasted; an image with no text on the clipboard is saved as PNG by
     `PastedImages`, in the IDE's system folder, kept a week, and shown as `[Image #n]`. Every other editor's paste is the

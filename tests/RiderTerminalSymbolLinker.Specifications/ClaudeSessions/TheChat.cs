@@ -37,7 +37,7 @@ public sealed class TheChat(ClaudeSessionsObservationChannel channel, int tab)
    /// <summary>Pastes a small image into the input box, as from the clipboard.</summary>
    public ChatSeen PasteAnImage() => ChatSeen.From(channel.PasteAnImageInTheChat(tab));
 
-   /// <summary>Presses <paramref name="key"/>, <c>ENTER</c>, <c>SHIFT_ENTER</c>, <c>ESCAPE</c> or <c>SHIFT_TAB</c>, in the input box.</summary>
+   /// <summary>Presses <paramref name="key"/>, <c>ENTER</c>, <c>CTRL_ENTER</c>, <c>SHIFT_ENTER</c>, <c>ESCAPE</c> or <c>SHIFT_TAB</c>, in the input box.</summary>
    public ChatSeen Press(string key) => ChatSeen.From(channel.PressInTheChat(tab, key));
 
    /// <summary>Switches between the chat and the terminal, as the action does from Find Action.</summary>

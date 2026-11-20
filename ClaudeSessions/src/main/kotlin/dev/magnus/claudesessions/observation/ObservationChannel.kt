@@ -101,7 +101,8 @@ import org.jetbrains.plugins.terminal.TerminalProjectOptionsProvider
  *  - `POST /tabs/chat/type?project=&tab=` with `{"text": …}` — types the text into the input box.
  *  - `POST /tabs/chat/paste?project=&tab=` with `{"text": …}` — pastes the text into it, as from the clipboard.
  *  - `POST /tabs/chat/paste-image?project=&tab=` — pastes a small image into it, as from the clipboard.
- *  - `POST /tabs/chat/press?project=&tab=&key=` — presses `ENTER`, `SHIFT_ENTER`, `ESCAPE` or `SHIFT_TAB` in it.
+ *  - `POST /tabs/chat/press?project=&tab=&key=` — presses `ENTER`, `CTRL_ENTER`, `SHIFT_ENTER`, `ESCAPE` or `SHIFT_TAB`
+ *    in it.
  *  - `POST /tabs/chat/switch?project=&tab=` — switches between the chat and the terminal, as the action does.
  *  - `POST /tabs/chat/click-tab?project=&tab=&card=` — shows the card, `CHAT` or `TERMINAL`, as clicking its tab does.
  *  - `GET /tabs/chat/shortcut?project=&tab=&keystroke=&in=` — the action the IDE would run for the keystroke, such as

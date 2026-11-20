@@ -33,7 +33,7 @@ public class When_the_hub_is_behind_a_tabs_chat(When_the_hub_is_behind_a_tabs_ch
          view.Say(0, "And the square");
          OnceAnotherWas = chat.SeenOnce(it => it.Transcript.Contains("Heard: And the square"), "the chat to show Claude Code's second answer");
          chat.Type("And the triangle");
-         chat.Press("ENTER");
+         chat.Press("CTRL_ENTER");
          OnceSentFromTheChat = chat.SeenOnce(it => it.Transcript.Contains("Heard: And the triangle") || it.WhyNotTyped is not null,
                                              "Claude Code to answer what the chat sent, or the chat to say why it didn't get it");
          // The stand-in records the tool's result with \r\n, as Windows' tools print and Claude Code keeps it.
