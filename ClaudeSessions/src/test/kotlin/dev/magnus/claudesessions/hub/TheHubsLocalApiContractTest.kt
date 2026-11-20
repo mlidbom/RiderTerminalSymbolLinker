@@ -7,6 +7,7 @@ import dev.magnus.claudesessions.chat.claudecode.PastedText
 import dev.magnus.claudesessions.chat.claudecode.TypedText
 import dev.magnus.claudesessions.chat.claudecode.TypingOutcome
 import dev.magnus.claudesessions.chat.claudecode.conversation.AssistantText
+import dev.magnus.claudesessions.chat.claudecode.conversation.BlockBeingWritten
 import dev.magnus.claudesessions.chat.claudecode.conversation.Clearing
 import dev.magnus.claudesessions.chat.claudecode.conversation.Compaction
 import dev.magnus.claudesessions.chat.claudecode.conversation.Interruption
@@ -73,6 +74,29 @@ class TheHubsLocalApiContractTest {
             ),
             RunningSessionsAnswer.parse(answer.body).runningSessions,
         )
+    }
+
+    @Test
+    fun `a turn's stream tells, from its caught-up on, the block written so far, and once it ended, keeps it after the turn ended`() {
+        val sample = HttpSample(HttpSample.named("turn-stream.http"))
+        val told = toldOn(sample)
+        val id = "being-written:e1f0a8df-3c2c-4571-8f70-d3d390f1cd3b:1:0"
+
+        assertEquals(HubProtocol.VERSION.toString(), sample.header(HubProtocol.HEADER))
+        assertEquals(
+            listOf(
+                TheHubsTurnStream.StreamedBlock(BlockBeingWritten(id, BlockBeingWritten.Kind.TEXT, "It is Friday, 20 "), hasEnded = false),
+                TheHubsTurnStream.StreamedBlock(BlockBeingWritten(id, BlockBeingWritten.Kind.TEXT, "It is Friday, 20 November 2026."), hasEnded = false),
+                TheHubsTurnStream.StreamedBlock(BlockBeingWritten(id, BlockBeingWritten.Kind.TEXT, "It is Friday, 20 November 2026."), hasEnded = true),
+                TheHubsTurnStream.StreamedBlock(BlockBeingWritten(id, BlockBeingWritten.Kind.TEXT, "It is Friday, 20 November 2026."), hasEnded = true),
+            ),
+            told,
+        )
+    }
+
+    @Test
+    fun `a turn's stream with no turn under way tells of no block`() {
+        assertEquals(listOf(null), toldOn(HttpSample(HttpSample.named("turn-stream-with-no-turn-under-way.http"))))
     }
 
     @Test
@@ -260,6 +284,13 @@ class TheHubsLocalApiContractTest {
 
         assertEquals(404, sample.status)
         assertEquals("noSuchSession", JsonParser.parseString(sample.body).asJsonObject.get("reason").asString)
+    }
+
+    /** What a [TheHubsTurnStream] tells of, event by event, on the stream [sample]. */
+    private fun toldOn(sample: HttpSample): List<TheHubsTurnStream.StreamedBlock?> {
+        val stream = TheHubsTurnStream()
+        val reading = ServerSentEvents()
+        return buildList { sample.bodyLines.mapNotNull(reading::read).forEach { if (stream.read(it)) add(stream.streamed) } }
     }
 
     private fun typingAnswerIn(sample: String): TypingAnswer =

@@ -29,6 +29,7 @@ import dev.magnus.claudesessions.chat.ChatAndTerminalCards
 import dev.magnus.claudesessions.chat.SwitchBetweenTheChatAndTheTerminalAction
 import dev.magnus.claudesessions.chat.TabCard
 import dev.magnus.claudesessions.chat.claudecode.ClaudeCodeStatus
+import dev.magnus.claudesessions.chat.claudecode.conversation.BlockBeingWritten
 import dev.magnus.claudesessions.hub.RunningSessionsAnswer
 import dev.magnus.claudesessions.chat.claudecode.Message
 import dev.magnus.claudesessions.chat.claudecode.PastedImage
@@ -139,11 +140,15 @@ class TheChatObserved(private val project: Project, private val tab: Int) {
 
     /**
      * Has the stand-in say what Claude Code last showed under its input box, and its turn under way, as [session] says
-     * them: the `statusLine` and `turnUnderWay` of a running session in the hub's answer, read as the hub's are.
+     * them: the `statusLine` and `turnUnderWay` of a running session in the hub's answer, read as the hub's are; and the
+     * block the model writes, its `blockBeingWritten`: `{"id": …, "kind": "TEXT" or "THINKING", "text": …}`.
      */
     fun sayWhatClaudeCodeShows(session: JsonObject): Map<String, Any?> {
         standIn.statusLine.value = RunningSessionsAnswer.statusLineIn(session)
         standIn.turnUnderWay.value = RunningSessionsAnswer.turnUnderWayIn(session)
+        standIn.blockBeingWritten.value = session.get("blockBeingWritten")?.takeUnless { it.isJsonNull }?.asJsonObject?.let {
+            BlockBeingWritten(it.get("id").asString, BlockBeingWritten.Kind.valueOf(it.get("kind").asString), it.get("text").asString)
+        }
         return describe()
     }
 

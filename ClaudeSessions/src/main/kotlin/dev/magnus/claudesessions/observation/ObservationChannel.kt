@@ -94,9 +94,10 @@ import org.jetbrains.plugins.terminal.TerminalProjectOptionsProvider
  *  - `POST /tabs/chat/conversation?project=&tab=` with `{"items": [...]}` — has the tab's stand-in give the chat that
  *    conversation: see [TheChatObserved.giveTheConversation].
  *  - `POST /tabs/chat/status?project=&tab=&status=` — has the stand-in say Claude Code's status, such as `IDLE`.
- *  - `POST /tabs/chat/shows?project=&tab=` with `{"statusLine": …, "turnUnderWay": …}` — has the stand-in say what
- *    Claude Code last showed under its input box, and its turn under way, as the hub's running session says them; a
- *    field left out or null says none.
+ *  - `POST /tabs/chat/shows?project=&tab=` with `{"statusLine": …, "turnUnderWay": …, "blockBeingWritten": …}` — has
+ *    the stand-in say what Claude Code last showed under its input box, and its turn under way, as the hub's running
+ *    session says them, and the block the model writes, `{"id": …, "kind": "TEXT" or "THINKING", "text": …}`; a field
+ *    left out or null says none.
  *  - `GET /tabs/chat/sent?project=&tab=` — the messages Claude Code got from the chat, part by part, and the keys.
  *  - `POST /tabs/chat/outcome?project=&tab=` with `{"outcome": …}` — has the stand-in answer what the chat gives it with
  *    that outcome, from then on: see [TheChatObserved.answerWith].

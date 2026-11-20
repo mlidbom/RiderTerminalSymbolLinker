@@ -420,6 +420,15 @@ plain terminal tab, with no session host, gets none, and shows its terminal alon
   time from when it saw Claude Code turn busy. Magnus, 2026-11-20: "The lack of any information about that in the new
   UI is what keeps me switching back to the TUI constantly at the moment, to see what is going on." Over the box rather
   than at the transcript's end, so that it shows however the transcript is scrolled, as the TUI's does.
+- **What Claude writes shows as it comes,** before Claude Code writes it to the transcript: the `BlockBeingWritten`, its
+  text or thinking so far, shows at the conversation's end as Claude's text or thinking does
+  (`Conversation.withAtItsEnd`), until the conversation has the block. The hub streams it for each running session,
+  `GET /running-sessions/{processId}/turn/stream`, which `TheHubsTurns` follows for the tab's Claude Code and
+  `TheHubsTurnStream` reads.
+  - **An ended block stays until the conversation changes next** (`TheHubBehindTheChat`): the hub ends it about 0.15 s
+    before the conversation's stream sends it, and without the wait the text would vanish for that long. The hub ends
+    the block at every turn's end, an interrupted one too; Claude Code then writes the interruption, which changes the
+    conversation, and the block goes.
 - **Nothing the user wrote is lost when the IDE goes, and the chat comes back where it was,** after a restart, a crash
   or a plugin reload. Magnus asked for it on 2026-11-19, for the Rider restart tool: "make sure that anything that I had
   typed into one of the chat input boxes it has built will survive this restart".

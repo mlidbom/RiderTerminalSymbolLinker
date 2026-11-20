@@ -26,7 +26,9 @@ All notable changes to Claude Sessions are documented here. The format follows
   more, growing up to two fifths of the chat. The box is rounded, as the desktop app's is, with a send button at its
   right, which stops Claude instead while Claude is busy and the box is empty. While Claude works on a turn, a line over
   the box says so, as Claude Code's own spinner line does: whether Claude thinks, writes, writes a tool call or runs
-  one, and which, how long the turn has taken, its output tokens, and how many commands it has run. A line under the
+  one, and which, how long the turn has taken, its output tokens, and how many commands it has run. What Claude writes,
+  and its thinking, shows at the conversation's end as it comes, rendered, before Claude Code has it in the
+  transcript. A line under the
   box says whether Claude is busy, idle or waiting for you in the terminal, and at its right what Claude Code shows in
   its status line: the model, the effort level, the permission mode and the context used, such as "Opus 5.5 · xhigh ·
   Auto · context 31%". What you said shows shaded, at the right, as you wrote it; a message from

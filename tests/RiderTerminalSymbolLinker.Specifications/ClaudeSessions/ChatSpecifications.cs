@@ -250,6 +250,51 @@ public class When_claude_code_tells_what_it_shows_under_its_box_and_what_its_tur
       story.WithNoStatusLineToldOf.WorkingLine.Must().Satisfy(it => it is not null && Regex.IsMatch(it, @"^Running Bash: dotnet test · \d+s · 1 command$"));
 }
 
+public class When_claude_writes_what_isnt_in_the_conversation_yet(When_claude_writes_what_isnt_in_the_conversation_yet.Story story)
+   : IClassFixture<When_claude_writes_what_isnt_in_the_conversation_yet.Story>
+{
+   public sealed class Story
+   {
+      public readonly ChatSeen WhileItThinks;
+      public readonly ChatSeen WhileItWrites;
+      public readonly ChatSeen AsItWritesOn;
+      public readonly ChatSeen OnceTheConversationHasIt;
+
+      public Story()
+      {
+         var view = new TheClaudeSessionsView();
+         view.StartANewSession();
+         var chat = view.ChatOf(0);
+         chat.Give(Item.Prompt("p1", "Fix the bug in the circle"));
+         chat.SayTheStatus("BUSY");
+
+         chat.SayWhatClaudeCodeShows(null, null, Item.BeingWritten("being-written:t1:0:0", "The area uses", thinking: true));
+         WhileItThinks = chat.SeenOnce(it => it.Rows.Count == 2, "the chat to show the thinking being written");
+
+         chat.SayWhatClaudeCodeShows(null, null, Item.BeingWritten("being-written:t1:0:1", "## Looking at it\n\nThe area is **wro"));
+         WhileItWrites = chat.SeenOnce(it => it.Rows[^1].Key == "being-written:t1:0:1", "the chat to show the text being written");
+
+         chat.SayWhatClaudeCodeShows(null, null, Item.BeingWritten("being-written:t1:0:1", "## Looking at it\n\nThe area is **wrong**: it uses `diameter`"));
+         AsItWritesOn = chat.SeenOnce(it => it.Rows[^1].Text.EndsWith("diameter"), "the chat to show more of the text being written");
+
+         chat.Give(Item.Prompt("p1", "Fix the bug in the circle"), Item.Thinking("k1", "The area uses the diameter."), Item.AssistantText("a1", "## Looking at it\n\nThe area is **wrong**: it uses `diameter`"));
+         chat.SayWhatClaudeCodeShows(null, null, blockBeingWritten: null);
+         OnceTheConversationHasIt = chat.SeenOnce(it => it.Rows.All(row => !row.Key.StartsWith("being-written")) && it.Rows.Count == 3, "the chat to show the conversation's own");
+      }
+   }
+
+   [XF] public void thinking_being_written_shows_at_the_conversations_end_as_claudes_thinking() =>
+      (story.WhileItThinks.Rows[^1].Kind, story.WhileItThinks.Rows[^1].Text).Must().Be(("thinking", "The area uses"));
+
+   [XF] public void text_being_written_shows_in_its_place_rendered_as_what_claude_said() =>
+      (story.WhileItWrites.Rows.Count, story.WhileItWrites.Rows[^1].Kind, story.WhileItWrites.Rows[^1].Text).Must().Be((2, "claude", "Looking at it\nThe area is **wro"));
+
+   [XF] public void and_grows_as_it_streams() => story.AsItWritesOn.Rows[^1].Text.Must().Be("Looking at it\nThe area is wrong: it uses diameter");
+
+   [XF] public void once_the_conversation_has_it_the_conversations_own_shows_in_its_place() =>
+      story.OnceTheConversationHasIt.Rows.Select(it => it.Key).Must().Satisfy(it => it.SequenceEqual(["p1", "k1", "a1"]));
+}
+
 public class When_claude_makes_another_tool_call_after_one_the_user_opened(When_claude_makes_another_tool_call_after_one_the_user_opened.Story story)
    : IClassFixture<When_claude_makes_another_tool_call_after_one_the_user_opened.Story>
 {

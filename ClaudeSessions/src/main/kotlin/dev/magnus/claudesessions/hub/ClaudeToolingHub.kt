@@ -58,6 +58,9 @@ class ClaudeToolingHub(scope: CoroutineScope) : Disposable {
     /** The sessions' conversations, as the hub tells of them, for the tabs' chats. */
     val conversations = TheHubsConversations(client)
 
+    /** The text the model streams in the running sessions' turns, as the hub tells of it, for the tabs' chats. */
+    val turns = TheHubsTurns(client)
+
     /** The builds of the hubs the user has been told about, each once: one of a protocol this build doesn't know, or of another Claude Code folder. */
     private val toldAbout = mutableSetOf<String>()
 

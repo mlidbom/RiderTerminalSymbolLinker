@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using Compze.Must;
 using Compze.xUnitBDD;
 using Xunit;
@@ -65,4 +66,58 @@ public class When_the_hub_is_behind_a_tabs_chat(When_the_hub_is_behind_a_tabs_ch
       story.OnceAToolPrintedWindowsLines.Rows.Must().Satisfy(it => it.Any(row => row.Body?.Contains("line 1\nline 2") == true && !row.Body.Contains('\r')));
 
    [XF] public void and_the_chat_goes_on_after_them() => story.OnceSaidAfterThem.Transcript.Must().Satisfy(it => it.EndsWith("\nAnd the circle again\nHeard: And the circle again"));
+}
+
+// The chat of a tab with the sandbox's hub behind it while a turn is under way: the story tells the hub of the turn as a
+// Claude Code session's tooling-commands mod does, while the stand-in for Claude Code is busy.
+
+public class When_the_hub_tells_of_a_turn_under_way_in_a_tabs_chat(When_the_hub_tells_of_a_turn_under_way_in_a_tabs_chat.Story story)
+   : IClassFixture<When_the_hub_tells_of_a_turn_under_way_in_a_tabs_chat.Story>
+{
+   public sealed class Story
+   {
+      public readonly ChatSeen WhileItWrites;
+      public readonly ChatSeen AsItWritesOn;
+      public readonly ChatSeen OnceInterrupted;
+
+      public Story()
+      {
+         var view = new TheClaudeSessionsView();
+         view.HaveTheHubBehindTheChats();
+         var claudeCode = view.StartANewSession().ClaudeCode!.ProcessId;
+         var chat = view.ChatOf(0);
+         chat.SeenOnce(it => it.Card == "CHAT", "the tab to show the chat");
+         view.Say(0, "Be busy for 30 seconds");
+         chat.SeenOnce(it => it.StatusLine == "Claude is busy", "the chat to show that Claude is busy");
+
+         var turn = Guid.NewGuid().ToString();
+         var startedAt = DateTimeOffset.UtcNow;
+         view.TellTheHubOfATurn(claudeCode, turn, startedAt,
+                                new { kind = "turnStarted", at = Now() },
+                                new { kind = "responseRequested", at = Now(), response = 0 },
+                                new { kind = "text", at = Now(), response = 0, block = 0, offset = 0, text = "## Looking at it\n\nThe area is" });
+         WhileItWrites = chat.SeenOnce(it => it.Rows.Any(row => row.Key.StartsWith("being-written")) && it.WorkingLine?.StartsWith("Writing") == true,
+                                       "the chat to show what Claude writes, and that it does");
+
+         view.TellTheHubOfATurn(claudeCode, turn, startedAt, new { kind = "text", at = Now(), response = 0, block = 0, offset = 29, text = " **wrong**." });
+         AsItWritesOn = chat.SeenOnce(it => it.Rows[^1].Text.EndsWith("wrong."), "the chat to show more of what Claude writes");
+
+         chat.Press("ESCAPE");
+         view.TellTheHubOfATurn(claudeCode, turn, startedAt, new { kind = "turnEnded", at = Now(), reason = "aborted" });
+         OnceInterrupted = chat.SeenOnce(it => it.Rows.Any(row => row.Kind == "interruption"), "the chat to show the interruption");
+
+         static long Now() => DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+      }
+   }
+
+   [XF] public void what_claude_writes_shows_at_the_conversations_end_as_it_streams() =>
+      (story.WhileItWrites.Rows[^1].Kind, story.WhileItWrites.Rows[^1].Text).Must().Be(("claude", "Looking at it\nThe area is"));
+
+   [XF] public void the_working_line_says_claude_writes_with_the_turns_time_and_tokens() =>
+      story.WhileItWrites.WorkingLine.Must().Satisfy(it => it is not null && Regex.IsMatch(it, @"^Writing… · \d+s · ↓ \d+ tokens$"));
+
+   [XF] public void and_grows_as_more_streams() => story.AsItWritesOn.Rows[^1].Text.Must().Be("Looking at it\nThe area is wrong.");
+
+   [XF] public void once_interrupted_the_interruption_shows_in_its_place() =>
+      story.OnceInterrupted.Rows.Select(it => it.Kind).Must().Satisfy(it => it.SequenceEqual(["prompt", "interruption"]));
 }

@@ -5,6 +5,7 @@ import dev.magnus.claudesessions.chat.claudecode.ClaudeCodeBehindTheChat
 import dev.magnus.claudesessions.chat.claudecode.ClaudeCodeStatus
 import dev.magnus.claudesessions.chat.claudecode.Message
 import dev.magnus.claudesessions.chat.claudecode.TypingOutcome
+import dev.magnus.claudesessions.chat.claudecode.conversation.BlockBeingWritten
 import dev.magnus.claudesessions.chat.claudecode.conversation.Conversation
 import dev.magnus.claudesessions.claudecode.ClaudeCodesStatusLine
 import dev.magnus.claudesessions.claudecode.ClaudeSessionId
@@ -21,6 +22,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
@@ -45,6 +47,13 @@ class TheHubBehindTheChat(private val tab: ClaudeSessionTab) : ClaudeCodeBehindT
 
     override val conversation: StateFlow<Conversation?> = told.asStateFlow()
 
+    /**
+     * The block the model writes, or wrote last, in the turn of the tab's Claude Code: one that has ended is kept until
+     * the conversation changes next, as it does once the conversation's stream sends the block, about 0.15 s after it
+     * ended, so that the chat shows it all along.
+     */
+    private val streamed = MutableStateFlow<TheHubsTurnStream.StreamedBlock?>(null)
+
     /** The sessions of the line whose conversation is followed: none before one is. */
     private var line = emptySet<ClaudeSessionId>()
 
@@ -67,6 +76,7 @@ class TheHubBehindTheChat(private val tab: ClaudeSessionTab) : ClaudeCodeBehindT
         following = scope.launch {
             hub.conversations.of(session).collect {
                 line = it.sessions + session
+                if (streamed.value?.hasEnded == true) streamed.value = null // The conversation has the block now.
                 told.value = it.conversation
             }
         }
@@ -82,6 +92,17 @@ class TheHubBehindTheChat(private val tab: ClaudeSessionTab) : ClaudeCodeBehindT
     override val statusLine: StateFlow<ClaudeCodesStatusLine?> = ofTheTabsClaudeCode { it.statusLine }
 
     override val turnUnderWay: StateFlow<TurnUnderWay?> = ofTheTabsClaudeCode { it.turnUnderWay }
+
+    override val blockBeingWritten: StateFlow<BlockBeingWritten?> = streamed.map { it?.block }.stateIn(scope, SharingStarted.Eagerly, null)
+
+    init {
+        scope.launch {
+            hub.runningClaudeCodes.map { tab.claudeCodeAmong(it)?.process?.pid() }.distinctUntilChanged().collectLatest { processId ->
+                streamed.value = null
+                if (processId != null) hub.turns.streamedIn(processId).collect { streamed.value = it }
+            }
+        }
+    }
 
     /** What [part] says of the tab's Claude Code, as the hub tells of it, and as it changes: null while none runs. */
     private fun <Part> ofTheTabsClaudeCode(part: (RunningClaudeCode) -> Part?): StateFlow<Part?> {

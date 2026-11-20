@@ -355,6 +355,16 @@ public sealed class TheClaudeSessionsView
    }
 
    /// <summary>
+   ///   Tells the sandbox's hub of the turn under way of the Claude Code that runs as <paramref name="claudeCode"/>, as
+   ///   a Claude Code session's <c>tooling-commands</c> mod does: <paramref name="turnId"/>, started at
+   ///   <paramref name="turnStartedAt"/>, and its <paramref name="events"/>, each as the hub's
+   ///   <c>POST /running-sessions/{processId}/turn/events</c> takes it.
+   /// </summary>
+   public void TellTheHubOfATurn(long claudeCode, string turnId, DateTimeOffset turnStartedAt, params object[] events) =>
+      _sandbox.TellItsHubOfATurn(claudeCode,
+                                 System.Text.Json.JsonSerializer.SerializeToNode(new { turnId, turnStartedAt = turnStartedAt.ToUnixTimeMilliseconds(), outputTokensOfEndedResponses = 0, events })!);
+
+   /// <summary>
    ///   Deletes the record in which the tab's Claude Code names its session, <c>sessions/&lt;its process id&gt;.json</c>,
    ///   and returns once the view no longer finds the Claude Code by it: as if the view couldn't read the record.
    /// </summary>

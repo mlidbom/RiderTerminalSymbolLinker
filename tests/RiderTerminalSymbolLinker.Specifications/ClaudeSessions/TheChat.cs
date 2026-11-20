@@ -31,10 +31,11 @@ public sealed class TheChat(ClaudeSessionsObservationChannel channel, int tab)
    /// <summary>
    ///   Has the stand-in say what Claude Code last showed under its input box, <paramref name="statusLine"/>, and its turn
    ///   under way, <paramref name="turnUnderWay"/>, each in the shape of the hub's running session's <c>statusLine</c> and
-   ///   <c>turnUnderWay</c>, or null for none. The chat shows them a moment later: see <see cref="SeenOnce"/>.
+   ///   <c>turnUnderWay</c>, or null for none; and the block the model writes, <paramref name="blockBeingWritten"/>, made by
+   ///   <see cref="Item.BeingWritten"/>, or null. The chat shows them a moment later: see <see cref="SeenOnce"/>.
    /// </summary>
-   public ChatSeen SayWhatClaudeCodeShows(object? statusLine, object? turnUnderWay) =>
-      ChatSeen.From(channel.SayWhatClaudeCodeShowsToTheChat(tab, new { statusLine, turnUnderWay }));
+   public ChatSeen SayWhatClaudeCodeShows(object? statusLine, object? turnUnderWay, object? blockBeingWritten = null) =>
+      ChatSeen.From(channel.SayWhatClaudeCodeShowsToTheChat(tab, new { statusLine, turnUnderWay, blockBeingWritten }));
 
    /// <summary>Types <paramref name="text"/> into the input box, at its caret.</summary>
    public ChatSeen Type(string text) => ChatSeen.From(channel.TypeInTheChat(tab, text));
@@ -149,6 +150,12 @@ public sealed class TheChat(ClaudeSessionsObservationChannel channel, int tab)
          new { kind = "tool-call", id, tool, input, result = result is null ? null : new { text = result, isAnError } };
 
       public static object Compaction(string id) => new { kind = "compaction", id };
+
+      /// <summary>
+      ///   The block of text, or of thinking when <paramref name="thinking"/>, that the model writes, as far as it has
+      ///   streamed: for <see cref="SayWhatClaudeCodeShows"/>, not the conversation.
+      /// </summary>
+      public static object BeingWritten(string id, string text, bool thinking = false) => new { id, kind = thinking ? "THINKING" : "TEXT", text };
    }
 }
 
