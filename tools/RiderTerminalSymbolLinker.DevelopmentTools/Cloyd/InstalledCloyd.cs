@@ -21,6 +21,7 @@ public sealed class InstalledCloyd(string folder)
 {
    static readonly HttpClient Http = new() { Timeout = TimeSpan.FromSeconds(10) };
    static readonly TimeSpan HowLongItsApplicationMayTakeToExit = TimeSpan.FromSeconds(10);
+   static readonly TimeSpan HowLongAWindowMayTakeToGoToItsDesktop = TimeSpan.FromSeconds(3);
 
    /// <summary>Magnus's Cloyd, in <c>%LOCALAPPDATA%\Cloyd</c>, which his IDEs' Claude Sessions run.</summary>
    internal static InstalledCloyd Everyday { get; } = new(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Cloyd"));
@@ -121,15 +122,46 @@ public sealed class InstalledCloyd(string folder)
    ///   Has the Cloyd application take the build in <see cref="Bin"/>, as a reload has an IDE take a plugin's: stops it,
    ///   its windows saving their tabs, and runs <c>Cloyd.exe --project</c> for each project it showed, as Claude Sessions
    ///   does as a project opens, which starts it again. The sessions run on in their hosts, and each window brings its tabs
-   ///   back. Returns what it did.
+   ///   back, and is put back on the virtual desktop it was on. Returns what it did.
    /// </summary>
    internal string RestartTheApplication()
    {
       if(TheApplication() is not {} before) return $"No Cloyd application runs: the next project to open starts one with the build in {this}.";
       var projects = ProjectsItShows();
+      var desktops = DesktopsOfTheWindows();
       StopTheApplication();
       foreach(var project in projects) ShowTheWindowOf(project);
-      return $"Restarted the Cloyd application on the build in {this}: process {before.Id} is now {TheApplication()?.Id.ToString() ?? "none"}, showing {string.Join(", ", projects)}.";
+      var putBack = PutTheWindowsBackOn(desktops);
+      return $"Restarted the Cloyd application on the build in {this}: process {before.Id} is now {TheApplication()?.Id.ToString() ?? "none"}, showing {string.Join(", ", projects)}.{putBack}";
+   }
+
+   /// <summary>The virtual desktop each of the application's windows is on, by its title, such as <c>Cloyd: Compze</c>.</summary>
+   IReadOnlyDictionary<string, WindowsDesktop.VirtualDesktop> DesktopsOfTheWindows() =>
+      WindowsOnTheDesktop().Where(it => it.Desktop is not null).DistinctBy(it => it.Title).ToDictionary(it => it.Title, it => it.Desktop!);
+
+   /// <summary>
+   ///   Moves each of the application's windows back onto the desktop in <paramref name="desktops"/> its title was on,
+   ///   and keeps doing it for <see cref="HowLongAWindowMayTakeToGoToItsDesktop"/>: a window that has no desktop saved, as
+   ///   a Cloyd that didn't save its windows' desktops left them, goes to its IDE window's once it has asked the IDEs.
+   ///   Returns what it moved.
+   /// </summary>
+   string PutTheWindowsBackOn(IReadOnlyDictionary<string, WindowsDesktop.VirtualDesktop> desktops)
+   {
+      var moved = new List<string>();
+      var watching = Stopwatch.StartNew();
+      while(watching.Elapsed < HowLongAWindowMayTakeToGoToItsDesktop)
+      {
+         foreach(var window in WindowsOnTheDesktop())
+            if(desktops.TryGetValue(window.Title, out var desktop) && window.Desktop?.Id != desktop.Id)
+            {
+               window.MoveTo(desktop);
+               moved.Add(window.Title);
+            }
+
+         Thread.Sleep(250);
+      }
+
+      return moved.Count == 0 ? "" : $" Put back on the desktop each was on: {string.Join(", ", moved.Distinct())}.";
    }
 
    /// <summary>Runs <c>Cloyd.exe --project <paramref name="project"/></c>, which hands the project to the application, starting it if none runs, and returns once its window shows.</summary>

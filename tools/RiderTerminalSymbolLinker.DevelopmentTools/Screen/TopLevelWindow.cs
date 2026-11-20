@@ -61,6 +61,9 @@ sealed class TopLevelWindow
    /// <summary>The virtual desktop the window is on, or null for a window pinned to all of them.</summary>
    public VirtualDesktop? Desktop => VirtualDesktop.FromHwnd((IntPtr)_handle);
 
+   /// <summary>Moves this window to <paramref name="desktop"/>, another process's window too, without switching to that desktop.</summary>
+   public void MoveTo(VirtualDesktop desktop) => VirtualDesktop.MoveToDesktop((IntPtr)_handle, desktop);
+
    /// <summary>Moves this window to the virtual desktop <paramref name="other"/> is on.</summary>
    public void MoveToTheDesktopOf(TopLevelWindow other) =>
       VirtualDesktop.MoveToDesktop((IntPtr)_handle,
