@@ -13,8 +13,7 @@ interface IVirtualDesktopManager
    [return: MarshalAs(UnmanagedType.Bool)]
    bool IsWindowOnCurrentVirtualDesktop(nint topLevelWindow);
 
-   /// <summary>Unused: declared for its place in the interface's table of methods, which the declaration must keep in order.</summary>
-   // ReSharper disable once UnusedMember.Global
+   /// <summary>The desktop <paramref name="topLevelWindow"/> is on: <see cref="Guid.Empty"/> while it is on none, as before it shows.</summary>
    Guid GetWindowDesktopId(nint topLevelWindow);
 
    void MoveWindowToDesktop(nint topLevelWindow, [MarshalAs(UnmanagedType.LPStruct)] Guid desktopId);

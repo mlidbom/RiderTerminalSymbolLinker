@@ -165,23 +165,29 @@ Claude's calls (.NET-cloyd, the session in this repository), which Magnus OK'd o
 - **A window per project,** with a tab per session host of the project. Each tab shows the host's terminal in
   Iciclecreek's control, attached in process (`AttachmentToASessionHost`), and is titled with the name of the session
   the hub says runs in its host.
-- **Each project's window keeps to its IDE window's virtual desktop** (`ProjectWindow.DesktopOfItsIdesWindow`), as
-  Magnus keeps each IDE window on a desktop of its own: after the switch's restart all four of Cloyd's opened on the
-  desktop he was on.
-  - **Where the IDE's window is:** every 2 s, each window asks the IDEs that announce their local APIs in
-    `%LOCALAPPDATA%\ClaudeSessions\ides` (`TheIdes`), whose `GET /windows` names each project window's desktop. No
-    change to the plugin. An IDE whose process doesn't run isn't asked: a crash leaves its file, and Windows takes 2 s
-    to refuse a connection to its port.
-  - **Following it:** the window goes to that desktop once an IDE shows the project, and again each time the IDE's
-    window is on another, as when Magnus moves it, or an IDE that restarts opens it on the desktop shown before putting
-    it back. A desktop Magnus moves Cloyd's window to himself it stays on until the IDE's window moves.
+- **Each project's window goes back to the virtual desktop it was on** (`ProjectWindow.Desktop`), saved with its tabs,
+  and, when it has none saved, as on its first opening, to its IDE window's desktop. Magnus keeps each IDE window on a
+  desktop of its own, and Cloyd's mostly beside it: after the switch's restart all four of Cloyd's opened on the desktop
+  he was on. Then he kept one on another desktop than its IDE window's, beside Rider's solution of Cloyd, which the
+  window following its IDE window's desktop undid at each restart. So since 2026-11-20 (Magnus's choice of the options
+  put to him) a window follows neither afterwards: where he moves it, it stays, and one whose IDE window he moves he
+  moves too.
+  - **Where the window is:** each time it saves, every 2 s, it asks Windows which desktop it is on, and saves that. As
+    it closes it saves the one it last saw, since Windows no longer knows it then.
+  - **Where the IDE's window is,** for a window with no desktop saved: every 2 s until an IDE shows the project, the
+    window asks the IDEs that announce their local APIs in `%LOCALAPPDATA%\ClaudeSessions\ides` (`TheIdes`), whose
+    `GET /windows` names each project window's desktop. An IDE whose process doesn't run isn't asked: a crash leaves its
+    file, and Windows takes 2 s to refuse a connection to its port.
+  - **A desktop that is gone,** as when Magnus closed it: moving there fails, and the window says so at its foot, on
+    the desktop it opened on, which it saves. Not seen yet: Windows' answer to it is a guess.
   - **Moving it:** Windows' documented `IVirtualDesktopManager`, which moves only the calling process's own windows
     (`NativeWindow`).
   - **An IDE opening the project no longer brings forward a window on another desktop:** Windows switches to the
     desktop of a window that comes to the foreground, so an IDE restarting, opening its projects again, would have taken
     Magnus to each one's desktop in turn. A notification's click still does, as is its purpose.
-  - **Specified** with a stand-in IDE (`StandInIde`), which serves `GET /windows`: the desktop the window went to. The
-    move itself can't be specified on the headless platform, whose windows Windows doesn't know.
+  - **Specified** with a stand-in IDE (`StandInIde`), which serves `GET /windows`: the desktop the window went to, the
+    one it saved, and the one it goes back to. The move itself can't be specified on the headless platform, whose
+    windows Windows doesn't know.
 - **A Ctrl+click on a URL opens it in the browser** (`TerminalOfASessionHost`), as Iciclecreek's terminal leaves to its
   host: it raises `UrlClicked`, and "never opens it". Only `http` and `https`: a link Claude Code writes itself (OSC 8)
   can have any scheme, such as `file:` for a program. Until 2026-11-20 nothing handled the click, and it did nothing. Not

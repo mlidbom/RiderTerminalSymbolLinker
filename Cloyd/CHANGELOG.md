@@ -19,10 +19,11 @@ All notable changes to Cloyd are documented here. The format follows
 - **The windows keep their tabs.** Each window saves its tabs every 2 seconds and as it closes, and brings them back as
   it opens, in their order, with the selected tab selected. A session whose host still runs is shown again as it is; one
   whose host is gone, as after a reboot, is resumed in a new host with `claude --resume`, unless its transcript is gone.
-- **Each project's window keeps to its IDE window's virtual desktop.** It goes to the desktop the project's IDE window
-  is on once an IDE shows the project, and again each time that window moves to another desktop. An IDE opening the
-  project no longer brings forward a Cloyd window on another desktop, since Windows would switch to that desktop with
-  it; a notification's click still does.
+- **Each project's window goes back to its virtual desktop.** A window saves the desktop it is on with its tabs, and
+  goes back to it as it opens. One with no desktop saved, as on its first opening, goes to the desktop of the project's
+  IDE window once an IDE shows the project. It follows neither afterwards: where you move a window, it stays, also
+  through restarts. An IDE opening the project doesn't bring forward a Cloyd window on another desktop, since Windows
+  would switch to that desktop with it; a notification's click still does.
 - **A notification's click shows the session's tab again,** as the IDE's tool window did until Claude Sessions 0.2.0:
   it selects the tab the session runs in, or ran in last, and brings its window forward.
 - **A Ctrl+click on an http or https URL in a terminal opens it in the browser.**

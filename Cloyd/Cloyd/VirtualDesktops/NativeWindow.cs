@@ -25,6 +25,9 @@ sealed record NativeWindow(nint Handle)
    /// </summary>
    public bool IsOnTheCurrentVirtualDesktop => Asked(manager => manager.IsWindowOnCurrentVirtualDesktop(Handle));
 
+   /// <summary>The virtual desktop the window is on: null while it is on none, as before it shows.</summary>
+   public VirtualDesktop? Desktop => Asked(manager => manager.GetWindowDesktopId(Handle)) is var desktop && desktop != Guid.Empty ? new VirtualDesktop(desktop) : null;
+
    /// <summary>Moves the window onto <paramref name="desktop"/>, without bringing it forward or switching Magnus to that desktop.</summary>
    public void MoveTo(VirtualDesktop desktop) => Asked(manager =>
    {

@@ -19,7 +19,7 @@ sealed class ProjectWindows(Func<Project, ProjectWindows, ProjectWindow> newWind
    /// <summary>
    /// Shows the window of <paramref name="project"/>, as an IDE opening the project asks: brings it forward when it is
    /// open on the virtual desktop shown, else opens a new one. One open on another desktop, as its IDE window's
-   /// (<see cref="ProjectWindow.DesktopOfItsIdesWindow"/>), stays where it is: bringing it forward would switch Magnus to
+   /// (<see cref="ProjectWindow.Desktop"/>), stays where it is: bringing it forward would switch Magnus to
    /// that desktop, as an IDE restarting would, opening its projects again.
    /// </summary>
    public ProjectWindow Show(Project project)

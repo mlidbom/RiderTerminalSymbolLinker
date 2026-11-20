@@ -33,14 +33,16 @@ namespace Cloyd.Projects;
 /// since attaching would take the session over from it.
 /// </remarks>
 /// <remarks>
-/// It keeps to the virtual desktop of the project's window in an IDE (<see cref="DesktopOfItsIdesWindow"/>): Magnus keeps
-/// each IDE window on a desktop of its own, and Cloyd's window beside it.
+/// It saves the virtual desktop it is on with its tabs (<see cref="Desktop"/>), and goes back to that desktop as it opens:
+/// Magnus keeps each IDE window on a desktop of its own, and Cloyd's window where he puts it, mostly beside the IDE's.
+/// A window with no desktop saved, as on its first opening, goes to the desktop of the project's window in an IDE, once
+/// an IDE shows the project. It follows neither afterwards: where Magnus moves it, it stays.
 /// </remarks>
 sealed class ProjectWindow : Window
 {
    static readonly TimeSpan BeforeFollowingTheRunningSessionsAgain = TimeSpan.FromSeconds(1);
    static readonly TimeSpan BetweenSaves = TimeSpan.FromSeconds(2);
-   static readonly TimeSpan BetweenLooksAtItsIdesWindow = TimeSpan.FromSeconds(2);
+   static readonly TimeSpan BetweenLooksForItsIdesWindow = TimeSpan.FromSeconds(2);
    static readonly TimeSpan BetweenReadingsOfItsFiles = TimeSpan.FromSeconds(5);
 
    /// <summary>How long the symbols the window gathered last serve: one gathering takes Compze's solution 6.4 s of Rider's time.</summary>
@@ -61,8 +63,8 @@ sealed class ProjectWindow : Window
    readonly TextBlock _failure = new() { IsVisible = false, Foreground = Brushes.Orange, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(8, 4) };
    readonly CancellationTokenSource _closed = new();
 
-   /// <summary>What saves the window every <see cref="BetweenSaves"/>: null until it has brought back the saved tabs, so that it never saves a window they aren't in yet.</summary>
-   DispatcherTimer? _saving;
+   /// <summary>Whether the window saves itself: not until it has brought back the saved tabs, so that it never saves a window they aren't in yet.</summary>
+   bool _savesItself;
 
    /// <summary>
    /// The window of <paramref name="project"/>, one of <paramref name="windowsOfCloyd"/> from when it opens until it
@@ -114,10 +116,11 @@ sealed class ProjectWindow : Window
    public Task BringingBackTheTabs { get; private set; } = Task.CompletedTask;
 
    /// <summary>
-   /// The virtual desktop the project's window in an IDE was on as the window last looked, which it went to: null until an
-   /// IDE showed the project.
+   /// The virtual desktop the window is on, which it saves: the one it went to as it opened, then the one Windows says it
+   /// is on each time it saves, as after Magnus moved it. Null while it is on none it knows of: until it goes to one, and
+   /// on Avalonia's headless platform, which Windows doesn't know, until it went to one.
    /// </summary>
-   public VirtualDesktop? DesktopOfItsIdesWindow { get; private set; }
+   public VirtualDesktop? Desktop { get; private set; }
 
    /// <summary>
    /// Whether the window is on the virtual desktop shown, where Magnus is. A window of Avalonia's headless platform, which
@@ -129,13 +132,14 @@ sealed class ProjectWindow : Window
    {
       base.OnOpened(e);
       _windowsOfCloyd.Opened(this);
+      var saved = _savedWindows.Of(Project);
+      _ = GoToItsDesktop(saved.Desktop);
       BringingBackTheTabs = TellingOfFailure(async () =>
       {
-         await BringBackTheTabs();
-         _saving = new DispatcherTimer(BetweenSaves, DispatcherPriority.Background, (_, _) => TellingOfFailure(Save));
+         await BringBackTheTabs(saved);
+         _ = KeepItSaved();
       });
       _ = FollowTheRunningSessions();
-      _ = FollowItsIdesWindow();
       _ = KeepItsFilesCurrent();
       _ = KeepItsSymbolsCurrent();
    }
@@ -143,11 +147,7 @@ sealed class ProjectWindow : Window
    protected override void OnClosed(EventArgs e)
    {
       _closed.Cancel();
-      if(_saving is not null)
-      {
-         _saving.Stop();
-         TellingOfFailure(Save);
-      }
+      if(_savesItself) TellingOfFailure(Save);
 
       foreach(var tab in Tabs) tab.LetGo();
       base.OnClosed(e);
@@ -231,12 +231,11 @@ sealed class ProjectWindow : Window
    }
 
    /// <summary>
-   /// Brings back the tabs the project's last window saved, in their order, then shows the project's other hosts that no
-   /// attach client shows, and selects the tab that was selected: else the first.
+   /// Brings back the tabs the project's last window <paramref name="saved"/>, in their order, then shows the project's
+   /// other hosts that no attach client shows, and selects the tab that was selected: else the first.
    /// </summary>
-   async Task BringBackTheTabs()
+   async Task BringBackTheTabs(SavedProjectWindow saved)
    {
-      var saved = _savedWindows.Of(Project);
       var hosts = await _hub.SessionHosts(_closed.Token);
       var claudeCode = await _hub.ClaudeCodeFolderItServes(_closed.Token);
       SessionTab? selected = null;
@@ -304,10 +303,29 @@ sealed class ProjectWindow : Window
       _tabs.Items.Remove(tab);
    }
 
-   void Save() => _savedWindows.Save(Project, new SavedProjectWindow([.. Tabs.Select(it => it.AsSaved)], SelectedTab?.Host.Id));
+   /// <summary>Saves the window, on the <see cref="Desktop"/> it was on as it last looked: as it closes, Windows no longer knows it.</summary>
+   void Save() => _savedWindows.Save(Project, new SavedProjectWindow([.. Tabs.Select(it => it.AsSaved)], SelectedTab?.Host.Id, Desktop));
+
+   /// <summary>Saves the window as it is now, on the desktop Windows says it is on.</summary>
+   void SaveAsItIsNow()
+   {
+      if(NativeWindow.Of(this)?.Desktop is {} desktop) Desktop = desktop;
+      Save();
+   }
 
    /// <summary>The size of the terminals shown, which a new tab's host is attached at: the default size of a host's console before any is shown.</summary>
    ConsoleSize SizeOfTheTerminals => SelectedTab?.Terminal.Size is { IsASize: true } size ? size : ConsoleSize.Default;
+
+   /// <summary>Saves the window every <see cref="BetweenSaves"/>, from now until it closes, which saves it once more.</summary>
+   async Task KeepItSaved()
+   {
+      _savesItself = true;
+      while(!_closed.IsCancellationRequested)
+      {
+         TellingOfFailure(SaveAsItIsNow);
+         await Task.Delay(BetweenSaves, CancellationToken.None);
+      }
+   }
 
    /// <summary>Tells each tab which Claude Code runs in its host, each time the hub's list of them changes, until the window closes.</summary>
    async Task FollowTheRunningSessions()
@@ -325,24 +343,32 @@ sealed class ProjectWindow : Window
    }
 
    /// <summary>
-   /// Keeps the window on the virtual desktop of the project's window in an IDE, until the window closes: moves it there
-   /// once an IDE shows the project, and again each time that window is on another desktop, as when Magnus moves it, or
-   /// the IDE restarts. A desktop Magnus moves Cloyd's window to himself it stays on until the IDE's window moves.
+   /// Moves the window to the virtual desktop it was <paramref name="saved"/> on, else, as on its first opening, to the
+   /// desktop of the project's window in an IDE, once an IDE shows the project: it looks every
+   /// <see cref="BetweenLooksForItsIdesWindow"/> until one does, or the window closes.
    /// </summary>
-   async Task FollowItsIdesWindow()
+   async Task GoToItsDesktop(VirtualDesktop? saved)
    {
-      while(!_closed.IsCancellationRequested)
+      if(saved is {} desktop)
+      {
+         TellingOfFailure(() => GoTo(desktop));
+         return;
+      }
+
+      while(Desktop is null && !_closed.IsCancellationRequested)
       {
          await TellingOfFailure(async () =>
          {
-            if((await _ides.WindowOf(Project, _closed.Token))?.Desktop is {} desktop && desktop != DesktopOfItsIdesWindow)
-            {
-               DesktopOfItsIdesWindow = desktop;
-               NativeWindow.Of(this)?.MoveTo(desktop);
-            }
+            if((await _ides.WindowOf(Project, _closed.Token))?.Desktop is {} desktopOfItsIdesWindow) GoTo(desktopOfItsIdesWindow);
          });
-         await Task.Delay(BetweenLooksAtItsIdesWindow, CancellationToken.None);
+         if(Desktop is null) await Task.Delay(BetweenLooksForItsIdesWindow, CancellationToken.None);
       }
+   }
+
+   void GoTo(VirtualDesktop desktop)
+   {
+      Desktop = desktop;
+      NativeWindow.Of(this)?.MoveTo(desktop);
    }
 
    /// <summary>
