@@ -4,6 +4,7 @@ using Compze.Must;
 using Compze.xUnitBDD;
 using Cloyd.Hub;
 using Cloyd.Projects;
+using Cloyd.Saving;
 using Cloyd.Sessions;
 using Cloyd.Specifications.TheSandbox;
 
@@ -46,6 +47,18 @@ public class When_a_new_session_is_started_in_a_project_window : SpecificationOp
    [XF] public void the_tab_is_titled_with_the_sessions_name() => OnTheUIThread(() => _tab.Title).Must().Be(NameGiven);
 
    [XF] public void the_tab_tells_nothing_above_its_terminal() => OnTheUIThread(() => _tab.Notice).Must().BeNull();
+
+   [XF] public void the_window_saves_its_tab_with_the_session_while_it_stays_open()
+   {
+      WaitUntil(() => _project.SavedWindow.Tabs.SingleOrDefault()?.Session is not null, "the window saved its tab with the session");
+      _project.SavedWindow.Tabs.Single().Must().Be(new SavedSessionTab(_tab.Host.Id, _project.Project.Folder, _session.Session));
+   }
+
+   [XF] public void the_window_saves_the_tab_as_selected()
+   {
+      WaitUntil(() => _project.SavedWindow.Tabs.Count == 1, "the window saved its tab");
+      _project.SavedWindow.SelectedTab.Must().Be(_tab.Host.Id);
+   }
 
    [XF] public void the_hosts_console_is_the_size_of_the_tabs_terminal()
    {

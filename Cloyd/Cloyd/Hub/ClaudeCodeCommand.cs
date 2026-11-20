@@ -1,4 +1,5 @@
 using System.Text.Json.Nodes;
+using Cloyd.ClaudeCode;
 
 namespace Cloyd.Hub;
 
@@ -23,6 +24,10 @@ sealed class ClaudeCodeCommand
    /// <summary>A new session: named <paramref name="name"/>, or with no name when it is null.</summary>
    public static ClaudeCodeCommand OfANewSession(string? name) =>
       name is null ? new([], "claude") : new(new JsonObject { ["name"] = name }, $"claude --name {name}");
+
+   /// <summary>The session <paramref name="session"/>, continued from its transcript.</summary>
+   public static ClaudeCodeCommand Resuming(ClaudeSession session) =>
+      new(new JsonObject { ["sessionToResume"] = session.Id.Value }, $"claude --resume {session.Id}");
 
    public override string ToString() => _asTyped;
 }

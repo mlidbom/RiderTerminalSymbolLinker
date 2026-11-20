@@ -4,7 +4,9 @@ using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Threading;
 using ClaudeTooling.SessionHost.Protocol;
+using Cloyd.ClaudeCode;
 using Cloyd.Hub;
+using Cloyd.Saving;
 using Cloyd.SessionHosts;
 using Cloyd.Terminals;
 
@@ -24,16 +26,18 @@ sealed class SessionTab : TabItem
    readonly TextBlock _notice = new() { IsVisible = false, Foreground = Brushes.Orange, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(8, 4) };
 
    /// <summary>
-   /// Attaches to <paramref name="host"/> at <paramref name="size"/>, which its terminal then resizes it from, titled
-   /// <paramref name="nameGiven"/>, as a new session was named, until the hub tells of the session that runs in it.
+   /// Attaches to <paramref name="host"/> at <paramref name="size"/>, which its terminal then resizes it from. Until the
+   /// hub tells of the session that runs in it, its <see cref="LatestSession"/> is <paramref name="latestSession"/>, as a
+   /// saved tab's, and it is titled with that session's name, or <paramref name="nameGiven"/>, as a new session was named.
    /// </summary>
-   public SessionTab(SessionHostOfTheHub host, string? nameGiven, ConsoleSize size)
+   public SessionTab(SessionHostOfTheHub host, ClaudeSession? latestSession, string? nameGiven, ConsoleSize size)
    {
       Host = host;
+      LatestSession = latestSession;
       _attachment = AttachmentToASessionHost.To(host.Id, size);
       _attachment.Ended += why => Dispatcher.UIThread.Post(() => EndedByItself?.Invoke(this, why));
       Terminal = new TerminalOfASessionHost(_attachment);
-      _title = new TextBlock { Text = nameGiven ?? TitleOfASessionWithNoName, VerticalAlignment = VerticalAlignment.Center };
+      _title = new TextBlock { Text = latestSession?.Name ?? nameGiven ?? TitleOfASessionWithNoName, VerticalAlignment = VerticalAlignment.Center };
       Header = TheHeader();
       Content = new DockPanel { Children = { Docked(_notice, Dock.Top), Terminal } };
    }
@@ -63,9 +67,20 @@ sealed class SessionTab : TabItem
       set
       {
          field = value;
-         if(value is not null) _title.Text = value.Name ?? TitleOfASessionWithNoName;
+         if(value is null) return;
+         LatestSession = value.Session;
+         _title.Text = value.Name ?? TitleOfASessionWithNoName;
       }
    }
+
+   /// <summary>
+   /// The session that runs in the tab's host, or ran in it last, as after Claude Code exits to the shell: what the tab
+   /// is saved with, to be resumed once its host is gone. Null while none has, as before Claude Code starts.
+   /// </summary>
+   public ClaudeSession? LatestSession { get; private set; }
+
+   /// <summary>The tab, as its window saves it.</summary>
+   public SavedSessionTab AsSaved => new(Host.Id, Host.Directory, LatestSession);
 
    /// <summary>Shows <paramref name="notice"/> above the terminal.</summary>
    public void Tell(string notice)

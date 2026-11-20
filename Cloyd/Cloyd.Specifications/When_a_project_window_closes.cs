@@ -31,7 +31,7 @@ public class When_a_project_window_closes : SpecificationOpeningWindows
       public and_the_project_window_opens_again()
       {
          _windowAgain = Open(_project.Window);
-         WaitUntil(() => _windowAgain.ShowingTheSessionHostsThatRan.IsCompleted, "the window had shown the session hosts that ran");
+         WaitUntil(() => _windowAgain.BringingBackTheTabs.IsCompleted, "the window had brought back its tabs");
          WaitUntil(() => _windowAgain.Tabs.Single().Terminal.TextShown.Contains("New session"), "the tab showed the session's screen again");
          Render(_windowAgain, "A-project-window-opened-again");
       }

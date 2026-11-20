@@ -40,6 +40,9 @@ sealed class Sandbox
    /// <summary>The folder of the specifications' projects, each in a folder of its own.</summary>
    public string ProjectsFolder => Path.Combine(_root, "projects");
 
+   /// <summary>The folder where the specifications' projects save their windows, each in a folder of its own.</summary>
+   public string SavedProjectWindowsFolder => Path.Combine(_root, "project-windows");
+
    /// <summary>Where the tooling owner publishes the stand-in for Claude Code, a <c>claude.exe</c> with its files.</summary>
    static string StandInBuild => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".claude", "bin", "stand-in-for-claude-code");
 

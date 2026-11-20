@@ -3,6 +3,7 @@ using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 using Cloyd.Hub;
 using Cloyd.Projects;
+using Cloyd.Saving;
 using Cloyd.Sessions;
 
 namespace Cloyd;
@@ -15,7 +16,7 @@ sealed class CloydApp : Application
    public override void OnFrameworkInitializationCompleted()
    {
       if(ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
-         desktop.MainWindow = new ProjectWindow(ProjectNamedBy(desktop.Args ?? []), TheHub.OfCloydsEnvironment(), ShellOfNewSessions.OnThisMachine());
+         desktop.MainWindow = new ProjectWindow(ProjectNamedBy(desktop.Args ?? []), TheHub.OfCloydsEnvironment(), ShellOfNewSessions.OnThisMachine(), SavedProjectWindows.OfCloydsEnvironment());
       base.OnFrameworkInitializationCompleted();
    }
 

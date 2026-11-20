@@ -13,7 +13,7 @@ public class When_a_project_window_opens : SpecificationOpeningWindows
    public When_a_project_window_opens()
    {
       _window = Open(_project.Window);
-      WaitUntil(() => _window.ShowingTheSessionHostsThatRan.IsCompleted, "the window had shown the session hosts that ran");
+      WaitUntil(() => _window.BringingBackTheTabs.IsCompleted, "the window had brought back its tabs");
    }
 
    [XF] public void it_is_titled_with_the_projects_name() => OnTheUIThread(() => _window.Title).Must().Be("Cloyd: ClaudeSymbolLinker");

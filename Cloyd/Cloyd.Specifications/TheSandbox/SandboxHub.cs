@@ -40,7 +40,7 @@ sealed class SandboxHub
    DirectoryInfo AnnouncementFolder => new(Path.Combine(_folder, "local-api"));
 
    /// <summary>The Claude Code folder the hub serves, which <c>CLAUDE_CONFIG_DIR</c> names for it and for the shells of its session hosts.</summary>
-   string ClaudeCodeFolder => Path.Combine(_folder, "claude-code");
+   public string ClaudeCodeFolder => Path.Combine(_folder, "claude-code");
 
    /// <summary>The hub's log, which <c>CLAUDE_TOOLING_HUB_LOG</c> names for it: else it would write among the lines of Magnus's hub.</summary>
    string Log => Path.Combine(_folder, "hub.log");
@@ -55,6 +55,7 @@ sealed class SandboxHub
    public void Run()
    {
       TakeThePublishedBuild();
+      ForgetTheSessionsWhoseClaudeCodeIsGone();
       Environment.SetEnvironmentVariable("CLAUDE_CONFIG_DIR", ClaudeCodeFolder);
       Environment.SetEnvironmentVariable("CLAUDE_TOOLING_LOCAL_API_FOLDER", AnnouncementFolder.FullName);
       Environment.SetEnvironmentVariable("CLAUDE_TOOLING_HUB_LOG", Log);
@@ -74,6 +75,33 @@ sealed class SandboxHub
       {
          if(clock.Elapsed > HowLongStartingMayTake) throw new TimeoutException($"Gave up after {HowLongStartingMayTake} waiting for the sandbox's hub to announce itself in {AnnouncementFolder}. Its log is {Log}.");
          Thread.Sleep(100);
+      }
+   }
+
+   /// <summary>
+   /// Deletes the records of running sessions, <c>sessions/&lt;process id&gt;.json</c> in the Claude Code folder, whose
+   /// process no longer runs: the stand-ins that earlier runs killed with their hosts, hundreds of them, which the hub
+   /// would read on every reading. Claude Code deletes its record only as it exits.
+   /// </summary>
+   void ForgetTheSessionsWhoseClaudeCodeIsGone()
+   {
+      var records = new DirectoryInfo(Path.Combine(ClaudeCodeFolder, "sessions"));
+      if(!records.Exists) return;
+      foreach(var record in records.EnumerateFiles("*.json"))
+         if(int.TryParse(Path.GetFileNameWithoutExtension(record.Name), out var processId) && !ProcessRuns(processId))
+            record.Delete();
+
+      static bool ProcessRuns(int processId)
+      {
+         try
+         {
+            using var process = Process.GetProcessById(processId);
+            return !process.HasExited;
+         }
+         catch(ArgumentException)
+         {
+            return false; // No process has the id.
+         }
       }
    }
 

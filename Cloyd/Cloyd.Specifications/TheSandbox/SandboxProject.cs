@@ -1,7 +1,9 @@
 using System.Text.Json;
 using ClaudeTooling.SessionHost.Protocol;
+using Cloyd.ClaudeCode;
 using Cloyd.Hub;
 using Cloyd.Projects;
+using Cloyd.Saving;
 using Cloyd.SessionHosts;
 
 namespace Cloyd.Specifications.TheSandbox;
@@ -18,22 +20,38 @@ namespace Cloyd.Specifications.TheSandbox;
 /// </remarks>
 sealed class SandboxProject : IDisposable
 {
+   readonly SavedProjectWindows _savedWindows;
+
    SandboxProject(string name)
    {
       var folder = Directory.CreateDirectory(Path.Combine(Sandbox.Started.ProjectsFolder, name));
       Project = new Project(folder.FullName);
       EndItsSessionHosts(); // Left by an earlier run that stopped before it ended them.
+      _savedWindows = new SavedProjectWindows(EmptyFolder(Path.Combine(Sandbox.Started.SavedProjectWindowsFolder, name)));
    }
 
-   /// <summary>The project of the folder <paramref name="name"/>, such as the name of the specification.</summary>
+   /// <summary>The project of the folder <paramref name="name"/>, such as the name of the specification, with no window saved.</summary>
    public static SandboxProject Named(string name) => new(name);
 
    public Project Project { get; }
 
    TheHub Hub => Sandbox.Started.HubOfTheSandbox.Hub;
 
-   /// <summary>A new window of the project, not yet shown.</summary>
-   public ProjectWindow Window() => new(Project, Hub, Sandbox.Started.ShellOfItsSessions);
+   /// <summary>A new window of the project, not yet shown, which saves itself where the project's next window finds it.</summary>
+   public ProjectWindow Window() => new(Project, Hub, Sandbox.Started.ShellOfItsSessions, _savedWindows);
+
+   /// <summary>What the project's windows saved last.</summary>
+   public SavedProjectWindow SavedWindow => _savedWindows.Of(Project);
+
+   /// <summary>Deletes the transcript of <paramref name="session"/> from the sandbox's Claude Code folder, as archiving or deleting the session does.</summary>
+   public static void DeleteTheTranscriptOf(ClaudeSessionId session)
+   {
+      foreach(var transcript in Directory.EnumerateFiles(Path.Combine(Sandbox.Started.HubOfTheSandbox.ClaudeCodeFolder, "projects"), $"{session}.jsonl", SearchOption.AllDirectories))
+         File.Delete(transcript);
+   }
+
+   /// <summary>Ends the session host <paramref name="id"/>, as a reboot ends them all.</summary>
+   public void End(SessionHostId id) => Answer(() => Hub.End(id));
 
    /// <summary>A session host started in the project's folder, labelled <paramref name="label"/>, as another window or an IDE's tab would start it.</summary>
    public SessionHostOfTheHub StartASessionHost(string label) => Answer(() => Hub.StartASessionHost(Sandbox.Started.ShellOfItsSessions, Project.Folder, label));
@@ -61,6 +79,13 @@ sealed class SandboxProject : IDisposable
    public string LabelOfCloydsHosts => SessionHostLabel.OfANewHostOf(Project);
 
    public void Dispose() => EndItsSessionHosts();
+
+   static DirectoryInfo EmptyFolder(string path)
+   {
+      var folder = new DirectoryInfo(path);
+      if(folder.Exists) folder.Delete(recursive: true);
+      return folder;
+   }
 
    void EndItsSessionHosts()
    {

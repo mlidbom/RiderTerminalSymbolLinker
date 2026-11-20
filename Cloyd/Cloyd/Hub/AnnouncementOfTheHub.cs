@@ -1,16 +1,18 @@
 using System.Text.Json.Nodes;
+using Cloyd.ClaudeCode;
 
 namespace Cloyd.Hub;
 
 /// <summary>
 /// What a running hub writes as <c>local-api.json</c> once its local API listens: the protocol it speaks, the port of
-/// <c>127.0.0.1</c> it listens on, and the token every request carries. Each hub that starts, as at each publish of the
-/// tooling, writes one of its own.
+/// <c>127.0.0.1</c> it listens on, the token every request carries, and the Claude Code folder it serves. Each hub that
+/// starts, as at each publish of the tooling, writes one of its own.
 /// </summary>
 /// <param name="Protocol">The version of the hub's protocol: raised only for a change that a reader of the one before would get wrong.</param>
 /// <param name="Port">The port of <c>127.0.0.1</c> the hub's local API listens on.</param>
 /// <param name="Token">What every request carries, as <c>Authorization: Bearer &lt;token&gt;</c>.</param>
-sealed record AnnouncementOfTheHub(int Protocol, int Port, string Token)
+/// <param name="ClaudeCodeFolderItServes">The folder of the Claude Codes the hub knows of, and starts in its session hosts: where their sessions' transcripts are.</param>
+sealed record AnnouncementOfTheHub(int Protocol, int Port, string Token, ClaudeCodeFolder ClaudeCodeFolderItServes)
 {
    const string FileName = "local-api.json";
 
@@ -34,6 +36,9 @@ sealed record AnnouncementOfTheHub(int Protocol, int Port, string Token)
       }
 
       var announcement = JsonNode.Parse(json)!;
-      return new((int)announcement["protocol"]!, (int)announcement["port"]!, (string)announcement["token"]!);
+      return new((int)announcement["protocol"]!,
+                 (int)announcement["port"]!,
+                 (string)announcement["token"]!,
+                 new ClaudeCodeFolder(new DirectoryInfo((string)announcement["claudeCodeFolder"]!)));
    }
 }

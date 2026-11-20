@@ -5,6 +5,7 @@ using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using ClaudeTooling.SessionHost.Protocol;
+using Cloyd.ClaudeCode;
 using Cloyd.Sessions;
 
 namespace Cloyd.Hub;
@@ -20,7 +21,7 @@ namespace Cloyd.Hub;
 /// <see cref="AnnouncementOfTheHub"/> again and is sent again, for <see cref="HowLongANewHubMayTakeToAnswer"/>, as the
 /// contract says a reader must.
 /// </remarks>
-sealed class TheHub
+sealed partial class TheHub
 {
    /// <summary>The version of the hub's protocol that Cloyd is written against.</summary>
    const int ProtocolCloydSpeaks = 1;
@@ -57,6 +58,10 @@ sealed class TheHub
 
    /// <summary>The hub that announces itself in <paramref name="folder"/>: one tried out apart from the published one, which whoever tries it starts.</summary>
    public static TheHub AnnouncedIn(DirectoryInfo folder) => new(folder, isThePublishedHub: false);
+
+   /// <summary>The Claude Code folder the hub serves: where the sessions of its hosts keep their transcripts.</summary>
+   public async Task<ClaudeCodeFolder> ClaudeCodeFolderItServes(CancellationToken cancellation = default) =>
+      (await TheAnnouncement(new TimeToAnswer(_folderOfTheAnnouncement), cancellation)).ClaudeCodeFolderItServes;
 
    /// <summary>Every session host that runs, in the order they started.</summary>
    public async Task<IReadOnlyList<SessionHostOfTheHub>> SessionHosts(CancellationToken cancellation = default)
@@ -142,23 +147,11 @@ sealed class TheHub
    /// </summary>
    async Task<HttpResponseMessage> Send(Func<AnnouncementOfTheHub, HttpRequestMessage> request, CancellationToken cancellation, HttpCompletionOption completion = HttpCompletionOption.ResponseContentRead)
    {
-      var clock = Stopwatch.StartNew();
-      var startedThePublishedHub = false;
+      var time = new TimeToAnswer(_folderOfTheAnnouncement);
       while(true)
       {
-         if(AnnouncementOfTheHub.In(_folderOfTheAnnouncement) is {} announcement)
-         {
-            if(await Answer(announcement) is {} answer) return answer;
-         }
-         else if(_isThePublishedHub && !startedThePublishedHub)
-         {
-            StartThePublishedHub();
-            startedThePublishedHub = true;
-         }
-
-         if(clock.Elapsed > HowLongANewHubMayTakeToAnswer)
-            throw new HttpRequestException($"No hub answered within {HowLongANewHubMayTakeToAnswer.TotalSeconds:0} s at the announcement in {_folderOfTheAnnouncement.FullName}.");
-         await Task.Delay(BetweenTries, cancellation);
+         if(await Answer(await TheAnnouncement(time, cancellation)) is {} answer) return answer;
+         await time.WaitBeforeTryingAgain(cancellation);
       }
 
       async Task<HttpResponseMessage?> Answer(AnnouncementOfTheHub announcement)
@@ -180,6 +173,26 @@ sealed class TheHub
          {
             return null; // The hub announced has stopped, as at a publish, or crashed and left its announcement.
          }
+      }
+   }
+
+   /// <summary>
+   /// The hub's announcement, once there is one, within <paramref name="time"/>: the published hub is started when there
+   /// is none.
+   /// </summary>
+   async Task<AnnouncementOfTheHub> TheAnnouncement(TimeToAnswer time, CancellationToken cancellation)
+   {
+      var startedThePublishedHub = false;
+      while(true)
+      {
+         if(AnnouncementOfTheHub.In(_folderOfTheAnnouncement) is {} announcement) return announcement;
+         if(_isThePublishedHub && !startedThePublishedHub)
+         {
+            StartThePublishedHub();
+            startedThePublishedHub = true;
+         }
+
+         await time.WaitBeforeTryingAgain(cancellation);
       }
    }
 
