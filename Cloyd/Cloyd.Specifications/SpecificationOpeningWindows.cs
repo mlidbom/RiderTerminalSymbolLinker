@@ -9,6 +9,8 @@ using Avalonia.LogicalTree;
 using Avalonia.Threading;
 using Cloyd.Specifications.Scenarios;
 using Cloyd.Specifications.TheSandbox;
+using Compze.Threading;
+using Compze.Threading.Interprocess;
 
 namespace Cloyd.Specifications;
 
@@ -170,8 +172,9 @@ public abstract class SpecificationOpeningWindows : IDisposable
    /// an agent to look at what the specification saw.
    /// </summary>
    /// <remarks>
-   /// Written beside it first, then moved into its place: runs at once may draw the same picture, as each class nested in
-   /// a specification's class builds the scenario that draws it anew, and the last one drawn is the one kept.
+   /// Written beside it first, then moved into its place, under a lock of the machine's: runs at once may draw the same
+   /// picture, as each class nested in a specification's class builds the scenario that draws it anew, and the last one
+   /// drawn is the one kept. Two moves onto the same file at once fail, access denied.
    /// </remarks>
    protected static void Render(Window window, string name) => OnTheUIThread(() =>
    {
@@ -182,7 +185,8 @@ public abstract class SpecificationOpeningWindows : IDisposable
       var picture = Path.Combine(Directory.CreateDirectory(Path.Combine(AppContext.BaseDirectory, "RenderedWindows")).FullName, $"{name}.png");
       var beingDrawn = $"{picture}.{Environment.ProcessId}.being-drawn";
       frame.Save(beingDrawn, PngBitmapEncoderOptions.Default);
-      File.Move(beingDrawn, picture, overwrite: true);
+      using var movingAPictureIn = IMutex.Local("Cloyd.Specifications.MovingAPictureIn", LockTimeout.Seconds(30));
+      movingAPictureIn.Locked(() => File.Move(beingDrawn, picture, overwrite: true));
    });
 
    /// <summary>Ends this fact's scenario, and tells its class's that the fact is done.</summary>
