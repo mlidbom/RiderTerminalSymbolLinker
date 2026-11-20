@@ -13,6 +13,11 @@ Analysis&Refactoring MCP plugin is installed, and the plugin runs in every JetBr
 2026-11-19), which plays on Claude as Royder, the MCP plugin's coming name, plays on Rider. Renaming the GitHub
 repository is still Magnus's to choose. The merge comes after the chat view's first version (below).
 
+**The direction since 2026-11-20 (Magnus), nothing built yet:** Cloyd becomes almost all .NET, an Avalonia application
+in a window of its own beside the IDEs, the UI for all of the Claude tooling, and the plugin shrinks to what needs the
+IDE. What this document describes stays until the .NET application does better. See
+`cloyd-as-a-dotnet-application.md`.
+
 Its packages, below `dev.magnus.claudesessions`, which holds the tool window and its tabs:
 
 - **`claudecode`:** Claude Code seen from outside: its sessions, the folder it keeps them in, the Claude Codes that
@@ -251,6 +256,10 @@ requires of any way it takes part:
 
 What it would gain: Claude Sessions would speak JSON to the sidecar in place of HTTP to the hub, so only what Tessaging
 adds beyond that.
+
+**Moot under the direction since 2026-11-20,** a .NET Cloyd beside the IDEs: the application joins Tessaging itself, and
+reaches each IDE through the plugin's local API. What survives of this, and what doesn't, is in
+`cloyd-as-a-dotnet-application.md`, "What it means for the Tessaging work".
 
 ## The chat view
 

@@ -15,6 +15,9 @@ The documents:
   tools' and plugin.xml's traps. Read it before changing the symbol linker's code.
 - **`dev_docs/claude-sessions.md`:** how Claude Sessions knows, saves and resumes the sessions, and the terminal API's
   traps. Read it before changing Claude Sessions' code.
+- **`dev_docs/cloyd-as-a-dotnet-application.md`:** Magnus's direction since 2026-11-20, nothing built yet: Cloyd as a
+  .NET application in Avalonia, beside the IDEs, with the plugin shrunk to what needs the IDE. Read it before new work on
+  either plugin.
 - **`dev_docs/development-environment.md`:** building, the sandbox Rider, the observation channels, the specifications,
   and deploying to Magnus's IDEs.
 - **`dev_docs/releasing.md`:** the symbol linker's versions, which Riders it supports, CI and the Marketplace.
