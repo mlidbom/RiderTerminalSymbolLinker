@@ -17,10 +17,12 @@ public class When_a_project_window_closes_with_a_message_half_written_in_a_chat 
    public When_a_project_window_closes_with_a_message_half_written_in_a_chat() => _tabBroughtBack = Once(() =>
    {
       var project = Sandbox.Project("the-project");
-      var (window, _) = AChatOfANewSessionIn(project);
+      var (window, tab) = AChatOfANewSessionIn(project);
+      var host = tab.Host.Id;
       Type(window, "Half written, ");
       PasteWithCtrlV(window, clipboard => clipboard.SetTextAsync("and pasted"));
       Close(window);
+      WaitUntil(() => project.SessionHost(host) is { Attached: false }, "the hub listed the host as shown by no attach client");
       var next = Open(project.Window);
       WaitUntil(() => next.BringingBackTheTabs.IsCompleted, "the next window had brought back its tabs");
       return OnTheUIThread(() => next.Tabs.Single());
