@@ -511,7 +511,7 @@ Claude writes shows as it comes") ported, with Magnus's calls of the day.
   writes its reply, which ends, or which Magnus stops while Claude writes (`When_the_hub_tells_of_Claudes_turn`).
   `TheTurnAsTheChatShowedIt` looks at the chat every 10 ms through the turn, so that the facts tell what it showed at
   each step, not only at the moment they look. The stand-in finds the hub through `CLAUDE_TOOLING_LOCAL_API_FOLDER`,
-  which the sandbox's sessions' shell sets until the hub sets it itself, as it sets `CLAUDE_CONFIG_DIR`. With made data:
+  which the hub gives its sessions' shells, as it gives `CLAUDE_CONFIG_DIR` (the tooling owner's 6cc7fa2). With made data:
   the `Working…` of a session whose turns the hub isn't told of, and a command under way
   (`RenderedWindows/a-chats-working-line.png`), and the box (`a-chats-box-while-claude-waits-in-the-terminal.png`).
 
