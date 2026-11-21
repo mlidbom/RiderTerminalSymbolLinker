@@ -11,7 +11,8 @@ namespace Cloyd.Sessions;
 /// </summary>
 /// <remarks>
 /// It offers what the window tells it as the box opens (<see cref="Opened"/>, <see cref="Offer"/>): Codex only from a hub
-/// that serves Codex sessions. While it offers one agent CLI only, the box shows no choice.
+/// that can start Codex sessions, as its announcement tells (<see cref="Hub.AnnouncementOfTheHub.AgentClisItServes"/>),
+/// whether any runs or not. While it offers one agent CLI only, the box shows no choice.
 /// </remarks>
 sealed class NewSessionButton : Button
 {
