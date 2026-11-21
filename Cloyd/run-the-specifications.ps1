@@ -62,12 +62,16 @@ foreach ($class in $classes | Sort-Object { TimeOf $_ } -Descending) {
 }
 
 $results = Join-Path ([IO.Path]::GetTempPath()) "cloyd-specifications-$(Get-Date -Format 'yyyyMMdd-HHmmss')"
+New-Item -ItemType Directory -Force $results | Out-Null
+function FileOfAFailureAsTheRunEnds($run) { Join-Path $results "run-$($run.Number)-failure-as-it-ended.txt" }
 $runsStarted = $clock.Elapsed
 $started = foreach ($run in $dealt) {
    $start = [Diagnostics.ProcessStartInfo]::new('dotnet')
    foreach ($argument in @('test', $project, '--no-build', '-nologo',
                            '--filter', (($run.Classes | ForEach-Object { "FullyQualifiedName~$_." }) -join '|'),
                            '--logger', "trx;LogFileName=run-$($run.Number).trx", '--results-directory', $results)) { $start.ArgumentList.Add($argument) }
+   # xUnit tells of a failure as the run ends only its type: WhatEndsWithTheRun writes it whole there.
+   $start.Environment['CLOYD_SPECIFICATIONS_FILE_OF_A_FAILURE_AS_THE_RUN_ENDS'] = FileOfAFailureAsTheRunEnds $run
    $start.RedirectStandardOutput = $true
    $start.RedirectStandardError = $true
    $process = [Diagnostics.Process]::Start($start)
@@ -110,7 +114,9 @@ foreach ($it in $started) {
 
    # Such as when what ends with the run fails, after the last fact: a sandbox whose end failed.
    if ($it.Process.ExitCode -ne 0 -and $failed -eq $failedBefore) {
-      $failures.Add("Run $($it.Run.Number) exited with $($it.Process.ExitCode), though none of its facts failed:`n$($it.Printed.Result)`n$($it.Failure.Result)")
+      $asItEnded = FileOfAFailureAsTheRunEnds $it.Run
+      $whatFailed = if (Test-Path $asItEnded) { "As the run ended:`n$(Get-Content $asItEnded -Raw)" } else { "$($it.Printed.Result)`n$($it.Failure.Result)" }
+      $failures.Add("Run $($it.Run.Number) exited with $($it.Process.ExitCode), though none of its facts failed:`n$whatFailed")
       $failed += 1
    }
 
