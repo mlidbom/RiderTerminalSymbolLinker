@@ -26,16 +26,16 @@ namespace Cloyd.Specifications.TheSandbox;
 /// one after another, each with a hub of its own.
 /// </remarks>
 /// <remarks>
-/// Each sandbox is a folder of its own under <c>%LOCALAPPDATA%\CloydSpecifications</c>, named by the process of its run
-/// and its number in the run, such as <c>41236-7</c>: short, as the hub's Claude Code folder names a folder by the whole
-/// path of each project's folder. A sandbox's hub stops itself once its run's process has exited, however it ended
+/// Each sandbox is a folder of its own under <c>%LOCALAPPDATA%\CloydSandboxes</c>, named by the process of its run and
+/// its number in the run, such as <c>41236-7</c>: short, as the hub's Claude Code folder names a folder by the whole path
+/// of each project's folder. A sandbox's hub stops itself once its run's process has exited, however it ended
 /// (<see cref="SandboxHub.RunIn"/>). As a run's first sandbox starts, the sandboxes of runs that stopped before their
 /// scenarios ended are stopped and deleted: those named by a process that no longer runs. One run at a time does it,
 /// under a lock of the machine's, so that runs started together don't end the same sandboxes at once.
 /// </remarks>
 sealed class Sandbox : IDisposable
 {
-   static readonly DirectoryInfo FolderOfTheSandboxes = new(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "CloydSpecifications"));
+   static readonly DirectoryInfo FolderOfTheSandboxes = new(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "CloydSandboxes"));
 
    static int _startedInThisRun;
 
@@ -56,7 +56,7 @@ sealed class Sandbox : IDisposable
       //todo: The tooling owner, 2026-11-20: the hub is to put the stand-in first on its sandbox sessions' PATH itself.
       //   Once it does, the sessions' shell needs no PATH of its own.
       ShellOfItsSessions = (ShellOfNewSessions.OnThisMachine() with { CommandLine = "pwsh.exe -NoLogo -NoProfile" })
-        .With("PATH", HubOfTheSandbox.FolderOfTheStandInForClaudeCode + Path.PathSeparator + Environment.GetEnvironmentVariable("PATH"));
+        .With("PATH", string.Join(Path.PathSeparator, HubOfTheSandbox.FolderOfTheStandInForClaudeCode, HubOfTheSandbox.FolderOfTheStandInForCodex, Environment.GetEnvironmentVariable("PATH")));
       WindowsOfCloyd = new ProjectWindows((project, _) => throw new InvalidOperationException($"The specifications open their windows themselves, through their SandboxProject, not {project}'s through the sandbox's WindowsOfCloyd."));
    }
 
@@ -70,7 +70,7 @@ sealed class Sandbox : IDisposable
 
    /// <summary>
    /// The shell the sessions of the sandbox's project windows start in: PowerShell 7 without Magnus's profile, so that it
-   /// starts the same anywhere, with the hub's stand-in for Claude Code first on its <c>PATH</c>.
+   /// starts the same anywhere, with the hub's stand-ins for Claude Code and for Codex first on its <c>PATH</c>.
    /// </summary>
    public ShellOfNewSessions ShellOfItsSessions { get; }
 

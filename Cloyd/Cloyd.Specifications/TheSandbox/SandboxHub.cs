@@ -79,6 +79,12 @@ sealed class SandboxHub
    /// <summary>The folder of the sandbox's copy of the stand-in for Claude Code, a <c>claude.exe</c>: first on the <c>PATH</c> of the sessions' shells, so that <c>claude</c> there runs it.</summary>
    public string FolderOfTheStandInForClaudeCode => _started.FolderOfTheStandInForClaudeCode;
 
+   /// <summary>
+   /// The folder of the hub's stand-in for Codex, a <c>codex.exe</c>: first on the <c>PATH</c> of the sessions' shells, so
+   /// that <c>codex</c> there runs it, over npm's <c>codex.ps1</c>, and nothing of a scenario reaches OpenAI.
+   /// </summary>
+   public string FolderOfTheStandInForCodex => _started.FolderOfTheStandInForCodex;
+
    /// <summary>What the published client prints, run with <paramref name="arguments"/>: an exception when it fails.</summary>
    static string Printed(params string[] arguments)
    {
