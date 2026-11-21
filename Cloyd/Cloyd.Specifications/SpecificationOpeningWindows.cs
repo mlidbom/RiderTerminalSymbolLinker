@@ -109,9 +109,10 @@ public abstract class SpecificationOpeningWindows : IDisposable
    /// Waits until <paramref name="condition"/>, checked on the UI thread after a render tick, which runs layout and
    /// animations: a <see cref="TimeoutException"/> naming <paramref name="what"/> after
    /// <see cref="HowLongWaitingMayTake"/>, once the windows open are drawn as they were then, in
-   /// <c>RenderedWindows/&lt;the specification&gt;-waited-in-vain-&lt;n&gt;.png</c>.
+   /// <c>RenderedWindows/&lt;the specification&gt;-waited-in-vain-&lt;n&gt;.png</c>, and with what <paramref name="seen"/> tells
+   /// of what was seen meanwhile, where it is given, such as what a chat showed of a turn as it went.
    /// </summary>
-   protected void WaitUntil(Func<bool> condition, string what)
+   protected void WaitUntil(Func<bool> condition, string what, Func<string>? seen = null)
    {
       var clock = Stopwatch.StartNew();
       while(!OnTheUIThread(() =>
@@ -124,7 +125,8 @@ public abstract class SpecificationOpeningWindows : IDisposable
          {
             var windows = OnTheUIThread(() => WindowsShown.Where(it => it.IsVisible).ToList());
             for(var at = 0; at < windows.Count; at++) Render(windows[at], $"{GetType().Name}-waited-in-vain-{at + 1}");
-            throw new TimeoutException($"Waited {HowLongWaitingMayTake.TotalSeconds:0} s in vain until {what}. The windows open then are drawn in {Path.Combine(AppContext.BaseDirectory, "RenderedWindows")}.");
+            var wasSeen = seen is null ? "" : $" Seen meanwhile: {OnTheUIThread(seen)}";
+            throw new TimeoutException($"Waited {HowLongWaitingMayTake.TotalSeconds:0} s in vain until {what}. The windows open then are drawn in {Path.Combine(AppContext.BaseDirectory, "RenderedWindows")}.{wasSeen}");
          }
 
          Thread.Sleep(10);
