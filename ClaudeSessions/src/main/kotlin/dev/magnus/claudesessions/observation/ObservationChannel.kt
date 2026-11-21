@@ -5,6 +5,9 @@ import com.google.gson.GsonBuilder
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.actionSystem.ActionManager
 import com.intellij.openapi.actionSystem.ActionPlaces
+import com.intellij.openapi.actionSystem.ActionUiKind
+import com.intellij.openapi.actionSystem.AnActionEvent
+import com.intellij.openapi.actionSystem.AnActionResult
 import com.intellij.openapi.actionSystem.ex.ActionUtil
 import com.intellij.openapi.actionSystem.impl.SimpleDataContext
 import com.intellij.openapi.application.ApplicationManager
@@ -35,7 +38,7 @@ import java.util.concurrent.Executors
  *    channel started.
  *  - `POST /actions/perform?id=<an action's id>` — performs the action in the project open, as the user would from a
  *    menu or by its shortcut, and answers once it has been performed: what the action starts in the background may go
- *    on.
+ *    on. When the IDE doesn't perform it, as when the action is disabled, it answers with the error.
  *
  * What the plugin has Cloyd show, the tools see in Cloyd's own local API.
  */
@@ -84,8 +87,16 @@ class ObservationChannel : Disposable {
     private fun perform(actionId: String): Map<String, Any?> {
         val action = ActionManager.getInstance().getAction(actionId) ?: error("The IDE has no action $actionId.")
         val project = ProjectManager.getInstance().openProjects.single()
+        val event = AnActionEvent.createEvent(
+            action, SimpleDataContext.getProjectContext(project), null, ActionPlaces.UNKNOWN, ActionUiKind.NONE, null)
+        lateinit var result: AnActionResult
         ApplicationManager.getApplication().invokeAndWait {
-            ActionUtil.invokeAction(action, SimpleDataContext.getProjectContext(project), ActionPlaces.UNKNOWN, null, null)
+            ActionUtil.updateAction(action, event)
+            result = ActionUtil.performAction(action, event)
+        }
+        check(result.isPerformed) {
+            if (result.isIgnored) "The IDE ignored $actionId: it was disabled, or isn't available while the IDE indexes."
+            else "The IDE failed to perform $actionId."
         }
         return mapOf("performed" to actionId, "project" to project.basePath)
     }
