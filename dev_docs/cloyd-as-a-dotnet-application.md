@@ -385,11 +385,19 @@ and time under a turn; links in Claude's text, with `POST /files/open`; a permis
 **The input box, Magnus's calls (2026-11-21),** where the app's spec doesn't reach, as it covers only the conversation:
 
 - **Ctrl+Enter sends, Enter starts a new line,** as the Kotlin chat had it: "ctrl+enter for now".
-- **Escape doesn't interrupt Claude:** "This trips me up again and again. I virtually never intended to interrupt claude
-  when this happens. IMO it is a disasterpiece of UI design." Interrupting is the send button's, which stops Claude
-  while it works, as the desktop app's does.
-- **What he was typing survives a restart of Cloyd,** or Cloyd isn't restarted without asking him: "You can restart if
-  you are certain that what I was typing is safe. Otherwise ask me to restart."
+- **Nothing interrupts Claude by accident.** Escape doesn't: "This trips me up again and again. I virtually never
+  intended to interrupt claude when this happens. IMO it is a disasterpiece of UI design." Nor does sending: a message
+  sent while Claude works waits, and Claude Code takes it when it can, as its own box does ("I do not want sending a
+  message to kill the ongoing work either. Absolutely not."). Interrupting is a Stop button of its own, shown while
+  Claude works, apart from the send button.
+- **A question only the terminal can answer,** a permission prompt or a question with choices, shows as a box between
+  the conversation and the input box, prominent, saying Claude waits for him in the terminal, with a button that shows
+  it (Ctrl+H). The tab doesn't switch by itself, as his keys could then answer the prompt. "Make it much more prominent
+  than that. I could miss that for hours."
+- **Restarting Cloyd as each part is done** is fine, unasked: "OK to restart when done with parts, no test needed. It
+  should work." What he types in a terminal is in Claude Code's box, which redraws it as the window opens again.
+- **The terminal's own keys stay as they are** for now ("Leave the terminal shortcut handling alone for now"): Escape
+  goes on to Claude Code there.
 
 ### The session history picker, as it's built
 
