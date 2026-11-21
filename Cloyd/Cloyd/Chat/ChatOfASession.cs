@@ -82,7 +82,7 @@ sealed class ChatOfASession : UserControl
          ItemTemplate = new FuncDataTemplate<ShownInTheChat?>((shown, _) => ViewOf(shown)),
          MaxWidth = WidthOfTheColumn,
          Margin = new Thickness(16, 12),
-         HorizontalAlignment = HorizontalAlignment.Center
+         HorizontalAlignment = HorizontalAlignment.Stretch
       };
       _scroller = new ScrollViewer { Content = _column, HorizontalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Disabled, Focusable = true };
       _end = new FollowingTheEnd(_scroller);

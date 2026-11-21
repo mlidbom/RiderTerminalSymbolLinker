@@ -82,6 +82,8 @@ All notable changes to Cloyd are documented here. The format follows
   tab in the project's folder. A session that runs outside any session host can't be chosen.
 
 ### Fixed
+- **Your prompts show at the right of the chat's column,** as in the desktop app, lined up with the input box: in a
+  conversation of prompts alone, as a new session's is at first, they showed in the middle.
 - **Shift+Enter types a new line in Claude Code's input box,** where it sent the message: in a Windows console Claude
   Code ignores the Shift on Enter, so Cloyd types Ctrl+J, Claude Code's key for a new line.
 - **A long conversation no longer hangs Cloyd.** Opened on a long session, the chat flickered and Cloyd stopped
