@@ -6,6 +6,7 @@ using Avalonia.Media;
 using Avalonia.Threading;
 using ClaudeTooling.SessionHost.Protocol;
 using Cloyd.Chat;
+using Cloyd.Chat.Status;
 using Cloyd.ClaudeCode;
 using Cloyd.Hub;
 using Cloyd.Pasting;
@@ -25,8 +26,12 @@ sealed class SessionTab : TabItem
 {
    const string TitleOfASessionWithNoName = "Claude";
 
+   /// <summary>The size of the header's text, in logical pixels: the chat's, where Avalonia's theme has 24 (Magnus, 2026-11-21: "make the tabs quite a bit smaller, they are very large").</summary>
+   const double SizeOfTheHeadersText = 14;
+
    readonly AttachmentToASessionHost _attachment;
    readonly TextBlock _title;
+   readonly SpinnerOfClaudeCode _spinner = new();
    readonly TextBlock _notice = new() { IsVisible = false, Foreground = Brushes.Orange, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(8, 4) };
    readonly ToggleButton _showTheChat = SwitchTo("Chat", TipOfTheChatsSwitch);
    readonly ToggleButton _showTheTerminal = SwitchTo("Terminal", TipOfTheTerminalsSwitch);
@@ -50,8 +55,10 @@ sealed class SessionTab : TabItem
       Chat.Show(latestSession?.Id);
       Chat.InputBox.SentASlashCommand += () => Show(chat: false);
       Chat.WaitingForMagnusInTheTerminal.AsksForTheTerminal += () => Show(chat: false);
-      _title = new TextBlock { Text = latestSession?.Name ?? nameGiven ?? TitleOfASessionWithNoName, VerticalAlignment = VerticalAlignment.Center };
+      _title = new TextBlock { Text = latestSession?.Name ?? nameGiven ?? TitleOfASessionWithNoName, FontSize = SizeOfTheHeadersText, VerticalAlignment = VerticalAlignment.Center };
       Header = TheHeader();
+      MinHeight = 0;
+      Padding = new Thickness(10, 6);
       _showTheChat.Click += (_, _) => Show(chat: true);
       _showTheTerminal.Click += (_, _) => Show(chat: false);
       ShowTheChat(true);
@@ -76,6 +83,9 @@ sealed class SessionTab : TabItem
    /// <summary>The tab's title: the name of the session that runs in its host, or ran in it last.</summary>
    public string Title => _title.Text!;
 
+   /// <summary>Whether its header shows that Claude works, with Claude Code's spinner before its title: while the Claude Code that runs in it is busy.</summary>
+   public bool ShowsThatClaudeWorks => _spinner.IsTurning;
+
    /// <summary>What the tab tells above its terminal, as why the hub didn't start Claude Code in it: null while it tells nothing.</summary>
    public string? Notice => _notice.IsVisible ? _notice.Text : null;
 
@@ -93,6 +103,7 @@ sealed class SessionTab : TabItem
       {
          field = value;
          Chat.ClaudeCode = value;
+         _spinner.IsTurning = value?.Status.IsBusy == true;
          if(value is null) return;
          LatestSession = value.Session;
          Chat.Show(value.Session.Id);
@@ -173,10 +184,10 @@ sealed class SessionTab : TabItem
 
    Control TheHeader()
    {
-      var close = new Button { Content = "×", Padding = new Thickness(6, 0), Background = Brushes.Transparent, VerticalAlignment = VerticalAlignment.Center };
+      var close = new Button { Content = "×", FontSize = SizeOfTheHeadersText, Padding = new Thickness(6, 0), Background = Brushes.Transparent, VerticalAlignment = VerticalAlignment.Center };
       ToolTip.SetTip(close, "End the session");
       close.Click += (_, _) => ClosedByMagnus?.Invoke(this);
-      return new StackPanel { Orientation = Orientation.Horizontal, Spacing = 4, Children = { _title, close } };
+      return new StackPanel { Orientation = Orientation.Horizontal, Spacing = 2, Children = { _spinner, _title, close } };
    }
 
    static Control Docked(Control control, Dock dock)

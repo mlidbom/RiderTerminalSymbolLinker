@@ -471,9 +471,11 @@ Claude writes shows as it comes") ported, with Magnus's calls of the day.
     a command's first three lines but the empty ones, the first after `└ $`, an ellipsis after the third when more
     follow, as the TUI cuts it; or a file's path. Shown while the activity is `runningTools`, and always where the hub
     tells of no turn. It shows once the conversation has the call, which took a few seconds in a live check.
-  - **The turn's line under it:** a spinner of Claude Code's glyphs in Claude's orange (`SpinnerOfTheWorkingLine`, as
+  - **The turn's line under it:** a spinner of Claude Code's glyphs in Claude's orange (`SpinnerOfClaudeCode`, as
     high whichever glyph it shows: the glyphs' fonts differ in height, and the line jumped 2 pixels with each turn on
-    Magnus's window; at half Claude Code's speed, as he asked); what the turn does, in orange, from the running
+    Magnus's window; turning itself every 480 ms, a quarter of Claude Code's speed, as he asked twice; the same spinner
+    shows before the title of each tab whose Claude Code is busy, "so that I can see which tabs have a working session
+    in them"); what the turn does, in orange, from the running
     session's `turnUnderWay` (`TurnUnderWay`, `ActivityOfATurn`): "Waiting for the model…", "Thinking…", "Writing…",
     "Writing the Write call…", "Running tools…"; then, grey, in parentheses as the TUI has them, how long the turn has
     taken, its output tokens and the commands it ran: `Thinking… (1m 12s · ↓ 1.2k tokens · 3 commands)`.

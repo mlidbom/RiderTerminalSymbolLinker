@@ -15,7 +15,7 @@ namespace Cloyd.Chat.Status;
 /// The lines over the chat's input box that show, while Claude works, that it does, and at what, as Claude Code's own UI
 /// shows them: the tool call under way, if one is, as what it does and how long it has run, such as
 /// <c>Finding the repositories that use it · 5s</c>, with what it was given under it, such as <c>└ $ ls /c/Dev</c>; then the
-/// turn's line: a spinner (<see cref="SpinnerOfTheWorkingLine"/>), what the <see cref="TurnUnderWay"/> does, how long the
+/// turn's line: a spinner (<see cref="SpinnerOfClaudeCode"/>), what the <see cref="TurnUnderWay"/> does, how long the
 /// turn has taken, its output tokens and how many commands it has run, such as
 /// <c>Thinking… (12m 05s · ↓ 1.2k tokens · 3 commands)</c>. They take no room while Claude doesn't work.
 /// </summary>
@@ -43,8 +43,8 @@ sealed class WorkingLineOfTheChat : UserControl
    readonly TextBlock _whatTheCallWasGiven = new() { FontFamily = LinesOfTheChat.Monospaced, FontSize = 12, TextWrapping = TextWrapping.NoWrap, TextTrimming = TextTrimming.CharacterEllipsis, Margin = new Thickness(4, 1, 0, 6), IsVisible = false };
    readonly TextBlock _says = new() { FontSize = 13, TextTrimming = TextTrimming.CharacterEllipsis, VerticalAlignment = VerticalAlignment.Center };
 
-   /// <summary>Turns the spinner, and counts the time: at half the speed of Claude Code's own spinner, as Magnus asked (2026-11-21).</summary>
-   readonly DispatcherTimer _ticking = new() { Interval = TimeSpan.FromMilliseconds(240) };
+   /// <summary>Counts the time the turn and the call under way have taken, a second at a time.</summary>
+   readonly DispatcherTimer _ticking = new() { Interval = TimeSpan.FromSeconds(1) };
 
    RunningSession? _claudeCode;
    ToolCallsOfTheLastTurn _callsOfTheTurn = new([]);
@@ -56,11 +56,7 @@ sealed class WorkingLineOfTheChat : UserControl
    {
       ColoursOfTheChat.Text.AsTheForegroundOf(_callUnderWay);
       ColoursOfTheChat.Grey.AsTheForegroundOf(_whatTheCallWasGiven);
-      _ticking.Tick += (_, _) =>
-      {
-         Spinner.Turn();
-         Update();
-      };
+      _ticking.Tick += (_, _) => Update();
       IsVisible = false;
       Content = new StackPanel
       {
@@ -70,7 +66,7 @@ sealed class WorkingLineOfTheChat : UserControl
    }
 
    /// <summary>The spinner at the start of the turn's line, which turns while the lines show.</summary>
-   public SpinnerOfTheWorkingLine Spinner { get; } = new();
+   public SpinnerOfClaudeCode Spinner { get; } = new();
 
    /// <summary>What the turn's line says, as Claude Code's own spinner line, such as <c>Thinking… (12s · ↓ 1.2k tokens)</c>: null while it doesn't show.</summary>
    public string? Says => IsVisible ? TextOf(_says) : null;
@@ -86,17 +82,10 @@ sealed class WorkingLineOfTheChat : UserControl
    {
       _claudeCode = claudeCode;
       var isBusy = claudeCode?.Status.IsBusy == true;
-      if(isBusy && _busySince is null)
-      {
-         _busySince = DateTime.UtcNow;
-         _ticking.Start();
-      }
-      if(!isBusy)
-      {
-         _busySince = null;
-         _ticking.Stop();
-      }
-
+      if(isBusy && _busySince is null) _busySince = DateTime.UtcNow;
+      if(!isBusy) _busySince = null;
+      _ticking.IsEnabled = isBusy;
+      Spinner.IsTurning = isBusy;
       Update();
    }
 
