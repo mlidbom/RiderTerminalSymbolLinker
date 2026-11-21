@@ -8,6 +8,10 @@
       <Version>0.1.0</Version>
       <!-- For starting the Cloyd application through CreateProcessW, as the hub is started: see StartingTheApplication. -->
       <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+      <!-- The source of the hub's local API's contract, which Cloyd compiles in: the tooling's working tree, unless the
+           environment names another, such as a snapshot of the contract the published hub speaks while the tooling's
+           owner changes it. -->
+      <TheHubsContract Condition="'$(TheHubsContract)' == ''">$(USERPROFILE)\.claude\src\ClaudeTooling.Hub.LocalApi.Contract</TheHubsContract>
    </PropertyGroup>
    <ItemGroup>
       <PackageReference Include="Avalonia" />
@@ -28,8 +32,8 @@
            client compile them. -->
       <Compile Include="$(USERPROFILE)\.claude\src\ClaudeTooling.SessionHost.Protocol\*.cs" Link="SessionHostProtocol\%(Filename)%(Extension)" />
       <!-- The hub's local API, its requests, answers and events, as the hub writes and reads them. -->
-      <Compile Include="$(USERPROFILE)\.claude\src\ClaudeTooling.Hub.LocalApi.Contract\**\*.cs"
-               Exclude="$(USERPROFILE)\.claude\src\ClaudeTooling.Hub.LocalApi.Contract\bin\**;$(USERPROFILE)\.claude\src\ClaudeTooling.Hub.LocalApi.Contract\obj\**"
+      <Compile Include="$(TheHubsContract)\**\*.cs"
+               Exclude="$(TheHubsContract)\bin\**;$(TheHubsContract)\obj\**"
                Link="HubLocalApiContract\%(RecursiveDir)%(Filename)%(Extension)" />
    </ItemGroup>
    <ItemGroup>
