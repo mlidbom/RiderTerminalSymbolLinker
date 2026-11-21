@@ -43,7 +43,7 @@ sealed class ClaudeSessionHistory
       var tabs = windows.Open.SelectMany(window => window.Tabs.Select(tab => (Window: window, Tab: tab))).ToList();
 
       var entries = transcribed.Result
-                               .Where(it => it is { HasAConversationToResume: true, RunWithClaudeP: false })
+                               .Where(it => it is { HasAConversationToResume: true, RunByAProgram: false })
                                .Select(it => new ClaudeSessionHistoryEntry(it, WhereIs(it.Id)));
       return new ClaudeSessionHistory([.. entries], worktrees.Result);
 

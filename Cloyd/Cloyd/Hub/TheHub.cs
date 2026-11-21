@@ -146,14 +146,14 @@ sealed partial class TheHub
    public async Task<IReadOnlyList<TranscribedSession>> TranscribedSessions(CancellationToken cancellation = default)
    {
       using var answer = await Send(it => new HttpRequestMessage(HttpMethod.Get, it.AddressOf("sessions")), cancellation);
-      return [.. (await Read<SessionsAnswer>(answer, cancellation)).Sessions.Select(TranscribedSession.InThe)];
+      return TranscribedSession.EachClaudeCodeSessionIn(await Read<SessionsAnswer>(answer, cancellation));
    }
 
    /// <summary>Every running Claude Code, as the hub lists them now.</summary>
    public async Task<IReadOnlyList<RunningSession>> RunningSessions(CancellationToken cancellation = default)
    {
       using var answer = await Send(it => new HttpRequestMessage(HttpMethod.Get, it.AddressOf("running-sessions")), cancellation);
-      return [.. (await Read<RunningSessionsAnswer>(answer, cancellation)).RunningSessions.Select(RunningSession.InThe)];
+      return RunningSession.EachClaudeCodeIn(await Read<RunningSessionsAnswer>(answer, cancellation));
    }
 
    /// <summary>
@@ -166,7 +166,7 @@ sealed partial class TheHub
       await foreach(var stream in EachStreamAt("running-sessions/stream", cancellation))
          await foreach(var sent in stream)
             if(sent.Name == RunningSessionsStreamEventNames.RunningSessions)
-               yield return [.. JsonSerializer.Deserialize<RunningSessionsAnswer>(sent.Data, LocalApiProtocol.Json)!.RunningSessions.Select(RunningSession.InThe)];
+               yield return RunningSession.EachClaudeCodeIn(JsonSerializer.Deserialize<RunningSessionsAnswer>(sent.Data, LocalApiProtocol.Json)!);
    }
 
    /// <summary>

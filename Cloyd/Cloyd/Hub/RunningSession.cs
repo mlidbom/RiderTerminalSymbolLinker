@@ -1,3 +1,4 @@
+using ClaudeTooling.Hub.LocalApi.Contract;
 using ClaudeTooling.Hub.LocalApi.Contract.RunningSessions;
 using ClaudeTooling.SessionHost.Protocol;
 using Cloyd.ClaudeCode;
@@ -22,8 +23,16 @@ namespace Cloyd.Hub;
 /// </param>
 sealed record RunningSession(ClaudeCodeProcessId Process, ClaudeCodeSessionId SessionId, string? Name, SessionHostId? SessionHost, StatusOfAClaudeCode Status, ClaudeCodesStatusLine? StatusLine, TurnUnderWay? TurnUnderWay, BackgroundWork? BackgroundWork)
 {
+   /// <summary>
+   /// The running Claude Codes <paramref name="answer"/> lists. A session of another agent CLI is left out, as the hub's
+   /// contract has a reader do with one it doesn't know.
+   /// </summary>
+   public static IReadOnlyList<RunningSession> EachClaudeCodeIn(RunningSessionsAnswer answer) =>
+      //wip: until Codex sessions come to the tabs (the hub's protocol 2), when the running sessions split into Claude Code's and Codex's.
+      [.. answer.RunningSessions.Where(it => it.AgentCli == AgentCliNames.ClaudeCode).Select(InThe)];
+
    /// <summary>The Claude Code as the hub's answer <paramref name="session"/> lists it.</summary>
-   public static RunningSession InThe(RunningSessionInTheAnswer session) =>
+   static RunningSession InThe(RunningSessionInTheAnswer session) =>
       new(new ClaudeCodeProcessId(session.ProcessId), new ClaudeCodeSessionId(session.SessionId), session.Name, session.SessionHost is {} host ? new SessionHostId(host) : null, new StatusOfAClaudeCode(session.Status, session.WaitingFor),
          session.StatusLine is {} statusLine ? ClaudeCodesStatusLine.InThe(statusLine) : null,
          session.TurnUnderWay is {} turn ? TurnUnderWay.InThe(turn) : null,
