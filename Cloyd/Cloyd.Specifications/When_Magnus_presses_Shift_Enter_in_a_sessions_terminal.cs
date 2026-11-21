@@ -2,6 +2,7 @@ using Avalonia.Input;
 using Compze.Must;
 using Compze.xUnitBDD;
 using Cloyd.Sessions;
+using Cloyd.Specifications.TheSandbox;
 
 namespace Cloyd.Specifications;
 
@@ -30,11 +31,5 @@ public class When_Magnus_presses_Shift_Enter_in_a_sessions_terminal : Specificat
 
    [XF] public void claude_codes_input_box_holds_what_was_typed_on_two_lines() => LinesOfTheInputBox.Must().Be("❯ first\n  second");
 
-   /// <summary>The lines of the stand-in's input box, as its terminal shows them: from the line with its prompt sign to the line before its closing rule, each trimmed at its end.</summary>
-   string LinesOfTheInputBox => OnTheUIThread(() =>
-   {
-      var lines = _tab.Terminal.TextShown.Split('\n').Select(it => it.TrimEnd()).ToList();
-      var first = lines.FindLastIndex(it => it.StartsWith('❯'));
-      return first < 0 ? "" : string.Join("\n", lines.Skip(first).TakeWhile(it => !it.StartsWith('─')));
-   });
+   string LinesOfTheInputBox => OnTheUIThread(() => InputBoxOfTheStandIn.LinesShownIn(_tab.Terminal));
 }
