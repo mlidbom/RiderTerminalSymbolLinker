@@ -19,7 +19,7 @@ public class When_Magnus_opens_the_session_history_picker : SpecificationOpening
 {
    private protected readonly SandboxProject _project;
    private protected readonly ProjectWindow _window;
-   private protected readonly ClaudeSessionHistoryPicker _picker;
+   private protected readonly SessionHistoryPicker _picker;
 
    private protected readonly SessionOfASpecification _titled;
    readonly SessionOfASpecification _inAFolderOfTheProject;
@@ -59,7 +59,7 @@ public class When_Magnus_opens_the_session_history_picker : SpecificationOpening
       OnTheUIThread(() => _picker.Listed.Select(it => it.Title).ToList()).Must().Satisfy(it => it.SequenceEqual(["Fixing the login", "Tidy the build script"]));
 
    [XF] public void it_offers_this_worktree_all_worktrees_and_all_projects() =>
-      OnTheUIThread(() => _picker.Scopes).Must().Satisfy(it => it.SequenceEqual(ClaudeSessionHistoryScope.All));
+      OnTheUIThread(() => _picker.Scopes).Must().Satisfy(it => it.SequenceEqual(SessionHistoryScope.All));
 
    [XF] public void the_search_box_has_the_keyboard_focus() => OnTheUIThread(() => _picker.TheSearchBoxHasTheFocus).Must().BeTrue();
 
@@ -67,7 +67,7 @@ public class When_Magnus_opens_the_session_history_picker : SpecificationOpening
 
    public class and_widens_it_to_all_worktrees : When_Magnus_opens_the_session_history_picker
    {
-      public and_widens_it_to_all_worktrees() => Once(() => OnTheUIThread(() => _picker.List(ClaudeSessionHistoryScope.AllWorktrees)));
+      public and_widens_it_to_all_worktrees() => Once(() => OnTheUIThread(() => _picker.List(SessionHistoryScope.AllWorktrees)));
 
       [XF] public void it_lists_the_other_worktrees_session_too() => Listed.Must().Satisfy(it => it.SequenceEqual([_inTheOtherWorktree.Id, _titled.Id, _inAFolderOfTheProject.Id]));
 
@@ -75,7 +75,7 @@ public class When_Magnus_opens_the_session_history_picker : SpecificationOpening
       {
          public and_then_to_all_projects() => Once(() =>
          {
-            OnTheUIThread(() => _picker.List(ClaudeSessionHistoryScope.AllProjects));
+            OnTheUIThread(() => _picker.List(SessionHistoryScope.AllProjects));
             Render(_window, "the-session-history-picker-of-all-projects");
          });
 

@@ -6,25 +6,25 @@ namespace Cloyd.History;
 
 /// <summary>
 /// The sessions Claude Code has transcripts of, most recently used first, each with where it is now: what the
-/// <see cref="ClaudeSessionHistoryPicker"/> lists, as it was when the picker opened. Left out are the sessions with no
+/// <see cref="SessionHistoryPicker"/> lists, as it was when the picker opened. Left out are the sessions with no
 /// conversation to resume, and those a tool or a script ran with <c>claude -p</c>.
 /// </summary>
-sealed class ClaudeSessionHistory
+sealed class SessionHistory
 {
-   ClaudeSessionHistory(IReadOnlyList<ClaudeSessionHistoryEntry> entries, ProjectWorktrees worktrees)
+   SessionHistory(IReadOnlyList<SessionHistoryEntry> entries, ProjectWorktrees worktrees)
    {
       Entries = entries;
       Worktrees = worktrees;
    }
 
    /// <summary>Every session of the history, most recently used first.</summary>
-   public IReadOnlyList<ClaudeSessionHistoryEntry> Entries { get; }
+   public IReadOnlyList<SessionHistoryEntry> Entries { get; }
 
    /// <summary>The folders the scopes cover for the project the picker opened in.</summary>
    public ProjectWorktrees Worktrees { get; }
 
    /// <summary>The entries <paramref name="scope"/> covers that match <paramref name="filter"/>, most recently used first.</summary>
-   public IReadOnlyList<ClaudeSessionHistoryEntry> Listed(ClaudeSessionHistoryScope scope, string filter) =>
+   public IReadOnlyList<SessionHistoryEntry> Listed(SessionHistoryScope scope, string filter) =>
       [.. Entries.Where(it => Worktrees.Cover(scope, it.Directory) && it.Matches(filter))];
 
    /// <summary>
@@ -32,9 +32,9 @@ sealed class ClaudeSessionHistory
    /// session hosts, from <paramref name="hub"/>; the project's worktrees from git; and the tabs of Cloyd's
    /// <paramref name="windows"/>. On the UI thread, where the tabs are.
    /// </summary>
-   public static async Task<ClaudeSessionHistory> ReadFor(Project project, ProjectWindows windows, TheHub hub, CancellationToken cancellation)
+   public static async Task<SessionHistory> ReadFor(Project project, ProjectWindows windows, TheHub hub, CancellationToken cancellation)
    {
-      var transcribed = hub.TranscribedSessions(cancellation);
+      var transcribed = hub.SessionsOnDisk(cancellation);
       var running = hub.RunningSessions(cancellation);
       var hosts = hub.SessionHosts(cancellation);
       var worktrees = ProjectWorktrees.Of(project, cancellation);
@@ -43,8 +43,8 @@ sealed class ClaudeSessionHistory
 
       var entries = transcribed.Result
                                .Where(it => it is { HasAConversationToResume: true, RunByAProgram: false })
-                               .Select(it => new ClaudeSessionHistoryEntry(it, WhereIs(it.Id)));
-      return new ClaudeSessionHistory([.. entries], worktrees.Result);
+                               .Select(it => new SessionHistoryEntry(it, WhereIs(it.Id)));
+      return new SessionHistory([.. entries], worktrees.Result);
 
       WhereTheSessionIs WhereIs(ClaudeCodeSessionId session)
       {

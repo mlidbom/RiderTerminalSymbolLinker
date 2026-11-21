@@ -6,15 +6,15 @@ using Cloyd.Projects;
 namespace Cloyd.History;
 
 /// <summary>
-/// A session of the <see cref="ClaudeSessionHistory"/>, as the <see cref="ClaudeSessionHistoryPicker"/> lists it: what
+/// A session of the <see cref="SessionHistory"/>, as the <see cref="SessionHistoryPicker"/> lists it: what
 /// its transcript tells of it, and <see cref="Where"/> it is now.
 /// </summary>
-sealed class ClaudeSessionHistoryEntry
+sealed class SessionHistoryEntry
 {
-   readonly TranscribedSession _transcribed;
+   readonly SessionOnDisk _transcribed;
 
    /// <summary>The entry of <paramref name="transcribed"/>, which is <paramref name="where"/> now.</summary>
-   public ClaudeSessionHistoryEntry(TranscribedSession transcribed, WhereTheSessionIs where)
+   public SessionHistoryEntry(SessionOnDisk transcribed, WhereTheSessionIs where)
    {
       _transcribed = transcribed;
       Where = where;
@@ -36,7 +36,7 @@ sealed class ClaudeSessionHistoryEntry
 
    /// <summary>
    /// The directory the session last ran in: null when the hub can't tell, as for a transcript none of whose entries name
-   /// a git branch, which the hub takes the directory from. Only <see cref="ClaudeSessionHistoryScope.AllProjects"/> covers
+   /// a git branch, which the hub takes the directory from. Only <see cref="SessionHistoryScope.AllProjects"/> covers
    /// such a session.
    /// </summary>
    public string? Directory => _transcribed.Directory;

@@ -74,7 +74,7 @@ sealed class ProjectWindow : Window
    readonly TabControl _tabs = new() { Padding = new Thickness(0) };
    readonly NewSessionButton _newSession = new();
    readonly Button _openTheHistory = new();
-   readonly ClaudeSessionHistoryPicker _historyPicker;
+   readonly SessionHistoryPicker _historyPicker;
    readonly TextBlock _failure = new() { IsVisible = false, Foreground = Brushes.Orange, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(8, 4) };
    readonly CancellationTokenSource _closed = new();
 
@@ -92,7 +92,7 @@ sealed class ProjectWindow : Window
       FilesAndSymbols = new FilesAndSymbolsOfAProject(project, dotNetAnalysisAndRefactoringMcp);
       _windowsOfCloyd = windowsOfCloyd;
       _hub = hub;
-      _historyPicker = new ClaudeSessionHistoryPicker(this);
+      _historyPicker = new SessionHistoryPicker(this);
       _ides = ides;
       _shellOfNewSessions = shellOfNewSessions;
       _savedWindows = savedWindows;
@@ -194,7 +194,7 @@ sealed class ProjectWindow : Window
    }
 
    /// <summary>The session history picker laid over the window, which <see cref="OpenTheHistoryPicker"/> opens.</summary>
-   public ClaudeSessionHistoryPicker HistoryPicker => _historyPicker;
+   public SessionHistoryPicker HistoryPicker => _historyPicker;
 
    /// <summary>The button before the tabs that starts a new session, offering the agent CLIs the hub serves.</summary>
    public NewSessionButton NewSessionButton => _newSession;
@@ -208,7 +208,7 @@ sealed class ProjectWindow : Window
       _historyPicker.Open();
       try
       {
-         _historyPicker.Show(await ClaudeSessionHistory.ReadFor(Project, _windowsOfCloyd, _hub, _closed.Token));
+         _historyPicker.Show(await SessionHistory.ReadFor(Project, _windowsOfCloyd, _hub, _closed.Token));
       }
       catch
       {

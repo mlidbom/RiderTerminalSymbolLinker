@@ -13,9 +13,9 @@ using Cloyd.Theming;
 namespace Cloyd.History;
 
 /// <summary>
-/// The session history picker: laid over a <see cref="ProjectWindow"/>, it lists the <see cref="ClaudeSessionHistory"/>,
+/// The session history picker: laid over a <see cref="ProjectWindow"/>, it lists the <see cref="SessionHistory"/>,
 /// most recently used first, for Magnus to resume a session from, or to bring forward the tab it runs in. Typing filters
-/// it, and its <see cref="ClaudeSessionHistoryScope"/>s widen it from the project's worktree to every project. Enter, or a
+/// it, and its <see cref="SessionHistoryScope"/>s widen it from the project's worktree to every project. Enter, or a
 /// double click, chooses the selected session, and Escape, or a click beside the picker, closes it. A session that runs
 /// where no tab can show it is greyed out, and can't be chosen.
 /// </summary>
@@ -24,7 +24,7 @@ namespace Cloyd.History;
 /// The Kotlin plugin's <c>ClaudeSessionHistoryPicker</c>, ported (<c>dev_docs/claude-sessions.md</c>, "The session
 /// history picker").
 /// </remarks>
-sealed class ClaudeSessionHistoryPicker : Panel
+sealed class SessionHistoryPicker : Panel
 {
    /// <summary>The bold green of what tells that a session runs.</summary>
    static readonly ColourOfTheTheme Running = new("#2E7D32", "#6FBF73");
@@ -41,15 +41,15 @@ sealed class ClaudeSessionHistoryPicker : Panel
    readonly ListBox _list = new() { SelectionMode = SelectionMode.Single };
    readonly TextBlock _reading = new() { Text = "Reading the sessions…", Margin = new Thickness(12), Opacity = 0.7 };
 
-   ClaudeSessionHistory? _history;
+   SessionHistory? _history;
 
    /// <summary>A picker over <paramref name="pickedIn"/>, closed until <see cref="Open"/> opens it.</summary>
-   public ClaudeSessionHistoryPicker(ProjectWindow pickedIn)
+   public SessionHistoryPicker(ProjectWindow pickedIn)
    {
       _pickedIn = pickedIn;
       IsVisible = false;
       Resources.MergedDictionaries.Add(ColourOfTheTheme.AsResources([Running, Ground, Edge]));
-      _list.ItemTemplate = new FuncDataTemplate<ClaudeSessionHistoryEntry?>((entry, _) => entry is null ? new Panel() : RowOf(entry)); // The list builds a row with no entry as it swaps its entries.
+      _list.ItemTemplate = new FuncDataTemplate<SessionHistoryEntry?>((entry, _) => entry is null ? new Panel() : RowOf(entry)); // The list builds a row with no entry as it swaps its entries.
       _list.DoubleTapped += (_, _) => ChooseTheSelected();
       _search.TextChanged += (_, _) => Refresh();
       AddHandler(KeyDownEvent, TakeAKey, RoutingStrategies.Tunnel);
@@ -60,11 +60,11 @@ sealed class ClaudeSessionHistoryPicker : Panel
    /// <summary>Whether the picker is open over its window.</summary>
    public bool IsOpen => IsVisible;
 
-   /// <summary>The scope the picker lists: <see cref="ClaudeSessionHistoryScope.ThisWorktree"/> as it opens.</summary>
-   public ClaudeSessionHistoryScope Scope { get; private set; } = ClaudeSessionHistoryScope.ThisWorktree;
+   /// <summary>The scope the picker lists: <see cref="SessionHistoryScope.ThisWorktree"/> as it opens.</summary>
+   public SessionHistoryScope Scope { get; private set; } = SessionHistoryScope.ThisWorktree;
 
    /// <summary>The scopes the picker offers: all worktrees only for a project in git. None until it has read the history.</summary>
-   public IReadOnlyList<ClaudeSessionHistoryScope> Scopes => _history?.Worktrees.Scopes ?? [];
+   public IReadOnlyList<SessionHistoryScope> Scopes => _history?.Worktrees.Scopes ?? [];
 
    /// <summary>What is typed into the search box, which filters the entries.</summary>
    public string Filter
@@ -74,7 +74,7 @@ sealed class ClaudeSessionHistoryPicker : Panel
    }
 
    /// <summary>The entries the picker lists, in their order: none until it has read the history.</summary>
-   public IReadOnlyList<ClaudeSessionHistoryEntry> Listed => _list.ItemsSource as IReadOnlyList<ClaudeSessionHistoryEntry> ?? [];
+   public IReadOnlyList<SessionHistoryEntry> Listed => _list.ItemsSource as IReadOnlyList<SessionHistoryEntry> ?? [];
 
    /// <summary>The listed entry that is selected, by its place: -1 when none is.</summary>
    public int Selected
@@ -87,7 +87,7 @@ sealed class ClaudeSessionHistoryPicker : Panel
    public bool TheSearchBoxHasTheFocus => _search.IsFocused;
 
    /// <summary>Raised once the picker has closed for an entry Magnus chose, one that can be chosen, with the entry.</summary>
-   public event Action<ClaudeSessionHistoryEntry>? Chosen;
+   public event Action<SessionHistoryEntry>? Chosen;
 
    /// <summary>Raised once the picker has closed, whether for a choice or not.</summary>
    public event Action? Closed;
@@ -96,7 +96,7 @@ sealed class ClaudeSessionHistoryPicker : Panel
    public void Open()
    {
       _history = null;
-      Scope = ClaudeSessionHistoryScope.ThisWorktree;
+      Scope = SessionHistoryScope.ThisWorktree;
       _search.Text = "";
       _scopeButtons.Children.Clear();
       _list.ItemsSource = null;
@@ -106,7 +106,7 @@ sealed class ClaudeSessionHistoryPicker : Panel
    }
 
    /// <summary>Shows <paramref name="history"/>, as read for the window's project, in the open picker.</summary>
-   public void Show(ClaudeSessionHistory history)
+   public void Show(SessionHistory history)
    {
       _history = history;
       _reading.IsVisible = false;
@@ -124,7 +124,7 @@ sealed class ClaudeSessionHistoryPicker : Panel
    }
 
    /// <summary>Lists the entries <paramref name="scope"/> covers, as a click on its button does, and gives the search box the focus back.</summary>
-   public void List(ClaudeSessionHistoryScope scope)
+   public void List(SessionHistoryScope scope)
    {
       Scope = scope;
       foreach(var button in _scopeButtons.Children.OfType<RadioButton>()) button.IsChecked = Equals(button.Content, scope.Label);
@@ -135,7 +135,7 @@ sealed class ClaudeSessionHistoryPicker : Panel
    /// <summary>Chooses the selected entry, as Enter does: closes the picker and tells of the choice, unless the entry can't be chosen.</summary>
    public void ChooseTheSelected()
    {
-      if(_list.SelectedItem is not ClaudeSessionHistoryEntry { Where.CanBeChosen: true } chosen) return;
+      if(_list.SelectedItem is not SessionHistoryEntry { Where.CanBeChosen: true } chosen) return;
 
       Close();
       Chosen?.Invoke(chosen);
@@ -186,7 +186,7 @@ sealed class ClaudeSessionHistoryPicker : Panel
    /// prompt, when it was last used, and, in a scope wider than the project's worktree, its folder and branch. One that
    /// can't be chosen is greyed out whole.
    /// </summary>
-   Control RowOf(ClaudeSessionHistoryEntry entry)
+   Control RowOf(SessionHistoryEntry entry)
    {
       var title = new TextBlock { TextTrimming = TextTrimming.CharacterEllipsis, FontWeight = FontWeight.SemiBold };
       title.Inlines!.Add(new Run(OneLine(entry.Title)));
@@ -203,7 +203,7 @@ sealed class ClaudeSessionHistoryPicker : Panel
       {
          if(entry.LastPrompt is {} lastPrompt) yield return OneLine(lastPrompt);
          yield return entry.LastUsedAsToldAt(DateTime.Now);
-         if(Scope != ClaudeSessionHistoryScope.ThisWorktree && entry.Directory is {} directory) yield return entry.Branch is {} branch ? $"{directory} ({branch})" : directory;
+         if(Scope != SessionHistoryScope.ThisWorktree && entry.Directory is {} directory) yield return entry.Branch is {} branch ? $"{directory} ({branch})" : directory;
       }
    }
 

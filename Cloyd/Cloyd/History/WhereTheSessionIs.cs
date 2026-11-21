@@ -4,8 +4,8 @@ using Cloyd.Sessions;
 namespace Cloyd.History;
 
 /// <summary>
-/// Where a session of the <see cref="ClaudeSessionHistory"/> is now, which decides what choosing it in the
-/// <see cref="ClaudeSessionHistoryPicker"/> does: a tab it runs in is brought forward, and a session that runs nowhere
+/// Where a session of the <see cref="SessionHistory"/> is now, which decides what choosing it in the
+/// <see cref="SessionHistoryPicker"/> does: a tab it runs in is brought forward, and a session that runs nowhere
 /// is resumed in a tab.
 /// </summary>
 /// <remarks>

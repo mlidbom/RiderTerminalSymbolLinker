@@ -10,7 +10,7 @@ namespace Cloyd.Specifications.Hub;
 
 /// <summary>
 /// The hub's list of the sessions on disk, holding a Codex session beside a Claude Code one, as
-/// <see cref="TranscribedSession.EachClaudeCodeSessionIn"/> reads it: as a hub that serves Codex sessions will list them,
+/// <see cref="SessionOnDisk.EachClaudeCodeSessionIn"/> reads it: as a hub that serves Codex sessions will list them,
 /// before Cloyd's history shows any. A Codex session taken for Claude Code's would be resumed with
 /// <c>claude --resume</c>, which knows nothing of it.
 /// </summary>
@@ -31,7 +31,7 @@ public class When_the_hub_lists_sessions_of_an_agent_CLI_whose_sessions_Cloyd_sh
       }
       """;
 
-   readonly IReadOnlyList<TranscribedSession> _onDisk = TranscribedSession.EachClaudeCodeSessionIn(JsonSerializer.Deserialize<SessionsAnswer>(SessionsOnDisk, LocalApiProtocol.Json)!);
+   readonly IReadOnlyList<SessionOnDisk> _onDisk = SessionOnDisk.EachClaudeCodeSessionIn(JsonSerializer.Deserialize<SessionsAnswer>(SessionsOnDisk, LocalApiProtocol.Json)!);
 
    [XF] public void of_the_sessions_on_disk_it_reads_only_the_Claude_Code_one() => _onDisk.Select(it => it.Id).Must().SequenceEqual([ClaudeCodes]);
 }

@@ -49,9 +49,9 @@ sealed class SandboxHub
    /// The sessions the hub has transcripts of, as it lists them now: asked on the thread pool, so that it may be asked on
    /// the UI thread too, as a condition of <see cref="SpecificationOpeningWindows.WaitUntil"/> is.
    /// </summary>
-   public IReadOnlyList<TranscribedSession> TranscribedSessions() => Task.Run(() => Hub.TranscribedSessions()).GetAwaiter().GetResult();
+   public IReadOnlyList<SessionOnDisk> SessionsOnDisk() => Task.Run(() => Hub.SessionsOnDisk()).GetAwaiter().GetResult();
 
-   /// <summary>The Claude Codes that run, as the hub lists them now: asked as <see cref="TranscribedSessions"/> is.</summary>
+   /// <summary>The Claude Codes that run, as the hub lists them now: asked as <see cref="SessionsOnDisk"/> is.</summary>
    public IReadOnlyList<RunningClaudeCode> RunningClaudeCodes() => [.. Task.Run(() => Hub.RunningSessions()).GetAwaiter().GetResult().OfType<RunningClaudeCode>()];
 
    /// <summary>

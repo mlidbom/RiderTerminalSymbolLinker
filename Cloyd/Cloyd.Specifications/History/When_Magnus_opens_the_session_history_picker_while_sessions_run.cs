@@ -24,7 +24,7 @@ public class When_Magnus_opens_the_session_history_picker_while_sessions_run : S
    readonly SandboxProject _anotherProject;
    private protected readonly ProjectWindow _window;
    private protected readonly ProjectWindow _anotherProjectsWindow;
-   private protected readonly ClaudeSessionHistoryPicker _picker;
+   private protected readonly SessionHistoryPicker _picker;
    private protected readonly SessionTab _first;
    private protected readonly SessionTab _exited;
    private protected readonly SessionHostId _takenOverByAConsole;
@@ -53,7 +53,7 @@ public class When_Magnus_opens_the_session_history_picker_while_sessions_run : S
          var picker = OnTheUIThread(() => window.HistoryPicker);
          Press(window, Key.Y, PhysicalKey.Y, RawInputModifiers.Control | RawInputModifiers.Alt | RawInputModifiers.Shift);
          WaitUntil(() => picker.Scopes.Count > 0, "the picker showed the history");
-         OnTheUIThread(() => picker.List(ClaudeSessionHistoryScope.AllProjects));
+         OnTheUIThread(() => picker.List(SessionHistoryScope.AllProjects));
          Render(window, "the-session-history-picker-while-sessions-run");
          return (anotherProject, window, anotherProjectsWindow, picker, first, exited, takenOver.Host.Id, firsts, seconds, exiteds, takenOvers, inATerminalOfItsOwns, anotherProjects);
       });
@@ -74,7 +74,7 @@ public class When_Magnus_opens_the_session_history_picker_while_sessions_run : S
    }
 
    bool HasAConversationToResume(ClaudeCodeSessionId? session) =>
-      session is {} asked && Sandbox.HubOfTheSandbox.TranscribedSessions().Any(it => it.Id == asked && it.HasAConversationToResume);
+      session is {} asked && Sandbox.HubOfTheSandbox.SessionsOnDisk().Any(it => it.Id == asked && it.HasAConversationToResume);
 
    /// <summary>Selects the entry of <paramref name="session"/> in the picker, as a click on it does, and presses Enter.</summary>
    private protected void Choose(ClaudeCodeSessionId session)

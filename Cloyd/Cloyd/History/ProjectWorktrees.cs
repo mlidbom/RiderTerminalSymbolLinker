@@ -4,9 +4,9 @@ using Cloyd.Projects;
 namespace Cloyd.History;
 
 /// <summary>
-/// The folders the <see cref="ClaudeSessionHistoryScope"/>s cover for a project: the git worktree the project is in, and
+/// The folders the <see cref="SessionHistoryScope"/>s cover for a project: the git worktree the project is in, and
 /// every worktree of its repository, as git lists them. A project that isn't in git has only its own folder, and no
-/// <see cref="ClaudeSessionHistoryScope.AllWorktrees"/>.
+/// <see cref="SessionHistoryScope.AllWorktrees"/>.
 /// </summary>
 sealed class ProjectWorktrees
 {
@@ -26,18 +26,18 @@ sealed class ProjectWorktrees
    public IReadOnlyList<string>? AllWorktrees { get; }
 
    /// <summary>The scopes the picker offers the project: all worktrees only for a project in git.</summary>
-   public IReadOnlyList<ClaudeSessionHistoryScope> Scopes =>
-      [.. ClaudeSessionHistoryScope.All.Where(it => it != ClaudeSessionHistoryScope.AllWorktrees || AllWorktrees is not null)];
+   public IReadOnlyList<SessionHistoryScope> Scopes =>
+      [.. SessionHistoryScope.All.Where(it => it != SessionHistoryScope.AllWorktrees || AllWorktrees is not null)];
 
    /// <summary>
    /// Whether <paramref name="scope"/> covers <paramref name="folder"/>: whether it is one of the scope's folders, or in
-   /// one. A folder that isn't known, null, only <see cref="ClaudeSessionHistoryScope.AllProjects"/> covers.
+   /// one. A folder that isn't known, null, only <see cref="SessionHistoryScope.AllProjects"/> covers.
    /// </summary>
-   public bool Cover(ClaudeSessionHistoryScope scope, string? folder)
+   public bool Cover(SessionHistoryScope scope, string? folder)
    {
-      if(scope == ClaudeSessionHistoryScope.AllProjects) return true;
+      if(scope == SessionHistoryScope.AllProjects) return true;
       if(folder is null) return false;
-      return scope == ClaudeSessionHistoryScope.ThisWorktree ? IsInOrBelow(ThisWorktree) : AllWorktrees!.Any(IsInOrBelow);
+      return scope == SessionHistoryScope.ThisWorktree ? IsInOrBelow(ThisWorktree) : AllWorktrees!.Any(IsInOrBelow);
 
       bool IsInOrBelow(string worktree)
       {
