@@ -23,7 +23,7 @@ public class When_Magnus_opens_a_run_of_tool_calls_and_a_command_in_it : Specifi
    {
       var hub = Sandbox.HubOfTheSandbox;
       var session = TheSampleSession.For(hub);
-      var window = Open(() => new Window { Width = 840, Height = 1300, Content = new ChatOfASession(hub.Hub) });
+      var window = Open(() => new Window { Width = 840, Height = 1300, Content = new ChatOfASession(hub.Hub, Sandbox.CloydsFolder.PastedImages) });
       var chat = OnTheUIThread(() => (ChatOfASession)window.Content!);
       OnTheUIThread(() => chat.Show(session));
       WaitUntil(() => OnTheUIThread(() => chat.FindDescendantOfType<ScrollViewer>()!).Offset.Y > 0, "the chat showed the conversation at its end");

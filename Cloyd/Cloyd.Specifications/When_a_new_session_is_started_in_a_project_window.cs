@@ -53,7 +53,9 @@ public class When_a_new_session_is_started_in_a_project_window : SpecificationOp
    [XF] public void the_window_saves_its_tab_with_the_session_while_it_stays_open()
    {
       WaitUntil(() => _project.SavedWindow.Tabs.SingleOrDefault()?.Session is not null, "the window saved its tab with the session");
-      _project.SavedWindow.Tabs.Single().Must().Be(new SavedSessionTab(_tab.Host.Id, _project.Project.Folder, _session.Session));
+      var saved = _project.SavedWindow.Tabs.Single();
+      (saved with { Draft = null }).Must().Be(new SavedSessionTab(_tab.Host.Id, _project.Project.Folder, _session.Session));
+      saved.Draft.Must().Satisfy(it => it is []);
    }
 
    [XF] public void the_window_saves_the_tab_as_selected()

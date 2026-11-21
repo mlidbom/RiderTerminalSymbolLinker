@@ -261,12 +261,19 @@ sealed class ProjectWindow : Window
    /// </summary>
    async Task<SessionTab?> BringBack(SavedSessionTab saved, SessionHostOfTheHub? host, ClaudeCodeFolder claudeCode)
    {
-      if(host is not null) return host.Attached ? null : Show(host, saved.Session, nameGiven: null);
-      if(saved.Session is not {} session || !claudeCode.HoldsTheTranscriptOf(session.Id)) return null;
-
-      var tab = await ShowANewHost(saved.Directory, session, nameGiven: null);
-      await StartClaudeCodeIn(tab, ClaudeCodeCommand.Resuming(session));
+      var tab = await TheTabBroughtBack();
+      tab?.Chat.InputBox.BringBack(saved.Draft ?? []);
       return tab;
+
+      async Task<SessionTab?> TheTabBroughtBack()
+      {
+         if(host is not null) return host.Attached ? null : Show(host, saved.Session, nameGiven: null);
+         if(saved.Session is not {} session || !claudeCode.HoldsTheTranscriptOf(session.Id)) return null;
+
+         var resumed = await ShowANewHost(saved.Directory, session, nameGiven: null);
+         await StartClaudeCodeIn(resumed, ClaudeCodeCommand.Resuming(session));
+         return resumed;
+      }
    }
 
    async Task<SessionTab> ShowANewHost(string directory, ClaudeSession? latestSession, string? nameGiven) =>

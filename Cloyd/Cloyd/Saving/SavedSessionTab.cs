@@ -1,4 +1,5 @@
 using ClaudeTooling.SessionHost.Protocol;
+using Cloyd.Chat.Writing;
 using Cloyd.ClaudeCode;
 
 namespace Cloyd.Saving;
@@ -11,4 +12,8 @@ namespace Cloyd.Saving;
 /// <param name="SessionHost">The host the tab showed.</param>
 /// <param name="Directory">The directory the host's shell started in: where a new host resumes the session.</param>
 /// <param name="Session">The session that ran in the host last: null when none had, as before Claude Code recorded its session.</param>
-sealed record SavedSessionTab(SessionHostId SessionHost, string Directory, ClaudeSession? Session);
+/// <param name="Draft">
+/// What the tab's chat's input box held, which comes back into it: null in what a Cloyd saved before its chat had an
+/// input box.
+/// </param>
+sealed record SavedSessionTab(SessionHostId SessionHost, string Directory, ClaudeSession? Session, IReadOnlyList<PartOfAMessage>? Draft = null);

@@ -7,8 +7,10 @@ using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Threading;
 using Cloyd.Chat.Views;
+using Cloyd.Chat.Writing;
 using Cloyd.ClaudeCode;
 using Cloyd.Hub;
+using Cloyd.Pasting;
 using LiveMarkdown.Avalonia;
 using static Cloyd.Chat.Views.LinesOfTheChat;
 
@@ -17,7 +19,8 @@ namespace Cloyd.Chat;
 /// <summary>
 /// The chat of a session: its conversation, as the hub's stream of it tells, drawn as the Claude desktop app's Code tab
 /// draws one (<c>dev_docs/cloyd-chat-specification.md</c>) in a column down the middle: Magnus's prompts in bubbles at the
-/// right, what Claude wrote across the column, its tool calls folded into grey lines.
+/// right, what Claude wrote across the column, its tool calls folded into grey lines. Under it, the
+/// <see cref="InputBoxOfTheChat"/>, where Magnus writes to Claude.
 /// </summary>
 /// <remarks>
 /// It follows the conversation only while it is shown, as a tab's selected view: the hub holds every message of a
@@ -34,6 +37,9 @@ sealed class ChatOfASession : UserControl
    /// <summary>How near the top of what is drawn Magnus scrolls before more is drawn above it, in logical pixels.</summary>
    const double NearTheTop = 400;
 
+   /// <summary>The share of the chat's height the input box grows to as Magnus writes more lines, as the Kotlin chat's did: past it, the box scrolls.</summary>
+   const double MostOfTheHeightTheInputBoxTakes = 0.4;
+
    readonly TheHub _hub;
    readonly ItemsControl _column;
    readonly ScrollViewer _scroller;
@@ -48,9 +54,11 @@ sealed class ChatOfASession : UserControl
    /// <summary>Whether drawing more above is under way: see <see cref="DrawMoreAboveOnceLaidOut"/>.</summary>
    bool _drawingMoreAbove;
 
-   public ChatOfASession(TheHub hub)
+   /// <summary>A chat that follows its conversation through <paramref name="hub"/>, and sends through it: the images pasted into its input box are saved in <paramref name="pastedImages"/>.</summary>
+   public ChatOfASession(TheHub hub, PastedImages pastedImages)
    {
       _hub = hub;
+      InputBox = new InputBoxOfTheChat(hub, pastedImages) { MaxWidth = WidthOfTheColumn + 32 };
       _column = new ItemsControl
       {
          ItemsSource = _drawn.Drawn,
@@ -64,11 +72,15 @@ sealed class ChatOfASession : UserControl
       KeepTheViewStillAsMoreIsDrawnAbove();
       _scroller.ScrollChanged += (_, changed) => { if(changed.OffsetDelta.Y < 0 && _scroller.Offset.Y <= NearTheTop) DrawMoreAboveOnceLaidOut(); };
       LookOfTheApp();
-      Content = new DockPanel { Children = { Docked(_notice), _scroller } };
+      SizeChanged += (_, size) => InputBox.MostHeight = size.NewSize.Height * MostOfTheHeightTheInputBoxTakes;
+      Content = Rows(_notice, _scroller, InputBox);
    }
 
-   /// <summary>Gives the chat the keyboard, as the tab shows it: its conversation then scrolls by the keys, as Page Up.</summary>
-   public void TakeTheKeyboard() => _scroller.Focus();
+   /// <summary>Where Magnus writes to the Claude Code that runs in the tab.</summary>
+   public InputBoxOfTheChat InputBox { get; }
+
+   /// <summary>Gives the chat the keyboard, as the tab shows it: its input box, for Magnus to write.</summary>
+   public void TakeTheKeyboard() => InputBox.TakeTheKeyboard();
 
    /// <summary>The session whose conversation the chat shows, along its line: null while there is none, as before Claude Code starts in a tab.</summary>
    public ClaudeSessionId? Session { get; private set; }
@@ -230,9 +242,12 @@ sealed class ChatOfASession : UserControl
       void ColourTheCode() => renderer.CodeBlockColorTheme = ColoursOfTheChat.OfCodeIn(renderer.ActualThemeVariant);
    }
 
-   static Control Docked(Control control)
+   /// <summary>The chat's rows, top to bottom: <paramref name="notice"/> and <paramref name="inputBox"/> as tall as they are, <paramref name="conversation"/> taking the rest.</summary>
+   static Grid Rows(Control notice, Control conversation, Control inputBox)
    {
-      DockPanel.SetDock(control, Dock.Top);
-      return control;
+      Grid.SetRow(notice, 0);
+      Grid.SetRow(conversation, 1);
+      Grid.SetRow(inputBox, 2);
+      return new Grid { RowDefinitions = new RowDefinitions("Auto,*,Auto"), Children = { notice, conversation, inputBox } };
    }
 }

@@ -411,6 +411,33 @@ and time under a turn; links in Claude's text, with `POST /files/open`; a permis
 - **The terminal's own keys stay as they are** for now ("Leave the terminal shortcut handling alone for now"): Escape
   goes on to Claude Code there.
 
+**The input box, as it's built (2026-11-21,** `Cloyd.Chat.Writing`), the Kotlin chat's (`claude-sessions.md`, "The
+input box") ported, with Magnus's calls above:
+
+- **`InputBoxOfTheChat`,** under the conversation, as wide as its column: AvaloniaEdit's `TextEditor`, as the spike had
+  it, in a rounded border, with a round send button in Claude's orange and the **Stop** button beside it while the
+  Claude Code's status (`StatusOfAClaudeCode`, from the hub's running sessions) is `busy`. It grows with its lines up to
+  two fifths of the chat, then scrolls.
+- **`DraftOfAMessage`:** the editor's document, with each stretch Magnus pasted marked as a `PastedStretch`, text or an
+  image's placeholder, in AvaloniaEdit's `TextSegmentCollection`, which moves the stretches as he edits around them and
+  grows one he types inside. Its `Parts` walk the text, the innermost stretch deciding; an image's placeholder he edited
+  is text. Line breaks go to the hub as line feeds: the editor breaks a line with CR LF.
+- **Pasting:** Ctrl+V and Shift+Insert, taken before the editor's own paste: the clipboard's text as pasted, else its
+  image, saved by `PastedImages` as the terminal's are, as `[Image #n]`, with thumbnails over the box (Windows' viewer
+  shows one whole on a click).
+- **`SendingFromTheChat`** gives the messages to the hub's `POST /running-sessions/{processId}/send` one after another,
+  to the Claude Code that ran in the tab as each was sent. One the hub refused comes back into the box with those that
+  waited after it, ahead of what Magnus wrote since, and the hub's `error` shows over the box in red.
+- **Saved with the window** (`SavedSessionTab.Draft`): the messages that waited to be given, then the draft, each part
+  as it came in; they come back into the box, to be sent again by Magnus. Not the message being given, which the hub
+  goes on typing whatever becomes of Cloyd.
+- **Tabs still open on the terminal:** the chat becomes each tab's first view once Claude waiting for Magnus in the
+  terminal shows prominently over the box, as he asked, so that a permission prompt can't go unseen behind the chat.
+- **Specified** with the stand-in through the sandbox's hub (`Cloyd.Specifications/Chat/Writing`): a message of two
+  lines sent; text and an image pasted, kept apart, and sent; Escape and a message sent while Claude works, which
+  interrupt nothing; Stop; a message refused while Claude Code's own box holds text; a draft through the window's
+  closing; a slash command showing the terminal.
+
 ### The session history picker, as it's built
 
 **Built 2026-11-20** (`Cloyd.History`): the Kotlin plugin's picker (`claude-sessions.md`, "The session history

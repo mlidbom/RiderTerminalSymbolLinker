@@ -37,7 +37,7 @@ public class When_a_chat_shows_a_long_conversation : SpecificationOpeningWindows
    {
       var hub = Sandbox.HubOfTheSandbox;
       var session = TheSampleSession.RepeatedFor(hub, TimesOver);
-      var window = Open(() => new Window { Width = 840, Height = 900, Content = new ChatOfASession(hub.Hub) });
+      var window = Open(() => new Window { Width = 840, Height = 900, Content = new ChatOfASession(hub.Hub, Sandbox.CloydsFolder.PastedImages) });
       var chat = OnTheUIThread(() => (ChatOfASession)window.Content!);
       OnTheUIThread(() => chat.Show(session));
       WaitUntil(() => chat.Shown.Count > 0 && IsAtTheEnd(chat), "the chat showed the end of the conversation");

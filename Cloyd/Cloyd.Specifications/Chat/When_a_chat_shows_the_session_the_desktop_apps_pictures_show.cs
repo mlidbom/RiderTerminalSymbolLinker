@@ -20,7 +20,7 @@ public class When_a_chat_shows_the_session_the_desktop_apps_pictures_show : Spec
    {
       var hub = Sandbox.HubOfTheSandbox;
       var session = TheSampleSession.For(hub);
-      var window = Open(() => new Window { Width = 840, Height = 7000, Content = new ChatOfASession(hub.Hub) });
+      var window = Open(() => new Window { Width = 840, Height = 7000, Content = new ChatOfASession(hub.Hub, Sandbox.CloydsFolder.PastedImages) });
       var chat = OnTheUIThread(() => (ChatOfASession)window.Content!);
       OnTheUIThread(() => chat.Show(session));
       WaitUntil(() => chat.Shown.Count > 0, "the chat showed the conversation");

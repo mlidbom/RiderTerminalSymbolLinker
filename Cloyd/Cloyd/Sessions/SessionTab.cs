@@ -46,8 +46,9 @@ sealed class SessionTab : TabItem
       _attachment.Ended += why => Dispatcher.UIThread.Post(() => EndedByItself?.Invoke(this, why));
       Terminal = new TerminalOfASessionHost(_attachment, pastedImages);
       Terminal.PasteFailed += failure => Tell($"Cloyd couldn't paste: {failure.Message}");
-      Chat = new ChatOfASession(hub) { IsVisible = false };
+      Chat = new ChatOfASession(hub, pastedImages) { IsVisible = false };
       Chat.Show(latestSession?.Id);
+      Chat.InputBox.SentASlashCommand += () => Show(chat: false);
       _title = new TextBlock { Text = latestSession?.Name ?? nameGiven ?? TitleOfASessionWithNoName, VerticalAlignment = VerticalAlignment.Center };
       Header = TheHeader();
       _showTheChat.Click += (_, _) => Show(chat: true);
@@ -90,6 +91,7 @@ sealed class SessionTab : TabItem
       set
       {
          field = value;
+         Chat.InputBox.ClaudeCode = value;
          if(value is null) return;
          LatestSession = value.Session;
          Chat.Show(value.Session.Id);
@@ -109,8 +111,8 @@ sealed class SessionTab : TabItem
    /// <summary>Whether <paramref name="session"/> runs in the tab's host, or ran in it last: its <see cref="LatestSession"/>.</summary>
    public bool RunsOrRanLast(ClaudeSessionId session) => LatestSession?.Id == session;
 
-   /// <summary>The tab, as its window saves it.</summary>
-   public SavedSessionTab AsSaved => new(Host.Id, Host.Directory, LatestSession);
+   /// <summary>The tab, as its window saves it: with what its chat's input box holds.</summary>
+   public SavedSessionTab AsSaved => new(Host.Id, Host.Directory, LatestSession, Chat.InputBox.AsSaved);
 
    /// <summary>Shows <paramref name="notice"/> above the terminal, as why the hub didn't start Claude Code in it, or why a paste failed.</summary>
    public void Tell(string notice)

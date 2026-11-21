@@ -6,6 +6,7 @@
         <FluentTheme />
         <StyleInclude Source="avares://Iciclecreek.Avalonia.Terminal/Themes/Generic.axaml" />
         <StyleInclude Source="avares://LiveMarkdown.Avalonia/Styles.axaml" />
+        <StyleInclude Source="avares://AvaloniaEdit/Themes/Fluent/AvaloniaEdit.xaml" />
     </Application.Styles>
     <Application.Resources>
         <ResourceDictionary>

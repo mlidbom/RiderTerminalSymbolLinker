@@ -1,6 +1,5 @@
 using Avalonia.Controls;
 using Avalonia.Input;
-using Avalonia.Input.Platform;
 using Avalonia.Interactivity;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
@@ -110,9 +109,15 @@ sealed class TerminalOfASessionHost : TerminalControl
    {
       try
       {
-         var clipboard = TopLevel.GetTopLevel(this)!.Clipboard!;
-         if(!string.IsNullOrEmpty(await clipboard.TryGetTextAsync())) await PasteAsync();
-         else if(await clipboard.TryGetBitmapAsync() is {} image) await Paste(image);
+         switch(await WhatCtrlVPastes.From(TopLevel.GetTopLevel(this)!.Clipboard!))
+         {
+            case WhatCtrlVPastes.Text:
+               await PasteAsync();
+               break;
+            case WhatCtrlVPastes.AnImage image:
+               await Paste(image.Image);
+               break;
+         }
       }
       catch(Exception failure)
       {

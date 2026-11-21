@@ -11,6 +11,7 @@ using ClaudeTooling.Hub.LocalApi.Contract.ListingSessions;
 using ClaudeTooling.Hub.LocalApi.Contract.RunningSessions;
 using ClaudeTooling.Hub.LocalApi.Contract.TypingIntoRunningSessions;
 using ClaudeTooling.SessionHost.Protocol;
+using Cloyd.Chat.Writing;
 using Cloyd.ClaudeCode;
 using Cloyd.Sessions;
 
@@ -108,6 +109,33 @@ sealed partial class TheHub
          throw new RefusedByTheHub((await Read<RefusalAnswer>(answer, cancellation)).Error);
 
       await Read<ClaudeCodeStartedInTheShellAnswer>(answer, cancellation);
+   }
+
+   /// <summary>
+   /// Has the hub type <paramref name="message"/> into the input box of <paramref name="claudeCode"/>, as Magnus would,
+   /// and send it: answered once Claude Code has taken it, or queued it, as it does while it works. A
+   /// <see cref="RefusedByTheHub"/> with why when it didn't, as when Claude Code shows a dialog, or its own box holds text.
+   /// </summary>
+   public async Task Send(MessageFromTheChat message, ClaudeCodeProcessId claudeCode, CancellationToken cancellation = default)
+   {
+      using var answer = await Send(it => new HttpRequestMessage(HttpMethod.Post, it.AddressOf($"running-sessions/{claudeCode}/send")) { Content = JsonContent.Create(message.InTheRequest(), options: LocalApiProtocol.Json) }, cancellation);
+      if(answer.StatusCode is HttpStatusCode.Conflict or HttpStatusCode.NotFound)
+         throw new RefusedByTheHub((await Read<RefusalAnswer>(answer, cancellation)).Error);
+
+      await Read<MessageSentAnswer>(answer, cancellation);
+   }
+
+   /// <summary>
+   /// Has the hub press Escape in <paramref name="claudeCode"/>, which interrupts its turn, as Magnus asks with the Stop
+   /// button: a <see cref="RefusedByTheHub"/> with why when it didn't, as when Claude Code was done already.
+   /// </summary>
+   public async Task Interrupt(ClaudeCodeProcessId claudeCode, CancellationToken cancellation = default)
+   {
+      using var answer = await Send(it => new HttpRequestMessage(HttpMethod.Post, it.AddressOf($"running-sessions/{claudeCode}/interrupt")), cancellation);
+      if(answer.StatusCode is HttpStatusCode.Conflict or HttpStatusCode.NotFound)
+         throw new RefusedByTheHub((await Read<RefusalAnswer>(answer, cancellation)).Error);
+
+      await Read<TypedIntoTheSessionAnswer>(answer, cancellation);
    }
 
    /// <summary>

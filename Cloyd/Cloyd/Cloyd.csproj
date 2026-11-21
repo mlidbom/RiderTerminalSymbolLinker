@@ -13,6 +13,7 @@
       <PackageReference Include="Avalonia" />
       <PackageReference Include="Avalonia.Desktop" />
       <PackageReference Include="Avalonia.Themes.Fluent" />
+      <PackageReference Include="Avalonia.AvaloniaEdit" />
       <PackageReference Include="Iciclecreek.Avalonia.Terminal" />
       <PackageReference Include="LiveMarkdown.Avalonia" />
       <PackageReference Include="Compze.Threading" />

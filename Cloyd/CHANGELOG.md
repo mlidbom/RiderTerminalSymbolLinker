@@ -30,8 +30,21 @@ All notable changes to Cloyd are documented here. The format follows
 - **Each tab can show its session as a chat.** A switch at the top of each tab, **Chat** and **Terminal**, shows the
   conversation as the Claude desktop app's Code tab does: your prompts in bubbles, Claude's replies as rendered
   markdown, tool calls folded into a line that counts them and opens to each, a command's with its output, and a line
-  where the conversation was compacted. It shows what Claude Code's transcript holds, and can't send yet, so each tab
-  shows its terminal at first.
+  where the conversation was compacted. It shows what Claude Code's transcript holds. Each tab shows its terminal at
+  first.
+- **The chat has an input box, which sends to Claude Code,** as Claude Code's own box would: under the conversation, as
+  the desktop app's composer, growing with what you write up to two fifths of the chat, then scrolling.
+  - **Ctrl+Enter sends, Enter starts a new line.** The box is free for the next message at once.
+  - **Nothing interrupts Claude by accident.** Escape does nothing to Claude, and a message sent while Claude works
+    waits: Claude Code queues it, and takes it when it is done, as it does those sent in its own box. To interrupt
+    Claude, the **Stop** button shows beside the send button while Claude works.
+  - **Ctrl+V keeps what you paste apart from what you type,** as Claude Code's own box does: a long paste reaches
+    Claude as pasted. An image on the clipboard with no text is pasted as `[Image #1]`, with a thumbnail over the box
+    that a click shows whole; Claude gets the image.
+  - **A message Claude Code didn't get comes back into the box,** ahead of what you wrote since, with why over it in
+    red: such as when Claude Code's own box in the terminal holds text, which the message would have mangled.
+  - **A slash command,** such as `/compact`, switches the tab to its terminal, where Claude Code shows what it does.
+  - **What the box holds comes back with the window,** after Cloyd restarts, typed and pasted parts as they came in.
 - **Ctrl+H switches a tab between its terminal and its chat,** as the switch at its top does, and gives the keyboard to
   the one it shows. Claude Code binds Ctrl+H to no command of its own: in the terminal it was a Backspace.
 - **Ctrl+V pastes in a session's terminal,** as Ctrl+Shift+V does, and as in every other Windows program: in Claude
