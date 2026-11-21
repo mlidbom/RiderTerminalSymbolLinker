@@ -102,9 +102,21 @@ sealed partial class TheHub
    /// Has the hub type <paramref name="command"/> into the shell of <paramref name="host"/>, then Enter, once the shell
    /// has settled at its prompt: a <see cref="RefusedByTheHub"/> when it doesn't, as when a program runs in the shell.
    /// </summary>
-   public async Task StartClaudeCodeIn(SessionHostOfTheHub host, ClaudeCodeCommand command, CancellationToken cancellation = default)
+   public Task StartClaudeCodeIn(SessionHostOfTheHub host, ClaudeCodeCommand command, CancellationToken cancellation = default) =>
+      StartAnAgentCliIn(host, "start-claude-code", command.Request, cancellation);
+
+   /// <summary>
+   /// Has the hub type <paramref name="command"/> into the shell of <paramref name="host"/>, then Enter, once the shell
+   /// has settled at its prompt: a <see cref="RefusedByTheHub"/> when it doesn't, as when a program runs in the shell.
+   /// Only a hub that serves Codex sessions has it: one whose <see cref="AnnouncementOfTheHub"/> names a Codex folder.
+   /// </summary>
+   public Task StartCodexIn(SessionHostOfTheHub host, CodexCommand command, CancellationToken cancellation = default) =>
+      StartAnAgentCliIn(host, "start-codex", command.Request, cancellation);
+
+   /// <summary>Posts <paramref name="request"/> to the hub's <c>shells/{processId}/&lt;<paramref name="start"/>&gt;</c> for the shell of <paramref name="host"/>.</summary>
+   async Task StartAnAgentCliIn<TRequest>(SessionHostOfTheHub host, string start, TRequest request, CancellationToken cancellation)
    {
-      using var answer = await Send(it => new HttpRequestMessage(HttpMethod.Post, it.AddressOf($"shells/{host.ShellProcessId}/start-claude-code")) { Content = JsonContent.Create(command.Request, options: LocalApiProtocol.Json) }, cancellation);
+      using var answer = await Send(it => new HttpRequestMessage(HttpMethod.Post, it.AddressOf($"shells/{host.ShellProcessId}/{start}")) { Content = JsonContent.Create(request, options: LocalApiProtocol.Json) }, cancellation);
       if(answer.StatusCode is HttpStatusCode.Conflict or HttpStatusCode.NotFound)
          throw new RefusedByTheHub((await Read<RefusalAnswer>(answer, cancellation)).Error);
 

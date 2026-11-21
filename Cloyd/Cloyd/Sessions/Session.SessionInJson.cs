@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Cloyd.ClaudeCode;
+using Cloyd.Codex;
 
 namespace Cloyd.Sessions;
 
@@ -8,7 +9,7 @@ abstract partial record Session
 {
    /// <summary>
    /// A <see cref="Session"/> in JSON, as a saved tab holds it: its agent CLI, by the name the hub's local API gives it,
-   /// such as <c>claudeCode</c>, its id and its name. A session saved with no agent CLI is Claude Code's, as a Cloyd saved
+   /// such as <c>claudeCode</c> or <c>codex</c>, its id and its name. A session saved with no agent CLI is Claude Code's, as a Cloyd saved
    /// them before it knew of other CLIs.
    /// </summary>
    sealed class SessionInJson : JsonConverter<Session>
@@ -17,6 +18,7 @@ abstract partial record Session
       const string Id = "id";
       const string Name = "name";
       const string ClaudeCode = "claudeCode";
+      const string Codex = "codex";
 
       public override Session Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
       {
@@ -27,6 +29,7 @@ abstract partial record Session
          return agentCli switch
          {
             ClaudeCode => new ClaudeCodeSession(new ClaudeCodeSessionId(id), name),
+            Codex => new CodexSession(new CodexSessionId(id), name),
             _ => throw new JsonException($"The session {id} was saved as one of the agent CLI {agentCli}, which this Cloyd doesn't know.")
          };
       }
@@ -43,6 +46,7 @@ abstract partial record Session
       static string AgentCliOf(Session session) => session switch
       {
          ClaudeCodeSession => ClaudeCode,
+         CodexSession => Codex,
          _ => throw new ArgumentOutOfRangeException(nameof(session), session, "A session of an agent CLI that sessions aren't saved with yet.")
       };
    }
