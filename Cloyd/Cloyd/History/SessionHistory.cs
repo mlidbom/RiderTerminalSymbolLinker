@@ -1,4 +1,5 @@
 using Cloyd.Hub;
+using Cloyd.Hub.RunningSessions;
 using Cloyd.Projects;
 using Cloyd.Sessions;
 

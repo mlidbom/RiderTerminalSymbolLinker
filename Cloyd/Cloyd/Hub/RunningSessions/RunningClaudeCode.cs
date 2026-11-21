@@ -2,7 +2,7 @@ using ClaudeTooling.Hub.LocalApi.Contract.RunningSessions;
 using ClaudeTooling.SessionHost.Protocol;
 using Cloyd.ClaudeCode;
 
-namespace Cloyd.Hub;
+namespace Cloyd.Hub.RunningSessions;
 
 /// <summary>A Claude Code that runs, as the hub's <c>GET /running-sessions</c> lists it: the fields Cloyd uses.</summary>
 /// <param name="Process">The process the Claude Code runs as: the same across a <c>/clear</c>.</param>
@@ -36,7 +36,7 @@ sealed record RunningClaudeCode(ClaudeCodeProcessId Process, ClaudeCodeSessionId
 
    /// <summary>
    /// What it runs in the background, as the chat tells Magnus of it, whether Claude works or not: counted by kind, as
-   /// Claude Code's TUI counts it, such as "1 shell" (<see cref="Hub.BackgroundWork.Counted"/>); <see cref="Hub.BackgroundWork.SomeRuns"/>
+   /// Claude Code's TUI counts it, such as "1 shell" (<see cref="RunningSessions.BackgroundWork.Counted"/>); <see cref="RunningSessions.BackgroundWork.SomeRuns"/>
    /// while the hub knows only that some runs; null while none does.
    /// </summary>
    public string? BackgroundWorkCounted => BackgroundWork is { IsAny: true } work ? work.Counted : Status.IsIdleWithBackgroundWork ? BackgroundWork.SomeRuns : null;

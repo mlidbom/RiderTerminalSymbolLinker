@@ -13,6 +13,7 @@ using Cloyd.Chat.Views;
 using Cloyd.Chat.Writing;
 using Cloyd.ClaudeCode;
 using Cloyd.Hub;
+using Cloyd.Hub.RunningSessions;
 using Cloyd.Pasting;
 using LiveMarkdown.Avalonia;
 using static Cloyd.Chat.Views.LinesOfTheChat;

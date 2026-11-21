@@ -5,6 +5,7 @@ using ClaudeTooling.Hub.LocalApi.Contract;
 using ClaudeTooling.Hub.LocalApi.Contract.Sandboxes;
 using Cloyd.ClaudeCode;
 using Cloyd.Hub;
+using Cloyd.Hub.RunningSessions;
 
 namespace Cloyd.Specifications.TheSandbox;
 

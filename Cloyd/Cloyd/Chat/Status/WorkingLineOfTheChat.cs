@@ -6,7 +6,7 @@ using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Threading;
 using Cloyd.Chat.Views;
-using Cloyd.Hub;
+using Cloyd.Hub.RunningSessions;
 
 namespace Cloyd.Chat.Status;
 

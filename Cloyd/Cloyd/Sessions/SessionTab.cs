@@ -9,6 +9,7 @@ using Cloyd.Chat;
 using Cloyd.Chat.Status;
 using Cloyd.ClaudeCode;
 using Cloyd.Hub;
+using Cloyd.Hub.RunningSessions;
 using Cloyd.Pasting;
 using Cloyd.Saving;
 using Cloyd.SessionHosts;

@@ -469,7 +469,7 @@ Magnus, 2026-11-21: "I have no way in the new UI to see that a session in waitin
 information about background work under the existing two lines under the input box". The TUI shows `· 1 shell · ↓ to
 manage` after the permission mode, and after a turn `✻ Sautéed for 21s · done 2:37 PM · 1 shell still running`.
 
-- **From the hub:** each running session's `backgroundWork` (`Cloyd.Hub.BackgroundWork`, on `RunningSession`), asked of
+- **From the hub:** each running session's `backgroundWork` (`Cloyd.Hub.RunningSessions.BackgroundWork`, on `RunningClaudeCode`), asked of
   the tooling owner and published by it the same day: the tasks (`BackgroundTask`: kind, Claude's description, a
   shell's command, a subagent's type) and the scheduled prompts (`ScheduledPrompt`), as Claude Code told the hub's
   `Stop` hook at the end of the session's last turn. So a task that ends while Claude works stays listed until that
@@ -635,7 +635,7 @@ word for every agent CLI's; "thread" only in code that speaks Codex's app-server
   `ClaudeCodeSessionId`, Codex's `Cloyd.Codex.CodexSession` and `CodexSessionId`. Tabs, saved tabs, resuming and the
   history's choices take a `Session`; a saved session is saved with its `agentCli` (`claudeCode`, `codex`), and one
   saved without reads as Claude Code's (6b5d7ba, 4300aa6).
-- **The commands:** `Cloyd.Hub.AgentCliCommand`: `ClaudeCodeCommand`, and `CodexCommand`, `codex` or
+- **The commands:** `Cloyd.Hub.Commands.AgentCliCommand`: `ClaudeCodeCommand`, and `CodexCommand`, `codex` or
   `codex resume <id>`, typed through `TheHub.StartCodexIn` (`POST /shells/{processId}/start-codex`). A name given goes
   in the request; the hub names the session once Codex shows its id (4300aa6).
 - **The running sessions:** `RunningSession`, what a tab needs of any agent CLI's (its session, host, whether it's

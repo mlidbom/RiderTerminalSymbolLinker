@@ -1,6 +1,6 @@
 using ClaudeTooling.Hub.LocalApi.Contract.RunningSessions;
 
-namespace Cloyd.Hub;
+namespace Cloyd.Hub.RunningSessions;
 
 /// <summary>
 /// A prompt Claude Code will give a running session on a schedule, waking it then, as its <see cref="BackgroundWork"/>

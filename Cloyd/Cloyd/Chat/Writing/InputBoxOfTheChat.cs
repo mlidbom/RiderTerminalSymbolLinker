@@ -9,6 +9,7 @@ using Avalonia.Platform.Storage;
 using AvaloniaEdit;
 using AvaloniaEdit.Document;
 using Cloyd.Hub;
+using Cloyd.Hub.RunningSessions;
 using Cloyd.Pasting;
 
 namespace Cloyd.Chat.Writing;

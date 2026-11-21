@@ -1,6 +1,6 @@
 using ClaudeTooling.Hub.LocalApi.Contract.RunningSessions;
 
-namespace Cloyd.Hub;
+namespace Cloyd.Hub.RunningSessions;
 
 /// <summary>
 /// A task a running Claude Code runs in the background, as its <see cref="BackgroundWork"/> lists it: it goes on after

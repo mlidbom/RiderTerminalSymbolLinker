@@ -2,7 +2,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Layout;
 using Avalonia.Media;
-using Cloyd.Hub;
+using Cloyd.Hub.RunningSessions;
 
 namespace Cloyd.Chat.Status;
 

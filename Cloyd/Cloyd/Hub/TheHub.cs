@@ -13,6 +13,8 @@ using ClaudeTooling.Hub.LocalApi.Contract.TypingIntoRunningSessions;
 using ClaudeTooling.SessionHost.Protocol;
 using Cloyd.Chat.Writing;
 using Cloyd.ClaudeCode;
+using Cloyd.Hub.Commands;
+using Cloyd.Hub.RunningSessions;
 using Cloyd.Sessions;
 
 namespace Cloyd.Hub;

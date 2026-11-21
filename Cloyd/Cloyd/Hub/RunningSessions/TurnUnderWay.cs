@@ -1,6 +1,6 @@
 using ClaudeTooling.Hub.LocalApi.Contract.RunningSessions;
 
-namespace Cloyd.Hub;
+namespace Cloyd.Hub.RunningSessions;
 
 /// <summary>
 /// A running Claude Code's turn under way, as the hub keeps it with each running session: what Claude Code's own spinner

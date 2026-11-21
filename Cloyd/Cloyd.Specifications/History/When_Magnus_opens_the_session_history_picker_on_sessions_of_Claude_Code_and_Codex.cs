@@ -2,7 +2,7 @@ using Avalonia.Input;
 using Cloyd.ClaudeCode;
 using Cloyd.Codex;
 using Cloyd.History;
-using Cloyd.Hub;
+using Cloyd.Hub.RunningSessions;
 using Cloyd.Projects;
 using Cloyd.Sessions;
 using Cloyd.Specifications.TheSandbox;

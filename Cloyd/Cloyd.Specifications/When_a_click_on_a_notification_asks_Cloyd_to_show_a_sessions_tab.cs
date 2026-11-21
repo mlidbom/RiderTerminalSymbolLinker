@@ -1,7 +1,7 @@
 using System.Net;
 using Compze.Must;
 using Compze.xUnitBDD;
-using Cloyd.Hub;
+using Cloyd.Hub.RunningSessions;
 using Cloyd.LocalApi.Contract;
 using Cloyd.Projects;
 using Cloyd.Sessions;

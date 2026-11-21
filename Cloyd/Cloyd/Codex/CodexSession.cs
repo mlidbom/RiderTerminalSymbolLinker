@@ -1,4 +1,4 @@
-using Cloyd.Hub;
+using Cloyd.Hub.Commands;
 using Cloyd.Sessions;
 
 namespace Cloyd.Codex;

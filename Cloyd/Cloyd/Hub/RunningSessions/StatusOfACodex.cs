@@ -1,4 +1,4 @@
-namespace Cloyd.Hub;
+namespace Cloyd.Hub.RunningSessions;
 
 /// <summary>
 /// What a running Codex is doing, as the hub's <c>GET /running-sessions</c> tells it: working at a turn, waiting for

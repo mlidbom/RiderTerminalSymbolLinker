@@ -1,6 +1,7 @@
 using System.Text.Json;
 using ClaudeTooling.SessionHost.Protocol;
 using Cloyd.Hub;
+using Cloyd.Hub.RunningSessions;
 using Cloyd.Projects;
 using Cloyd.Saving;
 using Cloyd.SessionHosts;

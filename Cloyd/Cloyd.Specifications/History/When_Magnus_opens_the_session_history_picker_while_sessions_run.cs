@@ -2,7 +2,7 @@ using Avalonia.Input;
 using ClaudeTooling.SessionHost.Protocol;
 using Cloyd.ClaudeCode;
 using Cloyd.History;
-using Cloyd.Hub;
+using Cloyd.Hub.RunningSessions;
 using Cloyd.Projects;
 using Cloyd.SessionHosts;
 using Cloyd.Sessions;

@@ -4,7 +4,7 @@ using ClaudeTooling.SessionHost.Protocol;
 using Cloyd.Chat.Status;
 using Cloyd.Chat.Views;
 using Cloyd.ClaudeCode;
-using Cloyd.Hub;
+using Cloyd.Hub.RunningSessions;
 using Compze.Must;
 using Compze.xUnitBDD;
 

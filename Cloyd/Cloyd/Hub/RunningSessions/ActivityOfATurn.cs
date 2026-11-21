@@ -1,6 +1,6 @@
 using ClaudeTooling.Hub.LocalApi.Contract.RunningSessions;
 
-namespace Cloyd.Hub;
+namespace Cloyd.Hub.RunningSessions;
 
 /// <summary>What a <see cref="TurnUnderWay"/> does now: waiting for the model, thinking, writing, writing a tool call, or running tools.</summary>
 /// <param name="Kind">

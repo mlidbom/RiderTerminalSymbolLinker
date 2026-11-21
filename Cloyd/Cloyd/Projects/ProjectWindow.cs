@@ -9,6 +9,7 @@ using ClaudeTooling.SessionHost.Protocol;
 using Cloyd.DotNetAnalysisAndRefactoring;
 using Cloyd.History;
 using Cloyd.Hub;
+using Cloyd.Hub.Commands;
 using Cloyd.Ides;
 using Cloyd.Links;
 using Cloyd.Pasting;

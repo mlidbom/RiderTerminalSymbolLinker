@@ -2,7 +2,7 @@ using ClaudeTooling.Hub.LocalApi.Contract.RunningSessions;
 using ClaudeTooling.SessionHost.Protocol;
 using Cloyd.Codex;
 
-namespace Cloyd.Hub;
+namespace Cloyd.Hub.RunningSessions;
 
 /// <summary>A Codex that runs, as the hub's <c>GET /running-sessions</c> lists it: the fields Cloyd uses.</summary>
 /// <param name="SessionId">The session the Codex runs now.</param>

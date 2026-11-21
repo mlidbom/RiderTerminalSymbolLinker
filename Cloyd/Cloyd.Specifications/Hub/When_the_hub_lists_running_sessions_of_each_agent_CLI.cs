@@ -4,7 +4,7 @@ using ClaudeTooling.Hub.LocalApi.Contract.RunningSessions;
 using ClaudeTooling.SessionHost.Protocol;
 using Cloyd.ClaudeCode;
 using Cloyd.Codex;
-using Cloyd.Hub;
+using Cloyd.Hub.RunningSessions;
 using Compze.Must;
 using Compze.xUnitBDD;
 

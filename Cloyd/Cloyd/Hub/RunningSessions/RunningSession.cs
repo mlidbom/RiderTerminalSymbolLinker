@@ -3,7 +3,7 @@ using ClaudeTooling.Hub.LocalApi.Contract.RunningSessions;
 using ClaudeTooling.SessionHost.Protocol;
 using Cloyd.Sessions;
 
-namespace Cloyd.Hub;
+namespace Cloyd.Hub.RunningSessions;
 
 /// <summary>
 /// A session that runs, of any agent CLI, as the hub's <c>GET /running-sessions</c> lists it: what a tab needs to know of

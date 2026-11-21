@@ -1,6 +1,6 @@
 using ClaudeTooling.Hub.LocalApi.Contract.Conversations.Messages;
 using Cloyd.Chat.Status;
-using Cloyd.Hub;
+using Cloyd.Hub.RunningSessions;
 
 namespace Cloyd.Chat;
 

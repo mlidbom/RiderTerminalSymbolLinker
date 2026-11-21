@@ -1,6 +1,6 @@
 using ClaudeTooling.SessionHost.Protocol;
 using Cloyd.Codex;
-using Cloyd.Hub;
+using Cloyd.Hub.RunningSessions;
 using Cloyd.Projects;
 using Cloyd.Saving;
 using Cloyd.Sessions;

@@ -1,7 +1,7 @@
 using ClaudeTooling.Hub.LocalApi.Contract.TypingIntoRunningSessions;
 using Cloyd.Codex;
 
-namespace Cloyd.Hub;
+namespace Cloyd.Hub.Commands;
 
 /// <summary>
 /// The Codex that the hub types into a session host's shell, quoted as that shell reads it: <c>codex</c> for a new

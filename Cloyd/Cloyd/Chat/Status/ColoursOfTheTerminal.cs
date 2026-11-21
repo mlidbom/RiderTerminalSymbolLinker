@@ -1,11 +1,12 @@
 using Avalonia.Controls;
+using Cloyd.Hub.RunningSessions;
 using Cloyd.Theming;
 
 namespace Cloyd.Chat.Status;
 
 /// <summary>
 /// The shades Cloyd shows the terminal's eight colours in, where it shows what Claude Code drew in them, such as the
-/// status line's stretches (<see cref="Hub.StretchOfTheStatusLine"/>): one in Windows' light theme and one in its dark,
+/// status line's stretches (<see cref="StretchOfTheStatusLine"/>): one in Windows' light theme and one in its dark,
 /// each readable on the chat's ground, as a terminal's theme picks its own. White and black are greys, so that neither
 /// vanishes on the ground of its own colour.
 /// </summary>

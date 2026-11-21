@@ -1,4 +1,4 @@
-namespace Cloyd.Hub;
+namespace Cloyd.Hub.Commands;
 
 /// <summary>
 /// An agent CLI's command line, which the hub types into a session host's shell: one that starts a new session, or one
