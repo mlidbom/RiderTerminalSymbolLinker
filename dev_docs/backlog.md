@@ -3,6 +3,19 @@
 What Magnus has deferred, and what waits for a time or an event before it goes on to another repository. Each entry
 says what it is, why it waits, and what to do once it can go ahead. Remove an entry once it's done.
 
+## Deferred by Magnus
+
+### An easy way to unfold all of a chat's conversation, or chosen parts of it
+
+**Magnus, 2026-11-21,** asked whether the chat's search should open folded tool calls for a match in them: "Skip it. We
+will solve it eventually by having an easy way to unfold everything or specific parts of the transcript." The search
+looks only in what shows with everything folded (`ShownInTheChat.TextShown`), so it finds nothing in a run's rows nor in
+a tool call's command and output.
+
+**Then:** the way to unfold, and the search looking in what is unfolded too: `TextShown` would say the text of what is
+open, in the order the view draws it, so that a match's occurrence lands on its line (`MatchesPainted.AsTheOneShown`);
+and tool output drawn in `MarkdownTextBlock`s, to be painted.
+
 ## Waiting for Compze
 
 ### Compze.xUnitBDD: a class's scenario run once for all its facts, opted into
