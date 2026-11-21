@@ -12,29 +12,37 @@ using Cloyd.Hub;
 namespace Cloyd.Chat.Status;
 
 /// <summary>
-/// The line over the chat's input box that shows, while Claude works, that it does, and at what, as Claude Code's own
-/// UI, the desktop app and claude.ai show it: a spinner (<see cref="SpinnerOfTheWorkingLine"/>); what the <see cref="TurnUnderWay"/> does, such as thinking or
-/// writing, or the tool call under way, with what the call was given under it, such as <c>$ ls /c/Dev</c>; how long the
-/// turn has taken; its output tokens; and how many commands it has run, such as <c>Thinking… (12s · ↓ 1.2k tokens)</c>.
-/// It takes no room while Claude doesn't work.
+/// The lines over the chat's input box that show, while Claude works, that it does, and at what, as Claude Code's own UI
+/// shows them: the tool call under way, if one is, as what it does and how long it has run, such as
+/// <c>Finding the repositories that use it · 5s</c>, with what it was given under it, such as <c>└ $ ls /c/Dev</c>; then the
+/// turn's line: a spinner (<see cref="SpinnerOfTheWorkingLine"/>), what the <see cref="TurnUnderWay"/> does, how long the
+/// turn has taken, its output tokens and how many commands it has run, such as
+/// <c>Thinking… (12m 05s · ↓ 1.2k tokens · 3 commands)</c>. They take no room while Claude doesn't work.
 /// </summary>
 /// <remarks>
 /// Magnus, 2026-11-20: "The lack of any information about that in the new UI is what keeps me switching back to the TUI
 /// constantly at the moment, to see what is going on." And 2026-11-21: "put it above the input, like other claude UIs do
-/// and include the time and tokens like they do". Over the box, rather than at the conversation's end, so that it shows
-/// however the conversation is scrolled, as the TUI's does.<br/>
-/// The time is counted from the turn's start, or, while the hub tells of no turn under way, as in a session that doesn't
-/// load the <c>tooling-commands</c> mod, from when the line saw Claude Code turn busy.
+/// and include the time and tokens like they do"; then, of the call and the turn in one line: "I would like it separated
+/// like in the CLI". Over the box, rather than at the conversation's end, so that they show however the conversation is
+/// scrolled, as the TUI's do.<br/>
+/// The turn's time is counted from its start, or, while the hub tells of no turn under way, as in a session that doesn't
+/// load the <c>tooling-commands</c> mod, from when the line saw Claude Code turn busy. The call's from when Claude made
+/// it, as the conversation has it.
 /// </remarks>
 sealed class WorkingLineOfTheChat : UserControl
 {
-   /// <summary>What the line says Claude does while it knows nothing more: no turn is told of, and no tool call is under way.</summary>
+   /// <summary>What the turn's line says Claude does while the hub tells of no turn under way.</summary>
    public const string Working = "Working…";
+
+   /// <summary>How many lines of what a call was given show under it: what is longer is cut, with an ellipsis, as the TUI cuts it.</summary>
+   const int LinesShownOfWhatACallWasGiven = 3;
 
    static readonly IBrush ClaudesOrange = new SolidColorBrush(Color.Parse("#D97757"));
 
+   readonly TextBlock _callUnderWay = new() { FontSize = 13, TextTrimming = TextTrimming.CharacterEllipsis, IsVisible = false };
+   readonly TextBlock _whatTheCallWasGiven = new() { FontFamily = LinesOfTheChat.Monospaced, FontSize = 12, TextWrapping = TextWrapping.NoWrap, TextTrimming = TextTrimming.CharacterEllipsis, Margin = new Thickness(4, 1, 0, 6), IsVisible = false };
    readonly TextBlock _says = new() { FontSize = 13, TextTrimming = TextTrimming.CharacterEllipsis, VerticalAlignment = VerticalAlignment.Center };
-   readonly TextBlock _callUnderWay = new() { FontFamily = LinesOfTheChat.Monospaced, FontSize = 12, TextTrimming = TextTrimming.CharacterEllipsis, Margin = new Thickness(18, 1, 0, 0), IsVisible = false };
+
    /// <summary>Turns the spinner, and counts the time: at half the speed of Claude Code's own spinner, as Magnus asked (2026-11-21).</summary>
    readonly DispatcherTimer _ticking = new() { Interval = TimeSpan.FromMilliseconds(240) };
 
@@ -46,7 +54,8 @@ sealed class WorkingLineOfTheChat : UserControl
 
    public WorkingLineOfTheChat()
    {
-      ColoursOfTheChat.Grey.AsTheForegroundOf(_callUnderWay);
+      ColoursOfTheChat.Text.AsTheForegroundOf(_callUnderWay);
+      ColoursOfTheChat.Grey.AsTheForegroundOf(_whatTheCallWasGiven);
       _ticking.Tick += (_, _) =>
       {
          Spinner.Turn();
@@ -56,20 +65,23 @@ sealed class WorkingLineOfTheChat : UserControl
       Content = new StackPanel
       {
          Margin = new Thickness(28, 2, 28, 2),
-         Children = { new DockPanel { Children = { Docked(Spinner), _says } }, _callUnderWay }
+         Children = { _callUnderWay, _whatTheCallWasGiven, new DockPanel { Children = { Docked(Spinner), _says } } }
       };
    }
 
-   /// <summary>The spinner at the line's start, which turns while the line shows.</summary>
+   /// <summary>The spinner at the start of the turn's line, which turns while the lines show.</summary>
    public SpinnerOfTheWorkingLine Spinner { get; } = new();
 
-   /// <summary>What the line says, as Claude Code's own spinner line, such as <c>Thinking… (12s · ↓ 1.2k tokens)</c>: null while it doesn't show.</summary>
-   public string? Says => IsVisible ? _says.Inlines!.Aggregate("", (said, it) => said + ((Run)it).Text) : null;
+   /// <summary>What the turn's line says, as Claude Code's own spinner line, such as <c>Thinking… (12s · ↓ 1.2k tokens)</c>: null while it doesn't show.</summary>
+   public string? Says => IsVisible ? TextOf(_says) : null;
 
-   /// <summary>What the tool call under way was given, as the line shows it under what it says, such as <c>$ ls /c/Dev</c>: null while it shows none.</summary>
-   public string? CallUnderWay => IsVisible && _callUnderWay.IsVisible ? _callUnderWay.Text : null;
+   /// <summary>The tool call under way, as what it does and how long it has run, such as <c>Finding the repositories that use it · 5s</c>: null while none shows.</summary>
+   public string? CallUnderWay => IsVisible && _callUnderWay.IsVisible ? TextOf(_callUnderWay) : null;
 
-   /// <summary>Shows what <paramref name="claudeCode"/>, the Claude Code that runs in the tab, does: the line shows while it is busy. Null while none runs.</summary>
+   /// <summary>What the tool call under way was given, as it shows under the call, such as <c>└ $ ls /c/Dev</c>: null while it shows none.</summary>
+   public string? WhatTheCallUnderWayWasGiven => IsVisible && _whatTheCallWasGiven.IsVisible ? _whatTheCallWasGiven.Text : null;
+
+   /// <summary>Shows what <paramref name="claudeCode"/>, the Claude Code that runs in the tab, does: the lines show while it is busy. Null while none runs.</summary>
    public void Show(RunningSession? claudeCode)
    {
       _claudeCode = claudeCode;
@@ -101,22 +113,47 @@ sealed class WorkingLineOfTheChat : UserControl
       if(_busySince is not {} busySince) return;
 
       var turn = _claudeCode?.TurnUnderWay;
-      var callShown = turn is null || turn.Activity.IsRunningTools ? _callsOfTheTurn.UnderWay : null;
+      ShowTheCall(turn is null || turn.Activity.IsRunningTools ? _callsOfTheTurn.UnderWay : null);
       _says.Inlines!.Clear();
-      _says.Inlines.Add(new Run(WhatItDoes()) { FontWeight = FontWeight.SemiBold, Foreground = ClaudesOrange });
-      _says.Inlines.Add(ColoursOfTheChat.Grey.AsTheForegroundOf(new Run($" ({string.Join(" · ", HowItGoes())})")));
-      _callUnderWay.Text = callShown?.WhatItWasGiven is {} given ? "└ " + given : null;
-      _callUnderWay.IsVisible = _callUnderWay.Text is not null;
+      _says.Inlines.Add(new Run(turn?.Activity.AsShown ?? Working) { FontWeight = FontWeight.SemiBold, Foreground = ClaudesOrange });
+      _says.Inlines.Add(ColoursOfTheChat.Grey.AsTheForegroundOf(new Run($" ({string.Join(" · ", HowTheTurnGoes())})")));
 
-      string WhatItDoes() => callShown?.WhatItDoes ?? turn?.Activity.AsShown ?? Working;
-
-      IEnumerable<string> HowItGoes()
+      IEnumerable<string> HowTheTurnGoes()
       {
          yield return HowLong(DateTime.UtcNow - (turn?.StartedAt ?? busySince));
          if(turn?.OutputTokensSoFar is long tokens and > 0) yield return $"↓ {InThousands(tokens)} tokens";
          if(_callsOfTheTurn.Commands is var commands and > 0) yield return commands == 1 ? "1 command" : $"{commands} commands";
       }
    }
+
+   /// <summary>Shows <paramref name="call"/>, the tool call under way, over the turn's line: none while it is null.</summary>
+   void ShowTheCall(ToolCallInTheChat? call)
+   {
+      _callUnderWay.IsVisible = call is not null;
+      _callUnderWay.Inlines!.Clear();
+      if(call is not null)
+      {
+         _callUnderWay.Inlines.Add(new Run(call.WhatItDoes) { FontWeight = FontWeight.SemiBold });
+         _callUnderWay.Inlines.Add(ColoursOfTheChat.Grey.AsTheForegroundOf(new Run($" · {HowLong(DateTime.UtcNow - call.MadeAt)}")));
+      }
+
+      _whatTheCallWasGiven.Text = call?.WhatItWasGiven is {} given ? AsShownUnderTheCall(given) : null;
+      _whatTheCallWasGiven.IsVisible = _whatTheCallWasGiven.Text is not null;
+   }
+
+   /// <summary>
+   /// <paramref name="given"/> as the TUI shows what a call was given under it: its first lines, the first after <c>└</c>,
+   /// the others in line with it, and an ellipsis after the last shown when more follow.
+   /// </summary>
+   static string AsShownUnderTheCall(string given)
+   {
+      var lines = given.Split('\n');
+      var shown = lines.Take(LinesShownOfWhatACallWasGiven).Select((line, at) => (at == 0 ? "└ " : "  ") + line).ToList();
+      if(lines.Length > LinesShownOfWhatACallWasGiven) shown[^1] += "…";
+      return string.Join("\n", shown);
+   }
+
+   static string TextOf(TextBlock block) => block.Inlines!.Aggregate("", (said, it) => said + ((Run)it).Text);
 
    /// <summary><paramref name="taken"/>, as Claude Code's own UI says how long a turn has taken: <c>42s</c>, <c>3m 05s</c>.</summary>
    static string HowLong(TimeSpan taken) => taken.TotalMinutes < 1 ? $"{Math.Max(0, (int)taken.TotalSeconds)}s" : $"{(int)taken.TotalMinutes}m {taken.Seconds:00}s";

@@ -441,15 +441,14 @@ input box") ported, with Magnus's calls above:
 - **Saved with the window** (`SavedSessionTab.Draft`): the messages that waited to be given, then the draft, each part
   as it came in; they come back into the box, to be sent again by Magnus. Not the message being given, which the hub
   goes on typing whatever becomes of Cloyd.
-- **The status line under the box** (`Cloyd.Chat.Status.StatusLineOfTheChat`), as the Kotlin chat's: at its left what
-  Claude does, from the running session's `status` (`StatusOfAClaudeCode`), but nothing while it works, which the
-  working line over the box tells (Magnus, 2026-11-21: "put it above the input, like other claude UIs do"); at its
-  right Claude Code's own status line,
-  from its `statusLine` (`ClaudeCodesStatusLine`), the model, the effort level, the permission mode in short as the
-  desktop app names it, and the context used. The tab tells the chat its running session (`ChatOfASession.ClaudeCode`),
-  which hands it to the box and the line. Specified through the hub for what Claude does; Claude Code's status line with
-  running sessions made in the specification, as the stand-in shows the hub none (asked of the tooling owner,
-  2026-11-21).
+- **The status line under the box** (`Cloyd.Chat.Status.StatusLineOfTheChat`): Claude Code's own, all of it, as the
+  terminal shows it under Claude Code's box (Magnus, 2026-11-21: "get all the information from our custom status line
+  in the CLI into the status line here"): the running session's `statusLine.text` (`ClaudeCodesStatusLine.Text`), the
+  machine's status line command's, without its colours, which the hub doesn't keep; and under it the permission mode,
+  `⏵⏵` and its `shownAs`. "No Claude Code runs in this tab" while none runs. What Claude does isn't told there: first a
+  left side said it, and Magnus, of its "Idle": "This is not needed with progress clearly shown above the input." The
+  tab tells the chat its running session (`ChatOfASession.ClaudeCode`), which hands it to the box and the lines.
+  Specified with running sessions made in the specification, as the stand-in shows the hub no status line yet.
 - **Specified** with the stand-in through the sandbox's hub (`Cloyd.Specifications/Chat/Writing`): a message of two
   lines sent; text and an image pasted, kept apart, and sent; Escape and a message sent while Claude works, which
   interrupt nothing, and the message shown over the box as sent, as queued, and no more once the conversation has it;
@@ -461,20 +460,25 @@ input box") ported, with Magnus's calls above:
 **2026-11-21** (`Cloyd.Chat.Status`, `Cloyd.Hub`), the Kotlin chat's (`claude-sessions.md`, "A working line" and "What
 Claude writes shows as it comes") ported, with Magnus's calls of the day.
 
-- **The working line over the box** (`WorkingLineOfTheChat`), shown while the Claude Code is `busy`, as Claude Code's
-  own spinner line: a spinner of Claude Code's glyphs in Claude's orange; what the turn does, in orange, from the running
-  session's `turnUnderWay` (`TurnUnderWay`, `ActivityOfATurn`): "Waiting for the model…", "Thinking…", "Writing…",
-  "Writing the Write call…", or while tools run the call under way; then, grey, in parentheses as the TUI has them, how
-  long the turn has taken, its output tokens and the commands it ran: `Thinking… (1m 12s · ↓ 1.2k tokens · 3 commands)`.
-  Magnus, 2026-11-21: "put it above the input, like other claude UIs do and include the time and tokens like they do".
-- **The tool call under way,** the last of the turn's with no result (`ToolCallsOfTheLastTurn`, from what the chat shows
-  of the conversation), as Claude Code's UI shows a call that runs (Magnus, 2026-11-21, of its `● Finding other
-  repositories…` and `└ $ ls /c/Dev; grep …`: "so that I can see what the agent is doing right now"): what it does,
-  `ToolCallInTheChat.WhatItDoes`, the description Claude gave a command, else the row's verb and target; and under it,
-  `WhatItWasGiven`, a command as `$ …` on one line, or a file's path. Shown while the activity is `runningTools`, and
-  always where the hub tells of no turn.
-- **Where the hub tells of no turn,** as in a session that doesn't load the `tooling-commands` mod: `Working…` or the
-  call under way, and the time from when the line saw Claude Code turn busy.
+- **The working lines over the box** (`WorkingLineOfTheChat`), shown while the Claude Code is `busy`, as Claude Code's
+  own UI shows the call under way apart from its spinner line (Magnus, 2026-11-21: "put it above the input, like other
+  claude UIs do and include the time and tokens like they do", then, of the two in one line, "I would like it
+  separated like in the CLI"):
+  - **The tool call under way,** the last of the turn's with no result (`ToolCallsOfTheLastTurn`, from what the chat
+    shows of the conversation) ("so that I can see what the agent is doing right now"): what it does, in bold,
+    `ToolCallInTheChat.WhatItDoes`, the description Claude gave a command, else the row's verb and target, and how long
+    it has run since Claude made it (`MadeAt`), `Finding the repositories that use it · 5s`; under it, `WhatItWasGiven`,
+    a command's first three lines but the empty ones, the first after `└ $`, an ellipsis after the third when more
+    follow, as the TUI cuts it; or a file's path. Shown while the activity is `runningTools`, and always where the hub
+    tells of no turn. It shows once the conversation has the call, which took a few seconds in a live check.
+  - **The turn's line under it:** a spinner of Claude Code's glyphs in Claude's orange (`SpinnerOfTheWorkingLine`, as
+    high whichever glyph it shows: the glyphs' fonts differ in height, and the line jumped 2 pixels with each turn on
+    Magnus's window; at half Claude Code's speed, as he asked); what the turn does, in orange, from the running
+    session's `turnUnderWay` (`TurnUnderWay`, `ActivityOfATurn`): "Waiting for the model…", "Thinking…", "Writing…",
+    "Writing the Write call…", "Running tools…"; then, grey, in parentheses as the TUI has them, how long the turn has
+    taken, its output tokens and the commands it ran: `Thinking… (1m 12s · ↓ 1.2k tokens · 3 commands)`.
+- **Where the hub tells of no turn,** as in a session that doesn't load the `tooling-commands` mod: `Working…`, the
+  time from when the line saw Claude Code turn busy, and the call under way over it.
 - **The box while Claude waits in the terminal** (`WaitingForMagnusInTheTerminal`), between the conversation and the
   working line, while the status is `waiting`: Claude's orange, white text, "⚠ Claude waits for you in the terminal",
   what for, from `waitingFor`, such as "Permission prompt: answer it in the terminal.", and a white **Show the

@@ -19,5 +19,5 @@ public class When_no_Claude_Code_runs_in_a_tab : SpecificationOpeningWindows
       _tab = OnTheUIThread(() => window.Tabs.Single());
    }
 
-   [XF] public void the_chats_status_line_tells_so() => OnTheUIThread(() => _tab.Chat.StatusLine.WhatClaudeDoes).Must().Be(StatusLineOfTheChat.NoClaudeCodeRuns);
+   [XF] public void the_chats_status_line_tells_so() => OnTheUIThread(() => _tab.Chat.StatusLine.ClaudeCodesStatusLine).Must().Be(StatusLineOfTheChat.NoClaudeCodeRuns);
 }

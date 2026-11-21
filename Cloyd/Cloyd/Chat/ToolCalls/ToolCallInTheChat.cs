@@ -92,14 +92,17 @@ sealed partial record ToolCallInTheChat(MessageInTheAnswer.ToolCall Call, ToolRe
    /// </summary>
    public string WhatItDoes => Command is not null && Text("description") is {Length: > 0} description ? description : $"{Kind.PresentTense} {Target}";
 
+   /// <summary>When Claude made the call, as the conversation has it: about when it began to run.</summary>
+   public DateTime MadeAt => Call.Time;
+
    /// <summary>
    /// What the call was given, in full, as Claude Code's own UI shows it under the call while it runs: a command as
-   /// <c>$ ls /c/Dev; grep …</c>, on one line; a file's whole path; a search's folder. Null for what the call does says
-   /// all of it.
+   /// <c>$ ls /c/Dev</c>, line by line, but its empty lines; a file's whole path; a search's folder. Null for what the call
+   /// does says all of it.
    /// </summary>
    public string? WhatItWasGiven => Call.Name switch
    {
-      "Bash" or "PowerShell" => "$ " + string.Join(" ", Text("command").ReplaceLineEndings("\n").Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)),
+      "Bash" or "PowerShell" => "$ " + string.Join("\n", Text("command").ReplaceLineEndings("\n").Split('\n', StringSplitOptions.RemoveEmptyEntries)),
       "Read" or "Edit" or "MultiEdit" or "Write" => Text("file_path"),
       "NotebookEdit" => Text("notebook_path"),
       "Grep" or "Glob" when Text("path") is {Length: > 0} folder => $"in {folder}",

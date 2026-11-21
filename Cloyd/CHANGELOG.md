@@ -48,16 +48,18 @@ All notable changes to Cloyd are documented here. The format follows
     red: such as when Claude Code's own box in the terminal holds text, which the message would have mangled.
   - **A slash command,** such as `/compact`, switches the tab to its terminal, where Claude Code shows what it does.
   - **What the box holds comes back with the window,** after Cloyd restarts, typed and pasted parts as they came in.
-- **A status line under the chat's input box,** as the desktop app's footer: at its left, whether Claude waits for you
-  in the terminal (and for what, such as a permission prompt), or is idle; at its right, Claude Code's own status line,
-  such as "Opus 5.5 · xhigh · Auto · 23% context", which shows once Claude Code has given it to the hub, within a minute
-  of its start.
-- **A working line over the chat's input box while Claude works,** as Claude Code's own UI has its spinner line, such
-  as `Thinking… (1m 12s · ↓ 1.2k tokens · 3 commands)`: what Claude does, waiting for the model, thinking, writing,
-  writing a tool call such as `Writing the Write call…`, or the tool call under way; how long the turn has taken; its
-  output tokens; and how many commands it has run. A command under way shows as Claude described it, with the command
-  under it, as `└ $ ls /c/Dev`; a file's tool call with the file's path. Where Claude Code doesn't tell the hub of its
-  turn, the line says `Working…`, or the tool call under way, and counts the time from when Claude started working.
+- **Claude Code's own status line under the chat's input box,** all of it, as the terminal shows it under Claude Code's
+  box: your status line command's, such as "Opus 5.5 · xhigh · context 42% · week 100% · Fable 7% · €361.07", with the
+  permission mode under it, such as "⏵⏵ bypass permissions on". It shows once Claude Code has given it to the hub,
+  within a minute of its start, and without its colours.
+- **Over the chat's input box while Claude works, what it does, as Claude Code's own UI shows it:**
+  - **The tool call under way,** as Claude described it, and how long it has run, such as
+    `Finding the repositories that use it · 5s`, with the first three lines of the command under it, as
+    `└ $ ls /c/Dev`; a file's tool call with the file's path.
+  - **Under it, the turn's line:** a spinner; what Claude does, waiting for the model, thinking, writing, writing a tool
+    call such as `Writing the Write call…`, or running tools; how long the turn has taken; its output tokens; and how
+    many commands it has run, such as `Thinking… (1m 12s · ↓ 1.2k tokens · 3 commands)`. Where Claude Code doesn't tell
+    the hub of its turn, it says `Working…`, and counts the time from when Claude started working.
 - **A box in Claude's orange between the conversation and the input box while Claude waits for you in the terminal,**
   such as at a permission prompt, which only the terminal shows and answers: it says what Claude waits for, and its
   **Show the terminal** button switches the tab to the terminal, as Ctrl+H does. The tab doesn't switch by itself, so
