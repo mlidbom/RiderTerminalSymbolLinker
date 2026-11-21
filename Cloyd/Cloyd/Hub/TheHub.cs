@@ -108,7 +108,7 @@ sealed partial class TheHub
       if(answer.StatusCode is HttpStatusCode.Conflict or HttpStatusCode.NotFound)
          throw new RefusedByTheHub((await Read<RefusalAnswer>(answer, cancellation)).Error);
 
-      await Read<ClaudeCodeStartedInTheShellAnswer>(answer, cancellation);
+      await Read<AgentCliStartedInTheShellAnswer>(answer, cancellation);
    }
 
    /// <summary>
