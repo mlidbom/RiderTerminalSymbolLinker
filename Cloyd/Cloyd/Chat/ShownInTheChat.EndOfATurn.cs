@@ -31,6 +31,8 @@ partial record ShownInTheChat
       /// </summary>
       public EndOfATurn TheLastWith(BackgroundWork? work) => this with { StillRunning = work?.TasksCounted };
 
+      public override string TextShown => Line;
+
       /// <summary>The line, as the TUI writes it.</summary>
       public string Line => $"Worked for {Took} · done {Ended}{(StillRunning is {} running ? $" · {running} still running" : "")}";
    }

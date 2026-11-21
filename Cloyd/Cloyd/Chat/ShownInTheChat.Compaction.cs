@@ -15,6 +15,8 @@ partial record ShownInTheChat
    {
       public static Compaction Of(MessageInTheAnswer.Compaction compaction) => new(compaction.Id, compaction.TokensBeforeIt - compaction.TokensAfterIt);
 
+      public override string TextShown => Line;
+
       /// <summary>The line, as the app writes it.</summary>
       public string Line => TokensSaved is {} saved ? $"Compacted session · saved {InThousands(saved)} tokens" : "Compacted session";
 

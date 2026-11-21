@@ -9,6 +9,8 @@ partial record ShownInTheChat
    /// <param name="AsTyped">The command as typed, such as <c>/compact keep the fix</c>.</param>
    public sealed record SlashCommand(string Id, string AsTyped) : ShownInTheChat
    {
+      public override string TextShown => AsTyped;
+
       /// <summary>
       /// Whether <paramref name="command"/> is the <c>/compact</c> that asked for <paramref name="shownBefore"/>, the
       /// compaction Claude Code writes before it: the app shows the command first, then the compaction's line.

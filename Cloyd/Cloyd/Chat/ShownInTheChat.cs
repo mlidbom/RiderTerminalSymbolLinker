@@ -15,6 +15,12 @@ namespace Cloyd.Chat;
 /// </remarks>
 abstract partial record ShownInTheChat
 {
+   /// <summary>
+   /// The text the chat shows of it, as drawn closed: what a search of the chat finds in it, drawn or not
+   /// (<see cref="Searching.FoundInTheChat"/>). Of what Claude wrote, its markdown.
+   /// </summary>
+   public abstract string TextShown { get; }
+
    /// <summary>What the chat shows of <paramref name="conversation"/>, in order.</summary>
    /// <remarks>
    /// What the app doesn't show isn't shown: Claude's thinking, an interruption, and a prompt that is a background task's

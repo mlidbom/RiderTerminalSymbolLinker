@@ -31,7 +31,7 @@ sealed class DrawnEndOfTheConversation
    public bool HasMoreAbove => FirstDrawn > 0;
 
    /// <summary>Where in <see cref="Shown"/> what is drawn starts.</summary>
-   int FirstDrawn => Shown.Count - _drawn.Count;
+   public int FirstDrawn => Shown.Count - _drawn.Count;
 
    /// <summary>
    /// Shows <paramref name="now"/> in place of what it shows: redraws only what differs, from the first thing that does on,
@@ -54,6 +54,12 @@ sealed class DrawnEndOfTheConversation
 
       while(_drawn.Count > same - firstDrawn) _drawn.RemoveAt(_drawn.Count - 1);
       foreach(var added in now.Skip(same)) _drawn.Add(added);
+   }
+
+   /// <summary>Draws more above what is drawn until the thing at <paramref name="shown"/> in <see cref="Shown"/> is drawn, as a search shows a match in it.</summary>
+   public void DrawAsFarUpAs(int shown)
+   {
+      for(var at = FirstDrawn - 1; at >= shown; at--) _drawn.Insert(0, Shown[at]);
    }
 
    /// <summary>Draws as many as <see cref="DrawnAtATime"/> more things above what is drawn, as Magnus scrolls up to its top.</summary>

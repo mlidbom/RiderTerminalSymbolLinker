@@ -12,6 +12,8 @@ partial record ShownInTheChat
    /// <param name="Line">The line, such as <c>From tooling-owner: Done, published.</c></param>
    public sealed record PromptFromElsewhere(string Id, string Line) : ShownInTheChat
    {
+      public override string TextShown => Line;
+
       /// <summary>
       /// Whether the chat shows <paramref name="prompt"/>: not a background task's notice, which the app doesn't show, Claude's
       /// answer to it following the turn before; nor Claude Code's own notices.

@@ -17,6 +17,9 @@ partial record ShownInTheChat
       /// <summary>Whether it is one call by itself, which is shown as its own line, with no line counting it.</summary>
       public bool IsOneCall => Calls.Count == 1;
 
+      /// <summary>Its line: the line that counts the calls, or a call by itself's verb and what it acted on. Not the rows it opens to.</summary>
+      public override string TextShown => IsOneCall ? $"{Calls[0].Verb} {Calls[0].Target}" : Counted;
+
       /// <summary>The run, with <paramref name="call"/> made after its calls.</summary>
       public RunOfToolCalls With(ToolCallInTheChat call) => new([.. Calls, call]);
 

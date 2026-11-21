@@ -373,8 +373,8 @@ Each as it is found: what the app does, what he asked for and where, and that th
   the end without end, the chat flickering and Cloyd not answering (2026-11-20), as a chat's heights range from a line to
   a screenful and change as Claude's markdown is laid out. Specified with the sample session a hundred times over
   (`TheSampleSession.RepeatedInTheSandbox`).
-- **Following the end** (`FollowingTheEnd`) is told by what Magnus does, the wheel, the keys and the scroll bar, not by
-  where the view is: what is drawn grows without him.
+- **Following the end** (`WhatTheViewFollows`), or a match a search shows in place of it, is told by what Magnus does,
+  the wheel, the keys and the scroll bar, not by where the view is: what is drawn grows without him.
 - **Windows' theme, as the app follows it** (Magnus, 2026-11-20): Cloyd follows it, light or dark, and the chat's
   colours (`ColoursOfTheChat`) are near the app's in each, its code blocks in Visual Studio Code's colours for each. The
   terminal stays dark in either, as Iciclecreek's terminal draws itself.
@@ -502,6 +502,31 @@ manage` after the permission mode, and after a turn `✻ Sautéed for 21s · don
   background work made in the specification (`When_a_chats_status_line_shows_what_runs_in_the_background`). The turn's
   end line after the stand-in's turn of 10 seconds (`When_the_hub_tells_of_Claudes_turn`), and how its time is said
   (`When_the_line_after_a_turn_says_when_it_ended`).
+
+### Searching the conversation, as it's built
+
+Magnus, 2026-11-21: "How hard is a search in the transcript to write? If easy, please do it right away using standard
+search keyboard shortcuts. Ctrl+F F3 etc". As in a browser (`Cloyd.Chat.Searching`):
+
+- **The keys,** wherever the keyboard is in the chat: Ctrl+F opens the find bar (`FindBarOfTheChat`) at the top right of
+  the conversation, its box selected to be typed over; F3 the next match, Shift+F3 the one before, and in the box Enter
+  and Shift+Enter; Escape closes it, the keyboard going back to the input box. The terminal keeps its keys: there, Ctrl+F
+  goes to Claude Code, as other keys do.
+- **Back in time:** the matches are numbered from the conversation's end, "1 of 16" the nearest it, and the next match
+  is the one above, as Windows Terminal searches up by default. Searched for as typed, case not mattering.
+- **The whole conversation, drawn or not** (`FoundInTheChat`): each thing shown says what text it shows
+  (`ShownInTheChat.TextShown`), Claude's markdown as markdown, a run of tool calls its line and not the rows it opens to.
+  A match above what is drawn is drawn up to (`DrawnEndOfTheConversation.DrawAsFarUpAs`).
+- **Painted by LiveMarkdown** (`MatchesPainted`): its `MarkdownTextBlock` paints named highlight ranges, in styles the
+  chat sets for Windows' theme, and its renderer searches Claude's markdown as rendered, painting again as it grows. The
+  bubbles, grey lines and lines that open are drawn with `MarkdownTextBlock` too, to be painted alike. Each match drawn
+  yellow, the one shown orange. Where the markdown rendered has fewer matches than its source, the last is shown.
+- **The view follows the match shown** (`WhatTheViewFollows.FollowInPlaceOfTheEnd`) until Magnus scrolls: drawn far up,
+  the things above it grow as their markdown is rendered after the scroll, and the view's anchor moved it away (seen in
+  the specification, 2026-11-21).
+- **Specified** with the sample session 8 times over, 16 matches of "started." in Magnus's prompts and Claude's replies
+  (`When_Magnus_searches_a_chat`): the count, the match nearest the end shown and in view, every match drawn painted; F3
+  to the match furthest up, drawn for it; Shift+F3 round to it; Escape.
 
 ### While Claude works, as it's built
 

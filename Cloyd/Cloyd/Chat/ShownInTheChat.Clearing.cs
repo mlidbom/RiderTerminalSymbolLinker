@@ -11,5 +11,7 @@ partial record ShownInTheChat
    {
       /// <summary>The line.</summary>
       public const string Line = "Cleared · a new session begins";
+
+      public override string TextShown => Line;
    }
 }

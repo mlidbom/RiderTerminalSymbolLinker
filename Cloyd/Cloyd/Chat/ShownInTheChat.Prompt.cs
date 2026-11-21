@@ -10,6 +10,8 @@ partial record ShownInTheChat
    /// <param name="Text">What he typed and pasted, in order, and each image he pasted as its placeholder, such as <c>[Image #1]</c>.</param>
    public sealed record Prompt(string Id, string Text) : ShownInTheChat
    {
+      public override string TextShown => Text;
+
       public static Prompt Of(MessageInTheAnswer.PromptOfMagnuss prompt)
       {
          var images = 0;

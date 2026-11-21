@@ -4,10 +4,15 @@ using Avalonia.Controls.Documents;
 using Avalonia.Layout;
 using Avalonia.Media;
 using Cloyd.Theming;
+using LiveMarkdown.Avalonia;
 
 namespace Cloyd.Chat.Views;
 
 /// <summary>The plain parts the chat is drawn with: bubbles, grey lines, monospaced text, and lines that open and close what is under them.</summary>
+/// <remarks>
+/// The text of a bubble, a grey line and a line that opens is in LiveMarkdown's <see cref="MarkdownTextBlock"/>, as Claude's
+/// markdown is, so that a search of the chat paints its matches in them all alike (<see cref="Searching.MatchesPainted"/>).
+/// </remarks>
 static class LinesOfTheChat
 {
    /// <summary>The widest a bubble grows, as its text grows: about three quarters of the column.</summary>
@@ -21,7 +26,7 @@ static class LinesOfTheChat
    /// <summary>A prompt's bubble, at the right of the column, its text in <paramref name="inlines"/>: at most <paramref name="mostLines"/> lines of it, cut with an ellipsis.</summary>
    public static Control Bubble(int mostLines, params Inline[] inlines)
    {
-      var text = ColoursOfTheChat.Text.AsTheForegroundOf(new SelectableTextBlock { TextWrapping = TextWrapping.Wrap, MaxLines = mostLines, TextTrimming = TextTrimming.CharacterEllipsis });
+      var text = ColoursOfTheChat.Text.AsTheForegroundOf(new MarkdownTextBlock { TextWrapping = TextWrapping.Wrap, MaxLines = mostLines, TextTrimming = TextTrimming.CharacterEllipsis });
       text.Inlines!.AddRange(inlines);
       return ColoursOfTheChat.BubbleOfAPrompt.AsTheBackgroundOf(new Border
       {
@@ -34,7 +39,7 @@ static class LinesOfTheChat
    }
 
    /// <summary>A grey line, such as <c>Compacted session</c>.</summary>
-   public static Control Grey(string line) => ColoursOfTheChat.Grey.AsTheForegroundOf(new TextBlock { Text = line, TextWrapping = TextWrapping.Wrap });
+   public static Control Grey(string line) => ColoursOfTheChat.Grey.AsTheForegroundOf(new MarkdownTextBlock { Text = line, TextWrapping = TextWrapping.Wrap });
 
    /// <summary><paramref name="text"/> in the monospaced font, selectable, as a tool's output is shown: in <paramref name="colour"/>, or the chat's text colour.</summary>
    public static SelectableTextBlock InMonospace(string text, ColourOfTheTheme? colour = null) =>
@@ -53,7 +58,7 @@ static class LinesOfTheChat
    /// </summary>
    public static Control Opening(Inline[] inlines, Func<Control> opened, bool isOpen, Action<bool> toggled)
    {
-      var text = ColoursOfTheChat.Grey.AsTheForegroundOf(new TextBlock { TextWrapping = TextWrapping.Wrap });
+      var text = ColoursOfTheChat.Grey.AsTheForegroundOf(new MarkdownTextBlock { TextWrapping = TextWrapping.Wrap, IsHitTestVisible = false });
       var chevron = Coloured("", ColoursOfTheChat.Grey);
       text.Inlines!.AddRange(inlines);
       text.Inlines.Add(chevron);

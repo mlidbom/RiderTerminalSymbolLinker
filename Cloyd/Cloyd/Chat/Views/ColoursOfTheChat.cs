@@ -45,7 +45,13 @@ static class ColoursOfTheChat
    /// <summary>The ground of a code block in Claude's markdown.</summary>
    public static readonly ColourOfTheTheme GroundOfACodeBlock = new("#FBFBFA", "#1F1F1E");
 
-   static readonly ColourOfTheTheme[] All = [Text, Grey, BubbleOfAPrompt, SlashCommand, Failed, Added, Removed, GroundOfAnAddedLine, GroundOfARemovedLine, Border, GroundOfACodeBlock];
+   /// <summary>The ground of a match a search of the chat found, as a browser paints it.</summary>
+   public static readonly ColourOfTheTheme AMatch = new("#FBE38E", "#5E5020");
+
+   /// <summary>The ground of the match a search shows, over that of the other matches.</summary>
+   public static readonly ColourOfTheTheme TheMatchShown = new("#F7A35C", "#9C5A1C");
+
+   static readonly ColourOfTheTheme[] All = [Text, Grey, BubbleOfAPrompt, SlashCommand, Failed, Added, Removed, GroundOfAnAddedLine, GroundOfARemovedLine, Border, GroundOfACodeBlock, AMatch, TheMatchShown];
 
    /// <summary>
    /// The colours LiveMarkdown.Avalonia draws Claude's markdown in, by the keys of its <c>Defaults.axaml</c>, which are

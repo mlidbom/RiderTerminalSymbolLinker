@@ -1,9 +1,13 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Presenters;
 using Avalonia.Controls.Templates;
+using Avalonia.Input;
+using Avalonia.Interactivity;
 using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Threading;
+using Cloyd.Chat.Searching;
 using Cloyd.Chat.Status;
 using Cloyd.Chat.Views;
 using Cloyd.Chat.Writing;
@@ -46,7 +50,7 @@ sealed class ChatOfASession : UserControl
 
    readonly OpenedInTheChat _opened = new();
 
-   readonly FollowingTheEnd _end;
+   readonly WhatTheViewFollows _followed;
    readonly DrawnEndOfTheConversation _drawn = new();
    CancellationTokenSource? _following;
    CancellationTokenSource? _followingTheTurn;
@@ -65,6 +69,9 @@ sealed class ChatOfASession : UserControl
 
    /// <summary>Whether drawing more above is under way: see <see cref="DrawMoreAboveOnceLaidOut"/>.</summary>
    bool _drawingMoreAbove;
+
+   /// <summary>What the search typed into the <see cref="FindBar"/> found: null while nothing is searched for.</summary>
+   FoundInTheChat? _found;
 
    /// <summary>A chat that follows its conversation through <paramref name="hub"/>, and sends through it: the images pasted into its input box are saved in <paramref name="pastedImages"/>.</summary>
    public ChatOfASession(TheHub hub, PastedImages pastedImages)
@@ -86,13 +93,23 @@ sealed class ChatOfASession : UserControl
          HorizontalAlignment = HorizontalAlignment.Stretch
       };
       _scroller = new ScrollViewer { Content = _column, HorizontalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Disabled, Focusable = true };
-      _end = new FollowingTheEnd(_scroller);
+      _followed = new WhatTheViewFollows(_scroller);
       KeepTheViewStillAsMoreIsDrawnAbove();
       _scroller.ScrollChanged += (_, changed) => { if(changed.OffsetDelta.Y < 0 && _scroller.Offset.Y <= NearTheTop) DrawMoreAboveOnceLaidOut(); };
+      SearchWithTheFindBar();
       LookOfTheApp();
       SizeChanged += (_, size) => InputBox.MostHeight = size.NewSize.Height * MostOfTheHeightTheInputBoxTakes;
-      Content = Rows(_notice, _scroller, WaitingForMagnusInTheTerminal, CallUnderWay, MessagesOnTheirWay, WorkingLine, InputBox, StatusLine);
+      Content = Rows(_notice, new Panel { Children = { _scroller, FindBar } }, WaitingForMagnusInTheTerminal, CallUnderWay, MessagesOnTheirWay, WorkingLine, InputBox, StatusLine);
    }
+
+   /// <summary>The bar at the top right of the conversation that Magnus searches it with, as Ctrl+F opens it.</summary>
+   public FindBarOfTheChat FindBar { get; } = new();
+
+   /// <summary>
+   /// The match of the search that the chat shows, painted apart from the others and scrolled to, once it is laid out:
+   /// null while there is none.
+   /// </summary>
+   public TextHighlightMatch? MatchShown { get; private set; }
 
    /// <summary>Where Magnus writes to the Claude Code that runs in the tab.</summary>
    public InputBoxOfTheChat InputBox { get; }
@@ -147,7 +164,7 @@ sealed class ChatOfASession : UserControl
    public IReadOnlyList<ShownInTheChat> Drawn => _drawn.Drawn;
 
    /// <summary>Whether it follows the end of the conversation as it goes on: until Magnus scrolls up, and again once he scrolls back down to the end.</summary>
-   public bool FollowsTheEnd => _end.IsFollowing;
+   public bool FollowsTheEnd => _followed.IsFollowingTheEnd;
 
    /// <summary>What the chat tells above the conversation, as why it can't follow it: null while it tells nothing.</summary>
    public string? Notice => _notice.IsVisible ? _notice.Text : null;
@@ -257,7 +274,7 @@ sealed class ChatOfASession : UserControl
       WorkingLine.Show(conversation);
       CallUnderWay.Show(conversation);
       DrawWhatIsShown();
-      if(isTheFirst) _end.ScrollToTheEnd();
+      if(isTheFirst) _followed.ScrollToTheEnd();
    }
 
    /// <summary>Shows <paramref name="block"/>, the block Claude writes, or wrote last, at the conversation's end, until the conversation has it.</summary>
@@ -276,6 +293,9 @@ sealed class ChatOfASession : UserControl
    {
       var conversation = WithWhatTheLastTurnLeftRunning(_conversation);
       _drawn.Show(_blockBeingWritten is { IsText: true } block ? [.. conversation, new ShownInTheChat.ClaudesText(block.Id, block.Text)] : conversation);
+      if(_found is null) return;
+      _found = _found.In(Shown);
+      FindBar.Show(_found.Counted);
    }
 
    /// <summary>
@@ -339,8 +359,98 @@ sealed class ChatOfASession : UserControl
          _ => throw new ArgumentOutOfRangeException(nameof(shown), shown, "The chat has no view of it.")
       };
       view.Margin = new Thickness(0, 0, 0, shown is ShownInTheChat.Prompt or ShownInTheChat.SlashCommand ? 24 : 14);
+      if(_found is {} found) MatchesPainted.In(view, found.Pattern);
       return view;
    }
+
+   /// <summary>
+   /// Has Magnus search the conversation with the <see cref="FindBar"/>, as in a browser: Ctrl+F opens it, F3 shows the next
+   /// match and Shift+F3 the one before, wherever the keyboard is in the chat; what he types into it is searched for as he
+   /// types.
+   /// </summary>
+   void SearchWithTheFindBar()
+   {
+      AddHandler(KeyDownEvent, SearchOnItsKeys, RoutingStrategies.Tunnel);
+      FindBar.TextChanged += Find;
+      FindBar.NextAsked += () => Show(_found?.Next());
+      FindBar.PreviousAsked += () => Show(_found?.Previous());
+      FindBar.Closed += () =>
+      {
+         Find("");
+         TakeTheKeyboard();
+      };
+   }
+
+   void SearchOnItsKeys(object? sender, KeyEventArgs key)
+   {
+      switch(key)
+      {
+         case { Key: Key.F, KeyModifiers: KeyModifiers.Control }:
+            FindBar.Open();
+            break;
+         case { Key: Key.F3, KeyModifiers: KeyModifiers.None or KeyModifiers.Shift } when !FindBar.IsOpen:
+            FindBar.Open();
+            break;
+         case { Key: Key.F3, KeyModifiers: KeyModifiers.None }:
+            Show(_found?.Next());
+            break;
+         case { Key: Key.F3, KeyModifiers: KeyModifiers.Shift }:
+            Show(_found?.Previous());
+            break;
+         default:
+            return;
+      }
+
+      key.Handled = true;
+   }
+
+   /// <summary>Searches the conversation for <paramref name="text"/>, painting each match drawn, and shows the match nearest the end: no more searching when it is empty.</summary>
+   void Find(string text)
+   {
+      _found = text.Length > 0 ? FoundInTheChat.Of(text, Shown) : null;
+      foreach(var view in _column.GetRealizedContainers().OfType<ContentPresenter>().Select(it => it.Child).OfType<Control>())
+         MatchesPainted.In(view, _found?.Pattern);
+      Show(_found);
+   }
+
+   /// <summary>
+   /// Shows the match <paramref name="found"/> shows, which the search is from then on: draws the conversation as far up as
+   /// the match is, and once it is laid out, paints it apart from the others and scrolls to it.
+   /// </summary>
+   void Show(FoundInTheChat? found)
+   {
+      _found = found;
+      FindBar.Show(found?.Counted);
+      if(MatchShown is {} shownBefore) MatchesPainted.NoLongerShown(shownBefore);
+      MatchShown = null;
+      _followed.StopFollowingInPlaceOfTheEnd();
+      if(found?.Shown is not {} match) return;
+
+      _drawn.DrawAsFarUpAs(match.Shown);
+      ShowOnceLaidOut(found, match, triesLeft: 40);
+   }
+
+   /// <summary>
+   /// Paints <paramref name="match"/> as the one shown and has the view follow it once the chat is laid out, unless another
+   /// search or match is shown by then: what was drawn above it grows as its markdown is rendered, after it is laid out.
+   /// Claude's markdown that the match is in is too: until it has been, the view follows the view the match is in, and the
+   /// chat tries again a little later, as many as <paramref name="triesLeft"/> more times.
+   /// </summary>
+   void ShowOnceLaidOut(FoundInTheChat found, MatchInTheChat match, int triesLeft) =>
+      Dispatcher.UIThread.Post(() =>
+      {
+         if(found != _found || _column.ContainerFromIndex(match.Shown - _drawn.FirstDrawn) is not ContentPresenter { Child: {} view }) return;
+
+         if(MatchesPainted.AsTheOneShown(view, found.Pattern, match.Occurrence) is {} shown)
+         {
+            MatchShown = shown;
+            _followed.FollowInPlaceOfTheEnd(() => MatchesPainted.ScrollTo(shown));
+            return;
+         }
+
+         _followed.FollowInPlaceOfTheEnd(view.BringIntoView);
+         if(triesLeft > 0) DispatcherTimer.RunOnce(() => ShowOnceLaidOut(found, match, triesLeft - 1), TimeSpan.FromMilliseconds(50));
+      }, DispatcherPriority.Loaded);
 
    /// <summary>
    /// Has the chat look as the app's does: in the <see cref="ColoursOfTheChat"/> of Windows' theme, and the markdown of
@@ -350,6 +460,8 @@ sealed class ChatOfASession : UserControl
    void LookOfTheApp()
    {
       Resources.MergedDictionaries.Add(ColoursOfTheChat.AsResources());
+      MarkdownTextBlock.SetHighlightStyles(this, MatchesPainted.StylesIn(ActualThemeVariant));
+      ActualThemeVariantChanged += (_, _) => MarkdownTextBlock.SetHighlightStyles(this, MatchesPainted.StylesIn(ActualThemeVariant));
       Resources["FontSize3Xl"] = 17.5;
       Resources["FontSize2Xl"] = 14.0;
       Resources["FontSizeXl"] = 14.0;
