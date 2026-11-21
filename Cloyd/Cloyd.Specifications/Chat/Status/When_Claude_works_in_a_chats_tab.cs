@@ -1,4 +1,4 @@
-using Cloyd.Chat.Status;
+using System.Text.RegularExpressions;
 using Cloyd.Projects;
 using Cloyd.Sessions;
 using Cloyd.Specifications.Chat.Writing;
@@ -9,7 +9,7 @@ namespace Cloyd.Specifications.Chat.Status;
 
 /// <summary>
 /// The stand-in for Claude Code in a chat's tab, idle once it has started: the working line over the input box doesn't
-/// show. The stand-in tells the hub of no turn, as a session that doesn't load the <c>tooling-commands</c> mod.
+/// show. What the line says as a turn goes is in <see cref="When_the_hub_tells_of_Claudes_turn"/>.
 /// </summary>
 public class When_Claude_works_in_a_chats_tab : SpecificationWritingInAChat
 {
@@ -34,8 +34,8 @@ public class When_Claude_works_in_a_chats_tab : SpecificationWritingInAChat
          Render(_window, "a-tab-whose-claude-works");
       }
 
-      [XF] public void the_working_line_says_Claude_works_and_how_long_it_has() =>
-         WorkingLineSays.Must().Satisfy(it => it is not null && it.StartsWith(WorkingLineOfTheChat.Working + " (", StringComparison.Ordinal));
+      [XF] public void the_working_line_says_what_Claude_does_and_how_long_the_turn_has_taken() =>
+         WorkingLineSays.Must().Satisfy(it => it is not null && Regex.IsMatch(it, @"^[^(]+… \(\d+s"));
 
       /// <summary>Magnus, 2026-11-21: "get the progress animation icon into the tabs so that I can see which tabs have a working session in them".</summary>
       [XF] public void the_tabs_header_shows_that_it_works_with_the_spinner() => OnTheUIThread(() => _tab.ShowsThatClaudeWorks).Must().BeTrue();

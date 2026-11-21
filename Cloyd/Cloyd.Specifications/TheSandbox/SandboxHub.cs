@@ -1,12 +1,8 @@
 using System.Diagnostics;
-using System.Net;
-using System.Net.Http.Headers;
-using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using ClaudeTooling.Hub.LocalApi.Contract;
 using ClaudeTooling.Hub.LocalApi.Contract.Sandboxes;
-using ClaudeTooling.Hub.LocalApi.Contract.TurnsOfRunningSessions;
 using Cloyd.ClaudeCode;
 using Cloyd.Hub;
 
@@ -65,24 +61,6 @@ sealed class SandboxHub
    /// </summary>
    public FileInfo TranscriptOf(ClaudeSessionId session, string directory) =>
       new(Path.Combine(_started.ClaudeCodeFolder, "projects", Regex.Replace(directory, "[^A-Za-z0-9]", "-"), $"{session}.jsonl"));
-
-   /// <summary>
-   /// Tells the hub what the turn of <paramref name="claudeCode"/> did, <paramref name="report"/>, as the
-   /// <c>tooling-commands</c> mod in each Claude Code session does, each quarter of a second while a turn runs: the
-   /// stand-in for Claude Code tells it nothing of its turns, so a specification tells it in the stand-in's place. The hub
-   /// shows the turn while the stand-in is busy.
-   /// </summary>
-   public void Report(ReportOfATurnInTheRequest report, ClaudeCodeProcessId claudeCode)
-   {
-      var hub = AnnouncementOfTheHub.In(new DirectoryInfo(_started.AnnouncementFolder)) ?? throw new InvalidOperationException("The sandbox's hub has no announcement.");
-      using var request = new HttpRequestMessage(HttpMethod.Post, hub.AddressOf($"running-sessions/{claudeCode}/turn/events")) { Content = JsonContent.Create(report, options: LocalApiProtocol.Json) };
-      request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", hub.Token);
-      using var answer = TheHubsClient.Send(request);
-      if(answer.StatusCode != HttpStatusCode.NoContent)
-         throw new InvalidOperationException($"The hub answered the report of a turn with {(int)answer.StatusCode}: {answer.Content.ReadAsStringAsync().GetAwaiter().GetResult()}");
-   }
-
-   static readonly HttpClient TheHubsClient = new();
 
    /// <summary>Deletes the transcript of <paramref name="session"/> from the Claude Code folder the hub serves, as archiving or deleting the session does.</summary>
    public void DeleteTheTranscriptOf(ClaudeSessionId session)

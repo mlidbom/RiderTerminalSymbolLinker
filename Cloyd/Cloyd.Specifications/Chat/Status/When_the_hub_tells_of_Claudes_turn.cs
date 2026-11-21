@@ -1,7 +1,6 @@
-using ClaudeTooling.Hub.LocalApi.Contract.TurnsOfRunningSessions;
+using System.Text.RegularExpressions;
 using Cloyd.Chat;
-using Cloyd.ClaudeCode;
-using Cloyd.Chat.Status;
+using Cloyd.Chat.Writing;
 using Cloyd.Sessions;
 using Cloyd.Specifications.Chat.Writing;
 using Compze.Must;
@@ -10,73 +9,81 @@ using Compze.xUnitBDD;
 namespace Cloyd.Specifications.Chat.Status;
 
 /// <summary>
-/// While the stand-in for Claude Code that runs in a chat's tab is busy, the sandbox's hub is told what its turn does, as
-/// the <c>tooling-commands</c> mod tells it of each Claude Code session's: here by the specification, as the stand-in
-/// tells it nothing. The turn started 75 seconds ago, and Claude writes a <c>Write</c> call: the chat's working line says
-/// so, over its input box.
+/// Magnus has the stand-in for Claude Code in a chat's tab work through a turn of 10 seconds, which it tells the sandbox's
+/// hub of as the <c>tooling-commands</c> mod tells it of each Claude Code session's turns: Claude waits for the model,
+/// thinks, writes a call of PowerShell, runs it, waits for the model again, and writes its reply, "Heard: " and the
+/// prompt. The chat is looked at all along (<see cref="TheTurnAsTheChatShowedIt"/>), until it shows the reply as Claude
+/// writes it.
 /// </summary>
 public class When_the_hub_tells_of_Claudes_turn : SpecificationWritingInAChat
 {
-   readonly string _turn = Guid.NewGuid().ToString();
-   readonly long _startedAt = DateTimeOffset.UtcNow.AddSeconds(-75).ToUnixTimeMilliseconds();
-   private protected readonly SessionTab _tab;
-   readonly ClaudeCodeProcessId _claudeCode;
+   const string ThePrompt = "Be busy for 10 seconds";
+   const string TheReply = $"Heard: {ThePrompt}";
 
-   public When_the_hub_tells_of_Claudes_turn() => (_tab, _claudeCode) = Once(() =>
+   private protected readonly SessionTab _tab;
+   private protected readonly TheTurnAsTheChatShowedIt _turn;
+
+   public When_the_hub_tells_of_Claudes_turn() => (_tab, _turn) = Once(() =>
    {
       var (window, tab) = AChatOfANewSessionIn(Sandbox.Project("the-project"));
-      TypeAndSend(window, "Be busy for 120 seconds");
-      WaitUntil(() => tab.Chat.InputBox.ShowsTheStopButton, "the Stop button showed, as Claude worked");
-      var claudeCode = OnTheUIThread(() => tab.SessionRunningInIt!.Process);
-      Report(claudeCode, Event("turnStarted"), Event("responseRequested", response: 0), Event("toolCallBegun", response: 0, block: 0, toolUseId: "toolu_01", toolName: "Write"));
-      WaitUntil(() => tab.Chat.WorkingLine.Says?.StartsWith("Writing the Write call…", StringComparison.Ordinal) == true, "the working line said Claude wrote the Write call");
-      return (tab, claudeCode);
+      var turn = new TheTurnAsTheChatShowedIt(tab);
+      TypeAndSend(window, ThePrompt);
+      WaitUntil(() => turn.LookedAt() && turn.ClaudesTextAtTheEnd.Count > 0 && tab.Chat.WorkingLine.Says?.StartsWith("Writing… (", StringComparison.Ordinal) == true,
+                "the working line said Claude wrote, and the chat showed what it wrote", turn.WhatItSaw);
+      return (tab, turn);
    });
 
-   string? WorkingLineSays => OnTheUIThread(() => _tab.Chat.WorkingLine.Says);
+   /// <summary>
+   /// Each of what Claude does for 15 % of the turn or more, as the stand-in tells: the hub tells a turn's activity at most
+   /// every half second, so it may not tell of Claude waiting for the model the second time, for 4 % of the turn.
+   /// </summary>
+   [XF] public void the_working_line_says_what_Claude_does_as_it_does_it() =>
+      _turn.WhatClaudeDid.Must().Satisfy(it => Holds(it, inOrder: ["Waiting for the model…", "Thinking…", "Writing the PowerShell call…", "Running tools…", "Writing…"]));
 
-   [XF] public void the_working_line_says_Claude_writes_the_Write_call_how_long_the_turn_has_taken_and_its_output_tokens() =>
-      WorkingLineSays.Must().Satisfy(it => it is not null && System.Text.RegularExpressions.Regex.IsMatch(it, @"^Writing the Write call… \(1m \d\ds · ↓ 1\.2k tokens\)$"));
+   [XF] public void and_how_long_the_turn_has_taken_its_output_tokens_and_the_commands_it_has_run() =>
+      _turn.WorkingLineSaid[^1].Must().Satisfy(it => Regex.IsMatch(it, @"^Writing… \(\d+s · ↓ \d+ tokens · 1 command\)$"));
 
-   /// <summary>Then Claude writes text, in two reports, a quarter of a second apart: the chat shows it at the conversation's end as it comes.</summary>
-   public class and_then_Claude_writes_text : When_the_hub_tells_of_Claudes_turn
+   [XF] public void the_chat_shows_Claudes_reply_at_the_conversations_end_as_Claude_writes_it() =>
+      _turn.ClaudesTextAtTheEnd.Must().Satisfy(it => it.Count > 0 && it.All(text => text.Length < TheReply.Length && TheReply.StartsWith(text, StringComparison.Ordinal)));
+
+   /// <summary>Then the turn ends, as Claude Code writes the reply to the transcript.</summary>
+   public class and_then_the_turn_ends : When_the_hub_tells_of_Claudes_turn
    {
-      public and_then_Claude_writes_text() => Once(() =>
+      public and_then_the_turn_ends() => Once(() =>
       {
-         Report(_claudeCode, Event("responseEnded", response: 0, stopReason: "tool_use"), Event("responseRequested", response: 1), Event("text", response: 1, block: 0, offset: 0, text: "It is Friday,"));
-         Report(_claudeCode, Event("text", response: 1, block: 0, offset: 13, text: " 20 November."));
-         WaitUntil(() => _tab.Chat.Shown.LastOrDefault() is ShownInTheChat.ClaudesText { Markdown: "It is Friday, 20 November." }, "the chat showed the text Claude wrote at its end");
+         WaitUntil(() => _turn.LookedAt() && _tab.Chat.WorkingLine.Says is null && _tab.Chat.Shown.OfType<ShownInTheChat.ClaudesText>().Any(), "the working line went, and the conversation had Claude's reply", _turn.WhatItSaw);
          return true;
       });
 
-      [XF] public void the_chat_shows_the_text_at_the_conversations_end() =>
-         OnTheUIThread(() => _tab.Chat.Shown.Last()).Must().Satisfy(it => it is ShownInTheChat.ClaudesText { Markdown: "It is Friday, 20 November." });
+      [XF] public void the_reply_grew_as_Claude_wrote_it_until_it_was_whole() =>
+         _turn.ClaudesTextAtTheEnd.Must().Satisfy(it => it.Count >= 2 && it[^1] == TheReply && it.Zip(it.Skip(1)).All(pair => pair.Second.Length > pair.First.Length && pair.Second.StartsWith(pair.First, StringComparison.Ordinal)));
 
-      /// <summary>Within half a second: the hub sends a turn's activity at most every half second, and the text as it comes.</summary>
-      [XF] public void the_working_line_says_Claude_writes() =>
-         WaitUntil(() => _tab.Chat.WorkingLine.Says?.StartsWith("Writing… (1m", StringComparison.Ordinal) == true, "the working line said Claude wrote");
+      [XF] public void the_chat_shows_the_reply_once() => RepliesIn(_tab).Must().Satisfy(it => it.SequenceEqual([TheReply]));
 
-      /// <summary>Then the turn ends before the block did, as when Magnus interrupts it: the text goes, as Claude Code never writes it to the transcript.</summary>
-      public class and_then_the_turn_is_interrupted : and_then_Claude_writes_text
-      {
-         public and_then_the_turn_is_interrupted() => Once(() =>
-         {
-            Report(_claudeCode, Event("turnEnded", reason: "aborted"));
-            WaitUntil(() => _tab.Chat.Shown.OfType<ShownInTheChat.ClaudesText>().All(it => !it.Markdown.StartsWith("It is Friday", StringComparison.Ordinal)), "the text Claude wrote went");
-            return true;
-         });
-
-         [XF] public void the_chat_shows_the_text_no_more() =>
-            OnTheUIThread(() => _tab.Chat.Shown.OfType<ShownInTheChat.ClaudesText>().Select(it => it.Markdown).ToList()).Must().Satisfy(it => !it.Any(text => text.StartsWith("It is Friday", StringComparison.Ordinal)));
-
-         [XF] public void while_the_stand_in_is_busy_still_the_working_line_says_Claude_works() =>
-            WaitUntil(() => _tab.Chat.WorkingLine.Says?.StartsWith(WorkingLineOfTheChat.Working + " (", StringComparison.Ordinal) == true, "the working line said Claude worked");
-      }
+      [XF] public void the_working_line_goes() => OnTheUIThread(() => _tab.Chat.WorkingLine.Says).Must().BeNull();
    }
 
-   private protected void Report(ClaudeCodeProcessId claudeCode, params EventOfATurnInTheRequest[] events) =>
-      Sandbox.HubOfTheSandbox.Report(new ReportOfATurnInTheRequest(_turn, _startedAt, OutputTokensOfEndedResponses: 1200, events), claudeCode);
+   /// <summary>Then Magnus clicks Stop while Claude writes, and the turn ends cut short: Claude Code never writes the reply to the transcript.</summary>
+   public class and_then_Magnus_stops_it : When_the_hub_tells_of_Claudes_turn
+   {
+      public and_then_Magnus_stops_it() => Once(() =>
+      {
+         Click(TheButtonWithTheTip(_tab, InputBoxOfTheChat.TipOfTheStopButton));
+         WaitUntil(() => _tab.Chat.WorkingLine.Says is null && !_tab.Chat.Shown.OfType<ShownInTheChat.ClaudesText>().Any(), "the working line went, and the text Claude wrote went");
+         return true;
+      });
 
-   static EventOfATurnInTheRequest Event(string kind, int? response = null, int? block = null, int? offset = null, string? text = null, string? toolUseId = null, string? toolName = null, string? stopReason = null, string? reason = null) =>
-      new(kind, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), response, block, offset, text, toolUseId, toolName, Characters: null, stopReason, reason);
+      [XF] public void the_text_Claude_wrote_goes_and_no_reply_comes() => RepliesIn(_tab).Must().BeEmpty();
+
+      [XF] public void the_working_line_goes() => OnTheUIThread(() => _tab.Chat.WorkingLine.Says).Must().BeNull();
+   }
+
+   /// <summary>Whether <paramref name="said"/> holds each of <paramref name="inOrder"/>, in that order, with or without more between them.</summary>
+   static bool Holds(IReadOnlyList<string> said, IReadOnlyList<string> inOrder)
+   {
+      var found = 0;
+      foreach(var it in said)
+         if(found < inOrder.Count && it == inOrder[found]) found++;
+      return found == inOrder.Count;
+   }
 }

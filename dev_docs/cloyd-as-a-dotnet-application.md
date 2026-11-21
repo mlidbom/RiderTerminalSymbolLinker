@@ -506,12 +506,14 @@ Claude writes shows as it comes") ported, with Magnus's calls of the day.
 - **Tabs open on the chat** (`SessionTab`), now that a question only the terminal can answer shows prominently. The
   terminal stays laid out under the chat, transparent and out of the mouse's reach, rather than hidden: it attaches to
   its host only once laid out, and reads what the session draws at the tab's size only while it is.
-- **Specified** through the sandbox's hub, the specification posting the turn reports the mod would
-  (`SandboxHub.Report`), as the stand-in tells the hub of no turn: a `Write` call being written, then text in two pieces,
-  then the turn interrupted (`When_the_hub_tells_of_Claudes_turn`). With made data: a command under way
-  (`RenderedWindows/a-chats-working-line.png`) and the box (`a-chats-box-while-claude-waits-in-the-terminal.png`).
-  The tooling owner is giving the stand-in a turn of its own and a status line (2026-11-21); once published, the
-  specification follows the stand-in's turn instead of posting its own.
+- **Specified** through the sandbox's hub, which the stand-in tells of its turns as the mod tells it of Claude Code's
+  (since 2026-11-21): a turn of 10 seconds that waits for the model, thinks, writes a PowerShell call, runs it and
+  writes its reply, which ends, or which Magnus stops while Claude writes (`When_the_hub_tells_of_Claudes_turn`).
+  `TheTurnAsTheChatShowedIt` looks at the chat every 10 ms through the turn, so that the facts tell what it showed at
+  each step, not only at the moment they look. The stand-in finds the hub through `CLAUDE_TOOLING_LOCAL_API_FOLDER`,
+  which the sandbox's sessions' shell sets until the hub sets it itself, as it sets `CLAUDE_CONFIG_DIR`. With made data:
+  the `Working…` of a session whose turns the hub isn't told of, and a command under way
+  (`RenderedWindows/a-chats-working-line.png`), and the box (`a-chats-box-while-claude-waits-in-the-terminal.png`).
 
 ### The session history picker, as it's built
 

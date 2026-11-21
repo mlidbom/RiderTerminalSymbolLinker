@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using ClaudeTooling.Hub.LocalApi.Contract;
 using Compze.Threading;
 using Compze.Threading.Interprocess;
 using Cloyd.Ides;
@@ -18,7 +19,8 @@ namespace Cloyd.Specifications.TheSandbox;
 /// </summary>
 /// <remarks>
 /// The stand-in (<c>~/.claude/src/StandInForClaudeCode</c>) runs a session as Claude Code does: it keeps its record and
-/// transcript where <c>CLAUDE_CONFIG_DIR</c> says, which the hub reads, and draws an input box as Claude Code does. It
+/// transcript where <c>CLAUDE_CONFIG_DIR</c> says, which the hub reads, tells the hub of its turns as the
+/// <c>tooling-commands</c> mod tells it of Claude Code's, and draws an input box as Claude Code does. It
 /// says <c>New session &lt;id&gt;</c> as it starts, and the size of its terminal.<br/>
 /// A process that a scenario starts, such as a <c>Cloyd.exe</c>, takes the hub's <see cref="SandboxHub.Environment"/>, so
 /// that what it asks of a hub it asks the scenario's. The specifications' own process never takes it: it runs scenarios
@@ -54,8 +56,12 @@ sealed class Sandbox : IDisposable
       HubOfTheSandbox = HubStartedIn(folder);
       //todo: The tooling owner, 2026-11-20: the hub is to put the stand-in first on its sandbox sessions' PATH itself.
       //   Once it does, the sessions' shell needs no PATH of its own.
+      //todo: Asked of the tooling owner, 2026-11-21: the hub is to name its announcement's folder to its sandbox sessions
+      //   itself, as it names its Claude Code folder, so that the stand-in tells it of its turns. Once it does, the
+      //   sessions' shell needs no CLAUDE_TOOLING_LOCAL_API_FOLDER of its own.
       ShellOfItsSessions = (ShellOfNewSessions.OnThisMachine() with { CommandLine = "pwsh.exe -NoLogo -NoProfile" })
-        .With("PATH", HubOfTheSandbox.FolderOfTheStandInForClaudeCode + Path.PathSeparator + Environment.GetEnvironmentVariable("PATH"));
+        .With("PATH", HubOfTheSandbox.FolderOfTheStandInForClaudeCode + Path.PathSeparator + Environment.GetEnvironmentVariable("PATH"))
+        .With(WhatTheAnnouncementSays.VariableNamingTheFolder, HubOfTheSandbox.Environment[WhatTheAnnouncementSays.VariableNamingTheFolder]);
       WindowsOfCloyd = new ProjectWindows((project, _) => throw new InvalidOperationException($"The specifications open their windows themselves, through their SandboxProject, not {project}'s through the sandbox's WindowsOfCloyd."));
    }
 
@@ -69,7 +75,8 @@ sealed class Sandbox : IDisposable
 
    /// <summary>
    /// The shell the sessions of the sandbox's project windows start in: PowerShell 7 without Magnus's profile, so that it
-   /// starts the same anywhere, with the hub's stand-in for Claude Code first on its <c>PATH</c>.
+   /// starts the same anywhere, with the hub's stand-in for Claude Code first on its <c>PATH</c>, and the folder of the
+   /// hub's announcement in <c>CLAUDE_TOOLING_LOCAL_API_FOLDER</c>, so that the stand-in tells the hub of its turns.
    /// </summary>
    public ShellOfNewSessions ShellOfItsSessions { get; }
 
