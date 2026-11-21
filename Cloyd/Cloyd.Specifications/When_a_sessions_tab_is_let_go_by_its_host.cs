@@ -25,7 +25,7 @@ public abstract class When_a_sessions_tab_is_let_go_by_its_host : SpecificationO
    {
       _project = Sandbox.Project("the-project");
       _window = Open(_project.Window);
-      DoneOnTheUIThread(() => _window.StartANewSession(null));
+      DoneOnTheUIThread(() => _window.StartANewSession(new NewSession(AgentCli.ClaudeCode, Name: null)));
       _tab = OnTheUIThread(() => _window.Tabs.Single());
       WaitUntil(() => _tab.SessionRunningInIt is not null, "Claude Code ran in the tab's host");
    }

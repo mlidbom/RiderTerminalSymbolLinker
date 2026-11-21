@@ -23,7 +23,7 @@ public abstract class SpecificationWritingInAChat : SpecificationOpeningWindows
    private protected (ProjectWindow Window, SessionTab Tab) AChatOfANewSessionIn(SandboxProject project)
    {
       var window = Open(project.Window);
-      DoneOnTheUIThread(() => window.StartANewSession(name: null));
+      DoneOnTheUIThread(() => window.StartANewSession(new NewSession(AgentCli.ClaudeCode, Name: null)));
       var tab = OnTheUIThread(() => window.Tabs.Single());
       WaitUntil(() => tab.SessionRunningInIt is not null && tab.Terminal.TextShown.Contains("New session"), "the tab's terminal showed the stand-in's start");
       WaitUntilTheInputBoxHasTheKeyboard(window, tab);

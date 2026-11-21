@@ -101,7 +101,7 @@ sealed class ProjectWindow : Window
       Width = 1400;
       Height = 900;
       Content = TheLayout();
-      _newSession.NewSessionAsked += name => _ = TellingOfFailure(() => StartANewSession(name));
+      _newSession.NewSessionAsked += session => _ = TellingOfFailure(() => StartANewSession(session));
       ToolTip.SetTip(_openTheHistory, TipOfTheHistoryButton);
       _openTheHistory.Click += (_, _) => _ = OpenTheHistoryPicker();
       AddHandler(KeyDownEvent, OpenTheHistoryPickerOnItsKey, RoutingStrategies.Tunnel);
@@ -216,7 +216,7 @@ sealed class ProjectWindow : Window
    /// <summary>Resumes <paramref name="session"/> in a new tab, in the project's folder, which it selects, as choosing it in the history picker does.</summary>
    public async Task ResumeInANewTab(Session session)
    {
-      var tab = await ShowANewHost(Project.Folder, session, nameGiven: null);
+      var tab = await ShowANewHost(Project.Folder, session, newSession: null);
       _tabs.SelectedItem = tab;
       await StartIn(tab, session.CommandThatResumesIt);
    }
@@ -235,18 +235,17 @@ sealed class ProjectWindow : Window
    /// Shows <paramref name="host"/>, which runs <paramref name="session"/> and which no tab shows, in a tab of its own, which
    /// it selects: attaching takes the session over from a console that shows it.
    /// </summary>
-   public void ShowInATab(SessionHostOfTheHub host, Session session) => _tabs.SelectedItem = Show(host, session, nameGiven: null);
+   public void ShowInATab(SessionHostOfTheHub host, Session session) => _tabs.SelectedItem = Show(host, session, newSession: null);
 
    /// <summary>
-   /// Starts a new session in the project's folder, in a tab of its own, which it selects: named
-   /// <paramref name="name"/>, or with no name when it is null. When the hub doesn't start Claude Code in it, the tab
-   /// says why, and shows the shell at its prompt.
+   /// Starts <paramref name="session"/> in the project's folder, in a tab of its own, which it selects. When the hub
+   /// doesn't start its agent CLI in it, the tab says why, and shows the shell at its prompt.
    /// </summary>
-   public async Task StartANewSession(string? name)
+   public async Task StartANewSession(NewSession session)
    {
-      var tab = await ShowANewHost(Project.Folder, latestSession: null, nameGiven: name);
+      var tab = await ShowANewHost(Project.Folder, latestSession: null, session);
       _tabs.SelectedItem = tab;
-      await StartIn(tab, ClaudeCodeCommand.OfANewSession(name));
+      await StartIn(tab, session.Command);
    }
 
    /// <summary>
@@ -263,7 +262,7 @@ sealed class ProjectWindow : Window
             selected = tab;
 
       foreach(var host in hosts.Where(it => Project.Equals(it.Project) && !it.Attached && !IsShown(it.Id)))
-         Show(host, latestSession: null, nameGiven: null);
+         Show(host, latestSession: null, newSession: null);
       _tabs.SelectedItem = selected ?? Tabs.FirstOrDefault();
    }
 
@@ -280,10 +279,10 @@ sealed class ProjectWindow : Window
 
       async Task<SessionTab?> TheTabBroughtBack()
       {
-         if(host is not null) return host.Attached ? null : Show(host, saved.Session, nameGiven: null);
+         if(host is not null) return host.Attached ? null : Show(host, saved.Session, newSession: null);
          if(saved.Session is not {} session || !CanBeResumed(session)) return null;
 
-         var resumed = await ShowANewHost(saved.Directory, session, nameGiven: null);
+         var resumed = await ShowANewHost(saved.Directory, session, newSession: null);
          await StartIn(resumed, session.CommandThatResumesIt);
          return resumed;
       }
@@ -296,8 +295,8 @@ sealed class ProjectWindow : Window
       };
    }
 
-   async Task<SessionTab> ShowANewHost(string directory, Session? latestSession, string? nameGiven) =>
-      Show(await _hub.StartASessionHost(_shellOfNewSessions, directory, SessionHostLabel.OfANewHostOf(Project), _closed.Token), latestSession, nameGiven);
+   async Task<SessionTab> ShowANewHost(string directory, Session? latestSession, NewSession? newSession) =>
+      Show(await _hub.StartASessionHost(_shellOfNewSessions, directory, SessionHostLabel.OfANewHostOf(Project), _closed.Token), latestSession, newSession);
 
    /// <summary>Has the hub start <paramref name="command"/> in the host of <paramref name="tab"/>: when it doesn't, the tab says why, and shows the shell at its prompt.</summary>
    async Task StartIn(SessionTab tab, AgentCliCommand command)
@@ -312,9 +311,9 @@ sealed class ProjectWindow : Window
       }
    }
 
-   SessionTab Show(SessionHostOfTheHub host, Session? latestSession, string? nameGiven)
+   SessionTab Show(SessionHostOfTheHub host, Session? latestSession, NewSession? newSession)
    {
-      var tab = new SessionTab(host, latestSession, nameGiven, SizeOfTheTerminals, _hub, _pastedImages);
+      var tab = new SessionTab(host, latestSession, newSession, SizeOfTheTerminals, _hub, _pastedImages);
       tab.ClosedByMagnus += it => _ = TellingOfFailure(() => EndTheSessionOf(it));
       tab.EndedByItself += (it, _) => Remove(it);
       _tabs.Items.Add(tab);

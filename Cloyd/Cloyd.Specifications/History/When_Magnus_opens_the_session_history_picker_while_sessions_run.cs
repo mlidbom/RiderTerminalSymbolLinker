@@ -64,7 +64,7 @@ public class When_Magnus_opens_the_session_history_picker_while_sessions_run : S
    /// </summary>
    (SessionTab Tab, ClaudeCodeSessionId Session) StartedWithAPrompt(ProjectWindow window, string name)
    {
-      DoneOnTheUIThread(() => window.StartANewSession(name));
+      DoneOnTheUIThread(() => window.StartANewSession(new NewSession(AgentCli.ClaudeCode, name)));
       var tab = OnTheUIThread(() => window.Tabs[^1]);
       WaitUntil(() => tab.SessionRunningInIt is not null, $"the hub told the tab of {name} of its Claude Code");
       var session = OnTheUIThread(() => ((RunningClaudeCode)tab.SessionRunningInIt!).SessionId);

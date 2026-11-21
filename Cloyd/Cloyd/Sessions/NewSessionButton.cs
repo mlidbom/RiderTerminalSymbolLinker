@@ -27,14 +27,14 @@ sealed class NewSessionButton : Button
 
          key.Handled = true;
          flyout.Hide();
-         if(key.Key == Key.Enter) NewSessionAsked?.Invoke(NameIn(_name.Text));
+         if(key.Key == Key.Enter) NewSessionAsked?.Invoke(new NewSession(AgentCli.ClaudeCode, NameIn(_name.Text)));
       };
    }
 
    protected override Type StyleKeyOverride => typeof(Button);
 
-   /// <summary>Raised with the name Magnus gave the new session: null for none.</summary>
-   public event Action<string?>? NewSessionAsked;
+   /// <summary>Raised with the new session Magnus asked for.</summary>
+   public event Action<NewSession>? NewSessionAsked;
 
    static string? NameIn(string? text) => string.IsNullOrWhiteSpace(text) ? null : text.Trim();
 }

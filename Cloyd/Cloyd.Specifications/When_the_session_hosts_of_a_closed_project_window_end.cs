@@ -35,7 +35,7 @@ public class When_the_session_hosts_of_a_closed_project_window_end : Specificati
 
    ClaudeCodeSession StartedIn(ProjectWindow window, string name)
    {
-      DoneOnTheUIThread(() => window.StartANewSession(name));
+      DoneOnTheUIThread(() => window.StartANewSession(new NewSession(AgentCli.ClaudeCode, name)));
       var tab = OnTheUIThread(() => window.Tabs.Last());
       WaitUntil(() => tab.SessionRunningInIt is not null, $"Claude Code ran the session {name} in its tab's host");
       return OnTheUIThread(() => (ClaudeCodeSession)tab.LatestSession!);

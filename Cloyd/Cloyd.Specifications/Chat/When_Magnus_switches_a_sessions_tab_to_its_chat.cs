@@ -20,7 +20,7 @@ public class When_Magnus_switches_a_sessions_tab_to_its_chat : SpecificationOpen
    {
       var project = Sandbox.Project("the-project");
       var window = Open(project.Window);
-      DoneOnTheUIThread(() => window.StartANewSession(name: null));
+      DoneOnTheUIThread(() => window.StartANewSession(new NewSession(AgentCli.ClaudeCode, Name: null)));
       var tab = OnTheUIThread(() => window.Tabs.Single());
       WaitUntil(() => tab.SessionRunningInIt is not null && tab.Terminal.TextShown.Contains("New session"), "the tab's terminal showed the stand-in's start");
       Click(TheButtonWithTheTip(tab, SessionTab.TipOfTheTerminalsSwitch));

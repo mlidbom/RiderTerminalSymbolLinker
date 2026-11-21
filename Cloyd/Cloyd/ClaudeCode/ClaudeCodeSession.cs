@@ -8,6 +8,8 @@ namespace Cloyd.ClaudeCode;
 /// <param name="Name">The name Claude Code shows for the session: null while it has none.</param>
 sealed record ClaudeCodeSession(ClaudeCodeSessionId Id, string? Name) : Session(Name)
 {
+   public override AgentCli AgentCli => AgentCli.ClaudeCode;
+
    public override ClaudeCodeSessionId Id { get; } = Id;
 
    /// <summary><c>claude --resume &lt;its id&gt;</c>.</summary>

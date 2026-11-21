@@ -22,7 +22,7 @@ public class When_Claude_works_in_a_chats_tab : SpecificationWritingInAChat
 
    [XF] public void while_Claude_is_idle_the_working_line_doesnt_show() => WorkingLineSays.Must().BeNull();
 
-   [XF] public void while_Claude_is_idle_the_tabs_header_doesnt_show_that_it_works() => OnTheUIThread(() => _tab.ShowsThatClaudeWorks).Must().BeFalse();
+   [XF] public void while_Claude_is_idle_the_tabs_header_doesnt_show_that_it_works() => OnTheUIThread(() => _tab.ShowsThatItsSessionWorks).Must().BeFalse();
 
    /// <summary>Then Magnus has Claude work for 3 seconds.</summary>
    public class and_Claude_works : When_Claude_works_in_a_chats_tab
@@ -38,10 +38,10 @@ public class When_Claude_works_in_a_chats_tab : SpecificationWritingInAChat
          WorkingLineSays.Must().Satisfy(it => it is not null && Regex.IsMatch(it, @"^[^(]+… \(\d+s"));
 
       /// <summary>Magnus, 2026-11-21: "get the progress animation icon into the tabs so that I can see which tabs have a working session in them".</summary>
-      [XF] public void the_tabs_header_shows_that_it_works_with_the_spinner() => OnTheUIThread(() => _tab.ShowsThatClaudeWorks).Must().BeTrue();
+      [XF] public void the_tabs_header_shows_that_it_works_with_the_spinner() => OnTheUIThread(() => _tab.ShowsThatItsSessionWorks).Must().BeTrue();
 
       [XF] public void once_Claude_is_done_the_working_line_goes() => WaitUntil(() => _tab.Chat.WorkingLine.Says is null, "the working line went");
 
-      [XF] public void once_Claude_is_done_the_spinner_in_the_tabs_header_goes() => WaitUntil(() => !_tab.ShowsThatClaudeWorks, "the spinner in the tab's header went");
+      [XF] public void once_Claude_is_done_the_spinner_in_the_tabs_header_goes() => WaitUntil(() => !_tab.ShowsThatItsSessionWorks, "the spinner in the tab's header went");
    }
 }

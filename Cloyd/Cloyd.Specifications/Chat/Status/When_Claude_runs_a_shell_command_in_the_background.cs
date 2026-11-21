@@ -47,7 +47,7 @@ public class When_Claude_runs_a_shell_command_in_the_background : SpecificationW
    {
       public and_then_the_shell_ends() =>
          WaitUntil(() => ShownIn(_tab) is [.., ShownInTheChat.ClaudesText { Markdown: var reply }, ShownInTheChat.EndOfATurn] && IsTheReplyToTheShellsEnd(reply)
-                         && _tab.Chat.StatusLine.BackgroundWork is null && _tab.BackgroundWorkMarked is null && !_tab.ShowsThatClaudeWorks,
+                         && _tab.Chat.StatusLine.BackgroundWork is null && _tab.BackgroundWorkMarked is null && !_tab.ShowsThatItsSessionWorks,
                    "Claude replied to the shell's end and the turn ended, and the line under the input box and the tab's marker went",
                    () => $"the replies: {string.Join(" | ", RepliesIn(_tab))}; the conversation's end: {ShownIn(_tab).LastOrDefault()}; the line: {_tab.Chat.StatusLine.BackgroundWork}; the tab: {_tab.BackgroundWorkMarked}");
 

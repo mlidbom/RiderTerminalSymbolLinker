@@ -2,6 +2,7 @@ using ClaudeTooling.SessionHost.Protocol;
 using Compze.Must;
 using Compze.xUnitBDD;
 using Cloyd.Projects;
+using Cloyd.Sessions;
 using Cloyd.Specifications.TheSandbox;
 
 namespace Cloyd.Specifications;
@@ -16,7 +17,7 @@ public class When_Magnus_closes_a_sessions_tab : SpecificationOpeningWindows
    {
       var project = Sandbox.Project("the-project");
       var window = Open(project.Window);
-      DoneOnTheUIThread(() => window.StartANewSession("to be closed"));
+      DoneOnTheUIThread(() => window.StartANewSession(new NewSession(AgentCli.ClaudeCode, "to be closed")));
       var tab = OnTheUIThread(() => window.Tabs.Single());
       WaitUntil(() => tab.SessionRunningInIt is not null, "Claude Code ran in the tab's host");
       Click(TheButtonWithTheTip(tab, "End the session"));

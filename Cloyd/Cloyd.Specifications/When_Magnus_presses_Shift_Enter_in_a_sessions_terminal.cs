@@ -18,7 +18,7 @@ public class When_Magnus_presses_Shift_Enter_in_a_sessions_terminal : Specificat
    {
       var project = Sandbox.Project("the-project");
       var window = Open(project.Window);
-      DoneOnTheUIThread(() => window.StartANewSession(name: null));
+      DoneOnTheUIThread(() => window.StartANewSession(new NewSession(AgentCli.ClaudeCode, Name: null)));
       _tab = OnTheUIThread(() => window.Tabs.Single());
       WaitUntil(() => _tab.SessionRunningInIt is not null && _tab.Terminal.TextShown.Contains("New session"), "the tab's terminal showed the stand-in's start");
       SwitchWithCtrlH(window, _tab);

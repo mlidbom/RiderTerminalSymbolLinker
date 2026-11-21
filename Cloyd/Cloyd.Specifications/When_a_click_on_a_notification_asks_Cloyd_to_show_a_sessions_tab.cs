@@ -27,8 +27,8 @@ public class When_a_click_on_a_notification_asks_Cloyd_to_show_a_sessions_tab : 
       _project = Sandbox.Project("the-project");
       HandedOver(_project);
       _window = OnTheUIThread(() => Windows.Open.Single());
-      DoneOnTheUIThread(() => _window.StartANewSession("First"));
-      DoneOnTheUIThread(() => _window.StartANewSession("Second"));
+      DoneOnTheUIThread(() => _window.StartANewSession(new NewSession(AgentCli.ClaudeCode, "First")));
+      DoneOnTheUIThread(() => _window.StartANewSession(new NewSession(AgentCli.ClaudeCode, "Second")));
       (_first, _second) = OnTheUIThread(() => (_window.Tabs[0], _window.Tabs[1]));
       WaitUntil(() => _first.SessionRunningInIt is not null && _second.SessionRunningInIt is not null, "the hub told each tab of the Claude Code in its host");
       _firstsClaudeCode = OnTheUIThread(() => (RunningClaudeCode)_first.SessionRunningInIt!);

@@ -8,6 +8,8 @@ namespace Cloyd.Codex;
 /// <param name="Name">The name the session goes by: null while it has none.</param>
 sealed record CodexSession(CodexSessionId Id, string? Name) : Session(Name)
 {
+   public override AgentCli AgentCli => AgentCli.Codex;
+
    public override CodexSessionId Id { get; } = Id;
 
    /// <summary><c>codex resume &lt;its id&gt;</c>.</summary>

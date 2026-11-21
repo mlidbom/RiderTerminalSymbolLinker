@@ -23,7 +23,7 @@ public class When_a_new_session_is_started_in_a_project_window : SpecificationOp
    {
       var project = Sandbox.Project("the-project");
       var window = Open(project.Window);
-      DoneOnTheUIThread(() => window.StartANewSession(NameGiven));
+      DoneOnTheUIThread(() => window.StartANewSession(new NewSession(AgentCli.ClaudeCode, NameGiven)));
       var tab = OnTheUIThread(() => window.Tabs.Single());
       WaitUntil(() => tab.SessionRunningInIt is not null, "the hub told the tab of the Claude Code in its host");
       var session = OnTheUIThread(() => (RunningClaudeCode)tab.SessionRunningInIt!);

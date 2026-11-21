@@ -23,7 +23,7 @@ public class When_Magnus_presses_Ctrl_H_in_a_sessions_tab : SpecificationOpening
    {
       var project = Sandbox.Project("the-project");
       _window = Open(project.Window);
-      DoneOnTheUIThread(() => _window.StartANewSession(name: null));
+      DoneOnTheUIThread(() => _window.StartANewSession(new NewSession(AgentCli.ClaudeCode, Name: null)));
       _tab = OnTheUIThread(() => _window.Tabs.Single());
       WaitUntil(() => _tab.SessionRunningInIt is not null, "Claude Code ran in the tab's host");
       _showedTheChatAtFirst = ShowsTheChat;

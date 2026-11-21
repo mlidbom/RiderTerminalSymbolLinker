@@ -2,6 +2,7 @@ using ClaudeTooling.SessionHost.Protocol;
 using Compze.Must;
 using Compze.xUnitBDD;
 using Cloyd.Projects;
+using Cloyd.Sessions;
 using Cloyd.Specifications.TheSandbox;
 
 namespace Cloyd.Specifications;
@@ -17,7 +18,7 @@ public abstract class When_a_project_window_with_several_tabs_closes : Specifica
       var project = Sandbox.Project("the-project");
       var window = Open(project.Window);
       WaitUntil(() => window.BringingBackTheTabs.IsCompleted, "the window had brought back its tabs");
-      foreach(var name in new[] { "First", "Second", "Third" }) DoneOnTheUIThread(() => window.StartANewSession(name));
+      foreach(var name in new[] { "First", "Second", "Third" }) DoneOnTheUIThread(() => window.StartANewSession(new NewSession(AgentCli.ClaudeCode, name)));
       var hostsInTheirOrder = OnTheUIThread(() => window.Tabs.Select(it => it.Host.Id).ToArray());
       OnTheUIThread(() => window.Tabs[1].IsSelected = true);
       Close(window);

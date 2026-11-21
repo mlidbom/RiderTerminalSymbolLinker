@@ -47,6 +47,9 @@ sealed class SandboxProject
    /// <summary>What the project's windows saved last.</summary>
    public SavedProjectWindow SavedWindow => _savedWindows.Of(Project);
 
+   /// <summary>Saves <paramref name="saved"/> as what the project's windows saved last, which its next window brings back.</summary>
+   public void SaveTheWindowAs(SavedProjectWindow saved) => _savedWindows.Save(Project, saved);
+
    /// <summary>Ends the session host <paramref name="id"/>, as a reboot ends them all.</summary>
    public void End(SessionHostId id) => Answer(() => Hub.End(id));
 

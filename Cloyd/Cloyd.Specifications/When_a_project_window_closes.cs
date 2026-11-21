@@ -2,6 +2,7 @@ using ClaudeTooling.SessionHost.Protocol;
 using Compze.Must;
 using Compze.xUnitBDD;
 using Cloyd.Projects;
+using Cloyd.Sessions;
 using Cloyd.Specifications.TheSandbox;
 
 namespace Cloyd.Specifications;
@@ -15,7 +16,7 @@ public class When_a_project_window_closes : SpecificationOpeningWindows
    {
       var project = Sandbox.Project("the-project");
       var window = Open(project.Window);
-      DoneOnTheUIThread(() => window.StartANewSession(null));
+      DoneOnTheUIThread(() => window.StartANewSession(new NewSession(AgentCli.ClaudeCode, Name: null)));
       var tab = OnTheUIThread(() => window.Tabs.Single());
       var host = tab.Host.Id;
       WaitUntil(() => tab.SessionRunningInIt is not null, "Claude Code ran in the tab's host");
