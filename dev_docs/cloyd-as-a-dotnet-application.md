@@ -448,7 +448,10 @@ input box") ported, with Magnus's calls above:
 - **The status line under the box** (`Cloyd.Chat.Status.StatusLineOfTheChat`): Claude Code's own, all of it, as the
   terminal shows it under Claude Code's box (Magnus, 2026-11-21: "get all the information from our custom status line
   in the CLI into the status line here"): the running session's `statusLine.text` (`ClaudeCodesStatusLine.Text`), the
-  machine's status line command's, without its colours, which the hub doesn't keep; and under it the permission mode,
+  machine's status line command's, in its colours: the hub's `styledStretches` (`StretchOfTheStatusLine`, asked of the
+  tooling owner and published by it the same day, 4312305), each a run in its style, the terminal's eight colour names
+  shown in Cloyd's own shades (`ColoursOfTheTerminal`), readable in Windows' light theme and its dark, the default in the
+  line's grey; and under it the permission mode,
   `⏵⏵` and its `shownAs`; under that, while the status is `shell` (`StatusOfAClaudeCode.IsIdleWithBackgroundWork`),
   "A background shell or monitor runs" (Magnus, 2026-11-21: "add the missing information about background work under
   the existing two lines under the input box"). The hub tells neither how many tasks nor which, as the TUI's `1 shell`

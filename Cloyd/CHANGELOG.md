@@ -52,7 +52,8 @@ All notable changes to Cloyd are documented here. The format follows
 - **Claude Code's own status line under the chat's input box,** all of it, as the terminal shows it under Claude Code's
   box: your status line command's, such as "Opus 5.5 · xhigh · context 42% · week 100% · Fable 7% · €361.07", with the
   permission mode under it, such as "⏵⏵ bypass permissions on". It shows once Claude Code has given it to the hub,
-  within a minute of its start, and without its colours. Under them, while Claude is idle and a background shell or
+  within a minute of its start, in its colours, such as a weekly limit nearly used up in bold red, each in a shade
+  readable on the chat's ground in Windows' light theme and its dark. Under them, while Claude is idle and a background shell or
   monitor runs, a third line says so; not yet how many, nor while Claude also works, which the hub doesn't tell.
 - **Over the chat's input box while Claude works, what it does, as Claude Code's own UI shows it:**
   - **The tool call under way,** as Claude described it, and how long it has run, such as

@@ -1,17 +1,20 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Documents;
 using Avalonia.Layout;
 using Avalonia.Media;
+using Cloyd.Chat.Views;
 using Cloyd.Hub;
 
 namespace Cloyd.Chat.Status;
 
 /// <summary>
 /// The lines under the chat's input box: Claude Code's own status line, as the terminal shows it under Claude Code's box,
-/// such as "Opus 5.5 · xhigh · context 42% · week 100% · Fable 7% · €361.07"; the permission mode under it, such as
-/// "⏵⏵ bypass permissions on"; and under that, while Claude is idle and background work runs, a line that says so.
-/// Magnus, 2026-11-21: "get all the information from our custom status line in the CLI into the status line here", and
-/// "add the missing information about background work under the existing two lines under the input box".
+/// in its colours, such as "Opus 5.5 · xhigh · context 42% · week 100% · Fable 7% · €361.07" with "week 100%" in bold
+/// red; the permission mode under it, such as "⏵⏵ bypass permissions on"; and under that, while Claude is idle and
+/// background work runs, a line that says so. Magnus, 2026-11-21: "get all the information from our custom status line
+/// in the CLI into the status line here", and "add the missing information about background work under the existing two
+/// lines under the input box".
 /// </summary>
 /// <remarks>
 /// What Claude does otherwise isn't told here: the <see cref="WorkingLineOfTheChat"/> over the box tells that it works, and
@@ -35,13 +38,17 @@ sealed class StatusLineOfTheChat : UserControl
 
    public StatusLineOfTheChat()
    {
+      Resources.MergedDictionaries.Add(ColoursOfTheTerminal.AsResources());
       _backgroundWork.Text = BackgroundWorkRuns;
       Content = new StackPanel { Margin = new Thickness(28, 0, 28, 8), Children = { _claudeCodesStatusLine, _permissionMode, _backgroundWork } };
       Show(claudeCode: null);
    }
 
    /// <summary>What it shows of Claude Code's own status line: empty until the hub knows it, and <see cref="NoClaudeCodeRuns"/> while none runs.</summary>
-   public string ClaudeCodesStatusLine => _claudeCodesStatusLine.Text!;
+   public string ClaudeCodesStatusLine => LinesOfTheChat.TextIn(_claudeCodesStatusLine);
+
+   /// <summary>The runs it shows Claude Code's own status line in, each stretch of it in its style.</summary>
+   public IReadOnlyList<Run> RunsOfClaudeCodesStatusLine => [.. _claudeCodesStatusLine.Inlines!.OfType<Run>()];
 
    /// <summary>The permission mode under it, as Claude Code shows it, such as "⏵⏵ bypass permissions on": null while it shows none.</summary>
    public string? PermissionMode => _permissionMode.IsVisible ? _permissionMode.Text : null;
@@ -52,11 +59,20 @@ sealed class StatusLineOfTheChat : UserControl
    /// <summary>Shows what <paramref name="claudeCode"/>, the Claude Code that runs in the tab, showed last under its box, and whether background work runs: null while none runs.</summary>
    public void Show(RunningSession? claudeCode)
    {
-      _claudeCodesStatusLine.Text = claudeCode is null ? NoClaudeCodeRuns : claudeCode.StatusLine?.Text ?? "";
+      _claudeCodesStatusLine.Inlines!.Clear();
+      if(claudeCode is null) _claudeCodesStatusLine.Inlines.Add(new Run(NoClaudeCodeRuns));
+      foreach(var stretch in claudeCode?.StatusLine?.Stretches ?? []) _claudeCodesStatusLine.Inlines.Add(RunOf(stretch));
       _permissionMode.Text = claudeCode?.StatusLine?.PermissionModeLine;
       _permissionMode.IsVisible = _permissionMode.Text is not null;
       _backgroundWork.IsVisible = claudeCode?.Status.IsIdleWithBackgroundWork == true;
    }
 
-   static TextBlock Grey() => new() { FontSize = 12, HorizontalAlignment = HorizontalAlignment.Left, TextTrimming = TextTrimming.CharacterEllipsis, Opacity = 0.7 };
+   /// <summary><paramref name="stretch"/> as a run of text in its style: its colour's shade (<see cref="ColoursOfTheTerminal"/>), else the line's grey.</summary>
+   static Run RunOf(StretchOfTheStatusLine stretch)
+   {
+      var run = new Run(stretch.Text) { FontWeight = stretch.IsBold ? FontWeight.Bold : FontWeight.Normal };
+      return stretch.Colour is {} name && ColoursOfTheTerminal.Named(name) is {} colour ? colour.AsTheForegroundOf(run) : run;
+   }
+
+   static TextBlock Grey() => ColoursOfTheChat.Grey.AsTheForegroundOf(new TextBlock { FontSize = 12, HorizontalAlignment = HorizontalAlignment.Left, TextTrimming = TextTrimming.CharacterEllipsis });
 }
