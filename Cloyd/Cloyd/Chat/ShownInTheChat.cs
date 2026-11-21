@@ -7,7 +7,7 @@ namespace Cloyd.Chat;
 /// <summary>
 /// One of the things the chat shows of a session's conversation, one after another down its column, as the Claude desktop
 /// app's Code tab shows them (<c>dev_docs/cloyd-chat-specification.md</c>): a prompt of Magnus's, what Claude wrote, a run
-/// of tool calls, or a grey line telling what happened to the conversation. Each kind is a type nested here.
+/// of tool calls, or a grey line telling what happened to the conversation, as a turn's end. Each kind is a type nested here.
 /// </summary>
 /// <remarks>
 /// Each is equal to another that shows the same, whatever reading of the hub's stream either came from, so that the chat
@@ -52,6 +52,9 @@ abstract partial record ShownInTheChat
                break;
             case MessageInTheAnswer.PromptFromElsewhere prompt when PromptFromElsewhere.IsShown(prompt):
                shown.Add(PromptFromElsewhere.Of(prompt));
+               break;
+            case MessageInTheAnswer.EndOfATurn end:
+               shown.Add(EndOfATurn.Of(end));
                break;
          }
 

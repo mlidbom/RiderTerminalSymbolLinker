@@ -37,7 +37,16 @@ sealed record BackgroundWork(IReadOnlyList<BackgroundTask> Tasks, IReadOnlyList<
    /// scheduled prompts.
    /// </summary>
    public string Counted =>
-      string.Join(" · ", [.. Tasks.GroupBy(it => it.Kind).Select(it => CountOf(it.Count(), it.Key)), .. ScheduledPrompts.Count > 0 ? [CountOf(ScheduledPrompts.Count, ScheduledPrompt.Kind)] : Array.Empty<string>()]);
+      string.Join(" · ", [.. TasksByKind, .. ScheduledPrompts.Count > 0 ? [CountOf(ScheduledPrompts.Count, ScheduledPrompt.Kind)] : Array.Empty<string>()]);
+
+   /// <summary>
+   /// The tasks counted by kind, as the TUI counts them in the line after a turn that leaves them running, such as
+   /// "1 shell, 1 monitor": null while none runs. A scheduled prompt doesn't run until it wakes the session.
+   /// </summary>
+   public string? TasksCounted => Tasks.Count > 0 ? string.Join(", ", TasksByKind) : null;
+
+   /// <summary>The tasks counted by kind, such as "2 shells": the kinds in the order the first of each is listed.</summary>
+   IEnumerable<string> TasksByKind => Tasks.GroupBy(it => it.Kind).Select(it => CountOf(it.Count(), it.Key));
 
    /// <summary>Each task and scheduled prompt with what it does, a line or two each, as the TUI's list of them shows it: see <see cref="BackgroundTask.AsListed"/>.</summary>
    public string Listed => string.Join("\n", [.. Tasks.Select(it => it.AsListed), .. ScheduledPrompts.Select(it => it.AsListed)]);

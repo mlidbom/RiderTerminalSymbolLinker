@@ -481,15 +481,27 @@ manage` after the permission mode, and after a turn `✻ Sautéed for 21s · don
   (`BackgroundWork.Listed`), in place of the TUI's list that `↓ to manage` opens.
 - **In the tab's header,** `MarkerOfBackgroundWork`: Claude Code's ✻, still and grey, in the place the spinner turns in
   while Claude works, as high and wide, while Claude doesn't work and background work runs; its tip says what runs.
-- **Not yet, the turn's end line** (`Worked for 21s · done 2:37 PM`): Claude Code writes a `turn_duration` entry at
-  each turn's end in the transcript, with the turn's duration and its end's time, which the hub's conversation leaves
-  out. Asked of the tooling owner, 2026-11-21: a message for each turn's end in the conversation, and the stand-in writing
-  the entry. Then the chat shows the line after each turn, and "1 shell still running" after the last, from
-  `backgroundWork`.
+- **After each turn, a grey line** (`ShownInTheChat.EndOfATurn`): "Worked for 21s · done 14:37", from the hub's
+  `endOfATurn` messages, which the tooling owner published on 2026-11-21 from the `turn_duration` entries Claude Code
+  writes in the transcript at each turn's end. An interrupted turn has none, in the transcript and so in the chat. As
+  Claude Code's TUI writes it, read from its bundle (2026-11-21): `${verb} for ${duration} · done ${doneAt}`, then
+  `· ${count} still running`, its count of shells and monitors joined by commas, "1 shell, 1 monitor".
+  - **"Worked",** where the TUI picks a verb of its whimsy, such as "Sautéed".
+  - **The time** (`Cloyd.Chat.Status.WhenItEnded`) as the TUI's: alone for a turn that ended today, with the weekday in
+    the last week, else with the date, by calendar days; in the machine's culture, where the TUI uses its own (Magnus's
+    TUI says "2:37 PM", his Windows "14:37").
+  - **"· 1 shell still running"** only after the conversation's last turn, while that turn's end is the last thing
+    shown, from `BackgroundWork.TasksCounted`: the hub tells the background work as of the last turn's end only. Scheduled
+    prompts aren't counted: they don't run until they wake the session.
+  - A turn's end also ends the turn for the working line's count of commands (`ToolCallsOfTheLastTurn`): a turn woken by
+    a prompt the chat doesn't show, as a background task's notice that it ended, no longer counts the commands of the
+    turn before.
 - **Specified** with the stand-in's `Run a background shell for 8 seconds` (`When_Claude_runs_a_shell_command_in_the_background`):
-  "1 shell" under the box, its tip with the shell's description and command, the tab's marker; then, once Claude replies
-  to its end, both gone. The kinds the stand-in doesn't run with background work made in the specification
-  (`When_a_chats_status_line_shows_what_runs_in_the_background`).
+  "1 shell" under the box, its tip with the shell's description and command, the tab's marker, and "· 1 shell still
+  running" after the turn; then, once Claude replies to its end, all gone. The kinds the stand-in doesn't run with
+  background work made in the specification (`When_a_chats_status_line_shows_what_runs_in_the_background`). The turn's
+  end line after the stand-in's turn of 10 seconds (`When_the_hub_tells_of_Claudes_turn`), and how its time is said
+  (`When_the_line_after_a_turn_says_when_it_ended`).
 
 ### While Claude works, as it's built
 

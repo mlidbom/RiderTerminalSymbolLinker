@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.RegularExpressions;
 using Cloyd.Chat;
 using Cloyd.Chat.Writing;
@@ -49,11 +50,27 @@ public class When_the_hub_tells_of_Claudes_turn : SpecificationWritingInAChat
    /// <summary>Then the turn ends, as Claude Code writes the reply to the transcript.</summary>
    public class and_then_the_turn_ends : When_the_hub_tells_of_Claudes_turn
    {
-      public and_then_the_turn_ends() => Once(() =>
+      readonly DateTime _seenToEnd;
+
+      public and_then_the_turn_ends() => _seenToEnd = Once(() =>
       {
-         WaitUntil(() => _turn.LookedAt() && _tab.Chat.WorkingLine.Says is null && _tab.Chat.Shown.OfType<ShownInTheChat.ClaudesText>().Any(), "the working line went, and the conversation had Claude's reply", _turn.WhatItSaw);
-         return true;
+         WaitUntil(() => _turn.LookedAt() && _tab.Chat.WorkingLine.Says is null && _tab.Chat.Shown is [.., ShownInTheChat.ClaudesText, ShownInTheChat.EndOfATurn],
+                   "the working line went, and the conversation had Claude's reply and the turn's end", _turn.WhatItSaw);
+         return DateTime.Now;
       });
+
+      /// <summary>As Claude Code's TUI writes a line after each turn: "✻ Sautéed for 21s · done 2:37 PM".</summary>
+      [XF] public void after_the_reply_the_chat_tells_the_turn_ended() => OnTheUIThread(() => _tab.Chat.Shown[^2]).Must().Satisfy(it => it is ShownInTheChat.ClaudesText { Markdown: TheReply });
+
+      [XF] public void in_a_line_that_says_how_long_it_took_and_when_it_ended() => TheTurnsEnd.Success.Must().BeTrue();
+
+      [XF] public void how_long_it_took_the_10_seconds_Claude_was_busy() => TheTurnsEnd.Groups["took"].Value.Must().Satisfy(it => int.Parse(it, CultureInfo.InvariantCulture) is >= 10 and < 60);
+
+      /// <summary>As the machine's clock tells the time, which the scenario read once it saw the turn end.</summary>
+      [XF] public void and_when_it_ended_by_the_clock_today() =>
+         TimeOnly.Parse(TheTurnsEnd.Groups["done"].Value, CultureInfo.CurrentCulture).Must().Satisfy(it => TimeOnly.FromDateTime(_seenToEnd) - it < TimeSpan.FromMinutes(2));
+
+      Match TheTurnsEnd => Regex.Match(OnTheUIThread(() => ((ShownInTheChat.EndOfATurn)_tab.Chat.Shown[^1]).Line), @"^Worked for (?<took>\d+)s · done (?<done>[^·]+)$");
 
       [XF] public void the_reply_grew_as_Claude_wrote_it_until_it_was_whole() =>
          _turn.ClaudesTextAtTheEnd.Must().Satisfy(it => it.Count >= 2 && it[^1] == TheReply && it.Zip(it.Skip(1)).All(pair => pair.Second.Length > pair.First.Length && pair.Second.StartsWith(pair.First, StringComparison.Ordinal)));

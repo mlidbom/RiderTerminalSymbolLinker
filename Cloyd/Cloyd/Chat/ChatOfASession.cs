@@ -1,7 +1,5 @@
-using System.Collections.ObjectModel;
 using Avalonia;
 using Avalonia.Controls;
-using Avalonia.Controls.Documents;
 using Avalonia.Controls.Templates;
 using Avalonia.Layout;
 using Avalonia.Media;
@@ -124,7 +122,9 @@ sealed class ChatOfASession : UserControl
       set
       {
          var anotherRuns = value?.Process != _claudeCode?.Process;
+         var otherTasksRun = value?.BackgroundWork?.TasksCounted != _claudeCode?.BackgroundWork?.TasksCounted;
          _claudeCode = value;
+         if(otherTasksRun) DrawWhatIsShown();
          InputBox.ClaudeCode = value;
          StatusLine.Show(value);
          WorkingLine.Show(value);
@@ -269,11 +269,21 @@ sealed class ChatOfASession : UserControl
    }
 
    /// <summary>
-   /// Draws the conversation, and after it the text Claude writes, in place of what the chat draws: see
-   /// <see cref="DrawnEndOfTheConversation.Show"/>.
+   /// Draws the conversation, its last turn's end telling what runs in the background, and after it the text Claude
+   /// writes, in place of what the chat draws: see <see cref="DrawnEndOfTheConversation.Show"/>.
    /// </summary>
-   void DrawWhatIsShown() =>
-      _drawn.Show(_blockBeingWritten is { IsText: true } block ? [.. _conversation, new ShownInTheChat.ClaudesText(block.Id, block.Text)] : _conversation);
+   void DrawWhatIsShown()
+   {
+      var conversation = WithWhatTheLastTurnLeftRunning(_conversation);
+      _drawn.Show(_blockBeingWritten is { IsText: true } block ? [.. conversation, new ShownInTheChat.ClaudesText(block.Id, block.Text)] : conversation);
+   }
+
+   /// <summary>
+   /// <paramref name="conversation"/>, its end, when a turn's, telling what that turn left running in the background: the
+   /// background work as of the last turn's end is all the hub tells of.
+   /// </summary>
+   IReadOnlyList<ShownInTheChat> WithWhatTheLastTurnLeftRunning(IReadOnlyList<ShownInTheChat> conversation) =>
+      conversation is [.., ShownInTheChat.EndOfATurn last] ? [.. conversation.SkipLast(1), last.TheLastWith(_claudeCode?.BackgroundWork)] : conversation;
 
    /// <summary>
    /// Draws more above what is drawn, as Magnus scrolls up near its top, once the layout his scrolling started is done,
@@ -325,6 +335,7 @@ sealed class ChatOfASession : UserControl
          ShownInTheChat.Compaction compaction => Grey(compaction.Line),
          ShownInTheChat.Clearing => Grey(ShownInTheChat.Clearing.Line),
          ShownInTheChat.PromptFromElsewhere prompt => Grey(prompt.Line),
+         ShownInTheChat.EndOfATurn end => Grey(end.Line),
          _ => throw new ArgumentOutOfRangeException(nameof(shown), shown, "The chat has no view of it.")
       };
       view.Margin = new Thickness(0, 0, 0, shown is ShownInTheChat.Prompt or ShownInTheChat.SlashCommand ? 24 : 14);

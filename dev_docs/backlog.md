@@ -3,23 +3,6 @@
 What Magnus has deferred, and what waits for a time or an event before it goes on to another repository. Each entry
 says what it is, why it waits, and what to do once it can go ahead. Remove an entry once it's done.
 
-## Deferred by Magnus
-
-### Cloyd's chat doesn't show the line at a turn's end: `✻ Sautéed for 21s · done 2:37 PM · 1 shell still running`
-
-**Magnus, 2026-11-21:** "I have no way in the new UI to see that a session in waiting on something". His screenshots put
-the TUI beside the chat, which showed, after a turn, `✻ Sautéed for 21s · done 2:37 PM · 1 shell still running`. What
-runs in the background is shown since, under the box and in the tab's header (`cloyd-as-a-dotnet-application.md`, "What a
-session runs in the background, as it's built"). This line isn't.
-
-**Waits for:** the tooling owner, asked on 2026-11-21: a message for each turn's end in the hub's conversation, from
-the `turn_duration` entries Claude Code writes in the transcript at each turn's end (its duration, and the time it
-ended), and the stand-in writing those entries. It will say when it's published.
-
-**Then:** show the line after each turn in the chat, as the TUI's scrollback keeps one for each: "Worked for 21s · done
-2:37 PM", and after the last turn "· 1 shell still running" while background work runs (`RunningSession.BackgroundWork`).
-Specify it with the stand-in's turns.
-
 ## Waiting for Compze
 
 ### Compze.xUnitBDD: a class's scenario run once for all its facts, opted into

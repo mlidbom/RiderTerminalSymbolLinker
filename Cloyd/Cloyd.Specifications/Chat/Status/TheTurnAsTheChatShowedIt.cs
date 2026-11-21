@@ -21,7 +21,10 @@ sealed class TheTurnAsTheChatShowedIt(SessionTab tab)
    /// <summary>What the working line said Claude did, its line up to the turn's time, in order, once each time it changed: such as <c>Thinking…</c>.</summary>
    public IReadOnlyList<string> WhatClaudeDid => [.. Changes(_workingLineSaid.Select(it => it[..it.IndexOf(" (", StringComparison.Ordinal)]))];
 
-   /// <summary>Claude's text as the chat showed it at the conversation's end, in order, once each time it changed: what Claude wrote as it came, then what the conversation has.</summary>
+   /// <summary>
+   /// Claude's text as the chat showed it at the conversation's end, before the line of the turn's end once the turn has
+   /// ended, in order, once each time it changed: what Claude wrote as it came, then what the conversation has.
+   /// </summary>
    public IReadOnlyList<string> ClaudesTextAtTheEnd => _claudesTextAtTheEnd;
 
    /// <summary>What it saw, for a wait in vain to tell: see <see cref="SpecificationOpeningWindows.WaitUntil"/>.</summary>
@@ -32,7 +35,7 @@ sealed class TheTurnAsTheChatShowedIt(SessionTab tab)
    public bool LookedAt()
    {
       if(_chat.WorkingLine.Says is {} says) AddIfChanged(_workingLineSaid, says);
-      if(_chat.Shown is [.., ShownInTheChat.ClaudesText { Markdown: var text }]) AddIfChanged(_claudesTextAtTheEnd, text);
+      if(_chat.Shown.LastOrDefault(it => it is not ShownInTheChat.EndOfATurn) is ShownInTheChat.ClaudesText { Markdown: var text }) AddIfChanged(_claudesTextAtTheEnd, text);
       return true;
 
       static void AddIfChanged(List<string> seen, string now)

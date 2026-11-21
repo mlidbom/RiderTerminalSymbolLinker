@@ -61,9 +61,14 @@ All notable changes to Cloyd are documented here. The format follows
     Claude's words and a shell's command. The prompts that `/loop` and Claude's wake-ups schedule count too.
   - **In the tab's header, a grey ✻ where the spinner turns while Claude works,** while Claude is idle and background
     work runs, its tip saying what runs.
+  - **After Claude's last turn, in the line that ends it, what it left running,** as Claude Code writes it:
+    "· 1 shell still running", or "1 shell, 1 monitor".
   - **As of the end of Claude's last turn,** when Claude Code tells it: a task that ends while Claude works stays listed
     until that turn ends. Until a turn has ended since the hub started, the line says only "A background shell or monitor
     runs", while Claude is idle.
+- **A grey line after each of Claude's turns in the chat, as Claude Code writes one in the terminal:** how long the turn
+  took and when it ended, such as "Worked for 21s · done 14:37": the time alone today, with the weekday in the last week,
+  with the date before that, as Windows formats them. A turn interrupted has none, as in the terminal.
 - **Over the chat's input box while Claude works, what it does, as Claude Code's own UI shows it:**
   - **The tool call under way,** as Claude described it, and how long it has run, such as
     `Finding the repositories that use it · 5s`, with the first three lines of the command under it, as
