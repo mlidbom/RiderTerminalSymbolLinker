@@ -1,5 +1,5 @@
-using Cloyd.ClaudeCode;
 using Cloyd.Projects;
+using Cloyd.Sessions;
 
 namespace Cloyd.History;
 
@@ -23,7 +23,7 @@ abstract partial class WhereTheSessionIs
    public abstract string? AsToldIn(ProjectWindow pickedIn);
 
    /// <summary>Does what choosing <paramref name="session"/> in the picker of <paramref name="pickedIn"/> does.</summary>
-   public abstract Task Choose(ClaudeCodeSession session, ProjectWindow pickedIn);
+   public abstract Task Choose(Session session, ProjectWindow pickedIn);
 
    /// <summary>Where <paramref name="window"/> is told to be from the picker of <paramref name="pickedIn"/>: nothing when it's the same window.</summary>
    static string OfAnotherProject(ProjectWindow window, ProjectWindow pickedIn) => window == pickedIn ? "" : $" of {window.Project.Name}";

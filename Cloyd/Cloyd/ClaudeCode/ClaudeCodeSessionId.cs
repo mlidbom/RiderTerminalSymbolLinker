@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Cloyd.Sessions;
 
 namespace Cloyd.ClaudeCode;
 
@@ -8,10 +9,8 @@ namespace Cloyd.ClaudeCode;
 /// <c>claude --resume</c> takes, and what names the session's transcript.
 /// </summary>
 [JsonConverter(typeof(ClaudeCodeSessionIdInJson))]
-readonly record struct ClaudeCodeSessionId(string Value)
+sealed record ClaudeCodeSessionId(string Value) : SessionId(Value)
 {
-   public override string ToString() => Value;
-
    /// <summary>A <see cref="ClaudeCodeSessionId"/> in JSON: the id as a string.</summary>
    sealed class ClaudeCodeSessionIdInJson : JsonConverter<ClaudeCodeSessionId>
    {

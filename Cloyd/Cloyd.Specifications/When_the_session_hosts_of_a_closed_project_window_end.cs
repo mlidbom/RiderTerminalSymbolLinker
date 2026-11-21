@@ -38,7 +38,7 @@ public class When_the_session_hosts_of_a_closed_project_window_end : Specificati
       DoneOnTheUIThread(() => window.StartANewSession(name));
       var tab = OnTheUIThread(() => window.Tabs.Last());
       WaitUntil(() => tab.SessionRunningInIt is not null, $"Claude Code ran the session {name} in its tab's host");
-      return OnTheUIThread(() => tab.LatestSession!);
+      return OnTheUIThread(() => (ClaudeCodeSession)tab.LatestSession!);
    }
 
    [XF] public void the_window_saved_all_three_tabs() => _project.SavedWindow.Tabs.Must().HaveCount(3);
@@ -86,11 +86,11 @@ public class When_the_session_hosts_of_a_closed_project_window_end : Specificati
       /// </summary>
       public class and_Magnus_selects_each_tab_in_turn : and_the_project_window_opens_again
       {
-         readonly IReadOnlyList<(ClaudeCodeSessionId Session, string Shown)> _terminals;
+         readonly IReadOnlyList<(SessionId Session, string Shown)> _terminals;
 
          public and_Magnus_selects_each_tab_in_turn() => _terminals = Once(() => _tabs.Select(ShownOnceSelected).ToList());
 
-         (ClaudeCodeSessionId Session, string Shown) ShownOnceSelected(SessionTab tab)
+         (SessionId Session, string Shown) ShownOnceSelected(SessionTab tab)
          {
             OnTheUIThread(() => tab.IsSelected = true); // A terminal is laid out, and shows what it draws, only in the selected tab.
             WaitUntil(() => tab.Terminal.TextShown.Contains($"Resumed session {tab.LatestSession!.Id}"), "the tab's terminal showed the stand-in resume its session");

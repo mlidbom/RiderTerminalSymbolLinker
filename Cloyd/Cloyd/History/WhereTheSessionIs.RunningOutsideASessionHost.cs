@@ -1,5 +1,6 @@
 using Cloyd.ClaudeCode;
 using Cloyd.Projects;
+using Cloyd.Sessions;
 
 namespace Cloyd.History;
 
@@ -20,7 +21,7 @@ abstract partial class WhereTheSessionIs
 
       public override string AsToldIn(ProjectWindow pickedIn) => "running outside Cloyd";
 
-      public override Task Choose(ClaudeCodeSession session, ProjectWindow pickedIn) =>
+      public override Task Choose(Session session, ProjectWindow pickedIn) =>
          throw new InvalidOperationException($"A session that runs in no session host can't be chosen: {session.Id} runs as process {Process}.");
    }
 }

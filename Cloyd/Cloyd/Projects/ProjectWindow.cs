@@ -214,28 +214,28 @@ sealed class ProjectWindow : Window
    });
 
    /// <summary>Resumes <paramref name="session"/> in a new tab, in the project's folder, which it selects, as choosing it in the history picker does.</summary>
-   public async Task ResumeInANewTab(ClaudeCodeSession session)
+   public async Task ResumeInANewTab(Session session)
    {
       var tab = await ShowANewHost(Project.Folder, session, nameGiven: null);
       _tabs.SelectedItem = tab;
-      await StartClaudeCodeIn(tab, ClaudeCodeCommand.Resuming(session));
+      await StartIn(tab, session.CommandThatResumesIt);
    }
 
    /// <summary>
    /// Resumes <paramref name="session"/> in <paramref name="tab"/>, one of the window's <see cref="Tabs"/>, whose Claude
    /// Code has exited to its shell: selects it, and brings the window forward.
    /// </summary>
-   public async Task ResumeIn(SessionTab tab, ClaudeCodeSession session)
+   public async Task ResumeIn(SessionTab tab, Session session)
    {
       ShowTheTab(tab);
-      await StartClaudeCodeIn(tab, ClaudeCodeCommand.Resuming(session));
+      await StartIn(tab, session.CommandThatResumesIt);
    }
 
    /// <summary>
    /// Shows <paramref name="host"/>, which runs <paramref name="session"/> and which no tab shows, in a tab of its own, which
    /// it selects: attaching takes the session over from a console that shows it.
    /// </summary>
-   public void ShowInATab(SessionHostOfTheHub host, ClaudeCodeSession session) => _tabs.SelectedItem = Show(host, session, nameGiven: null);
+   public void ShowInATab(SessionHostOfTheHub host, Session session) => _tabs.SelectedItem = Show(host, session, nameGiven: null);
 
    /// <summary>
    /// Starts a new session in the project's folder, in a tab of its own, which it selects: named
@@ -246,7 +246,7 @@ sealed class ProjectWindow : Window
    {
       var tab = await ShowANewHost(Project.Folder, latestSession: null, nameGiven: name);
       _tabs.SelectedItem = tab;
-      await StartClaudeCodeIn(tab, ClaudeCodeCommand.OfANewSession(name));
+      await StartIn(tab, ClaudeCodeCommand.OfANewSession(name));
    }
 
    /// <summary>
@@ -281,23 +281,30 @@ sealed class ProjectWindow : Window
       async Task<SessionTab?> TheTabBroughtBack()
       {
          if(host is not null) return host.Attached ? null : Show(host, saved.Session, nameGiven: null);
-         if(saved.Session is not {} session || !claudeCode.HoldsTheTranscriptOf(session.Id)) return null;
+         if(saved.Session is not {} session || !CanBeResumed(session)) return null;
 
          var resumed = await ShowANewHost(saved.Directory, session, nameGiven: null);
-         await StartClaudeCodeIn(resumed, ClaudeCodeCommand.Resuming(session));
+         await StartIn(resumed, session.CommandThatResumesIt);
          return resumed;
       }
+
+      //wip: Codex sessions, which come to the tabs with the hub's protocol 2, are resumed while Codex has them on disk.
+      bool CanBeResumed(Session session) => session switch
+      {
+         ClaudeCodeSession claudeCodes => claudeCode.HoldsTheTranscriptOf(claudeCodes.Id),
+         _ => throw new ArgumentOutOfRangeException(nameof(session), session, "A session of an agent CLI that tabs aren't brought back with yet.")
+      };
    }
 
-   async Task<SessionTab> ShowANewHost(string directory, ClaudeCodeSession? latestSession, string? nameGiven) =>
+   async Task<SessionTab> ShowANewHost(string directory, Session? latestSession, string? nameGiven) =>
       Show(await _hub.StartASessionHost(_shellOfNewSessions, directory, SessionHostLabel.OfANewHostOf(Project), _closed.Token), latestSession, nameGiven);
 
    /// <summary>Has the hub start <paramref name="command"/> in the host of <paramref name="tab"/>: when it doesn't, the tab says why, and shows the shell at its prompt.</summary>
-   async Task StartClaudeCodeIn(SessionTab tab, ClaudeCodeCommand command)
+   async Task StartIn(SessionTab tab, AgentCliCommand command)
    {
       try
       {
-         await _hub.StartClaudeCodeIn(tab.Host, command, _closed.Token);
+         await command.HaveTheHubTypeItInto(tab.Host, _hub, _closed.Token);
       }
       catch(RefusedByTheHub refusal)
       {
@@ -305,7 +312,7 @@ sealed class ProjectWindow : Window
       }
    }
 
-   SessionTab Show(SessionHostOfTheHub host, ClaudeCodeSession? latestSession, string? nameGiven)
+   SessionTab Show(SessionHostOfTheHub host, Session? latestSession, string? nameGiven)
    {
       var tab = new SessionTab(host, latestSession, nameGiven, SizeOfTheTerminals, _hub, _pastedImages);
       tab.ClosedByMagnus += it => _ = TellingOfFailure(() => EndTheSessionOf(it));

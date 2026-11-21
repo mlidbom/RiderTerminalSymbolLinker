@@ -42,7 +42,7 @@ sealed class SessionTab : TabItem
    /// Its chat follows the session's conversation through <paramref name="hub"/>. The images pasted into it are saved in
    /// <paramref name="pastedImages"/>.
    /// </summary>
-   public SessionTab(SessionHostOfTheHub host, ClaudeCodeSession? latestSession, string? nameGiven, ConsoleSize size, TheHub hub, PastedImages pastedImages)
+   public SessionTab(SessionHostOfTheHub host, Session? latestSession, string? nameGiven, ConsoleSize size, TheHub hub, PastedImages pastedImages)
    {
       Host = host;
       LatestSession = latestSession;
@@ -51,7 +51,9 @@ sealed class SessionTab : TabItem
       Terminal = new TerminalOfASessionHost(_attachment, pastedImages);
       Terminal.PasteFailed += failure => Tell($"Cloyd couldn't paste: {failure.Message}");
       Chat = new ChatOfASession(hub, pastedImages) { IsVisible = false };
-      Chat.Show(latestSession?.Id);
+      //wip: every session is Claude Code's until Codex sessions come to the tabs (the hub's protocol 2); a tab of a Codex
+      //   session will have no chat, as Codex's chat comes later.
+      Chat.Show((latestSession as ClaudeCodeSession)?.Id);
       Chat.InputBox.SentASlashCommand += () => Show(chat: false);
       Chat.WaitingForMagnusInTheTerminal.AsksForTheTerminal += () => Show(chat: false);
       _title = new TextBlock { Text = latestSession?.Name ?? nameGiven ?? TitleOfASessionWithNoName, VerticalAlignment = VerticalAlignment.Center };
@@ -119,13 +121,13 @@ sealed class SessionTab : TabItem
    /// The session that runs in the tab's host, or ran in it last, as after Claude Code exits to the shell: what the tab
    /// is saved with, to be resumed once its host is gone. Null while none has, as before Claude Code starts.
    /// </summary>
-   public ClaudeCodeSession? LatestSession { get; private set; }
+   public Session? LatestSession { get; private set; }
 
    /// <summary>Whether the Claude Code that runs in the tab's host runs as <paramref name="process"/>.</summary>
    public bool RunsTheClaudeCodeOf(ClaudeCodeProcessId process) => SessionRunningInIt?.Process == process;
 
    /// <summary>Whether <paramref name="session"/> runs in the tab's host, or ran in it last: its <see cref="LatestSession"/>.</summary>
-   public bool RunsOrRanLast(ClaudeCodeSessionId session) => LatestSession?.Id == session;
+   public bool RunsOrRanLast(SessionId session) => LatestSession?.Id == session;
 
    /// <summary>The tab, as its window saves it: with what its chat's input box holds.</summary>
    public SavedSessionTab AsSaved => new(Host.Id, Host.Directory, LatestSession, Chat.InputBox.AsSaved);

@@ -1,6 +1,6 @@
-using Cloyd.ClaudeCode;
 using Cloyd.Hub;
 using Cloyd.Projects;
+using Cloyd.Sessions;
 
 namespace Cloyd.History;
 
@@ -19,7 +19,7 @@ abstract partial class WhereTheSessionIs
 
       public override string AsToldIn(ProjectWindow pickedIn) => Host.Attached ? "running, shown outside Cloyd" : "running, in no tab";
 
-      public override Task Choose(ClaudeCodeSession session, ProjectWindow pickedIn)
+      public override Task Choose(Session session, ProjectWindow pickedIn)
       {
          pickedIn.ShowInATab(Host, session);
          return Task.CompletedTask;

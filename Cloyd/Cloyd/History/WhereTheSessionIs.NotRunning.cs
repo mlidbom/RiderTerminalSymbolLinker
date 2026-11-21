@@ -1,5 +1,5 @@
-using Cloyd.ClaudeCode;
 using Cloyd.Projects;
+using Cloyd.Sessions;
 
 namespace Cloyd.History;
 
@@ -19,6 +19,6 @@ abstract partial class WhereTheSessionIs
 
       public override string? AsToldIn(ProjectWindow pickedIn) => null;
 
-      public override Task Choose(ClaudeCodeSession session, ProjectWindow pickedIn) => pickedIn.ResumeInANewTab(session);
+      public override Task Choose(Session session, ProjectWindow pickedIn) => pickedIn.ResumeInANewTab(session);
    }
 }
