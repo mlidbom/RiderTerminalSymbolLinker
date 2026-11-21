@@ -431,6 +431,13 @@ input box") ported, with Magnus's calls above:
 - **Saved with the window** (`SavedSessionTab.Draft`): the messages that waited to be given, then the draft, each part
   as it came in; they come back into the box, to be sent again by Magnus. Not the message being given, which the hub
   goes on typing whatever becomes of Cloyd.
+- **The status line under the box** (`Cloyd.Chat.Status.StatusLineOfTheChat`), as the Kotlin chat's: at its left what
+  Claude does, from the running session's `status` (`StatusOfAClaudeCode`); at its right Claude Code's own status line,
+  from its `statusLine` (`ClaudeCodesStatusLine`), the model, the effort level, the permission mode in short as the
+  desktop app names it, and the context used. The tab tells the chat its running session (`ChatOfASession.ClaudeCode`),
+  which hands it to the box and the line. Specified through the hub for what Claude does; Claude Code's status line with
+  running sessions made in the specification, as the stand-in shows the hub none (asked of the tooling owner,
+  2026-11-21).
 - **Tabs still open on the terminal:** the chat becomes each tab's first view once Claude waiting for Magnus in the
   terminal shows prominently over the box, as he asked, so that a permission prompt can't go unseen behind the chat.
 - **Specified** with the stand-in through the sandbox's hub (`Cloyd.Specifications/Chat/Writing`): a message of two

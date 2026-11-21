@@ -45,6 +45,10 @@ All notable changes to Cloyd are documented here. The format follows
     red: such as when Claude Code's own box in the terminal holds text, which the message would have mangled.
   - **A slash command,** such as `/compact`, switches the tab to its terminal, where Claude Code shows what it does.
   - **What the box holds comes back with the window,** after Cloyd restarts, typed and pasted parts as they came in.
+- **A status line under the chat's input box,** as the desktop app's footer: at its left, whether Claude works, waits
+  for you in the terminal (and for what, such as a permission prompt), or is idle; at its right, Claude Code's own
+  status line, such as "Opus 5.5 · xhigh · Auto · 23% context", which shows once Claude Code has given it to the hub,
+  within a minute of its start.
 - **Ctrl+H switches a tab between its terminal and its chat,** as the switch at its top does, and gives the keyboard to
   the one it shows. Claude Code binds Ctrl+H to no command of its own: in the terminal it was a Backspace.
 - **Ctrl+V pastes in a session's terminal,** as Ctrl+Shift+V does, and as in every other Windows program: in Claude

@@ -91,7 +91,7 @@ sealed class SessionTab : TabItem
       set
       {
          field = value;
-         Chat.InputBox.ClaudeCode = value;
+         Chat.ClaudeCode = value;
          if(value is null) return;
          LatestSession = value.Session;
          Chat.Show(value.Session.Id);

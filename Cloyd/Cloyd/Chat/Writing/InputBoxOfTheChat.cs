@@ -289,7 +289,7 @@ sealed class InputBoxOfTheChat : UserControl
       box.Bind(Border.BorderBrushProperty, box.GetResourceObservable("TextControlBorderBrush"));
       box.Bind(Border.BackgroundProperty, box.GetResourceObservable("TextControlBackground"));
       DockPanel.SetDock(_notice, Dock.Top);
-      return new DockPanel { Margin = new Thickness(16, 4, 16, 12), Children = { _notice, box } };
+      return new DockPanel { Margin = new Thickness(16, 4, 16, 6), Children = { _notice, box } };
    }
 
    static Button RoundButton(string content, string tip)

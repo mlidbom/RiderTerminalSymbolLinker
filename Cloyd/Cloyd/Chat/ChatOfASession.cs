@@ -6,6 +6,7 @@ using Avalonia.Controls.Templates;
 using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Threading;
+using Cloyd.Chat.Status;
 using Cloyd.Chat.Views;
 using Cloyd.Chat.Writing;
 using Cloyd.ClaudeCode;
@@ -59,6 +60,7 @@ sealed class ChatOfASession : UserControl
    {
       _hub = hub;
       InputBox = new InputBoxOfTheChat(hub, pastedImages) { MaxWidth = WidthOfTheColumn + 32 };
+      StatusLine = new StatusLineOfTheChat { MaxWidth = WidthOfTheColumn + 32 };
       _column = new ItemsControl
       {
          ItemsSource = _drawn.Drawn,
@@ -73,11 +75,27 @@ sealed class ChatOfASession : UserControl
       _scroller.ScrollChanged += (_, changed) => { if(changed.OffsetDelta.Y < 0 && _scroller.Offset.Y <= NearTheTop) DrawMoreAboveOnceLaidOut(); };
       LookOfTheApp();
       SizeChanged += (_, size) => InputBox.MostHeight = size.NewSize.Height * MostOfTheHeightTheInputBoxTakes;
-      Content = Rows(_notice, _scroller, InputBox);
+      Content = Rows(_notice, _scroller, InputBox, StatusLine);
    }
 
    /// <summary>Where Magnus writes to the Claude Code that runs in the tab.</summary>
    public InputBoxOfTheChat InputBox { get; }
+
+   /// <summary>The line under the input box: what Claude does, and Claude Code's own status line.</summary>
+   public StatusLineOfTheChat StatusLine { get; }
+
+   /// <summary>
+   /// The Claude Code that runs in the tab's host, as the hub last told: what the input box sends to, and the status line
+   /// tells of. Null while none runs, as before it starts, or after it exits to the shell.
+   /// </summary>
+   public RunningSession? ClaudeCode
+   {
+      set
+      {
+         InputBox.ClaudeCode = value;
+         StatusLine.Show(value);
+      }
+   }
 
    /// <summary>Gives the chat the keyboard, as the tab shows it: its input box, for Magnus to write.</summary>
    public void TakeTheKeyboard() => InputBox.TakeTheKeyboard();
@@ -242,12 +260,16 @@ sealed class ChatOfASession : UserControl
       void ColourTheCode() => renderer.CodeBlockColorTheme = ColoursOfTheChat.OfCodeIn(renderer.ActualThemeVariant);
    }
 
-   /// <summary>The chat's rows, top to bottom: <paramref name="notice"/> and <paramref name="inputBox"/> as tall as they are, <paramref name="conversation"/> taking the rest.</summary>
-   static Grid Rows(Control notice, Control conversation, Control inputBox)
+   /// <summary>The chat's rows, top to bottom: <paramref name="notice"/>, <paramref name="conversation"/> taking what the others leave, and those <paramref name="under"/> it, each as tall as it is.</summary>
+   static Grid Rows(Control notice, Control conversation, params Control[] under)
    {
-      Grid.SetRow(notice, 0);
-      Grid.SetRow(conversation, 1);
-      Grid.SetRow(inputBox, 2);
-      return new Grid { RowDefinitions = new RowDefinitions("Auto,*,Auto"), Children = { notice, conversation, inputBox } };
+      var rows = new Grid { RowDefinitions = new RowDefinitions("Auto,*" + string.Concat(under.Select(_ => ",Auto"))) };
+      foreach(var (row, at) in new[] { notice, conversation }.Concat(under).Select((row, at) => (row, at)))
+      {
+         Grid.SetRow(row, at);
+         rows.Children.Add(row);
+      }
+
+      return rows;
    }
 }
