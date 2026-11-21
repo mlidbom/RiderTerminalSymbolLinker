@@ -22,12 +22,18 @@ the TUI beside the chat:
   "done 2:37 PM". The hub reads the permission mode off Claude Code's screen (`permissionMode.shownAs`), but not the
   rest of that line, `1 shell · ↓ to manage`.
 
-**What to do once Magnus takes it up:**
-1. Ask the tooling owner for the background tasks in each running session's record: how many, of which kind, and
-   perhaps each one's command.
-2. Show them as the TUI does: a line over the input box while any run, such as `1 shell still running`, a marker in
-   the tab's header, and the turn's end line, such as `Worked for 21s · done 2:37 PM`.
-3. Specify it with the stand-in for Claude Code, once it can run a background task.
+**Taken up the same day, as far as the hub allows:** a third line under the input box says "A background shell or
+monitor runs" while the status is `shell` (c754c88). The rest waits for the hub.
+
+**Waits for:** the tooling owner, who decided on 2026-11-21 to have each running session's record tell what
+background work it runs (its backlog, `~/.claude/dev_docs/backlog.md`, 6feb6a8, "each running session tells what
+background work it runs"). It comes after its work on the status line's colours and on its specifications' speed. It
+will say when it's published. Asked for: how many of each kind run, whatever the status, each one's command, and the
+turn's end time.
+
+**Then:** show them as the TUI does: `1 shell` in place of the third line's words, and while Claude works too; a marker
+in the tab's header; the turn's end line, such as `Worked for 21s · done 2:37 PM`. Specify it with the stand-in for
+Claude Code, once it can run a background task.
 
 ## Waiting for Compze
 
