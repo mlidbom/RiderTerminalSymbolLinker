@@ -60,6 +60,10 @@ sealed partial class TheHub
    public async Task<ClaudeCodeFolder> ClaudeCodeFolderItServes(CancellationToken cancellation = default) =>
       (await TheAnnouncement(new TimeToAnswer(_folderOfTheAnnouncement), cancellation)).ClaudeCodeFolderItServes;
 
+   /// <summary>The agent CLIs whose sessions the hub starts and lists, as its announcement says: Claude Code first.</summary>
+   public async Task<IReadOnlyList<AgentCli>> AgentClisItServes(CancellationToken cancellation = default) =>
+      (await TheAnnouncement(new TimeToAnswer(_folderOfTheAnnouncement), cancellation)).AgentClisItServes;
+
    /// <summary>Every session host that runs, in the order they started.</summary>
    public async Task<IReadOnlyList<SessionHostOfTheHub>> SessionHosts(CancellationToken cancellation = default)
    {

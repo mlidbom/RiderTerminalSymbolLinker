@@ -101,6 +101,7 @@ sealed class ProjectWindow : Window
       Width = 1400;
       Height = 900;
       Content = TheLayout();
+      _newSession.Opened += () => _ = TellingOfFailure(async () => _newSession.Offer(await _hub.AgentClisItServes(_closed.Token)));
       _newSession.NewSessionAsked += session => _ = TellingOfFailure(() => StartANewSession(session));
       ToolTip.SetTip(_openTheHistory, TipOfTheHistoryButton);
       _openTheHistory.Click += (_, _) => _ = OpenTheHistoryPicker();
@@ -194,6 +195,9 @@ sealed class ProjectWindow : Window
 
    /// <summary>The session history picker laid over the window, which <see cref="OpenTheHistoryPicker"/> opens.</summary>
    public ClaudeSessionHistoryPicker HistoryPicker => _historyPicker;
+
+   /// <summary>The button before the tabs that starts a new session, offering the agent CLIs the hub serves.</summary>
+   public NewSessionButton NewSessionButton => _newSession;
 
    /// <summary>
    /// Opens the session history picker over the window, as the History button and Ctrl+Alt+Shift+Y do, and shows the

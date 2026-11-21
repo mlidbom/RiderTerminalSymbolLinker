@@ -1,5 +1,6 @@
 using ClaudeTooling.Hub.LocalApi.Contract;
 using Cloyd.ClaudeCode;
+using Cloyd.Sessions;
 
 namespace Cloyd.Hub;
 
@@ -19,6 +20,12 @@ sealed record AnnouncementOfTheHub(WhatTheAnnouncementSays Says)
 
    /// <summary>The folder of the Claude Codes the hub knows of, and starts in its session hosts: where their sessions' transcripts are.</summary>
    public ClaudeCodeFolder ClaudeCodeFolderItServes => new(new DirectoryInfo(Says.ClaudeCodeFolder));
+
+   /// <summary>
+   /// The agent CLIs whose sessions the hub starts and lists: Claude Code, and Codex while the announcement names a Codex
+   /// folder, which a hub of protocol 1 doesn't, nor one whose machine has no Codex.
+   /// </summary>
+   public IReadOnlyList<AgentCli> AgentClisItServes => Says.CodexFolder is null ? [AgentCli.ClaudeCode] : [AgentCli.ClaudeCode, AgentCli.Codex];
 
    /// <summary>The address of <paramref name="path"/>, such as <c>session-hosts</c>, at the hub this announces.</summary>
    public Uri AddressOf(string path) => new($"http://127.0.0.1:{Says.Port}/{path}");

@@ -112,6 +112,12 @@ All notable changes to Cloyd are documented here. The format follows
   `claude -p` ran, aren't listed. Choosing a session brings forward the tab it runs in, in any of Cloyd's windows;
   resumes it in the tab it exited in; shows in a new tab a session host that no tab shows; or else resumes it in a new
   tab in the project's folder. A session that runs outside any session host can't be chosen.
+- **Codex sessions in the tabs,** from a hub that serves them. The **+** offers Claude Code or Codex, Claude Code
+  chosen, each with its name box; it offers Codex only while the hub serves Codex sessions. A Codex session's tab shows
+  its terminal only, as Cloyd has no chat of a Codex session yet: no switch to a chat, and Ctrl+H keeps to the terminal.
+  It is titled with the session's name, else "Codex", with the spinner while Codex works. A tab whose host runs Claude
+  Code and then Codex, or the other way round, follows the one that runs. A tab's session is saved with its agent CLI,
+  and windows saved before read their sessions as Claude Code's.
 
 ### Fixed
 - **Your prompts show at the right of the chat's column,** as in the desktop app, lined up with the input box: in a
