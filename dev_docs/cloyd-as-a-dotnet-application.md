@@ -437,7 +437,11 @@ input box") ported, with Magnus's calls above:
   under a queued message. How the desktop app shows one wasn't seen. It goes once one more prompt of the conversation
   holds its text than as it was sent: held in, not equal to, as Claude Code may give the model several queued messages as
   one prompt. One given to a Claude Code that no longer runs in the tab goes too. Not covered: a queued message Magnus
-  takes back into Claude Code's own box with Up and changes there stays shown until that Claude Code exits.
+  takes back into Claude Code's own box with Up and changes there stays shown until that Claude Code exits. Shown by
+  `MessagesOnTheirWayOfTheChat`, a row of the chat's own between the call under way and the working line (Magnus,
+  2026-11-21: "place queued messages above the turn information with the spinning icon, but below what the session is
+  doing currently which is the reason the message is queued"); the box tells of changes with
+  `InputBoxOfTheChat.MessagesOnTheirWayChanged`.
 - **Saved with the window** (`SavedSessionTab.Draft`): the messages that waited to be given, then the draft, each part
   as it came in; they come back into the box, to be sent again by Magnus. Not the message being given, which the hub
   goes on typing whatever becomes of Cloyd.
@@ -445,7 +449,11 @@ input box") ported, with Magnus's calls above:
   terminal shows it under Claude Code's box (Magnus, 2026-11-21: "get all the information from our custom status line
   in the CLI into the status line here"): the running session's `statusLine.text` (`ClaudeCodesStatusLine.Text`), the
   machine's status line command's, without its colours, which the hub doesn't keep; and under it the permission mode,
-  `⏵⏵` and its `shownAs`. "No Claude Code runs in this tab" while none runs. What Claude does isn't told there: first a
+  `⏵⏵` and its `shownAs`; under that, while the status is `shell` (`StatusOfAClaudeCode.IsIdleWithBackgroundWork`),
+  "A background shell or monitor runs" (Magnus, 2026-11-21: "add the missing information about background work under
+  the existing two lines under the input box"). The hub tells neither how many tasks nor which, as the TUI's `1 shell`
+  does, nor those that run while Claude works: asked of the tooling owner the same day (`backlog.md`). "No Claude Code
+  runs in this tab" while none runs. What Claude does isn't told there: first a
   left side said it, and Magnus, of its "Idle": "This is not needed with progress clearly shown above the input." The
   tab tells the chat its running session (`ChatOfASession.ClaudeCode`), which hands it to the box and the lines.
   Specified with running sessions made in the specification, as the stand-in shows the hub no status line yet.
@@ -460,18 +468,18 @@ input box") ported, with Magnus's calls above:
 **2026-11-21** (`Cloyd.Chat.Status`, `Cloyd.Hub`), the Kotlin chat's (`claude-sessions.md`, "A working line" and "What
 Claude writes shows as it comes") ported, with Magnus's calls of the day.
 
-- **The working lines over the box** (`WorkingLineOfTheChat`), shown while the Claude Code is `busy`, as Claude Code's
-  own UI shows the call under way apart from its spinner line (Magnus, 2026-11-21: "put it above the input, like other
-  claude UIs do and include the time and tokens like they do", then, of the two in one line, "I would like it
-  separated like in the CLI"):
-  - **The tool call under way,** the last of the turn's with no result (`ToolCallsOfTheLastTurn`, from what the chat
+- **The rows over the box,** shown while the Claude Code is `busy`, as Claude Code's own UI shows the call under way
+  apart from its spinner line (Magnus, 2026-11-21: "put it above the input, like other claude UIs do and include the
+  time and tokens like they do", then, of the two in one line, "I would like it separated like in the CLI"), the
+  messages queued behind the call between them:
+  - **The tool call under way** (`CallUnderWayOfTheChat`), the last of the turn's with no result (`ToolCallsOfTheLastTurn`, from what the chat
     shows of the conversation) ("so that I can see what the agent is doing right now"): what it does, in bold,
     `ToolCallInTheChat.WhatItDoes`, the description Claude gave a command, else the row's verb and target, and how long
     it has run since Claude made it (`MadeAt`), `Finding the repositories that use it · 5s`; under it, `WhatItWasGiven`,
     a command's first three lines but the empty ones, the first after `└ $`, an ellipsis after the third when more
     follow, as the TUI cuts it; or a file's path. Shown while the activity is `runningTools`, and always where the hub
     tells of no turn. It shows once the conversation has the call, which took a few seconds in a live check.
-  - **The turn's line under it:** a spinner of Claude Code's glyphs in Claude's orange (`SpinnerOfClaudeCode`, as
+  - **The working line, the turn's, under them** (`WorkingLineOfTheChat`): a spinner of Claude Code's glyphs in Claude's orange (`SpinnerOfClaudeCode`, as
     high whichever glyph it shows: the glyphs' fonts differ in height, and the line jumped 2 pixels with each turn on
     Magnus's window; turning itself every 480 ms, a quarter of Claude Code's speed, as he asked twice; the same spinner
     shows before the title of each tab whose Claude Code is busy, "so that I can see which tabs have a working session

@@ -16,4 +16,10 @@ sealed record StatusOfAClaudeCode(string AsReported, string? WaitingFor)
 
    /// <summary>Whether a dialog of its own waits for Magnus, which only its terminal shows, such as a permission prompt.</summary>
    public bool IsWaiting => AsReported == "waiting";
+
+   /// <summary>
+   /// Whether it is idle, with background work running: a shell task or a monitor, which may wake it again. The hub tells
+   /// neither how many nor which; nor of those that run while Claude works.
+   /// </summary>
+   public bool IsIdleWithBackgroundWork => AsReported == "shell";
 }

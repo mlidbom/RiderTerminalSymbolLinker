@@ -40,6 +40,9 @@ static class LinesOfTheChat
    public static SelectableTextBlock InMonospace(string text, ColourOfTheTheme? colour = null) =>
       (colour ?? ColoursOfTheChat.Text).AsTheForegroundOf(new SelectableTextBlock { Text = text, FontFamily = Monospaced, FontSize = 12, TextWrapping = TextWrapping.Wrap });
 
+   /// <summary>The text <paramref name="block"/> shows, its runs one after another, such as a line made of a bold part and a grey part.</summary>
+   public static string TextIn(TextBlock block) => block.Inlines!.Aggregate("", (shown, it) => shown + ((Run)it).Text);
+
    /// <summary>A run of text in <paramref name="colour"/>.</summary>
    public static Run Coloured(string text, ColourOfTheTheme colour) => colour.AsTheForegroundOf(new Run(text));
 

@@ -1,3 +1,4 @@
+using Avalonia.Controls;
 using Avalonia.Input;
 using Cloyd.Chat.Writing;
 using Cloyd.Sessions;
@@ -54,4 +55,9 @@ public class When_Magnus_sends_a_message_while_Claude_works : SpecificationWriti
 
    [XF] public void once_the_conversation_has_it_it_shows_over_the_box_no_more() =>
       WaitUntil(() => _tab.Chat.InputBox.MessagesOnTheirWay.Count == 0, "the message on its way showed over the box no more");
+
+   /// <summary>Magnus, 2026-11-21: "place queued messages above the turn information with the spinning icon, but below what the session is doing currently which is the reason the message is queued".</summary>
+   [XF] public void it_shows_under_the_call_under_way_and_over_the_turns_line() =>
+      OnTheUIThread(() => (Grid.GetRow(_tab.Chat.CallUnderWay), Grid.GetRow(_tab.Chat.MessagesOnTheirWay), Grid.GetRow(_tab.Chat.WorkingLine)))
+        .Must().Satisfy(rows => rows.Item1 < rows.Item2 && rows.Item2 < rows.Item3);
 }

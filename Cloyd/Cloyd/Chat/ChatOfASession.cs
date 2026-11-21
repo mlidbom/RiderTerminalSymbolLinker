@@ -75,6 +75,9 @@ sealed class ChatOfASession : UserControl
       InputBox = new InputBoxOfTheChat(hub, pastedImages) { MaxWidth = WidthOfTheColumn + 32 };
       StatusLine = new StatusLineOfTheChat { MaxWidth = WidthOfTheColumn + 32 };
       WorkingLine = new WorkingLineOfTheChat { MaxWidth = WidthOfTheColumn + 32 };
+      CallUnderWay = new CallUnderWayOfTheChat { MaxWidth = WidthOfTheColumn + 32 };
+      MessagesOnTheirWay = new MessagesOnTheirWayOfTheChat { MaxWidth = WidthOfTheColumn + 32 };
+      InputBox.MessagesOnTheirWayChanged += () => MessagesOnTheirWay.Show(InputBox.MessagesOnTheirWay);
       WaitingForMagnusInTheTerminal = new WaitingForMagnusInTheTerminal { MaxWidth = WidthOfTheColumn + 32 };
       _column = new ItemsControl
       {
@@ -90,17 +93,23 @@ sealed class ChatOfASession : UserControl
       _scroller.ScrollChanged += (_, changed) => { if(changed.OffsetDelta.Y < 0 && _scroller.Offset.Y <= NearTheTop) DrawMoreAboveOnceLaidOut(); };
       LookOfTheApp();
       SizeChanged += (_, size) => InputBox.MostHeight = size.NewSize.Height * MostOfTheHeightTheInputBoxTakes;
-      Content = Rows(_notice, _scroller, WaitingForMagnusInTheTerminal, WorkingLine, InputBox, StatusLine);
+      Content = Rows(_notice, _scroller, WaitingForMagnusInTheTerminal, CallUnderWay, MessagesOnTheirWay, WorkingLine, InputBox, StatusLine);
    }
 
    /// <summary>Where Magnus writes to the Claude Code that runs in the tab.</summary>
    public InputBoxOfTheChat InputBox { get; }
 
-   /// <summary>The line under the input box: what Claude does, and Claude Code's own status line.</summary>
+   /// <summary>The lines under the input box: Claude Code's own status line, its permission mode, and the background work that runs.</summary>
    public StatusLineOfTheChat StatusLine { get; }
 
-   /// <summary>The line over the input box while Claude works: at what, and how long it has.</summary>
+   /// <summary>The turn's line over the input box while Claude works: at what, and how long it has.</summary>
    public WorkingLineOfTheChat WorkingLine { get; }
+
+   /// <summary>The tool call under way while Claude works, at the top of what shows over the input box.</summary>
+   public CallUnderWayOfTheChat CallUnderWay { get; }
+
+   /// <summary>The messages sent that the conversation doesn't have yet, between the call under way and the turn's line.</summary>
+   public MessagesOnTheirWayOfTheChat MessagesOnTheirWay { get; }
 
    /// <summary>The box between the conversation and the input box while Claude waits for Magnus in the terminal.</summary>
    public WaitingForMagnusInTheTerminal WaitingForMagnusInTheTerminal { get; }
@@ -119,6 +128,7 @@ sealed class ChatOfASession : UserControl
          InputBox.ClaudeCode = value;
          StatusLine.Show(value);
          WorkingLine.Show(value);
+         CallUnderWay.Show(value);
          WaitingForMagnusInTheTerminal.Show(value);
          if(anotherRuns) FollowTheTurnWhileShown();
       }
@@ -245,6 +255,7 @@ sealed class ChatOfASession : UserControl
       if(_blockBeingWritten is { HasEnded: true }) _blockBeingWritten = null;
       InputBox.Seen(conversation);
       WorkingLine.Show(conversation);
+      CallUnderWay.Show(conversation);
       DrawWhatIsShown();
       if(isTheFirst) _end.ScrollToTheEnd();
    }

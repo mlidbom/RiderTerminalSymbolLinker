@@ -28,31 +28,41 @@ public class When_a_chats_working_line_shows_a_command_under_way : Specification
    const string Description = "Finding other repositories that use the stand-in's busy prompt";
    const string Command = "ls /c/Dev\ngrep -rln -i \"Be busy for\" /c/Dev --include=*.cs\n\nhead -20\ntail -5";
 
-   readonly WorkingLineOfTheChat _workingLine;
+   readonly (CallUnderWayOfTheChat CallUnderWay, WorkingLineOfTheChat WorkingLine) _shown;
 
-   public When_a_chats_working_line_shows_a_command_under_way() => _workingLine = Once(() =>
+   public When_a_chats_working_line_shows_a_command_under_way() => _shown = Once(() =>
    {
-      var window = Open(() => new Window { Width = 840, Height = 120, Content = new WorkingLineOfTheChat(), Resources = { MergedDictionaries = { ColoursOfTheChat.AsResources() } } });
-      var workingLine = OnTheUIThread(() => (WorkingLineOfTheChat)window.Content!);
+      var window = Open(() => new Window
+      {
+         Width = 840,
+         Height = 120,
+         Content = new StackPanel { Children = { new CallUnderWayOfTheChat(), new WorkingLineOfTheChat() } },
+         Resources = { MergedDictionaries = { ColoursOfTheChat.AsResources() } }
+      });
+      var shown = OnTheUIThread(() => ((StackPanel)window.Content!).Children switch { [CallUnderWayOfTheChat call, WorkingLineOfTheChat line] => (call, line), _ => throw new InvalidOperationException() });
       OnTheUIThread(() =>
       {
-         workingLine.Show(new RunningSession(new ClaudeCodeProcessId(4711), new ClaudeSessionId(Guid.NewGuid().ToString()), "a session", new SessionHostId(Guid.NewGuid().ToString()),
-                                             new StatusOfAClaudeCode("busy", WaitingFor: null), StatusLine: null, TurnUnderWay: null));
-         workingLine.Show([new ShownInTheChat.Prompt("prompt", "Which repositories use it?"),
-                           new ShownInTheChat.RunOfToolCalls([ACall("call-1", "Bash", new { command = "cd /c/Dev && ls" }, done: true), ACall("call-2", "Bash", new { command = Command, description = Description }, done: false)])]);
+         var claudeCode = new RunningSession(new ClaudeCodeProcessId(4711), new ClaudeSessionId(Guid.NewGuid().ToString()), "a session", new SessionHostId(Guid.NewGuid().ToString()),
+                                             new StatusOfAClaudeCode("busy", WaitingFor: null), StatusLine: null, TurnUnderWay: null);
+         IReadOnlyList<ShownInTheChat> conversation = [new ShownInTheChat.Prompt("prompt", "Which repositories use it?"),
+                                                       new ShownInTheChat.RunOfToolCalls([ACall("call-1", "Bash", new { command = "cd /c/Dev && ls" }, done: true), ACall("call-2", "Bash", new { command = Command, description = Description }, done: false)])];
+         shown.call.Show(claudeCode);
+         shown.call.Show(conversation);
+         shown.line.Show(claudeCode);
+         shown.line.Show(conversation);
       });
       Render(window, "a-chats-working-line");
-      return workingLine;
+      return shown;
    });
 
    [XF] public void the_call_under_way_shows_as_Claude_described_it_with_how_long_it_has_run() =>
-      OnTheUIThread(() => _workingLine.CallUnderWay).Must().Satisfy(it => it is not null && Regex.IsMatch(it, $@"^{Regex.Escape(Description)} · \ds$"));
+      OnTheUIThread(() => _shown.CallUnderWay.WhatItDoes).Must().Satisfy(it => it is not null && Regex.IsMatch(it, $@"^{Regex.Escape(Description)} · \ds$"));
 
    [XF] public void under_it_the_first_three_lines_of_the_command_show_but_the_empty_one_the_last_with_an_ellipsis_as_more_follow() =>
-      OnTheUIThread(() => _workingLine.WhatTheCallUnderWayWasGiven).Must().Be("└ $ ls /c/Dev\n  grep -rln -i \"Be busy for\" /c/Dev --include=*.cs\n  head -20…");
+      OnTheUIThread(() => _shown.CallUnderWay.WhatItWasGiven).Must().Be("└ $ ls /c/Dev\n  grep -rln -i \"Be busy for\" /c/Dev --include=*.cs\n  head -20…");
 
    [XF] public void the_turns_line_says_Claude_works_how_long_it_has_and_how_many_commands_the_turn_ran() =>
-      OnTheUIThread(() => _workingLine.Says).Must().Satisfy(it => it is not null && Regex.IsMatch(it, $@"^{Regex.Escape(WorkingLineOfTheChat.Working)} \(\ds · 2 commands\)$"));
+      OnTheUIThread(() => _shown.WorkingLine.Says).Must().Satisfy(it => it is not null && Regex.IsMatch(it, $@"^{Regex.Escape(WorkingLineOfTheChat.Working)} \(\ds · 2 commands\)$"));
 
    static ToolCallInTheChat ACall(string id, string tool, object input, bool done) =>
       new(new MessageInTheAnswer.ToolCall(id, "a-session", DateTime.UtcNow, $"toolu_{id}", tool, JsonSerializer.SerializeToElement(input)),

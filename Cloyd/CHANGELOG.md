@@ -40,7 +40,8 @@ All notable changes to Cloyd are documented here. The format follows
     Claude, the **Stop** button shows beside the send button while Claude works.
   - **A message sent stays in sight until Claude Code gives it to Claude,** over the box, dimmed, as Claude Code's own
     UI shows a queued message: `Sending…` while it is typed into Claude Code, `Queued` once Claude Code has queued it.
-    It goes once the conversation has it.
+    It goes once the conversation has it. It shows under the tool call under way, which it waits behind, and over the
+    turn's line with the spinner.
   - **Ctrl+V keeps what you paste apart from what you type,** as Claude Code's own box does: a long paste reaches
     Claude as pasted. An image on the clipboard with no text is pasted as `[Image #1]`, with a thumbnail over the box
     that a click shows whole; Claude gets the image.
@@ -51,7 +52,8 @@ All notable changes to Cloyd are documented here. The format follows
 - **Claude Code's own status line under the chat's input box,** all of it, as the terminal shows it under Claude Code's
   box: your status line command's, such as "Opus 5.5 · xhigh · context 42% · week 100% · Fable 7% · €361.07", with the
   permission mode under it, such as "⏵⏵ bypass permissions on". It shows once Claude Code has given it to the hub,
-  within a minute of its start, and without its colours.
+  within a minute of its start, and without its colours. Under them, while Claude is idle and a background shell or
+  monitor runs, a third line says so; not yet how many, nor while Claude also works, which the hub doesn't tell.
 - **Over the chat's input box while Claude works, what it does, as Claude Code's own UI shows it:**
   - **The tool call under way,** as Claude described it, and how long it has run, such as
     `Finding the repositories that use it · 5s`, with the first three lines of the command under it, as
