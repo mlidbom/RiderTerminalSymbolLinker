@@ -3,6 +3,32 @@
 What Magnus has deferred, and what waits for a time or an event before it goes on to another repository. Each entry
 says what it is, why it waits, and what to do once it can go ahead. Remove an entry once it's done.
 
+## Deferred by Magnus
+
+### Cloyd's chat doesn't show what an idle session waits on: its background shells and monitors
+
+**Magnus, 2026-11-21:** "I have no way in the new UI to see that a session in waiting on something". His screenshots put
+the TUI beside the chat:
+- **The TUI** shows, after a turn, `✻ Sautéed for 21s · done 2:37 PM · 1 shell still running`, and under its box, after
+  the permission mode, `· 1 shell · ↓ to manage`.
+- **The chat** shows neither. Its status line has the machine's status line and the permission mode, nothing more.
+
+**What Cloyd has to go on:**
+- **The hub's `status` is `shell`** while Claude Code is idle with a background shell task or monitor running
+  (`StatusOfAClaudeCode.AsReported`). Until 2026-11-21 the status line's left side then said "Idle · a background
+  task runs". That went with the left side, on Magnus's word ("This is not needed with progress clearly shown above
+  the input"), and nothing took its place.
+- **How many tasks run, and of which kind,** shells or monitors, aren't in the hub's answer. Nor is the turn's end,
+  "done 2:37 PM". The hub reads the permission mode off Claude Code's screen (`permissionMode.shownAs`), but not the
+  rest of that line, `1 shell · ↓ to manage`.
+
+**What to do once Magnus takes it up:**
+1. Ask the tooling owner for the background tasks in each running session's record: how many, of which kind, and
+   perhaps each one's command.
+2. Show them as the TUI does: a line over the input box while any run, such as `1 shell still running`, a marker in
+   the tab's header, and the turn's end line, such as `Worked for 21s · done 2:37 PM`.
+3. Specify it with the stand-in for Claude Code, once it can run a background task.
+
 ## Waiting for Compze
 
 ### Compze.xUnitBDD: a class's scenario run once for all its facts, opted into
