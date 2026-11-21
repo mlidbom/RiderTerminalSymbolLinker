@@ -50,7 +50,7 @@ public class When_Magnus_opens_the_session_history_picker : SpecificationOpening
          return (project, window, picker, titled, inAFolderOfTheProject, inTheOtherWorktree, inAnotherProject);
       });
 
-   private protected IReadOnlyList<ClaudeCodeSessionId> Listed => OnTheUIThread(() => _picker.Listed.Select(it => it.Id).ToList());
+   private protected IReadOnlyList<SessionId> Listed => OnTheUIThread(() => _picker.Listed.Select(it => it.Id).ToList());
 
    [XF] public void it_lists_the_sessions_of_the_projects_worktree_most_recently_used_first_not_those_a_tool_ran_nor_those_of_no_conversation() =>
       Listed.Must().Satisfy(it => it.SequenceEqual([_titled.Id, _inAFolderOfTheProject.Id]));

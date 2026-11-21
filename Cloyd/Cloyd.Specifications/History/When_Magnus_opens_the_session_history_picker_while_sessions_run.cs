@@ -74,7 +74,7 @@ public class When_Magnus_opens_the_session_history_picker_while_sessions_run : S
    }
 
    bool HasAConversationToResume(ClaudeCodeSessionId? session) =>
-      session is {} asked && Sandbox.HubOfTheSandbox.SessionsOnDisk().Any(it => it.Id == asked && it.HasAConversationToResume);
+      session is {} asked && Sandbox.HubOfTheSandbox.SessionsOnDisk().Any(it => it.Session.Id == asked && it.HasAConversationToResume);
 
    /// <summary>Selects the entry of <paramref name="session"/> in the picker, as a click on it does, and presses Enter.</summary>
    private protected void Choose(ClaudeCodeSessionId session)

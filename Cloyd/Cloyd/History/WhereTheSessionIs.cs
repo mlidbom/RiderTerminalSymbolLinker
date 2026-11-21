@@ -9,14 +9,14 @@ namespace Cloyd.History;
 /// is resumed in a tab.
 /// </summary>
 /// <remarks>
-/// A session that runs is never resumed again: two Claude Codes writing to one session would mix their conversations.
+/// A session that runs is never resumed again: two agent CLIs writing to one session would mix their conversations.
 /// </remarks>
 abstract partial class WhereTheSessionIs
 {
    /// <summary>Whether the session can be chosen in the picker.</summary>
    public virtual bool CanBeChosen => true;
 
-   /// <summary>Whether a Claude Code runs the session, which the picker marks.</summary>
+   /// <summary>Whether its agent CLI runs the session, which the picker marks.</summary>
    public abstract bool IsRunning { get; }
 
    /// <summary>What the picker of <paramref name="pickedIn"/> tells of where the session is: null for nothing, as for one that runs nowhere.</summary>

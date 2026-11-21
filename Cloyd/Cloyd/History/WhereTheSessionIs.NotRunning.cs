@@ -6,8 +6,8 @@ namespace Cloyd.History;
 abstract partial class WhereTheSessionIs
 {
    /// <summary>
-   /// No Claude Code runs it, and no tab ran it last. Choosing it resumes it in a new tab of the picker's window, in the
-   /// project's folder, whichever folder it ran in: Claude Code finds its transcript, and goes on with it there.
+   /// No agent CLI runs it, and no tab ran it last. Choosing it resumes it in a new tab of the picker's window, in the
+   /// project's folder, whichever folder it ran in: its agent CLI finds it, and goes on with it there.
    /// </summary>
    public sealed class NotRunning : WhereTheSessionIs
    {

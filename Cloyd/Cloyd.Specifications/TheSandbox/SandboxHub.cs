@@ -85,6 +85,13 @@ sealed class SandboxHub
    /// </summary>
    public string FolderOfTheStandInForCodex => _started.FolderOfTheStandInForCodex;
 
+   /// <summary>
+   /// The Codex home the hub serves, which <c>CODEX_HOME</c> names in its <see cref="Environment"/>: where the stand-in for
+   /// Codex keeps the sandbox's Codex sessions (<see cref="CodexSessionOfASpecification"/>). Outside the sandbox's folder,
+   /// in a short folder of the hub's, for the socket of Codex's daemon, whose path may hold 107 characters at most.
+   /// </summary>
+   public string CodexFolder => _started.CodexFolder;
+
    /// <summary>What the published client prints, run with <paramref name="arguments"/>: an exception when it fails.</summary>
    static string Printed(params string[] arguments)
    {

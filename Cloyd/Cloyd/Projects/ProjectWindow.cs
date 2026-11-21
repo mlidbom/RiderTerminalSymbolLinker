@@ -6,7 +6,6 @@ using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Threading;
 using ClaudeTooling.SessionHost.Protocol;
-using Cloyd.ClaudeCode;
 using Cloyd.DotNetAnalysisAndRefactoring;
 using Cloyd.History;
 using Cloyd.Hub;
@@ -259,10 +258,10 @@ sealed class ProjectWindow : Window
    async Task BringBackTheTabs(SavedProjectWindow saved)
    {
       var hosts = await _hub.SessionHosts(_closed.Token);
-      var claudeCode = await _hub.ClaudeCodeFolderItServes(_closed.Token);
+      var resumable = new ResumableSessions(_hub, _closed.Token);
       SessionTab? selected = null;
       foreach(var savedTab in saved.Tabs)
-         if(await BringBack(savedTab, hosts.SingleOrDefault(it => it.Id == savedTab.SessionHost), claudeCode) is {} tab && savedTab.SessionHost == saved.SelectedTab)
+         if(await BringBack(savedTab, hosts.SingleOrDefault(it => it.Id == savedTab.SessionHost), resumable) is {} tab && savedTab.SessionHost == saved.SelectedTab)
             selected = tab;
 
       foreach(var host in hosts.Where(it => Project.Equals(it.Project) && !it.Attached && !IsShown(it.Id)))
@@ -272,10 +271,10 @@ sealed class ProjectWindow : Window
 
    /// <summary>
    /// Brings back <paramref name="saved"/>: attached to its <paramref name="host"/> while the host runs, unless an attach
-   /// client shows it; once the host is gone, its session resumed in a new host, while <paramref name="claudeCode"/>
-   /// holds the session's transcript. Null when the tab doesn't come back.
+   /// client shows it; once the host is gone, its session resumed in a new host, while it is one of the
+   /// <paramref name="resumable"/> sessions. Null when the tab doesn't come back.
    /// </summary>
-   async Task<SessionTab?> BringBack(SavedSessionTab saved, SessionHostOfTheHub? host, ClaudeCodeFolder claudeCode)
+   async Task<SessionTab?> BringBack(SavedSessionTab saved, SessionHostOfTheHub? host, ResumableSessions resumable)
    {
       var tab = await TheTabBroughtBack();
       tab?.Chat.InputBox.BringBack(saved.Draft ?? []);
@@ -284,19 +283,12 @@ sealed class ProjectWindow : Window
       async Task<SessionTab?> TheTabBroughtBack()
       {
          if(host is not null) return host.Attached ? null : Show(host, saved.Session, newSession: null);
-         if(saved.Session is not {} session || !CanBeResumed(session)) return null;
+         if(saved.Session is not {} session || !await resumable.Include(session)) return null;
 
          var resumed = await ShowANewHost(saved.Directory, session, newSession: null);
          await StartIn(resumed, session.CommandThatResumesIt);
          return resumed;
       }
-
-      //wip: Codex sessions, which come to the tabs with the hub's protocol 2, are resumed while Codex has them on disk.
-      bool CanBeResumed(Session session) => session switch
-      {
-         ClaudeCodeSession claudeCodes => claudeCode.HoldsTheTranscriptOf(claudeCodes.Id),
-         _ => throw new ArgumentOutOfRangeException(nameof(session), session, "A session of an agent CLI that tabs aren't brought back with yet.")
-      };
    }
 
    async Task<SessionTab> ShowANewHost(string directory, Session? latestSession, NewSession? newSession) =>

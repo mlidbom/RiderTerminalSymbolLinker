@@ -6,7 +6,7 @@ namespace Cloyd.History;
 abstract partial class WhereTheSessionIs
 {
    /// <summary>
-   /// It ran last in <paramref name="tab"/> of <paramref name="window"/>, whose Claude Code has exited, leaving the shell at
+   /// It ran last in <paramref name="tab"/> of <paramref name="window"/>, whose agent CLI has exited, leaving the shell at
    /// its prompt. Choosing it resumes it in that tab.
    /// </summary>
    public sealed class ExitedInATab(ProjectWindow window, SessionTab tab) : WhereTheSessionIs

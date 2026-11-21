@@ -617,7 +617,7 @@ picker"), ported, laid over the project's window.
 
 ### Codex sessions in the terminal tabs: the plan
 
-**`cloyd-gpt`'s, 2026-11-21; being built.** Magnus: "I want gpt sessions in the cloyd UI next is the thing", then
+**`cloyd-gpt`'s, 2026-11-21; built the same day.** Magnus: "I want gpt sessions in the cloyd UI next is the thing", then
 "Terminal tabs first. Chat can wait :)", and "getting this in is highest priority". The hub serves Codex sessions with its
 protocol 2: the agreed proposal is `~/.claude/dev_docs/the-local-api-protocol-2-proposal.md`, the contract
 `~/.claude/dev_docs/the-hubs-local-api.md` ("Protocol 2, for Codex sessions"), its types in
@@ -629,7 +629,7 @@ sessions"); what happened in a session, the chat and its classes, stays each age
 chat-UI/transcript-data-shape etc, generic [...] would probably cause more problems than it solves"). "Session" is the
 word for every agent CLI's; "thread" only in code that speaks Codex's app-server protocol, which Cloyd doesn't.
 
-**Built ahead of the hosting:**
+**Built:**
 
 - **Sessions of any agent CLI:** `Cloyd.Sessions.Session` and `SessionId`, Claude Code's `ClaudeCodeSession` and
   `ClaudeCodeSessionId`, Codex's `Cloyd.Codex.CodexSession` and `CodexSessionId`. Tabs, saved tabs, resuming and the
@@ -649,26 +649,32 @@ word for every agent CLI's; "thread" only in code that speaks Codex's app-server
 - **The + button:** offers the agent CLIs the hub serves (`AnnouncementOfTheHub.AgentClisItServes`: Codex while the
   announcement's `codexFolder` isn't null), with a choice above the name box while it offers more than one, Claude
   Code chosen at each opening (b5a1908).
-
-**To build:**
-
 - **The history picker:** one list, most recently used first, both kinds interleaved, each entry marked with its kind;
   toggles for Claude Code and Codex, both on at first, so that each combination can be shown (Magnus: "clearly
   delimited and filter options on whether to show each combination", and "One list: most recently used first, both
-  kinds interleaved, each entry marked with its kind"). A Codex entry's title: its name, else its first prompt
-  (`firstPrompt`; Codex's listing has no last prompt yet). `ClaudeSessionHistory` and its types become
-  `SessionHistory`'s; `TranscribedSession` the generic session on disk.
-- **Bringing back a saved Codex tab:** resumed while the hub lists the session on disk, as a Claude Code one is while
-  its transcript is there.
-- **Specified** against a sandbox hub that runs the stand-in for Codex, once the owner's hosting gives sandboxes a Codex
-  home: a new Codex session in a tab, its spinner and title as the hub names it, resuming one from the picker, the
-  picker's marks and toggles, a saved Codex tab brought back, and the + offering Codex from a hub that serves it. What
-  needs no Codex is specified already: a saved Codex tab's look, the + from a hub without Codex, the + offering both.
+  kinds interleaved, each entry marked with its kind"). `Cloyd.History.SessionHistory` holds `SessionOnDisk`s of every
+  agent CLI the hub serves, the hub's `GET /sessions` read by `SessionOnDisk.EachIn`, and the agent CLIs the hub serves,
+  which the picker has a toggle for (`SessionHistoryPicker.AgentClis`, `ListTheSessionsOf`, `LeaveOutTheSessionsOf`).
+  An entry is called by its session's name, else its prompt: a Claude Code session's last, a Codex session's first
+  (`firstPrompt`; Codex's listing has no last prompt). Marks and toggles show only while the hub serves more than one
+  agent CLI (`TellsTheAgentClisApart`).
+- **Bringing back a saved Codex tab** whose host is gone: resumed while the hub lists the session on disk, as a Claude
+  Code one is while its transcript is there (`Cloyd.Projects.ResumableSessions`, which asks the hub once for each agent
+  CLI, as the first tab of it needs it).
+- **Specified** against the sandbox hub, which serves Codex sessions through the stand-in for Codex
+  (`~/.claude/src/StandInForCodex`, first on the sessions' shell `PATH`): a new Codex session in a tab, named as Magnus
+  named it, its spinner while the stand-in is busy; the picker's marks and toggles over sessions of both, and resuming a
+  Codex session from it; saved Codex tabs brought back after their hosts are gone; the + offering both. A Codex session
+  on disk is written as the stand-in keeps it (`CodexSessionOfASpecification`, the stand-in's `RecordOfAThread`, a
+  format gpt-collaborators keep as a contract with these specifications).
 - **Protocol 2 was published on 2026-11-21 at 18:35.** Cloyd compiles the contract's source that each publish puts
   beside the published hub, `~/.claude/bin/ClaudeTooling.Hub.LocalApi.Contract`, so it speaks what the hub that runs
   speaks. The environment variable `TheHubsContract` names another source, such as `~/.claude/src`'s, to build against a
   change before its publish. A protocol bump still needs a Cloyd deploy, and `everyday reload Cloyd` on Magnus's go:
   until then his running Cloyd refuses the new hub.
+
+**Still to come:** a chat of a Codex session, when Magnus asks for it; Cloyd has none. A named new Codex session's tab
+is titled "Codex" from the hub's first listing of it until the hub has named it, a second or two later.
 
 ## What's still open
 

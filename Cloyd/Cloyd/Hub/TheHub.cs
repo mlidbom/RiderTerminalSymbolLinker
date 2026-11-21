@@ -156,13 +156,13 @@ sealed partial class TheHub
    }
 
    /// <summary>
-   /// Every session Claude Code has a transcript of, in the Claude Code folder the hub serves, but the archived ones: the
-   /// most recently used first.
+   /// Every session on disk of the agent CLIs the hub serves, but the archived ones, the most recently used first: each
+   /// Claude Code session with a transcript in the Claude Code folder the hub serves, and each Codex session Codex lists.
    /// </summary>
    public async Task<IReadOnlyList<SessionOnDisk>> SessionsOnDisk(CancellationToken cancellation = default)
    {
       using var answer = await Send(it => new HttpRequestMessage(HttpMethod.Get, it.AddressOf("sessions")), cancellation);
-      return SessionOnDisk.EachClaudeCodeSessionIn(await Read<SessionsAnswer>(answer, cancellation));
+      return SessionOnDisk.EachIn(await Read<SessionsAnswer>(answer, cancellation));
    }
 
    /// <summary>Every running session of an agent CLI Cloyd knows, as the hub lists them now.</summary>

@@ -115,11 +115,18 @@ All notable changes to Cloyd are documented here. The format follows
 - **Codex sessions in the tabs,** on a machine where Codex is installed. The **+** offers Claude Code or Codex, Claude
   Code chosen, with the name box under them. It offers Codex once Claude tooling's hub can start Codex sessions, as
   from the tooling that hosts Codex on a machine where npm installed Codex, whether any Codex session runs or not; else
-  Claude Code alone, with no choice to make. A Codex session's tab shows
-  its terminal only, as Cloyd has no chat of a Codex session yet: no switch to a chat, and Ctrl+H keeps to the terminal.
-  It is titled with the session's name, else "Codex", with the spinner while Codex works. A tab whose host runs Claude
-  Code and then Codex, or the other way round, follows the one that runs. A tab's session is saved with its agent CLI,
-  and windows saved before read their sessions as Claude Code's.
+  Claude Code alone, with no choice to make. A Codex session's tab shows its terminal only, as Cloyd has no chat of a
+  Codex session yet: no switch to a chat, and Ctrl+H keeps to the terminal. It is titled with the session's name, else
+  "Codex", with the spinner while Codex works. A tab whose host runs Claude Code and then Codex, or the other way round,
+  follows the one that runs.
+  - **The history picker lists Codex sessions too,** in one list with Claude Code's, most recently used first, each
+    marked **Claude Code** or **Codex**. A toggle for each, both on as the picker opens, lists its sessions or leaves
+    them out. A Codex session is called by its name, else its first prompt, with its first prompt under its name.
+    Choosing one does what choosing a Claude Code session does, resuming it with `codex resume`. Sessions `codex exec`
+    ran aren't listed. From a hub that serves Claude Code alone, the picker shows neither marks nor toggles.
+  - **A window keeps its Codex tabs,** as it keeps its Claude Code tabs: a tab's session is saved with its agent CLI, and
+    one whose host is gone, as after a reboot, is resumed in a new host with `codex resume`, unless Codex no longer has
+    the session, as after it was archived. Windows saved before read their sessions as Claude Code's.
 
 ### Fixed
 - **Your prompts show at the right of the chat's column,** as in the desktop app, lined up with the input box: in a

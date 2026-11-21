@@ -8,6 +8,7 @@ using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Threading;
 using Cloyd.Projects;
+using Cloyd.Sessions;
 using Cloyd.Theming;
 
 namespace Cloyd.History;
@@ -19,6 +20,11 @@ namespace Cloyd.History;
 /// double click, chooses the selected session, and Escape, or a click beside the picker, closes it. A session that runs
 /// where no tab can show it is greyed out, and can't be chosen.
 /// </summary>
+/// <remarks>
+/// The sessions of every agent CLI the hub serves are in one list, Claude Code's and Codex's interleaved, each marked with
+/// its agent CLI, and a toggle for each agent CLI lists its sessions or leaves them out, each on as the picker opens.
+/// From a hub that serves Claude Code alone, the picker shows neither marks nor toggles.
+/// </remarks>
 /// <remarks>
 /// Up and Down move the selection from the search box, as from the list: the picker takes them before either does.
 /// The Kotlin plugin's <c>ClaudeSessionHistoryPicker</c>, ported (<c>dev_docs/claude-sessions.md</c>, "The session
@@ -35,9 +41,17 @@ sealed class SessionHistoryPicker : Panel
    /// <summary>The picker's border.</summary>
    static readonly ColourOfTheTheme Edge = new("#C9C8C4", "#4A4945");
 
+   /// <summary>The ground of the mark of a Claude Code session: a tint of Claude's orange.</summary>
+   static readonly ColourOfTheTheme MarkOfClaudeCode = new("#F6E3DA", "#4D3328");
+
+   /// <summary>The ground of the mark of a Codex session: a tint of grey blue.</summary>
+   static readonly ColourOfTheTheme MarkOfCodex = new("#DFE6EF", "#2E3846");
+
    readonly ProjectWindow _pickedIn;
    readonly TextBox _search = new() { PlaceholderText = "Search the sessions: words of their titles, prompts, folders or branches" };
    readonly StackPanel _scopeButtons = new() { Orientation = Orientation.Horizontal, Spacing = 4, VerticalAlignment = VerticalAlignment.Center };
+   readonly StackPanel _agentCliToggles = new() { Orientation = Orientation.Horizontal, Spacing = 8, Margin = new Thickness(0, 0, 24, 0), HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Center };
+   readonly HashSet<AgentCli> _agentClisListed = [];
    readonly ListBox _list = new() { SelectionMode = SelectionMode.Single };
    readonly TextBlock _reading = new() { Text = "Reading the sessions…", Margin = new Thickness(12), Opacity = 0.7 };
 
@@ -48,7 +62,7 @@ sealed class SessionHistoryPicker : Panel
    {
       _pickedIn = pickedIn;
       IsVisible = false;
-      Resources.MergedDictionaries.Add(ColourOfTheTheme.AsResources([Running, Ground, Edge]));
+      Resources.MergedDictionaries.Add(ColourOfTheTheme.AsResources([Running, Ground, Edge, MarkOfClaudeCode, MarkOfCodex]));
       _list.ItemTemplate = new FuncDataTemplate<SessionHistoryEntry?>((entry, _) => entry is null ? new Panel() : RowOf(entry)); // The list builds a row with no entry as it swaps its entries.
       _list.DoubleTapped += (_, _) => ChooseTheSelected();
       _search.TextChanged += (_, _) => Refresh();
@@ -65,6 +79,18 @@ sealed class SessionHistoryPicker : Panel
 
    /// <summary>The scopes the picker offers: all worktrees only for a project in git. None until it has read the history.</summary>
    public IReadOnlyList<SessionHistoryScope> Scopes => _history?.Worktrees.Scopes ?? [];
+
+   /// <summary>The agent CLIs whose sessions the picker has a toggle for: those the hub serves. None until it has read the history.</summary>
+   public IReadOnlyList<AgentCli> AgentClis => _history?.AgentClis ?? [];
+
+   /// <summary>The agent CLIs whose sessions the picker lists: every one of <see cref="AgentClis"/> as it opens.</summary>
+   public IReadOnlySet<AgentCli> AgentClisListed => _agentClisListed;
+
+   /// <summary>
+   /// Whether the picker marks each entry with its agent CLI, and shows a toggle for each: while the hub serves more than one
+   /// agent CLI.
+   /// </summary>
+   public bool TellsTheAgentClisApart => AgentClis.Count > 1;
 
    /// <summary>What is typed into the search box, which filters the entries.</summary>
    public string Filter
@@ -99,6 +125,8 @@ sealed class SessionHistoryPicker : Panel
       Scope = SessionHistoryScope.ThisWorktree;
       _search.Text = "";
       _scopeButtons.Children.Clear();
+      _agentCliToggles.Children.Clear();
+      _agentClisListed.Clear();
       _list.ItemsSource = null;
       _reading.IsVisible = true;
       IsVisible = true;
@@ -120,7 +148,36 @@ sealed class SessionHistoryPicker : Panel
          _scopeButtons.Children.Add(button);
       }
 
+      foreach(var agentCli in history.AgentClis)
+      {
+         _agentClisListed.Add(agentCli);
+         _agentCliToggles.Children.Add(TheToggleOf(agentCli));
+      }
+
+      _agentCliToggles.IsVisible = TellsTheAgentClisApart;
       Refresh();
+   }
+
+   /// <summary>Lists the sessions of <paramref name="agentCli"/>, as switching its toggle on does, and gives the search box the focus back.</summary>
+   public void ListTheSessionsOf(AgentCli agentCli) => TheToggleFor(agentCli).IsChecked = true;
+
+   /// <summary>Leaves the sessions of <paramref name="agentCli"/> out, as switching its toggle off does, and gives the search box the focus back.</summary>
+   public void LeaveOutTheSessionsOf(AgentCli agentCli) => TheToggleFor(agentCli).IsChecked = false;
+
+   CheckBox TheToggleFor(AgentCli agentCli) => _agentCliToggles.Children.OfType<CheckBox>().Single(it => it.Tag == agentCli);
+
+   /// <summary>The toggle that lists the sessions of <paramref name="agentCli"/> while it is on, as it is at first.</summary>
+   CheckBox TheToggleOf(AgentCli agentCli)
+   {
+      var toggle = new CheckBox { Content = agentCli.Name, Tag = agentCli, IsChecked = true };
+      toggle.IsCheckedChanged += (_, _) =>
+      {
+         if(toggle.IsChecked == true) _agentClisListed.Add(agentCli);
+         else _agentClisListed.Remove(agentCli);
+         Refresh();
+         _search.Focus();
+      };
+      return toggle;
    }
 
    /// <summary>Lists the entries <paramref name="scope"/> covers, as a click on its button does, and gives the search box the focus back.</summary>
@@ -154,7 +211,7 @@ sealed class SessionHistoryPicker : Panel
    {
       if(_history is null) return;
 
-      var listed = _history.Listed(Scope, Filter);
+      var listed = _history.Listed(Scope, Filter, _agentClisListed);
       _list.ItemsSource = listed;
       _list.SelectedIndex = listed.Count > 0 ? 0 : -1;
    }
@@ -182,9 +239,9 @@ sealed class SessionHistoryPicker : Panel
    }
 
    /// <summary>
-   /// The row of <paramref name="entry"/>: its title, and where it is, in green while it runs; below, greyed, its last
-   /// prompt, when it was last used, and, in a scope wider than the project's worktree, its folder and branch. One that
-   /// can't be chosen is greyed out whole.
+   /// The row of <paramref name="entry"/>: the mark of its agent CLI, while the picker tells them apart; its title, and
+   /// where it is, in green while it runs; below, greyed, its prompt, when it was last used, and, in a scope wider than the
+   /// project's worktree, its folder and branch. One that can't be chosen is greyed out whole.
    /// </summary>
    Control RowOf(SessionHistoryEntry entry)
    {
@@ -197,14 +254,31 @@ sealed class SessionHistoryPicker : Panel
       }
 
       var below = new TextBlock { Text = string.Join("   ·   ", WhatIsToldBelow()), TextTrimming = TextTrimming.CharacterEllipsis, FontSize = 12, Opacity = 0.65 };
-      return new StackPanel { Margin = new Thickness(2, 3), Spacing = 1, Opacity = entry.Where.CanBeChosen ? 1 : 0.5, Children = { title, below } };
+      var top = new DockPanel { Children = { title } };
+      if(TellsTheAgentClisApart) top.Children.Insert(0, Docked(TheMarkOf(entry.AgentCli), Dock.Left));
+      return new StackPanel { Margin = new Thickness(2, 3), Spacing = 1, Opacity = entry.Where.CanBeChosen ? 1 : 0.5, Children = { top, below } };
 
       IEnumerable<string> WhatIsToldBelow()
       {
-         if(entry.LastPrompt is {} lastPrompt) yield return OneLine(lastPrompt);
+         if(entry.Prompt is {} prompt) yield return OneLine(prompt);
          yield return entry.LastUsedAsToldAt(DateTime.Now);
          if(Scope != SessionHistoryScope.ThisWorktree && entry.Directory is {} directory) yield return entry.Branch is {} branch ? $"{directory} ({branch})" : directory;
       }
+   }
+
+   /// <summary>The mark of an entry of <paramref name="agentCli"/>: its name, on a ground of its own, at the start of the entry's row.</summary>
+   static Border TheMarkOf(AgentCli agentCli)
+   {
+      var mark = new Border
+      {
+         CornerRadius = new CornerRadius(3),
+         Padding = new Thickness(6, 0),
+         Margin = new Thickness(0, 0, 8, 0),
+         MinWidth = 82,
+         VerticalAlignment = VerticalAlignment.Center,
+         Child = new TextBlock { Text = agentCli.Name, FontSize = 11, HorizontalAlignment = HorizontalAlignment.Center }
+      };
+      return (agentCli == AgentCli.Codex ? MarkOfCodex : MarkOfClaudeCode).AsTheBackgroundOf(mark);
    }
 
    /// <summary><paramref name="text"/> on one line, cut short where it would crowd out the rest of the row.</summary>
@@ -225,7 +299,7 @@ sealed class SessionHistoryPicker : Panel
    Control TheCard()
    {
       var heading = new TextBlock { Text = "Resume a session", FontWeight = FontWeight.SemiBold, FontSize = 15, VerticalAlignment = VerticalAlignment.Center };
-      var top = new DockPanel { Margin = new Thickness(0, 0, 0, 8), Children = { Docked(heading, Dock.Left), Docked(_scopeButtons, Dock.Right) } };
+      var top = new DockPanel { Margin = new Thickness(0, 0, 0, 8), Children = { Docked(heading, Dock.Left), Docked(_scopeButtons, Dock.Right), Docked(_agentCliToggles, Dock.Right) } };
       var search = new DockPanel { Margin = new Thickness(0, 0, 0, 8), Children = { _search } };
       var content = new DockPanel { Children = { Docked(top, Dock.Top), Docked(search, Dock.Top), Docked(_reading, Dock.Top), _list } };
       var card = new Border
