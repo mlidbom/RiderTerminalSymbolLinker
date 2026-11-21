@@ -512,8 +512,10 @@ search keyboard shortcuts. Ctrl+F F3 etc". As in a browser (`Cloyd.Chat.Searchin
   the conversation, its box selected to be typed over; F3 the next match, Shift+F3 the one before, and in the box Enter
   and Shift+Enter; Escape closes it, the keyboard going back to the input box. The terminal keeps its keys: there, Ctrl+F
   goes to Claude Code, as other keys do.
-- **Back in time:** the matches are numbered from the conversation's end, "1 of 16" the nearest it, and the next match
-  is the one above, as Windows Terminal searches up by default. Searched for as typed, case not mattering.
+- **Down, as a browser:** the matches are numbered down the conversation, and the next match is the one below (Magnus,
+  2026-11-21: "I want it to go down please", of the first build's going up, as Windows Terminal searches by default).
+  A search starts at the first match from the top of the view on, as a browser's does; with none below, at the last
+  above it, rather than one back at the conversation's start. Searched for as typed, case not mattering.
 - **The whole conversation, drawn or not** (`FoundInTheChat`): each thing shown says what text it shows
   (`ShownInTheChat.TextShown`), Claude's markdown as markdown, a run of tool calls its line and not the rows it opens to.
   A match above what is drawn is drawn up to (`DrawnEndOfTheConversation.DrawAsFarUpAs`).
@@ -523,10 +525,14 @@ search keyboard shortcuts. Ctrl+F F3 etc". As in a browser (`Cloyd.Chat.Searchin
   yellow, the one shown orange. Where the markdown rendered has fewer matches than its source, the last is shown.
 - **The view follows the match shown** (`WhatTheViewFollows.FollowInPlaceOfTheEnd`) until Magnus scrolls: drawn far up,
   the things above it grow as their markdown is rendered after the scroll, and the view's anchor moved it away (seen in
-  the specification, 2026-11-21).
+  the specification, 2026-11-21). It sets the scroll viewer's offset itself, the match in the middle of the view unless
+  in view already: the first build had the match's text block ask to be brought into view, and from in Claude's
+  markdown the request never reached the chat's scroll viewer, so a match there out of view was never scrolled to
+  (Magnus, the same day: "hits ... are invisible and no scroll happens"; 5 of 11 in one of his conversations).
+- **Not in what is folded:** a run's rows, a call's command and output aren't searched, so no match is out of sight.
 - **Specified** with the sample session 8 times over, 16 matches of "started." in Magnus's prompts and Claude's replies
-  (`When_Magnus_searches_a_chat`): the count, the match nearest the end shown and in view, every match drawn painted; F3
-  to the match furthest up, drawn for it; Shift+F3 round to it; Escape.
+  (`When_Magnus_searches_a_chat`): the count, the first match in view shown, every match drawn painted; F3 twice, round
+  to the match furthest up, drawn for it; Shift+F3 up to a match in Claude's markdown out of view, scrolled to; Escape.
 
 ### While Claude works, as it's built
 

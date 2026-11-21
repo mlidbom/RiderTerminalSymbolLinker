@@ -67,11 +67,12 @@ All notable changes to Cloyd are documented here. The format follows
     until that turn ends. Until a turn has ended since the hub started, the line says only "A background shell or monitor
     runs", while Claude is idle.
 - **Search the chat's conversation with Ctrl+F, as in a browser:** a find bar at the top right of the conversation, which
-  searches as you type, case not mattering, and says which match it shows of how many, such as "1 of 16". F3 or Enter
-  goes to the next match, up the conversation, Shift+F3 or Shift+Enter back down, and Escape closes the bar. It finds
-  what the whole conversation shows, however far up, in your prompts, Claude's text, the grey lines and the lines of
-  tool calls, though not in a tool call's output. Each match is marked in yellow, the one shown in orange, and the chat
-  keeps it in view until you scroll.
+  searches as you type, case not mattering, from the top of what is in view, and says which match it shows of how many,
+  such as "3 of 16". F3 or Enter goes to the next match, down the conversation, Shift+F3 or Shift+Enter back up, and
+  Escape closes the bar. It finds what the whole conversation shows, however far up, in your prompts, Claude's text, the
+  grey lines and the lines of tool calls, though not what is folded under them, such as a tool call's output. Each match
+  is marked in yellow, the one shown in orange and scrolled to the middle of the view, which keeps it there until you
+  scroll.
 - **A grey line after each of Claude's turns in the chat, as Claude Code writes one in the terminal:** how long the turn
   took and when it ended, such as "Worked for 21s · done 14:37": the time alone today, with the weekday in the last week,
   with the date before that, as Windows formats them. A turn interrupted has none, as in the terminal.

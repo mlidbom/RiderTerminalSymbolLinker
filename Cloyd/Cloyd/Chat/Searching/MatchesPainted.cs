@@ -69,12 +69,8 @@ static class MatchesPainted
    /// <summary>Paints <paramref name="match"/> as one match again, no longer the one shown.</summary>
    public static void NoLongerShown(TextHighlightMatch match) => match.Block.Highlights.Remove(TheMatchShown);
 
-   /// <summary>Scrolls the chat to <paramref name="match"/>, with some of what is around it in view.</summary>
-   public static void ScrollTo(TextHighlightMatch match)
-   {
-      var bounds = match.Block.GetTextRangeBoundsInControl(match.Range.Start, match.Range.Length).Aggregate((all, it) => all.Union(it));
-      match.Block.BringIntoView(bounds.Inflate(new Thickness(0, 60)));
-   }
+   /// <summary>Where <paramref name="match"/> is in its text block, in the block's coordinates: for the chat to keep it in view.</summary>
+   public static Rect BoundsOf(TextHighlightMatch match) => match.Block.GetTextRangeBoundsInControl(match.Range.Start, match.Range.Length).Aggregate((all, it) => all.Union(it));
 
    /// <summary>The matches of <paramref name="pattern"/> in <paramref name="view"/>, in order: of Claude's markdown as rendered.</summary>
    static List<TextHighlightMatch> MatchesIn(Control view, TextSearchPattern pattern) =>

@@ -404,13 +404,25 @@ sealed class ChatOfASession : UserControl
       key.Handled = true;
    }
 
-   /// <summary>Searches the conversation for <paramref name="text"/>, painting each match drawn, and shows the match nearest the end: no more searching when it is empty.</summary>
+   /// <summary>
+   /// Searches the conversation for <paramref name="text"/>, painting each match drawn, and shows the first from the top of
+   /// the view on (<see cref="FoundInTheChat.Of"/>): no more searching when it is empty.
+   /// </summary>
    void Find(string text)
    {
-      _found = text.Length > 0 ? FoundInTheChat.Of(text, Shown) : null;
+      _found = text.Length > 0 ? FoundInTheChat.Of(text, Shown, FirstInView()) : null;
       foreach(var view in _column.GetRealizedContainers().OfType<ContentPresenter>().Select(it => it.Child).OfType<Control>())
          MatchesPainted.In(view, _found?.Pattern);
       Show(_found);
+   }
+
+   /// <summary>Where in <see cref="Shown"/> the first thing in view is: the first drawn whose foot is below the view's top.</summary>
+   int FirstInView()
+   {
+      for(var at = 0; at < _drawn.Drawn.Count; at++)
+         if(_column.ContainerFromIndex(at) is {} drawn && drawn.TranslatePoint(new Point(0, drawn.Bounds.Height), _scroller) is { Y: > 0 })
+            return _drawn.FirstDrawn + at;
+      return _drawn.FirstDrawn;
    }
 
    /// <summary>
@@ -444,11 +456,11 @@ sealed class ChatOfASession : UserControl
          if(MatchesPainted.AsTheOneShown(view, found.Pattern, match.Occurrence) is {} shown)
          {
             MatchShown = shown;
-            _followed.FollowInPlaceOfTheEnd(() => MatchesPainted.ScrollTo(shown));
+            _followed.FollowInPlaceOfTheEnd(shown.Block, MatchesPainted.BoundsOf(shown));
             return;
          }
 
-         _followed.FollowInPlaceOfTheEnd(view.BringIntoView);
+         _followed.FollowInPlaceOfTheEnd(view, new Rect(view.Bounds.Size));
          if(triesLeft > 0) DispatcherTimer.RunOnce(() => ShowOnceLaidOut(found, match, triesLeft - 1), TimeSpan.FromMilliseconds(50));
       }, DispatcherPriority.Loaded);
 

@@ -12,16 +12,16 @@ namespace Cloyd.Chat.Searching;
 /// <summary>
 /// The bar a search of the chat is typed into, at the top right of the conversation, as a browser's: what is searched
 /// for, which match is shown of how many, and buttons to the next match, the one before, and to close it. Ctrl+F opens
-/// it (<see cref="ChatOfASession"/>); Enter goes to the next match, above, as F3 does; Shift+Enter to the one before;
+/// it (<see cref="ChatOfASession"/>); Enter goes to the next match, below, as F3 does; Shift+Enter to the one before, above;
 /// Escape closes it.
 /// </summary>
 sealed class FindBarOfTheChat : UserControl
 {
    /// <summary>The tip of the button to the next match.</summary>
-   const string TipOfTheNextButton = "The next match, above: Enter or F3";
+   const string TipOfTheNextButton = "The next match, below: Enter or F3";
 
    /// <summary>The tip of the button to the match before.</summary>
-   const string TipOfThePreviousButton = "The match before, below: Shift+Enter or Shift+F3";
+   const string TipOfThePreviousButton = "The match before, above: Shift+Enter or Shift+F3";
 
    /// <summary>The tip of the button that closes the bar.</summary>
    const string TipOfTheCloseButton = "Close: Escape";
@@ -45,7 +45,7 @@ sealed class FindBarOfTheChat : UserControl
          Child = new StackPanel
          {
             Orientation = Orientation.Horizontal,
-            Children = { _text, _counted, Button("↑", TipOfTheNextButton, () => NextAsked?.Invoke()), Button("↓", TipOfThePreviousButton, () => PreviousAsked?.Invoke()), Button("×", TipOfTheCloseButton, Close) }
+            Children = { _text, _counted, Button("↑", TipOfThePreviousButton, () => PreviousAsked?.Invoke()), Button("↓", TipOfTheNextButton, () => NextAsked?.Invoke()), Button("×", TipOfTheCloseButton, Close) }
          }
       }));
    }
@@ -67,10 +67,10 @@ sealed class FindBarOfTheChat : UserControl
    /// <summary>Raised as what is searched for changes, with it: empty when nothing is.</summary>
    public event Action<string>? TextChanged;
 
-   /// <summary>Raised when Magnus asks for the next match, above.</summary>
+   /// <summary>Raised when Magnus asks for the next match, below.</summary>
    public event Action? NextAsked;
 
-   /// <summary>Raised when Magnus asks for the match before, below.</summary>
+   /// <summary>Raised when Magnus asks for the match before, above.</summary>
    public event Action? PreviousAsked;
 
    /// <summary>Raised when the bar closes.</summary>
