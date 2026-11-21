@@ -12,7 +12,7 @@ namespace Cloyd.Specifications.TheSandbox;
 /// <param name="Id">The session's id.</param>
 /// <param name="Directory">The directory it ran in.</param>
 /// <param name="Prompt">The one prompt Magnus gave it.</param>
-sealed record SessionOfASpecification(ClaudeSessionId Id, string Directory, string Prompt)
+sealed record SessionOfASpecification(ClaudeCodeSessionId Id, string Directory, string Prompt)
 {
    /// <summary>The title Magnus gave it with <c>/rename</c>: null for none.</summary>
    public string? Title { get; init; }

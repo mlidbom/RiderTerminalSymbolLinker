@@ -29,7 +29,7 @@ public class When_a_chats_status_line_shows_what_runs_in_the_background : Specif
    {
       var window = Open(() => new Window { Width = 840, Height = 80, Content = new StatusLineOfTheChat(), Resources = { MergedDictionaries = { ColoursOfTheChat.AsResources() } } });
       var statusLine = OnTheUIThread(() => (StatusLineOfTheChat)window.Content!);
-      OnTheUIThread(() => statusLine.Show(new RunningSession(new ClaudeCodeProcessId(4711), new ClaudeSessionId(Guid.NewGuid().ToString()), "a session", new SessionHostId(Guid.NewGuid().ToString()),
+      OnTheUIThread(() => statusLine.Show(new RunningSession(new ClaudeCodeProcessId(4711), new ClaudeCodeSessionId(Guid.NewGuid().ToString()), "a session", new SessionHostId(Guid.NewGuid().ToString()),
                                                              new StatusOfAClaudeCode("busy", WaitingFor: null), StatusLine: null, TurnUnderWay: null, WhatRuns)));
       Render(window, "a-chats-status-line-with-background-work");
       return statusLine;

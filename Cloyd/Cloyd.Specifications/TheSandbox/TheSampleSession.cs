@@ -11,18 +11,18 @@ namespace Cloyd.Specifications.TheSandbox;
 /// </summary>
 static class TheSampleSession
 {
-   static readonly ClaudeSessionId Id = new("61edddb4-8a9c-412a-a013-53937bacdc67");
+   static readonly ClaudeCodeSessionId Id = new("61edddb4-8a9c-412a-a013-53937bacdc67");
 
    static readonly string Transcript = Path.Combine(AppContext.BaseDirectory, "TheSampleSession", "the-sample-session.jsonl");
 
    /// <summary>The id of the session whose conversation is the sample session's, again and again: see <see cref="RepeatedFor"/>.</summary>
-   static readonly ClaudeSessionId IdOfTheRepeatedSession = new("0de1a0e5-5a3e-4c0e-9d1e-5e55100f1a90");
+   static readonly ClaudeCodeSessionId IdOfTheRepeatedSession = new("0de1a0e5-5a3e-4c0e-9d1e-5e55100f1a90");
 
    /// <summary>The folder the sample session ran in, its project <c>sample-shop</c>.</summary>
    const string FolderItRanIn = @"C:\sample-shop";
 
    /// <summary>The session, once its transcript is in the Claude Code folder <paramref name="hub"/> serves.</summary>
-   public static ClaudeSessionId For(SandboxHub hub)
+   public static ClaudeCodeSessionId For(SandboxHub hub)
    {
       Write(hub, Id, File.ReadAllLines(Transcript));
       return Id;
@@ -37,7 +37,7 @@ static class TheSampleSession
    /// <c>parentUuid</c>s that name them, the ids of Claude's messages and of its tool calls. The first entry of each, which
    /// starts the sample session's line, follows the last entry of the time before.
    /// </remarks>
-   public static ClaudeSessionId RepeatedFor(SandboxHub hub, int times)
+   public static ClaudeCodeSessionId RepeatedFor(SandboxHub hub, int times)
    {
       var entries = File.ReadAllLines(Transcript);
       var transcript = new List<string>();
@@ -69,7 +69,7 @@ static class TheSampleSession
    static string UuidOf(string entry) => Regex.Match(entry, "\"uuid\": \"([^\"]+)\"").Groups[1].Value;
 
    /// <summary>Writes <paramref name="entries"/> as the transcript of <paramref name="session"/> in the Claude Code folder <paramref name="hub"/> serves.</summary>
-   static void Write(SandboxHub hub, ClaudeSessionId session, IReadOnlyList<string> entries)
+   static void Write(SandboxHub hub, ClaudeCodeSessionId session, IReadOnlyList<string> entries)
    {
       var transcript = hub.TranscriptOf(session, FolderItRanIn);
       transcript.Directory!.Create();

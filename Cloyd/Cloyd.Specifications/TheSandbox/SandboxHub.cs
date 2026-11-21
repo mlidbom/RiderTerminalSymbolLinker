@@ -59,11 +59,11 @@ sealed class SandboxHub
    /// hub serves: <c>projects/&lt;the directory, each character but a letter or digit a dash&gt;/&lt;the session&gt;.jsonl</c>,
    /// as Claude Code keeps it.
    /// </summary>
-   public FileInfo TranscriptOf(ClaudeSessionId session, string directory) =>
+   public FileInfo TranscriptOf(ClaudeCodeSessionId session, string directory) =>
       new(Path.Combine(_started.ClaudeCodeFolder, "projects", Regex.Replace(directory, "[^A-Za-z0-9]", "-"), $"{session}.jsonl"));
 
    /// <summary>Deletes the transcript of <paramref name="session"/> from the Claude Code folder the hub serves, as archiving or deleting the session does.</summary>
-   public void DeleteTheTranscriptOf(ClaudeSessionId session)
+   public void DeleteTheTranscriptOf(ClaudeCodeSessionId session)
    {
       foreach(var transcript in Directory.EnumerateFiles(Path.Combine(_started.ClaudeCodeFolder, "projects"), $"{session}.jsonl", SearchOption.AllDirectories))
          File.Delete(transcript);

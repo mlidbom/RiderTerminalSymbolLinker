@@ -42,7 +42,7 @@ sealed class SessionTab : TabItem
    /// Its chat follows the session's conversation through <paramref name="hub"/>. The images pasted into it are saved in
    /// <paramref name="pastedImages"/>.
    /// </summary>
-   public SessionTab(SessionHostOfTheHub host, ClaudeSession? latestSession, string? nameGiven, ConsoleSize size, TheHub hub, PastedImages pastedImages)
+   public SessionTab(SessionHostOfTheHub host, ClaudeCodeSession? latestSession, string? nameGiven, ConsoleSize size, TheHub hub, PastedImages pastedImages)
    {
       Host = host;
       LatestSession = latestSession;
@@ -119,13 +119,13 @@ sealed class SessionTab : TabItem
    /// The session that runs in the tab's host, or ran in it last, as after Claude Code exits to the shell: what the tab
    /// is saved with, to be resumed once its host is gone. Null while none has, as before Claude Code starts.
    /// </summary>
-   public ClaudeSession? LatestSession { get; private set; }
+   public ClaudeCodeSession? LatestSession { get; private set; }
 
    /// <summary>Whether the Claude Code that runs in the tab's host runs as <paramref name="process"/>.</summary>
    public bool RunsTheClaudeCodeOf(ClaudeCodeProcessId process) => SessionRunningInIt?.Process == process;
 
    /// <summary>Whether <paramref name="session"/> runs in the tab's host, or ran in it last: its <see cref="LatestSession"/>.</summary>
-   public bool RunsOrRanLast(ClaudeSessionId session) => LatestSession?.Id == session;
+   public bool RunsOrRanLast(ClaudeCodeSessionId session) => LatestSession?.Id == session;
 
    /// <summary>The tab, as its window saves it: with what its chat's input box holds.</summary>
    public SavedSessionTab AsSaved => new(Host.Id, Host.Directory, LatestSession, Chat.InputBox.AsSaved);

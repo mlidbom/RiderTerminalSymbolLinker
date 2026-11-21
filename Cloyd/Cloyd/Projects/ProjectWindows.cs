@@ -52,7 +52,7 @@ sealed class ProjectWindows(Func<Project, ProjectWindows, ProjectWindow> newWind
    /// The process finds the tab after a <c>/clear</c> gave its Claude Code a new session, and the session finds the one
    /// whose Claude Code exited to the shell.
    /// </remarks>
-   public ProjectWindow? ShowTheTabOf(ClaudeSessionId? session, ClaudeCodeProcessId? claudeCode)
+   public ProjectWindow? ShowTheTabOf(ClaudeCodeSessionId? session, ClaudeCodeProcessId? claudeCode)
    {
       var tabs = _open.SelectMany(it => it.Tabs).ToList();
       if((TheTabWhoseClaudeCodeRunsAs(claudeCode) ?? TheTabThatRunsOrRanLast(session)) is not {} tab) return null;
@@ -63,6 +63,6 @@ sealed class ProjectWindows(Func<Project, ProjectWindows, ProjectWindow> newWind
 
       SessionTab? TheTabWhoseClaudeCodeRunsAs(ClaudeCodeProcessId? process) => process is {} asked ? tabs.FirstOrDefault(it => it.RunsTheClaudeCodeOf(asked)) : null;
 
-      SessionTab? TheTabThatRunsOrRanLast(ClaudeSessionId? sessionId) => sessionId is {} asked ? tabs.FirstOrDefault(it => it.RunsOrRanLast(asked)) : null;
+      SessionTab? TheTabThatRunsOrRanLast(ClaudeCodeSessionId? sessionId) => sessionId is {} asked ? tabs.FirstOrDefault(it => it.RunsOrRanLast(asked)) : null;
    }
 }

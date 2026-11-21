@@ -15,7 +15,7 @@ namespace Cloyd.Hub;
 /// <param name="LastUsed">When Claude Code last wrote its transcript, in UTC.</param>
 /// <param name="RunWithClaudeP">Whether a tool or a script ran it, with <c>claude -p</c> or the Agent SDK, rather than Magnus in a console.</param>
 /// <param name="HasAConversationToResume">Whether <c>claude --resume</c> can resume it: its transcript has a prompt or a reply.</param>
-sealed record TranscribedSession(ClaudeSessionId Id,
+sealed record TranscribedSession(ClaudeCodeSessionId Id,
                                  string? Title,
                                  string? LastPrompt,
                                  string? Directory,
@@ -26,5 +26,5 @@ sealed record TranscribedSession(ClaudeSessionId Id,
 {
    /// <summary>The session as the hub's answer <paramref name="session"/> lists it.</summary>
    public static TranscribedSession InThe(SessionInTheAnswer session) =>
-      new(new ClaudeSessionId(session.SessionId), session.Title, session.LastPrompt, session.Directory, session.Branch, session.LastUsed, session.RunWithClaudeP, session.HasAConversationToResume);
+      new(new ClaudeCodeSessionId(session.SessionId), session.Title, session.LastPrompt, session.Directory, session.Branch, session.LastUsed, session.RunWithClaudeP, session.HasAConversationToResume);
 }

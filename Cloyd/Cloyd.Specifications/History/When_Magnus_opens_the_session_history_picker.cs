@@ -33,12 +33,12 @@ public class When_Magnus_opens_the_session_history_picker : SpecificationOpening
          var otherWorktree = new DirectoryInfo(project.Project.Folder + "-other-worktree");
          GitRepositoryOfASpecification.In(new DirectoryInfo(project.Project.Folder)).HasAWorktreeIn(otherWorktree, "other-work");
          var anotherProject = Path.Combine(Sandbox.ProjectsFolder, "another-project");
-         var titled = new SessionOfASpecification(new ClaudeSessionId("8f1c0001-6c1e-4a51-9d0b-3a1f00000000"), project.Project.Folder, "Fix the login bug") { Title = "Fixing the login", LastUsedAgo = TimeSpan.FromHours(1) };
-         var inAFolderOfTheProject = new SessionOfASpecification(new ClaudeSessionId("8f1c0002-6c1e-4a51-9d0b-3a1f00000000"), Path.Combine(project.Project.Folder, "build"), "Tidy the build script") { LastUsedAgo = TimeSpan.FromHours(2) };
-         var inTheOtherWorktree = new SessionOfASpecification(new ClaudeSessionId("8f1c0003-6c1e-4a51-9d0b-3a1f00000000"), otherWorktree.FullName, "Work on the other branch") { Title = "The other worktree's work", Branch = "other-work", LastUsedAgo = TimeSpan.FromMinutes(30) };
-         var inAnotherProject = new SessionOfASpecification(new ClaudeSessionId("8f1c0004-6c1e-4a51-9d0b-3a1f00000000"), anotherProject, "Start the other project") { Title = "Another project's work", LastUsedAgo = TimeSpan.FromMinutes(20) };
-         var runWithClaudeP = new SessionOfASpecification(new ClaudeSessionId("8f1c0005-6c1e-4a51-9d0b-3a1f00000000"), project.Project.Folder, "Reply with ok") { RunWithClaudeP = true, LastUsedAgo = TimeSpan.FromMinutes(10) };
-         var ofNoConversation = new SessionOfASpecification(new ClaudeSessionId("8f1c0006-6c1e-4a51-9d0b-3a1f00000000"), project.Project.Folder, "") { Title = "[cancelled]", HasAConversation = false, LastUsedAgo = TimeSpan.FromMinutes(5) };
+         var titled = new SessionOfASpecification(new ClaudeCodeSessionId("8f1c0001-6c1e-4a51-9d0b-3a1f00000000"), project.Project.Folder, "Fix the login bug") { Title = "Fixing the login", LastUsedAgo = TimeSpan.FromHours(1) };
+         var inAFolderOfTheProject = new SessionOfASpecification(new ClaudeCodeSessionId("8f1c0002-6c1e-4a51-9d0b-3a1f00000000"), Path.Combine(project.Project.Folder, "build"), "Tidy the build script") { LastUsedAgo = TimeSpan.FromHours(2) };
+         var inTheOtherWorktree = new SessionOfASpecification(new ClaudeCodeSessionId("8f1c0003-6c1e-4a51-9d0b-3a1f00000000"), otherWorktree.FullName, "Work on the other branch") { Title = "The other worktree's work", Branch = "other-work", LastUsedAgo = TimeSpan.FromMinutes(30) };
+         var inAnotherProject = new SessionOfASpecification(new ClaudeCodeSessionId("8f1c0004-6c1e-4a51-9d0b-3a1f00000000"), anotherProject, "Start the other project") { Title = "Another project's work", LastUsedAgo = TimeSpan.FromMinutes(20) };
+         var runWithClaudeP = new SessionOfASpecification(new ClaudeCodeSessionId("8f1c0005-6c1e-4a51-9d0b-3a1f00000000"), project.Project.Folder, "Reply with ok") { RunWithClaudeP = true, LastUsedAgo = TimeSpan.FromMinutes(10) };
+         var ofNoConversation = new SessionOfASpecification(new ClaudeCodeSessionId("8f1c0006-6c1e-4a51-9d0b-3a1f00000000"), project.Project.Folder, "") { Title = "[cancelled]", HasAConversation = false, LastUsedAgo = TimeSpan.FromMinutes(5) };
          foreach(var session in new[] { titled, inAFolderOfTheProject, inTheOtherWorktree, inAnotherProject, runWithClaudeP, ofNoConversation }) session.WriteItsTranscriptFor(Sandbox.HubOfTheSandbox);
 
          var window = Open(project.Window);
@@ -50,7 +50,7 @@ public class When_Magnus_opens_the_session_history_picker : SpecificationOpening
          return (project, window, picker, titled, inAFolderOfTheProject, inTheOtherWorktree, inAnotherProject);
       });
 
-   private protected IReadOnlyList<ClaudeSessionId> Listed => OnTheUIThread(() => _picker.Listed.Select(it => it.Id).ToList());
+   private protected IReadOnlyList<ClaudeCodeSessionId> Listed => OnTheUIThread(() => _picker.Listed.Select(it => it.Id).ToList());
 
    [XF] public void it_lists_the_sessions_of_the_projects_worktree_most_recently_used_first_not_those_a_tool_ran_nor_those_of_no_conversation() =>
       Listed.Must().Satisfy(it => it.SequenceEqual([_titled.Id, _inAFolderOfTheProject.Id]));

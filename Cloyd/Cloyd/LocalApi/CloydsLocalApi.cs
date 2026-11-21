@@ -111,7 +111,7 @@ sealed class CloydsLocalApi
    static async Task ShowTheTabOfASession(HttpContext exchange, ProjectWindows windows)
    {
       var query = exchange.Request.Query;
-      var session = query["session"] is [{Length: > 0} sessionId] ? new ClaudeSessionId(sessionId) : (ClaudeSessionId?)null;
+      var session = query["session"] is [{Length: > 0} sessionId] ? new ClaudeCodeSessionId(sessionId) : (ClaudeCodeSessionId?)null;
       var claudeCode = query["process"] is [{} processId] && int.TryParse(processId, out var process) ? new ClaudeCodeProcessId(process) : (ClaudeCodeProcessId?)null;
       if(session is null && claudeCode is null)
       {

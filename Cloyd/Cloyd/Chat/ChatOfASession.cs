@@ -138,7 +138,7 @@ sealed class ChatOfASession : UserControl
    public void TakeTheKeyboard() => InputBox.TakeTheKeyboard();
 
    /// <summary>The session whose conversation the chat shows, along its line: null while there is none, as before Claude Code starts in a tab.</summary>
-   public ClaudeSessionId? Session { get; private set; }
+   public ClaudeCodeSessionId? Session { get; private set; }
 
    /// <summary>What the chat shows now, in order, drawn or not.</summary>
    public IReadOnlyList<ShownInTheChat> Shown => _drawn.Shown;
@@ -156,7 +156,7 @@ sealed class ChatOfASession : UserControl
    /// Shows the conversation of <paramref name="session"/>'s line, unless it shows it already, as after a <c>/clear</c>,
    /// which the hub's stream follows into the new session.
    /// </summary>
-   public void Show(ClaudeSessionId? session)
+   public void Show(ClaudeCodeSessionId? session)
    {
       if(session == Session) return;
       Session = session;

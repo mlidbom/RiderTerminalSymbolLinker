@@ -76,5 +76,5 @@ public class When_a_chats_status_line_shows_Claude_Codes_own : SpecificationOpen
       }).Must().Be(("", (string?)null));
 
    static RunningSession AClaudeCode(ClaudeCodesStatusLine? statusLine, string status) =>
-      new(new ClaudeCodeProcessId(4711), new ClaudeSessionId(Guid.NewGuid().ToString()), "a session", new SessionHostId(Guid.NewGuid().ToString()), new StatusOfAClaudeCode(status, WaitingFor: null), statusLine, TurnUnderWay: null, BackgroundWork: null);
+      new(new ClaudeCodeProcessId(4711), new ClaudeCodeSessionId(Guid.NewGuid().ToString()), "a session", new SessionHostId(Guid.NewGuid().ToString()), new StatusOfAClaudeCode(status, WaitingFor: null), statusLine, TurnUnderWay: null, BackgroundWork: null);
 }

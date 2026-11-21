@@ -20,10 +20,10 @@ sealed class ClaudeSessionHistoryEntry
       Where = where;
    }
 
-   public ClaudeSessionId Id => _transcribed.Id;
+   public ClaudeCodeSessionId Id => _transcribed.Id;
 
    /// <summary>The session, named as Claude Code shows it, as a tab that resumes it is titled.</summary>
-   public ClaudeSession Session => new(Id, _transcribed.Title);
+   public ClaudeCodeSession Session => new(Id, _transcribed.Title);
 
    /// <summary>Where the session is now, which decides what choosing it does.</summary>
    public WhereTheSessionIs Where { get; }

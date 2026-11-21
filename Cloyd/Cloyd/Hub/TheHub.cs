@@ -176,7 +176,7 @@ sealed partial class TheHub
    /// and all of it again from the next hub when a publish ends the stream, until <paramref name="cancellation"/>.
    /// </summary>
    /// <exception cref="RefusedByTheHub">The session has no transcript, and no Claude Code runs it.</exception>
-   public async IAsyncEnumerable<ConversationAnswer> ConversationAsWritten(ClaudeSessionId session, [EnumeratorCancellation] CancellationToken cancellation)
+   public async IAsyncEnumerable<ConversationAnswer> ConversationAsWritten(ClaudeCodeSessionId session, [EnumeratorCancellation] CancellationToken cancellation)
    {
       await foreach(var stream in EachStreamAt($"sessions/{session}/conversation/stream", cancellation))
       {

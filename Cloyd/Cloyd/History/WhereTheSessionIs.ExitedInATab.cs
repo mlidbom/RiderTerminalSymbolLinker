@@ -21,6 +21,6 @@ abstract partial class WhereTheSessionIs
 
       public override string AsToldIn(ProjectWindow pickedIn) => $"open in a tab{OfAnotherProject(Window, pickedIn)}";
 
-      public override Task Choose(ClaudeSession session, ProjectWindow pickedIn) => Window.ResumeIn(Tab, session);
+      public override Task Choose(ClaudeCodeSession session, ProjectWindow pickedIn) => Window.ResumeIn(Tab, session);
    }
 }

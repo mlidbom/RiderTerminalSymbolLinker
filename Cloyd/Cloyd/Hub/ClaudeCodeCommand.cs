@@ -26,7 +26,7 @@ sealed class ClaudeCodeCommand
       new(new ClaudeCodeToStartInTheRequest(name, SessionToResume: null), name is null ? "claude" : $"claude --name {name}");
 
    /// <summary>The session <paramref name="session"/>, continued from its transcript.</summary>
-   public static ClaudeCodeCommand Resuming(ClaudeSession session) =>
+   public static ClaudeCodeCommand Resuming(ClaudeCodeSession session) =>
       new(new ClaudeCodeToStartInTheRequest(Name: null, session.Id.Value), $"claude --resume {session.Id}");
 
    public override string ToString() => _asTyped;

@@ -27,7 +27,7 @@ public class When_Magnus_opens_the_session_history_picker_while_sessions_run : S
    private protected readonly SessionTab _first;
    private protected readonly SessionTab _exited;
    private protected readonly SessionHostId _takenOverByAConsole;
-   private protected readonly ClaudeSessionId _firsts, _seconds, _exiteds, _takenOvers, _inATerminalOfItsOwns, _anotherProjects;
+   private protected readonly ClaudeCodeSessionId _firsts, _seconds, _exiteds, _takenOvers, _inATerminalOfItsOwns, _anotherProjects;
 
    public When_Magnus_opens_the_session_history_picker_while_sessions_run() =>
       (_anotherProject, _window, _anotherProjectsWindow, _picker, _first, _exited, _takenOverByAConsole, _firsts, _seconds, _exiteds, _takenOvers, _inATerminalOfItsOwns, _anotherProjects) = Once(() =>
@@ -61,7 +61,7 @@ public class When_Magnus_opens_the_session_history_picker_while_sessions_run : S
    /// A new session started in a tab of <paramref name="window"/>, named <paramref name="name"/>, which Magnus gave a
    /// prompt, once the hub lists it with its conversation: the tab, and the session.
    /// </summary>
-   (SessionTab Tab, ClaudeSessionId Session) StartedWithAPrompt(ProjectWindow window, string name)
+   (SessionTab Tab, ClaudeCodeSessionId Session) StartedWithAPrompt(ProjectWindow window, string name)
    {
       DoneOnTheUIThread(() => window.StartANewSession(name));
       var tab = OnTheUIThread(() => window.Tabs[^1]);
@@ -72,11 +72,11 @@ public class When_Magnus_opens_the_session_history_picker_while_sessions_run : S
       return (tab, session);
    }
 
-   bool HasAConversationToResume(ClaudeSessionId? session) =>
+   bool HasAConversationToResume(ClaudeCodeSessionId? session) =>
       session is {} asked && Sandbox.HubOfTheSandbox.TranscribedSessions().Any(it => it.Id == asked && it.HasAConversationToResume);
 
    /// <summary>Selects the entry of <paramref name="session"/> in the picker, as a click on it does, and presses Enter.</summary>
-   private protected void Choose(ClaudeSessionId session)
+   private protected void Choose(ClaudeCodeSessionId session)
    {
       OnTheUIThread(() => _picker.Selected = _picker.Listed.ToList().FindIndex(it => it.Id == session));
       Press(_window, Key.Enter, PhysicalKey.Enter, RawInputModifiers.None);

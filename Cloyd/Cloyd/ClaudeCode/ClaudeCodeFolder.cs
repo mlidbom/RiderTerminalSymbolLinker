@@ -13,7 +13,7 @@ sealed class ClaudeCodeFolder(DirectoryInfo folder)
    readonly DirectoryInfo _folder = folder;
 
    /// <summary>Whether the folder holds the transcript of <paramref name="session"/>, in any project's folder: whether <c>claude --resume</c> can continue it.</summary>
-   public bool HoldsTheTranscriptOf(ClaudeSessionId session)
+   public bool HoldsTheTranscriptOf(ClaudeCodeSessionId session)
    {
       var projects = new DirectoryInfo(Path.Combine(_folder.FullName, "projects"));
       return projects.Exists && projects.EnumerateDirectories().Any(project => File.Exists(Path.Combine(project.FullName, $"{session}.jsonl")));

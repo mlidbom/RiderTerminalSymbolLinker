@@ -16,4 +16,4 @@ namespace Cloyd.Saving;
 /// What the tab's chat's input box held, which comes back into it: null in what a Cloyd saved before its chat had an
 /// input box.
 /// </param>
-sealed record SavedSessionTab(SessionHostId SessionHost, string Directory, ClaudeSession? Session, IReadOnlyList<PartOfAMessage>? Draft = null);
+sealed record SavedSessionTab(SessionHostId SessionHost, string Directory, ClaudeCodeSession? Session, IReadOnlyList<PartOfAMessage>? Draft = null);

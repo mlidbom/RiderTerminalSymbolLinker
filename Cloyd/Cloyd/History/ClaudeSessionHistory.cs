@@ -47,7 +47,7 @@ sealed class ClaudeSessionHistory
                                .Select(it => new ClaudeSessionHistoryEntry(it, WhereIs(it.Id)));
       return new ClaudeSessionHistory([.. entries], worktrees.Result);
 
-      WhereTheSessionIs WhereIs(ClaudeSessionId session)
+      WhereTheSessionIs WhereIs(ClaudeCodeSessionId session)
       {
          if(running.Result.FirstOrDefault(it => it.SessionId == session) is {} runningIt) return WhereTheRunning(runningIt);
          if(tabs.FirstOrDefault(it => it.Tab.RunsOrRanLast(session)) is ({} window, {} tab)) return new WhereTheSessionIs.ExitedInATab(window, tab);

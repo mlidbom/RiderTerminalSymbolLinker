@@ -20,17 +20,17 @@ namespace Cloyd.Hub;
 /// of it has ended since the hub started, as after a publish of the hub's, while <see cref="StatusOfAClaudeCode.IsIdleWithBackgroundWork"/>
 /// still tells that some runs.
 /// </param>
-sealed record RunningSession(ClaudeCodeProcessId Process, ClaudeSessionId SessionId, string? Name, SessionHostId? SessionHost, StatusOfAClaudeCode Status, ClaudeCodesStatusLine? StatusLine, TurnUnderWay? TurnUnderWay, BackgroundWork? BackgroundWork)
+sealed record RunningSession(ClaudeCodeProcessId Process, ClaudeCodeSessionId SessionId, string? Name, SessionHostId? SessionHost, StatusOfAClaudeCode Status, ClaudeCodesStatusLine? StatusLine, TurnUnderWay? TurnUnderWay, BackgroundWork? BackgroundWork)
 {
    /// <summary>The Claude Code as the hub's answer <paramref name="session"/> lists it.</summary>
    public static RunningSession InThe(RunningSessionInTheAnswer session) =>
-      new(new ClaudeCodeProcessId(session.ProcessId), new ClaudeSessionId(session.SessionId), session.Name, session.SessionHost is {} host ? new SessionHostId(host) : null, new StatusOfAClaudeCode(session.Status, session.WaitingFor),
+      new(new ClaudeCodeProcessId(session.ProcessId), new ClaudeCodeSessionId(session.SessionId), session.Name, session.SessionHost is {} host ? new SessionHostId(host) : null, new StatusOfAClaudeCode(session.Status, session.WaitingFor),
          session.StatusLine is {} statusLine ? ClaudeCodesStatusLine.InThe(statusLine) : null,
          session.TurnUnderWay is {} turn ? TurnUnderWay.InThe(turn) : null,
          session.BackgroundWork is {} work ? BackgroundWork.InThe(work) : null);
 
    /// <summary>The session the Claude Code runs.</summary>
-   public ClaudeSession Session => new(SessionId, Name);
+   public ClaudeCodeSession Session => new(SessionId, Name);
 
    /// <summary>
    /// What it runs in the background, as the chat tells Magnus of it, whether Claude works or not: counted by kind, as

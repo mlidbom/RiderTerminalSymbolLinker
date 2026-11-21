@@ -214,7 +214,7 @@ sealed class ProjectWindow : Window
    });
 
    /// <summary>Resumes <paramref name="session"/> in a new tab, in the project's folder, which it selects, as choosing it in the history picker does.</summary>
-   public async Task ResumeInANewTab(ClaudeSession session)
+   public async Task ResumeInANewTab(ClaudeCodeSession session)
    {
       var tab = await ShowANewHost(Project.Folder, session, nameGiven: null);
       _tabs.SelectedItem = tab;
@@ -225,7 +225,7 @@ sealed class ProjectWindow : Window
    /// Resumes <paramref name="session"/> in <paramref name="tab"/>, one of the window's <see cref="Tabs"/>, whose Claude
    /// Code has exited to its shell: selects it, and brings the window forward.
    /// </summary>
-   public async Task ResumeIn(SessionTab tab, ClaudeSession session)
+   public async Task ResumeIn(SessionTab tab, ClaudeCodeSession session)
    {
       ShowTheTab(tab);
       await StartClaudeCodeIn(tab, ClaudeCodeCommand.Resuming(session));
@@ -235,7 +235,7 @@ sealed class ProjectWindow : Window
    /// Shows <paramref name="host"/>, which runs <paramref name="session"/> and which no tab shows, in a tab of its own, which
    /// it selects: attaching takes the session over from a console that shows it.
    /// </summary>
-   public void ShowInATab(SessionHostOfTheHub host, ClaudeSession session) => _tabs.SelectedItem = Show(host, session, nameGiven: null);
+   public void ShowInATab(SessionHostOfTheHub host, ClaudeCodeSession session) => _tabs.SelectedItem = Show(host, session, nameGiven: null);
 
    /// <summary>
    /// Starts a new session in the project's folder, in a tab of its own, which it selects: named
@@ -289,7 +289,7 @@ sealed class ProjectWindow : Window
       }
    }
 
-   async Task<SessionTab> ShowANewHost(string directory, ClaudeSession? latestSession, string? nameGiven) =>
+   async Task<SessionTab> ShowANewHost(string directory, ClaudeCodeSession? latestSession, string? nameGiven) =>
       Show(await _hub.StartASessionHost(_shellOfNewSessions, directory, SessionHostLabel.OfANewHostOf(Project), _closed.Token), latestSession, nameGiven);
 
    /// <summary>Has the hub start <paramref name="command"/> in the host of <paramref name="tab"/>: when it doesn't, the tab says why, and shows the shell at its prompt.</summary>
@@ -305,7 +305,7 @@ sealed class ProjectWindow : Window
       }
    }
 
-   SessionTab Show(SessionHostOfTheHub host, ClaudeSession? latestSession, string? nameGiven)
+   SessionTab Show(SessionHostOfTheHub host, ClaudeCodeSession? latestSession, string? nameGiven)
    {
       var tab = new SessionTab(host, latestSession, nameGiven, SizeOfTheTerminals, _hub, _pastedImages);
       tab.ClosedByMagnus += it => _ = TellingOfFailure(() => EndTheSessionOf(it));

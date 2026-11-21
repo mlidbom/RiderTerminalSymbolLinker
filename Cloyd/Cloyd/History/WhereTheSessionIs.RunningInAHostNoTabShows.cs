@@ -19,7 +19,7 @@ abstract partial class WhereTheSessionIs
 
       public override string AsToldIn(ProjectWindow pickedIn) => Host.Attached ? "running, shown outside Cloyd" : "running, in no tab";
 
-      public override Task Choose(ClaudeSession session, ProjectWindow pickedIn)
+      public override Task Choose(ClaudeCodeSession session, ProjectWindow pickedIn)
       {
          pickedIn.ShowInATab(Host, session);
          return Task.CompletedTask;

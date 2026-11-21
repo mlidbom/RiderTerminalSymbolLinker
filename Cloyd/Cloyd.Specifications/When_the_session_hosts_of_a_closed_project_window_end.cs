@@ -16,7 +16,7 @@ public class When_the_session_hosts_of_a_closed_project_window_end : Specificati
 {
    readonly SandboxProject _project;
    readonly SessionHostId[] _hostsThatEnded;
-   readonly ClaudeSession _first, _second;
+   readonly ClaudeCodeSession _first, _second;
 
    public When_the_session_hosts_of_a_closed_project_window_end() => (_project, _hostsThatEnded, _first, _second) = Once(() =>
    {
@@ -33,7 +33,7 @@ public class When_the_session_hosts_of_a_closed_project_window_end : Specificati
       return (project, hostsThatEnded, first, second);
    });
 
-   ClaudeSession StartedIn(ProjectWindow window, string name)
+   ClaudeCodeSession StartedIn(ProjectWindow window, string name)
    {
       DoneOnTheUIThread(() => window.StartANewSession(name));
       var tab = OnTheUIThread(() => window.Tabs.Last());
@@ -86,11 +86,11 @@ public class When_the_session_hosts_of_a_closed_project_window_end : Specificati
       /// </summary>
       public class and_Magnus_selects_each_tab_in_turn : and_the_project_window_opens_again
       {
-         readonly IReadOnlyList<(ClaudeSessionId Session, string Shown)> _terminals;
+         readonly IReadOnlyList<(ClaudeCodeSessionId Session, string Shown)> _terminals;
 
          public and_Magnus_selects_each_tab_in_turn() => _terminals = Once(() => _tabs.Select(ShownOnceSelected).ToList());
 
-         (ClaudeSessionId Session, string Shown) ShownOnceSelected(SessionTab tab)
+         (ClaudeCodeSessionId Session, string Shown) ShownOnceSelected(SessionTab tab)
          {
             OnTheUIThread(() => tab.IsSelected = true); // A terminal is laid out, and shows what it draws, only in the selected tab.
             WaitUntil(() => tab.Terminal.TextShown.Contains($"Resumed session {tab.LatestSession!.Id}"), "the tab's terminal showed the stand-in resume its session");
