@@ -452,11 +452,8 @@ input box") ported, with Magnus's calls above:
   tooling owner and published by it the same day, 4312305), each a run in its style, the terminal's eight colour names
   shown in Cloyd's own shades (`ColoursOfTheTerminal`), readable in Windows' light theme and its dark, the default in the
   line's grey; and under it the permission mode,
-  `⏵⏵` and its `shownAs`; under that, while the status is `shell` (`StatusOfAClaudeCode.IsIdleWithBackgroundWork`),
-  "A background shell or monitor runs" (Magnus, 2026-11-21: "add the missing information about background work under
-  the existing two lines under the input box"). The hub tells neither how many tasks nor which, as the TUI's `1 shell`
-  does, nor those that run while Claude works: asked of the tooling owner the same day (`backlog.md`). "No Claude Code
-  runs in this tab" while none runs. What Claude does isn't told there: first a
+  `⏵⏵` and its `shownAs`; under that, what runs in the background (see "What a session runs in the background" below).
+  "No Claude Code runs in this tab" while none runs. What Claude does isn't told there: first a
   left side said it, and Magnus, of its "Idle": "This is not needed with progress clearly shown above the input." The
   tab tells the chat its running session (`ChatOfASession.ClaudeCode`), which hands it to the box and the lines.
   Specified with running sessions made in the specification, as the stand-in shows the hub no status line yet.
@@ -465,6 +462,34 @@ input box") ported, with Magnus's calls above:
   interrupt nothing, and the message shown over the box as sent, as queued, and no more once the conversation has it;
   Stop; a message refused while Claude Code's own box holds text; a draft through the window's closing; a slash command
   showing the terminal.
+
+### What a session runs in the background, as it's built
+
+Magnus, 2026-11-21: "I have no way in the new UI to see that a session in waiting on something"; and "add the missing
+information about background work under the existing two lines under the input box". The TUI shows `· 1 shell · ↓ to
+manage` after the permission mode, and after a turn `✻ Sautéed for 21s · done 2:37 PM · 1 shell still running`.
+
+- **From the hub:** each running session's `backgroundWork` (`Cloyd.Hub.BackgroundWork`, on `RunningSession`), asked of
+  the tooling owner and published by it the same day: the tasks (`BackgroundTask`: kind, Claude's description, a
+  shell's command, a subagent's type) and the scheduled prompts (`ScheduledPrompt`), as Claude Code told the hub's
+  `Stop` hook at the end of the session's last turn. So a task that ends while Claude works stays listed until that
+  turn ends. Null until a turn has ended since the hub started, as after a publish of it: then only the status `shell`
+  (`StatusOfAClaudeCode.IsIdleWithBackgroundWork`) tells that some runs, and the chat says "A background shell or
+  monitor runs" (`BackgroundWork.SomeRuns`). `RunningSession.BackgroundWorkCounted` says which of the two.
+- **Under the box,** the status line's third line: it counted by kind, as the TUI counts it, such as "1 shell" or
+  "2 shells · 1 monitor · 1 scheduled prompt", whether Claude works or not; its tip lists each with what it does
+  (`BackgroundWork.Listed`), in place of the TUI's list that `↓ to manage` opens.
+- **In the tab's header,** `MarkerOfBackgroundWork`: Claude Code's ✻, still and grey, in the place the spinner turns in
+  while Claude works, as high and wide, while Claude doesn't work and background work runs; its tip says what runs.
+- **Not yet, the turn's end line** (`Worked for 21s · done 2:37 PM`): Claude Code writes a `turn_duration` entry at
+  each turn's end in the transcript, with the turn's duration and its end's time, which the hub's conversation leaves
+  out. Asked of the tooling owner, 2026-11-21: a message for each turn's end in the conversation, and the stand-in writing
+  the entry. Then the chat shows the line after each turn, and "1 shell still running" after the last, from
+  `backgroundWork`.
+- **Specified** with the stand-in's `Run a background shell for 8 seconds` (`When_Claude_runs_a_shell_command_in_the_background`):
+  "1 shell" under the box, its tip with the shell's description and command, the tab's marker; then, once Claude replies
+  to its end, both gone. The kinds the stand-in doesn't run with background work made in the specification
+  (`When_a_chats_status_line_shows_what_runs_in_the_background`).
 
 ### While Claude works, as it's built
 

@@ -53,8 +53,17 @@ All notable changes to Cloyd are documented here. The format follows
   box: your status line command's, such as "Opus 5.5 · xhigh · context 42% · week 100% · Fable 7% · €361.07", with the
   permission mode under it, such as "⏵⏵ bypass permissions on". It shows once Claude Code has given it to the hub,
   within a minute of its start, in its colours, such as a weekly limit nearly used up in bold red, each in a shade
-  readable on the chat's ground in Windows' light theme and its dark. Under them, while Claude is idle and a background shell or
-  monitor runs, a third line says so; not yet how many, nor while Claude also works, which the hub doesn't tell.
+  readable on the chat's ground in Windows' light theme and its dark.
+- **What a session runs in the background, under the chat's input box and in its tab's header,** so that a session that
+  waits on something isn't taken for one that is done:
+  - **Under the permission mode, what runs, counted as Claude Code counts it beside its box,** such as "1 shell" or
+    "2 shells · 1 monitor · 1 scheduled prompt", whether Claude works or not. Its tip lists each, with what it does in
+    Claude's words and a shell's command. The prompts that `/loop` and Claude's wake-ups schedule count too.
+  - **In the tab's header, a grey ✻ where the spinner turns while Claude works,** while Claude is idle and background
+    work runs, its tip saying what runs.
+  - **As of the end of Claude's last turn,** when Claude Code tells it: a task that ends while Claude works stays listed
+    until that turn ends. Until a turn has ended since the hub started, the line says only "A background shell or monitor
+    runs", while Claude is idle.
 - **Over the chat's input box while Claude works, what it does, as Claude Code's own UI shows it:**
   - **The tool call under way,** as Claude described it, and how long it has run, such as
     `Finding the repositories that use it · 5s`, with the first three lines of the command under it, as

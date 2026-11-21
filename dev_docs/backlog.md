@@ -5,35 +5,20 @@ says what it is, why it waits, and what to do once it can go ahead. Remove an en
 
 ## Deferred by Magnus
 
-### Cloyd's chat doesn't show what an idle session waits on: its background shells and monitors
+### Cloyd's chat doesn't show the line at a turn's end: `✻ Sautéed for 21s · done 2:37 PM · 1 shell still running`
 
 **Magnus, 2026-11-21:** "I have no way in the new UI to see that a session in waiting on something". His screenshots put
-the TUI beside the chat:
-- **The TUI** shows, after a turn, `✻ Sautéed for 21s · done 2:37 PM · 1 shell still running`, and under its box, after
-  the permission mode, `· 1 shell · ↓ to manage`.
-- **The chat** shows neither. Its status line has the machine's status line and the permission mode, nothing more.
+the TUI beside the chat, which showed, after a turn, `✻ Sautéed for 21s · done 2:37 PM · 1 shell still running`. What
+runs in the background is shown since, under the box and in the tab's header (`cloyd-as-a-dotnet-application.md`, "What a
+session runs in the background, as it's built"). This line isn't.
 
-**What Cloyd has to go on:**
-- **The hub's `status` is `shell`** while Claude Code is idle with a background shell task or monitor running
-  (`StatusOfAClaudeCode.AsReported`). Until 2026-11-21 the status line's left side then said "Idle · a background
-  task runs". That went with the left side, on Magnus's word ("This is not needed with progress clearly shown above
-  the input"), and nothing took its place.
-- **How many tasks run, and of which kind,** shells or monitors, aren't in the hub's answer. Nor is the turn's end,
-  "done 2:37 PM". The hub reads the permission mode off Claude Code's screen (`permissionMode.shownAs`), but not the
-  rest of that line, `1 shell · ↓ to manage`.
+**Waits for:** the tooling owner, asked on 2026-11-21: a message for each turn's end in the hub's conversation, from
+the `turn_duration` entries Claude Code writes in the transcript at each turn's end (its duration, and the time it
+ended), and the stand-in writing those entries. It will say when it's published.
 
-**Taken up the same day, as far as the hub allows:** a third line under the input box says "A background shell or
-monitor runs" while the status is `shell` (c754c88). The rest waits for the hub.
-
-**Waits for:** the tooling owner, who decided on 2026-11-21 to have each running session's record tell what
-background work it runs (its backlog, `~/.claude/dev_docs/backlog.md`, 6feb6a8, "each running session tells what
-background work it runs"). It comes after its work on the status line's colours and on its specifications' speed. It
-will say when it's published. Asked for: how many of each kind run, whatever the status, each one's command, and the
-turn's end time.
-
-**Then:** show them as the TUI does: `1 shell` in place of the third line's words, and while Claude works too; a marker
-in the tab's header; the turn's end line, such as `Worked for 21s · done 2:37 PM`. Specify it with the stand-in for
-Claude Code, once it can run a background task.
+**Then:** show the line after each turn in the chat, as the TUI's scrollback keeps one for each: "Worked for 21s · done
+2:37 PM", and after the last turn "· 1 shell still running" while background work runs (`RunningSession.BackgroundWork`).
+Specify it with the stand-in's turns.
 
 ## Waiting for Compze
 

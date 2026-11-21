@@ -18,8 +18,8 @@ sealed record StatusOfAClaudeCode(string AsReported, string? WaitingFor)
    public bool IsWaiting => AsReported == "waiting";
 
    /// <summary>
-   /// Whether it is idle, with background work running: a shell task or a monitor, which may wake it again. The hub tells
-   /// neither how many nor which; nor of those that run while Claude works.
+   /// Whether it is idle, with background work running: a shell task or a monitor, which may wake it again. How many and
+   /// which, and those that run while Claude works, a <see cref="RunningSession.BackgroundWork"/> tells.
    /// </summary>
    public bool IsIdleWithBackgroundWork => AsReported == "shell";
 }

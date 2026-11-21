@@ -30,6 +30,7 @@ sealed class SessionTab : TabItem
    readonly AttachmentToASessionHost _attachment;
    readonly TextBlock _title;
    readonly SpinnerOfClaudeCode _spinner = new();
+   readonly MarkerOfBackgroundWork _backgroundWork = new();
    readonly TextBlock _notice = new() { IsVisible = false, Foreground = Brushes.Orange, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(8, 4) };
    readonly ToggleButton _showTheChat = SwitchTo("Chat", TipOfTheChatsSwitch);
    readonly ToggleButton _showTheTerminal = SwitchTo("Terminal", TipOfTheTerminalsSwitch);
@@ -82,6 +83,12 @@ sealed class SessionTab : TabItem
    /// <summary>Whether its header shows that Claude works, with Claude Code's spinner before its title: while the Claude Code that runs in it is busy.</summary>
    public bool ShowsThatClaudeWorks => _spinner.IsTurning;
 
+   /// <summary>
+   /// What the marker in its header tells, while it shows that background work runs and Claude doesn't work, such as
+   /// "1 shell" and the shell's command: null while it doesn't show (<see cref="MarkerOfBackgroundWork"/>).
+   /// </summary>
+   public string? BackgroundWorkMarked => _backgroundWork.Tip;
+
    /// <summary>What the tab tells above its terminal, as why the hub didn't start Claude Code in it: null while it tells nothing.</summary>
    public string? Notice => _notice.IsVisible ? _notice.Text : null;
 
@@ -100,6 +107,7 @@ sealed class SessionTab : TabItem
          field = value;
          Chat.ClaudeCode = value;
          _spinner.IsTurning = value?.Status.IsBusy == true;
+         _backgroundWork.Show(value);
          if(value is null) return;
          LatestSession = value.Session;
          Chat.Show(value.Session.Id);
@@ -183,7 +191,7 @@ sealed class SessionTab : TabItem
       var close = new Button { Content = "×", Padding = new Thickness(6, 0), Background = Brushes.Transparent, VerticalAlignment = VerticalAlignment.Center };
       ToolTip.SetTip(close, "End the session");
       close.Click += (_, _) => ClosedByMagnus?.Invoke(this);
-      return new StackPanel { Orientation = Orientation.Horizontal, Spacing = 2, Children = { _spinner, _title, close } };
+      return new StackPanel { Orientation = Orientation.Horizontal, Spacing = 2, Children = { _spinner, _backgroundWork, _title, close } };
    }
 
    static Control Docked(Control control, Dock dock)

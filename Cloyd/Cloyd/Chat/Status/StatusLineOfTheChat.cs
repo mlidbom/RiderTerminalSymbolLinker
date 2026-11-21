@@ -11,10 +11,10 @@ namespace Cloyd.Chat.Status;
 /// <summary>
 /// The lines under the chat's input box: Claude Code's own status line, as the terminal shows it under Claude Code's box,
 /// in its colours, such as "Opus 5.5 · xhigh · context 42% · week 100% · Fable 7% · €361.07" with "week 100%" in bold
-/// red; the permission mode under it, such as "⏵⏵ bypass permissions on"; and under that, while Claude is idle and
-/// background work runs, a line that says so. Magnus, 2026-11-21: "get all the information from our custom status line
-/// in the CLI into the status line here", and "add the missing information about background work under the existing two
-/// lines under the input box".
+/// red; the permission mode under it, such as "⏵⏵ bypass permissions on"; and under that, while background work runs,
+/// what runs, counted as Claude Code counts it beside its box, such as "1 shell", with each task in its tip. Magnus,
+/// 2026-11-21: "get all the information from our custom status line in the CLI into the status line here", and "add the
+/// missing information about background work under the existing two lines under the input box".
 /// </summary>
 /// <remarks>
 /// What Claude does otherwise isn't told here: the <see cref="WorkingLineOfTheChat"/> over the box tells that it works, and
@@ -26,12 +26,6 @@ sealed class StatusLineOfTheChat : UserControl
    /// <summary>What the line tells while no Claude Code runs in the tab, as before it starts, or after it exits to the shell.</summary>
    public const string NoClaudeCodeRuns = "No Claude Code runs in this tab";
 
-   /// <summary>
-   /// What the line under the permission mode says while Claude is idle and background work runs. The hub tells neither how
-   /// many tasks nor which, as Claude Code's own "1 shell" does: see <see cref="StatusOfAClaudeCode.IsIdleWithBackgroundWork"/>.
-   /// </summary>
-   public const string BackgroundWorkRuns = "A background shell or monitor runs";
-
    readonly TextBlock _claudeCodesStatusLine = Grey();
    readonly TextBlock _permissionMode = Grey();
    readonly TextBlock _backgroundWork = Grey();
@@ -39,7 +33,6 @@ sealed class StatusLineOfTheChat : UserControl
    public StatusLineOfTheChat()
    {
       Resources.MergedDictionaries.Add(ColoursOfTheTerminal.AsResources());
-      _backgroundWork.Text = BackgroundWorkRuns;
       Content = new StackPanel { Margin = new Thickness(28, 0, 28, 8), Children = { _claudeCodesStatusLine, _permissionMode, _backgroundWork } };
       Show(claudeCode: null);
    }
@@ -53,10 +46,13 @@ sealed class StatusLineOfTheChat : UserControl
    /// <summary>The permission mode under it, as Claude Code shows it, such as "⏵⏵ bypass permissions on": null while it shows none.</summary>
    public string? PermissionMode => _permissionMode.IsVisible ? _permissionMode.Text : null;
 
-   /// <summary>The line under the permission mode, <see cref="BackgroundWorkRuns"/>, while Claude is idle and background work runs: null otherwise.</summary>
+   /// <summary>The line under the permission mode while background work runs, its <see cref="RunningSession.BackgroundWorkCounted"/>, such as "1 shell": null while none runs.</summary>
    public string? BackgroundWork => _backgroundWork.IsVisible ? _backgroundWork.Text : null;
 
-   /// <summary>Shows what <paramref name="claudeCode"/>, the Claude Code that runs in the tab, showed last under its box, and whether background work runs: null while none runs.</summary>
+   /// <summary>The tip of the line of the background work: each task and scheduled prompt with what it does (<see cref="Hub.BackgroundWork.Listed"/>), null while the hub knows not what runs.</summary>
+   public string? TipOfTheBackgroundWork => ToolTip.GetTip(_backgroundWork) as string;
+
+   /// <summary>Shows what <paramref name="claudeCode"/>, the Claude Code that runs in the tab, showed last under its box, and what background work runs: null while none runs.</summary>
    public void Show(RunningSession? claudeCode)
    {
       _claudeCodesStatusLine.Inlines!.Clear();
@@ -64,7 +60,9 @@ sealed class StatusLineOfTheChat : UserControl
       foreach(var stretch in claudeCode?.StatusLine?.Stretches ?? []) _claudeCodesStatusLine.Inlines.Add(RunOf(stretch));
       _permissionMode.Text = claudeCode?.StatusLine?.PermissionModeLine;
       _permissionMode.IsVisible = _permissionMode.Text is not null;
-      _backgroundWork.IsVisible = claudeCode?.Status.IsIdleWithBackgroundWork == true;
+      _backgroundWork.Text = claudeCode?.BackgroundWorkCounted;
+      _backgroundWork.IsVisible = _backgroundWork.Text is not null;
+      ToolTip.SetTip(_backgroundWork, claudeCode?.BackgroundWork is { IsAny: true } work ? work.Listed : null);
    }
 
    /// <summary><paramref name="stretch"/> as a run of text in its style: its colour's shade (<see cref="ColoursOfTheTerminal"/>), else the line's grey.</summary>

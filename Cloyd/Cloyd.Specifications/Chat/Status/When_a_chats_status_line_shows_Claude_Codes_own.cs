@@ -1,5 +1,4 @@
 using Avalonia.Controls;
-using Avalonia.Controls.Documents;
 using Avalonia.Media;
 using ClaudeTooling.SessionHost.Protocol;
 using Cloyd.Chat.Status;
@@ -52,8 +51,13 @@ public class When_a_chats_status_line_shows_Claude_Codes_own : SpecificationOpen
 
    [XF] public void under_it_the_permission_mode_as_Claude_Code_shows_it() => OnTheUIThread(() => _statusLine.PermissionMode).Must().Be("⏵⏵ bypass permissions on");
 
-   /// <summary>The Claude Code is idle with a background shell task or monitor running, as the hub's <c>shell</c> status tells. Magnus, 2026-11-21: "add the missing information about background work under the existing two lines under the input box".</summary>
-   [XF] public void under_that_that_background_work_runs() => OnTheUIThread(() => _statusLine.BackgroundWork).Must().Be(StatusLineOfTheChat.BackgroundWorkRuns);
+   /// <summary>
+   /// The Claude Code is idle with a background shell task or monitor running, as the hub's <c>shell</c> status tells, and
+   /// the hub knows not what, as until a turn has ended since it started. Magnus, 2026-11-21: "add the missing information
+   /// about background work under the existing two lines under the input box". What it shows once the hub knows what runs
+   /// is in <see cref="When_a_chats_status_line_shows_what_runs_in_the_background"/>.
+   /// </summary>
+   [XF] public void under_that_that_background_work_runs_while_the_hub_knows_not_what() => OnTheUIThread(() => (_statusLine.BackgroundWork, _statusLine.TipOfTheBackgroundWork)).Must().Be((BackgroundWork.SomeRuns, (string?)null));
 
    [XF] public void with_no_background_work_running_it_shows_no_line_of_it() =>
       OnTheUIThread(() =>
@@ -72,5 +76,5 @@ public class When_a_chats_status_line_shows_Claude_Codes_own : SpecificationOpen
       }).Must().Be(("", (string?)null));
 
    static RunningSession AClaudeCode(ClaudeCodesStatusLine? statusLine, string status) =>
-      new(new ClaudeCodeProcessId(4711), new ClaudeSessionId(Guid.NewGuid().ToString()), "a session", new SessionHostId(Guid.NewGuid().ToString()), new StatusOfAClaudeCode(status, WaitingFor: null), statusLine, TurnUnderWay: null);
+      new(new ClaudeCodeProcessId(4711), new ClaudeSessionId(Guid.NewGuid().ToString()), "a session", new SessionHostId(Guid.NewGuid().ToString()), new StatusOfAClaudeCode(status, WaitingFor: null), statusLine, TurnUnderWay: null, BackgroundWork: null);
 }

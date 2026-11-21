@@ -17,7 +17,13 @@ sealed class SpinnerOfClaudeCode : TextBlock
    const string Glyphs = "·✢✳✶✻✽✻✶✳✢";
 
    /// <summary>How high it is, whichever glyph it shows, in logical pixels: about a line of the working line's text.</summary>
-   const double HowHighItIs = 18;
+   public const double HowHighItIs = 18;
+
+   /// <summary>How wide it is, whichever glyph it shows, in logical pixels.</summary>
+   public const double HowWideItIs = 18;
+
+   /// <summary>The size of its glyphs' font.</summary>
+   public const double SizeOfItsGlyphs = 14;
 
    /// <summary>
    /// Turns it while it turns: at a quarter of the speed of Claude Code's own spinner, as Magnus asked twice
@@ -30,8 +36,8 @@ sealed class SpinnerOfClaudeCode : TextBlock
    public SpinnerOfClaudeCode()
    {
       Foreground = new SolidColorBrush(Color.Parse("#D97757"));
-      FontSize = 14;
-      Width = 18;
+      FontSize = SizeOfItsGlyphs;
+      Width = HowWideItIs;
       Height = HowHighItIs;
       LineHeight = HowHighItIs;
       VerticalAlignment = VerticalAlignment.Center;
@@ -54,7 +60,7 @@ sealed class SpinnerOfClaudeCode : TextBlock
    }
 
    /// <summary>Shows the next glyph.</summary>
-   public void Turn()
+   void Turn()
    {
       _glyph = (_glyph + 1) % Glyphs.Length;
       Text = Glyphs[_glyph].ToString();

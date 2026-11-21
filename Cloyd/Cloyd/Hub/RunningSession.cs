@@ -15,14 +15,27 @@ namespace Cloyd.Hub;
 /// What its turn under way does, as its spinner line tells: null while no turn is under way, and in a session that doesn't
 /// load the <c>tooling-commands</c> mod, which tells the hub of it.
 /// </param>
-sealed record RunningSession(ClaudeCodeProcessId Process, ClaudeSessionId SessionId, string? Name, SessionHostId? SessionHost, StatusOfAClaudeCode Status, ClaudeCodesStatusLine? StatusLine, TurnUnderWay? TurnUnderWay)
+/// <param name="BackgroundWork">
+/// What it runs in the background, and the prompts scheduled to wake it, as of the end of its last turn: null until a turn
+/// of it has ended since the hub started, as after a publish of the hub's, while <see cref="StatusOfAClaudeCode.IsIdleWithBackgroundWork"/>
+/// still tells that some runs.
+/// </param>
+sealed record RunningSession(ClaudeCodeProcessId Process, ClaudeSessionId SessionId, string? Name, SessionHostId? SessionHost, StatusOfAClaudeCode Status, ClaudeCodesStatusLine? StatusLine, TurnUnderWay? TurnUnderWay, BackgroundWork? BackgroundWork)
 {
    /// <summary>The Claude Code as the hub's answer <paramref name="session"/> lists it.</summary>
    public static RunningSession InThe(RunningSessionInTheAnswer session) =>
       new(new ClaudeCodeProcessId(session.ProcessId), new ClaudeSessionId(session.SessionId), session.Name, session.SessionHost is {} host ? new SessionHostId(host) : null, new StatusOfAClaudeCode(session.Status, session.WaitingFor),
          session.StatusLine is {} statusLine ? ClaudeCodesStatusLine.InThe(statusLine) : null,
-         session.TurnUnderWay is {} turn ? TurnUnderWay.InThe(turn) : null);
+         session.TurnUnderWay is {} turn ? TurnUnderWay.InThe(turn) : null,
+         session.BackgroundWork is {} work ? BackgroundWork.InThe(work) : null);
 
    /// <summary>The session the Claude Code runs.</summary>
    public ClaudeSession Session => new(SessionId, Name);
+
+   /// <summary>
+   /// What it runs in the background, as the chat tells Magnus of it, whether Claude works or not: counted by kind, as
+   /// Claude Code's TUI counts it, such as "1 shell" (<see cref="Hub.BackgroundWork.Counted"/>); <see cref="Hub.BackgroundWork.SomeRuns"/>
+   /// while the hub knows only that some runs; null while none does.
+   /// </summary>
+   public string? BackgroundWorkCounted => BackgroundWork is { IsAny: true } work ? work.Counted : Status.IsIdleWithBackgroundWork ? BackgroundWork.SomeRuns : null;
 }
