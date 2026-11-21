@@ -16,4 +16,23 @@ sealed record MessageFromTheChat(IReadOnlyList<PartOfAMessage> Parts)
    /// Code's own UI, in the terminal.
    /// </summary>
    public bool IsASlashCommand => Parts is [PartOfAMessage.TypedText { Text: var first }, ..] && first.StartsWith('/');
+
+   /// <summary>
+   /// The message as the chat shows a prompt of Magnus's, <see cref="ShownInTheChat.Prompt.Text"/>: what he typed and
+   /// pasted, in order, and each image as its placeholder, numbered from 1 within the message, such as <c>[Image #1]</c>.
+   /// </summary>
+   public string AsShownInTheChat
+   {
+      get
+      {
+         var images = 0;
+         return string.Concat(Parts.Select(it => it switch
+         {
+            PartOfAMessage.TypedText typed => typed.Text,
+            PartOfAMessage.PastedText pasted => pasted.Text,
+            PartOfAMessage.PastedImage => $"[Image #{++images}]",
+            _ => throw new ArgumentOutOfRangeException(nameof(Parts), it, "A part the chat doesn't know how to show.")
+         }));
+      }
+   }
 }

@@ -21,7 +21,7 @@ public class When_Magnus_presses_Shift_Enter_in_a_sessions_terminal : Specificat
       DoneOnTheUIThread(() => window.StartANewSession(name: null));
       _tab = OnTheUIThread(() => window.Tabs.Single());
       WaitUntil(() => _tab.SessionRunningInIt is not null && _tab.Terminal.TextShown.Contains("New session"), "the tab's terminal showed the stand-in's start");
-      Focus(_tab.Terminal);
+      SwitchWithCtrlH(window, _tab);
       Type(window, "first");
       Press(window, Key.Enter, PhysicalKey.Enter, RawInputModifiers.Shift);
       Type(window, "second");

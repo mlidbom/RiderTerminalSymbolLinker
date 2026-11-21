@@ -16,5 +16,5 @@ public class When_Magnus_sends_a_slash_command_from_a_chat : SpecificationWritin
       TypeAndSend(window, "/rename renamed from the chat");
    }
 
-   [XF] public void the_tab_shows_its_terminal_and_not_its_chat() => OnTheUIThread(() => (_tab.Terminal.IsVisible, _tab.Chat.IsVisible)).Must().Be((true, false));
+   [XF] public void the_tab_shows_its_terminal() => OnTheUIThread(() => _tab.ShowsTheChat).Must().BeFalse();
 }

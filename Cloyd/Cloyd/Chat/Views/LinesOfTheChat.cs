@@ -16,9 +16,12 @@ static class LinesOfTheChat
    public static readonly FontFamily Monospaced = new("Cascadia Mono, Consolas, monospace");
 
    /// <summary>A prompt's bubble, at the right of the column, its text in <paramref name="inlines"/>.</summary>
-   public static Control Bubble(params Inline[] inlines)
+   public static Control Bubble(params Inline[] inlines) => Bubble(int.MaxValue, inlines);
+
+   /// <summary>A prompt's bubble, at the right of the column, its text in <paramref name="inlines"/>: at most <paramref name="mostLines"/> lines of it, cut with an ellipsis.</summary>
+   public static Control Bubble(int mostLines, params Inline[] inlines)
    {
-      var text = ColoursOfTheChat.Text.AsTheForegroundOf(new SelectableTextBlock { TextWrapping = TextWrapping.Wrap });
+      var text = ColoursOfTheChat.Text.AsTheForegroundOf(new SelectableTextBlock { TextWrapping = TextWrapping.Wrap, MaxLines = mostLines, TextTrimming = TextTrimming.CharacterEllipsis });
       text.Inlines!.AddRange(inlines);
       return ColoursOfTheChat.BubbleOfAPrompt.AsTheBackgroundOf(new Border
       {

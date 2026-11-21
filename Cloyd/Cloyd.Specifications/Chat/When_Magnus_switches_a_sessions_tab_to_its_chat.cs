@@ -8,7 +8,8 @@ using Compze.xUnitBDD;
 namespace Cloyd.Specifications.Chat;
 
 /// <summary>
-/// A tab's switch from its terminal to its chat, after Magnus had Claude run a tool in the terminal: the chat shows the
+/// A tab's switch from its terminal to its chat, after Magnus switched a new session's tab from its chat to its terminal,
+/// and had Claude run a tool there: the chat shows the
 /// conversation of the session that runs in the tab, and goes on with it as it goes on.
 /// </summary>
 public class When_Magnus_switches_a_sessions_tab_to_its_chat : SpecificationOpeningWindows
@@ -22,6 +23,7 @@ public class When_Magnus_switches_a_sessions_tab_to_its_chat : SpecificationOpen
       DoneOnTheUIThread(() => window.StartANewSession(name: null));
       var tab = OnTheUIThread(() => window.Tabs.Single());
       WaitUntil(() => tab.SessionRunningInIt is not null && tab.Terminal.TextShown.Contains("New session"), "the tab's terminal showed the stand-in's start");
+      Click(TheButtonWithTheTip(tab, SessionTab.TipOfTheTerminalsSwitch));
       Focus(tab.Terminal);
       Type(window, "Run a tool that prints 2 lines");
       Press(window, Key.Enter, PhysicalKey.Enter, RawInputModifiers.None);
@@ -41,7 +43,7 @@ public class When_Magnus_switches_a_sessions_tab_to_its_chat : SpecificationOpen
 
    static IReadOnlyList<ShownInTheChat> ShownIn(SessionTab tab) => OnTheUIThread(() => tab.Chat.Shown.ToList());
 
-   [XF] public void the_chat_is_shown_and_the_terminal_not() => OnTheUIThread(() => (_tab.Chat.IsVisible, _tab.Terminal.IsVisible)).Must().Be((true, false));
+   [XF] public void the_tab_shows_its_chat() => OnTheUIThread(() => _tab.ShowsTheChat).Must().BeTrue();
 
    [XF] public void it_shows_the_prompts_magnus_typed_into_the_terminal() =>
       Shown.OfType<ShownInTheChat.Prompt>().Select(it => it.Text).Must().Satisfy(it => it.SequenceEqual(["Run a tool that prints 2 lines", "Thanks"]));

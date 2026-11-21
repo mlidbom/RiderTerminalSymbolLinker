@@ -7,6 +7,9 @@ using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.LogicalTree;
 using Avalonia.Threading;
+using Avalonia.VisualTree;
+using Cloyd.Chat.Writing;
+using Cloyd.Sessions;
 using Cloyd.Specifications.Scenarios;
 using Cloyd.Specifications.TheSandbox;
 using Compze.Threading;
@@ -144,6 +147,28 @@ public abstract class SpecificationOpeningWindows : IDisposable
    /// <summary>The one button in <paramref name="within"/> whose tooltip is <paramref name="tip"/>, as Magnus finds it by hovering.</summary>
    protected static Button TheButtonWithTheTip(Control within, string tip) =>
       OnTheUIThread(() => within.GetLogicalDescendants().OfType<Button>().Single(it => ToolTip.GetTip(it) as string == tip));
+
+   /// <summary>
+   /// Presses Ctrl+H in <paramref name="window"/>, which switches <paramref name="tab"/> between its chat, which it shows at
+   /// first, and its terminal, and waits until the one it shows has the keyboard: the chat's input box, or the terminal.
+   /// </summary>
+   private protected void SwitchWithCtrlH(Window window, SessionTab tab)
+   {
+      var toTheChat = !OnTheUIThread(() => tab.ShowsTheChat);
+      Press(window, Key.H, PhysicalKey.H, RawInputModifiers.Control);
+      WaitUntil(() => TopLevel.GetTopLevel(window)!.FocusManager!.GetFocusedElement() is Control focused
+                      && (toTheChat ? focused.FindAncestorOfType<InputBoxOfTheChat>() is not null : focused == tab.Terminal || tab.Terminal.IsVisualAncestorOf(focused)),
+                toTheChat ? "the chat's input box had the keyboard" : "the terminal had the keyboard");
+   }
+
+   /// <summary>Waits until the chat's input box of <paramref name="tab"/> in <paramref name="window"/> has the keyboard, as a tab's selection gives it, the tab showing its chat.</summary>
+   private protected void WaitUntilTheInputBoxHasTheKeyboard(Window window, SessionTab tab) =>
+      WaitUntil(() => TopLevel.GetTopLevel(window)!.FocusManager!.GetFocusedElement() is Control focused && focused.FindAncestorOfType<InputBoxOfTheChat>() is {} box && box == tab.Chat.InputBox,
+                "the chat's input box had the keyboard");
+
+   /// <summary>The one button in <paramref name="within"/> that says <paramref name="text"/>, as Magnus reads it.</summary>
+   protected static Button TheButtonSaying(Control within, string text) =>
+      OnTheUIThread(() => within.GetLogicalDescendants().OfType<Button>().Single(it => it.Content as string == text));
 
    /// <summary>Clicks <paramref name="button"/> on the UI thread: what handles its click runs as for Magnus's.</summary>
    protected static void Click(Button button) => OnTheUIThread(() => button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent)));

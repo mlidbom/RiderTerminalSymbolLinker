@@ -353,7 +353,8 @@ Each as it is found: what the app does, what he asked for and where, and that th
 **First increment, 2026-11-20: the conversation once a turn is done, read only** (`Cloyd.Chat`).
 
 - **A switch at the top of each tab, `Chat` and `Terminal`:** the terminal at first, until the chat can do what Magnus
-  needs, as sending; then the chat, the terminal staying the backup.
+  needs, as sending; then the chat, the terminal staying the backup. The chat first since 2026-11-21: see "While Claude
+  works, as it's built".
 - **Where the conversation comes from:** the hub's `GET /sessions/{sessionId}/conversation/stream`
   (`TheHub.ConversationAsWritten`), for the session that runs in the tab or ran in it last, along its line, so across a
   `/clear`. Followed only while the chat is shown, as the hub holds a conversation in memory while a stream follows it.
@@ -393,6 +394,8 @@ than any polish that the chat UI might need."
 **Then the chat's next increments:** the input box, sending through the hub, and then the chat as each tab's first view; while Claude
 works (the line at the end, the text as it streams, the task list); scrolling's `Scroll to bottom` button; the buttons
 and time under a turn; links in Claude's text, with `POST /files/open`; a permission prompt switching to the terminal.
+Built by 2026-11-21: the input box, the chat first, the working line, the text as it streams, the box while Claude
+waits in the terminal. Still to come: the task list, `Scroll to bottom`, the buttons and time under a turn, links.
 
 **The input box, Magnus's calls (2026-11-21),** where the app's spec doesn't reach, as it covers only the conversation:
 
@@ -428,22 +431,70 @@ input box") ported, with Magnus's calls above:
 - **`SendingFromTheChat`** gives the messages to the hub's `POST /running-sessions/{processId}/send` one after another,
   to the Claude Code that ran in the tab as each was sent. One the hub refused comes back into the box with those that
   waited after it, ahead of what Magnus wrote since, and the hub's `error` shows over the box in red.
+- **Each message is a `MessageOnItsWay` until the conversation has it** (Magnus, 2026-11-21: "it should not appear to
+  disappear until the agent picks it up"): shown over the box, dimmed, in a prompt's bubble cut at three lines, with
+  `Sending…` under it, or `Queued` once the hub's answer says Claude Code queued it, as Claude Code's own UI says
+  under a queued message. How the desktop app shows one wasn't seen. It goes once one more prompt of the conversation
+  holds its text than as it was sent: held in, not equal to, as Claude Code may give the model several queued messages as
+  one prompt. One given to a Claude Code that no longer runs in the tab goes too. Not covered: a queued message Magnus
+  takes back into Claude Code's own box with Up and changes there stays shown until that Claude Code exits.
 - **Saved with the window** (`SavedSessionTab.Draft`): the messages that waited to be given, then the draft, each part
   as it came in; they come back into the box, to be sent again by Magnus. Not the message being given, which the hub
   goes on typing whatever becomes of Cloyd.
 - **The status line under the box** (`Cloyd.Chat.Status.StatusLineOfTheChat`), as the Kotlin chat's: at its left what
-  Claude does, from the running session's `status` (`StatusOfAClaudeCode`); at its right Claude Code's own status line,
+  Claude does, from the running session's `status` (`StatusOfAClaudeCode`), but nothing while it works, which the
+  working line over the box tells (Magnus, 2026-11-21: "put it above the input, like other claude UIs do"); at its
+  right Claude Code's own status line,
   from its `statusLine` (`ClaudeCodesStatusLine`), the model, the effort level, the permission mode in short as the
   desktop app names it, and the context used. The tab tells the chat its running session (`ChatOfASession.ClaudeCode`),
   which hands it to the box and the line. Specified through the hub for what Claude does; Claude Code's status line with
   running sessions made in the specification, as the stand-in shows the hub none (asked of the tooling owner,
   2026-11-21).
-- **Tabs still open on the terminal:** the chat becomes each tab's first view once Claude waiting for Magnus in the
-  terminal shows prominently over the box, as he asked, so that a permission prompt can't go unseen behind the chat.
 - **Specified** with the stand-in through the sandbox's hub (`Cloyd.Specifications/Chat/Writing`): a message of two
   lines sent; text and an image pasted, kept apart, and sent; Escape and a message sent while Claude works, which
-  interrupt nothing; Stop; a message refused while Claude Code's own box holds text; a draft through the window's
-  closing; a slash command showing the terminal.
+  interrupt nothing, and the message shown over the box as sent, as queued, and no more once the conversation has it;
+  Stop; a message refused while Claude Code's own box holds text; a draft through the window's closing; a slash command
+  showing the terminal.
+
+### While Claude works, as it's built
+
+**2026-11-21** (`Cloyd.Chat.Status`, `Cloyd.Hub`), the Kotlin chat's (`claude-sessions.md`, "A working line" and "What
+Claude writes shows as it comes") ported, with Magnus's calls of the day.
+
+- **The working line over the box** (`WorkingLineOfTheChat`), shown while the Claude Code is `busy`, as Claude Code's
+  own spinner line: a spinner of Claude Code's glyphs in Claude's orange; what the turn does, in orange, from the running
+  session's `turnUnderWay` (`TurnUnderWay`, `ActivityOfATurn`): "Waiting for the model…", "Thinking…", "Writing…",
+  "Writing the Write call…", or while tools run the call under way; then, grey, in parentheses as the TUI has them, how
+  long the turn has taken, its output tokens and the commands it ran: `Thinking… (1m 12s · ↓ 1.2k tokens · 3 commands)`.
+  Magnus, 2026-11-21: "put it above the input, like other claude UIs do and include the time and tokens like they do".
+- **The tool call under way,** the last of the turn's with no result (`ToolCallsOfTheLastTurn`, from what the chat shows
+  of the conversation), as Claude Code's UI shows a call that runs (Magnus, 2026-11-21, of its `● Finding other
+  repositories…` and `└ $ ls /c/Dev; grep …`: "so that I can see what the agent is doing right now"): what it does,
+  `ToolCallInTheChat.WhatItDoes`, the description Claude gave a command, else the row's verb and target; and under it,
+  `WhatItWasGiven`, a command as `$ …` on one line, or a file's path. Shown while the activity is `runningTools`, and
+  always where the hub tells of no turn.
+- **Where the hub tells of no turn,** as in a session that doesn't load the `tooling-commands` mod: `Working…` or the
+  call under way, and the time from when the line saw Claude Code turn busy.
+- **The box while Claude waits in the terminal** (`WaitingForMagnusInTheTerminal`), between the conversation and the
+  working line, while the status is `waiting`: Claude's orange, white text, "⚠ Claude waits for you in the terminal",
+  what for, from `waitingFor`, such as "Permission prompt: answer it in the terminal.", and a white **Show the
+  terminal (Ctrl+H)** button, which switches the tab. The tab doesn't switch by itself, as Magnus asked.
+- **What Claude writes, as it comes** (`TheHub.BlockBeingWrittenIn`, `TurnAsStreamed`, `BlockBeingWritten`): the hub's
+  `GET /running-sessions/{processId}/turn/stream`, followed while the chat is shown, for the Claude Code that runs in
+  the tab; the block of text, not thinking, which the chat doesn't show, drawn after the conversation as Claude's text,
+  until the conversation has it: an ended block stays until the conversation changes next, as in the Kotlin chat. A
+  block the turn's end cut short goes. Each piece draws the block's markdown anew, four times a second at most.
+- **`TheHub.EachStreamAt`** follows any of the hub's streams from each hub in turn: the running sessions', a
+  conversation's and a turn's.
+- **Tabs open on the chat** (`SessionTab`), now that a question only the terminal can answer shows prominently. The
+  terminal stays laid out under the chat, transparent and out of the mouse's reach, rather than hidden: it attaches to
+  its host only once laid out, and reads what the session draws at the tab's size only while it is.
+- **Specified** through the sandbox's hub, the specification posting the turn reports the mod would
+  (`SandboxHub.Report`), as the stand-in tells the hub of no turn: a `Write` call being written, then text in two pieces,
+  then the turn interrupted (`When_the_hub_tells_of_Claudes_turn`). With made data: a command under way
+  (`RenderedWindows/a-chats-working-line.png`) and the box (`a-chats-box-while-claude-waits-in-the-terminal.png`).
+  The tooling owner is giving the stand-in a turn of its own and a status line (2026-11-21); once published, the
+  specification follows the stand-in's turn instead of posting its own.
 
 ### The session history picker, as it's built
 

@@ -23,7 +23,7 @@ public class When_Magnus_presses_Ctrl_Tab_in_a_project_window : SpecificationOpe
       WaitUntil(() => _window.BringingBackTheTabs.IsCompleted, "the window had brought back its tabs");
       _tabs = OnTheUIThread(() => _window.Tabs);
       _tabs.Count.Must().Be(3);
-      Focus(OnTheUIThread(() => _window.SelectedTab!.Terminal));
+      SwitchWithCtrlH(_window, OnTheUIThread(() => _window.SelectedTab!));
       PressCtrlTab();
    }
 

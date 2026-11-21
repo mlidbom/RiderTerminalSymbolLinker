@@ -1,5 +1,6 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Documents;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Layout;
@@ -8,6 +9,7 @@ using Avalonia.Media.Imaging;
 using Avalonia.Platform.Storage;
 using AvaloniaEdit;
 using AvaloniaEdit.Document;
+using Cloyd.Chat.Views;
 using Cloyd.Hub;
 using Cloyd.Pasting;
 
@@ -42,6 +44,9 @@ sealed class InputBoxOfTheChat : UserControl
    /// <summary>The height of an image's thumbnail over the box, in logical pixels.</summary>
    const int HeightOfAThumbnail = 64;
 
+   /// <summary>How many lines of a message on its way show over the box: what is longer is cut, with an ellipsis.</summary>
+   const int LinesShownOfAMessageOnItsWay = 3;
+
    static readonly IBrush ClaudesOrange = new SolidColorBrush(Color.Parse("#D97757"));
 
    readonly TheHub _hub;
@@ -52,6 +57,7 @@ sealed class InputBoxOfTheChat : UserControl
    readonly Button _send = RoundButton("↑", TipOfTheSendButton);
    readonly Button _stop = RoundButton("■", TipOfTheStopButton);
    readonly TextBlock _notice = new() { IsVisible = false, Foreground = Brushes.IndianRed, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(4, 0, 4, 4) };
+   readonly StackPanel _messagesOnTheirWay = new() { Spacing = 6, Margin = new Thickness(0, 0, 0, 8), IsVisible = false };
 
    /// <summary>The images whose thumbnails show, as the draft held them when they were last drawn.</summary>
    IReadOnlyList<PastedStretch.OfAnImage> _imagesShown = [];
@@ -63,6 +69,7 @@ sealed class InputBoxOfTheChat : UserControl
       _pastedImages = pastedImages;
       _sending = new SendingFromTheChat(hub);
       _sending.NotGiven += PutBackWhatClaudeCodeDidntGet;
+      _sending.OnTheirWayChanged += ShowTheMessagesOnTheirWay;
       _editor = new TextEditor
       {
          Document = Draft.Document,
@@ -101,6 +108,7 @@ sealed class InputBoxOfTheChat : UserControl
       {
          field = value;
          _stop.IsVisible = value?.Status.IsBusy == true;
+         _sending.ClaudeCodeRuns(value?.Process);
       }
    }
 
@@ -115,6 +123,12 @@ sealed class InputBoxOfTheChat : UserControl
 
    /// <summary>Whether messages sent are still being given to Claude Code, or wait to be.</summary>
    public bool IsGivingMessages => _sending.IsGiving;
+
+   /// <summary>The messages sent that the conversation doesn't have yet, which show over the box, in the order Magnus sent them.</summary>
+   public IReadOnlyList<MessageOnItsWay> MessagesOnTheirWay => _sending.OnTheirWay;
+
+   /// <summary>The chat shows <paramref name="conversation"/> now: the messages on their way that it has no longer show over the box.</summary>
+   public void Seen(IReadOnlyList<ShownInTheChat> conversation) => _sending.Seen(conversation);
 
    /// <summary>The highest the box grows, in logical pixels, as Magnus writes more lines: past it, it scrolls.</summary>
    public double MostHeight
@@ -233,6 +247,22 @@ sealed class InputBoxOfTheChat : UserControl
    static IReadOnlyList<PartOfAMessage> TheParts(IReadOnlyList<MessageFromTheChat> messages) =>
       [.. messages.SelectMany((message, at) => at == 0 ? message.Parts : [new PartOfAMessage.TypedText("\n\n"), .. message.Parts])];
 
+   /// <summary>Shows each message on its way over the box, as the conversation's last prompt would show, dimmed, with its <see cref="MessageOnItsWay.Stage"/> under it.</summary>
+   void ShowTheMessagesOnTheirWay()
+   {
+      var onTheirWay = _sending.OnTheirWay;
+      _messagesOnTheirWay.Children.Clear();
+      foreach(var message in onTheirWay) _messagesOnTheirWay.Children.Add(ViewOf(message));
+      _messagesOnTheirWay.IsVisible = onTheirWay.Count > 0;
+
+      static Control ViewOf(MessageOnItsWay message)
+      {
+         var bubble = LinesOfTheChat.Bubble(LinesShownOfAMessageOnItsWay, new Run(message.Message.AsShownInTheChat));
+         var stage = ColoursOfTheChat.Grey.AsTheForegroundOf(new TextBlock { Text = message.Stage, FontSize = 11, HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(0, 2, 6, 0) });
+         return new StackPanel { Opacity = 0.6, Children = { bubble, stage } };
+      }
+   }
+
    /// <summary>Shows a thumbnail of each image the draft holds, over the box, as it holds them: once they change.</summary>
    void ShowTheThumbnailsOfTheImagesHeld()
    {
@@ -289,7 +319,8 @@ sealed class InputBoxOfTheChat : UserControl
       box.Bind(Border.BorderBrushProperty, box.GetResourceObservable("TextControlBorderBrush"));
       box.Bind(Border.BackgroundProperty, box.GetResourceObservable("TextControlBackground"));
       DockPanel.SetDock(_notice, Dock.Top);
-      return new DockPanel { Margin = new Thickness(16, 4, 16, 6), Children = { _notice, box } };
+      DockPanel.SetDock(_messagesOnTheirWay, Dock.Top);
+      return new DockPanel { Margin = new Thickness(16, 4, 16, 6), Children = { _messagesOnTheirWay, _notice, box } };
    }
 
    static Button RoundButton(string content, string tip)

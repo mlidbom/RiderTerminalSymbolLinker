@@ -21,7 +21,7 @@ public abstract class When_Magnus_presses_Ctrl_V_in_a_sessions_terminal : Specif
    readonly ProjectWindow _window;
    readonly SessionTab _tab;
 
-   /// <summary>Opens a window on a new session, whose terminal has the keyboard, puts what <paramref name="putOnTheClipboard"/> puts on the clipboard, and presses Ctrl+V.</summary>
+   /// <summary>Opens a window on a new session, switched to its terminal with Ctrl+H, which then has the keyboard, puts what <paramref name="putOnTheClipboard"/> puts on the clipboard, and presses Ctrl+V.</summary>
    protected When_Magnus_presses_Ctrl_V_in_a_sessions_terminal(Func<IClipboard, Task> putOnTheClipboard)
    {
       var project = Sandbox.Project("the-project");
@@ -29,7 +29,7 @@ public abstract class When_Magnus_presses_Ctrl_V_in_a_sessions_terminal : Specif
       DoneOnTheUIThread(() => _window.StartANewSession(name: null));
       _tab = OnTheUIThread(() => _window.Tabs.Single());
       WaitUntil(() => _tab.SessionRunningInIt is not null && _tab.Terminal.TextShown.Contains("New session"), "the tab's terminal showed the stand-in's start");
-      Focus(_tab.Terminal);
+      SwitchWithCtrlH(_window, _tab);
       OnTheUIThread(() => putOnTheClipboard(TopLevel.GetTopLevel(_window)!.Clipboard!).GetAwaiter().GetResult());
       Press(_window, Key.V, PhysicalKey.V, RawInputModifiers.Control);
    }

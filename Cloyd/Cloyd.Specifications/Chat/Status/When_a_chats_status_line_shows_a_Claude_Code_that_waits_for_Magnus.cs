@@ -43,5 +43,5 @@ public class When_a_chats_status_line_shows_a_Claude_Code_that_waits_for_Magnus 
       }).Must().Be("");
 
    static RunningSession AClaudeCode(StatusOfAClaudeCode status, ClaudeCodesStatusLine? statusLine) =>
-      new(new ClaudeCodeProcessId(4711), new ClaudeSessionId(Guid.NewGuid().ToString()), "a session", new SessionHostId(Guid.NewGuid().ToString()), status, statusLine);
+      new(new ClaudeCodeProcessId(4711), new ClaudeSessionId(Guid.NewGuid().ToString()), "a session", new SessionHostId(Guid.NewGuid().ToString()), status, statusLine, TurnUnderWay: null);
 }

@@ -85,6 +85,27 @@ sealed partial record ToolCallInTheChat(MessageInTheAnswer.ToolCall Call, ToolRe
    /// <summary>The command a <c>Bash</c> or <c>PowerShell</c> call ran: null for a call of another tool.</summary>
    public string? Command => Call.Name is "Bash" or "PowerShell" ? Text("command") : null;
 
+   /// <summary>
+   /// What the call does while it runs, as the chat's working line says it, and Claude Code's own UI in bold: the
+   /// description Claude gave a command, such as <c>Finding the repositories that use the stand-in</c>, else the row's
+   /// verb in the present tense and what it acts on, such as <c>Reading NOTES.md</c>.
+   /// </summary>
+   public string WhatItDoes => Command is not null && Text("description") is {Length: > 0} description ? description : $"{Kind.PresentTense} {Target}";
+
+   /// <summary>
+   /// What the call was given, in full, as Claude Code's own UI shows it under the call while it runs: a command as
+   /// <c>$ ls /c/Dev; grep …</c>, on one line; a file's whole path; a search's folder. Null for what the call does says
+   /// all of it.
+   /// </summary>
+   public string? WhatItWasGiven => Call.Name switch
+   {
+      "Bash" or "PowerShell" => "$ " + string.Join(" ", Text("command").ReplaceLineEndings("\n").Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)),
+      "Read" or "Edit" or "MultiEdit" or "Write" => Text("file_path"),
+      "NotebookEdit" => Text("notebook_path"),
+      "Grep" or "Glob" when Text("path") is {Length: > 0} folder => $"in {folder}",
+      _ => null
+   };
+
    /// <summary>The change found as <see cref="Change"/>, once it has been asked for.</summary>
    ChangeToAFile? _change;
 

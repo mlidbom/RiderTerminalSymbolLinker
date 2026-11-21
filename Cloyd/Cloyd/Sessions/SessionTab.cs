@@ -18,8 +18,8 @@ namespace Cloyd.Sessions;
 /// <summary>
 /// A tab of a <see cref="Projects.ProjectWindow"/>: the terminal of one session host, showing its shell, and the Claude
 /// Code in the shell as Claude Code draws its TUI; and the chat of the session that runs in it, or ran in it last. A
-/// switch at its top shows the one or the other, as Ctrl+H does: the terminal at first, until the chat can do all Magnus
-/// needs. Titled with the name of that session.
+/// switch at its top shows the one or the other, as Ctrl+H does: the chat at first, the terminal staying the backup, and
+/// where Claude Code's own dialogs show, as its permission prompts. Titled with the name of that session.
 /// </summary>
 sealed class SessionTab : TabItem
 {
@@ -49,11 +49,12 @@ sealed class SessionTab : TabItem
       Chat = new ChatOfASession(hub, pastedImages) { IsVisible = false };
       Chat.Show(latestSession?.Id);
       Chat.InputBox.SentASlashCommand += () => Show(chat: false);
+      Chat.WaitingForMagnusInTheTerminal.AsksForTheTerminal += () => Show(chat: false);
       _title = new TextBlock { Text = latestSession?.Name ?? nameGiven ?? TitleOfASessionWithNoName, VerticalAlignment = VerticalAlignment.Center };
       Header = TheHeader();
       _showTheChat.Click += (_, _) => Show(chat: true);
       _showTheTerminal.Click += (_, _) => Show(chat: false);
-      ShowTheChat(false);
+      ShowTheChat(true);
       Content = new DockPanel { Children = { Docked(_notice, Dock.Top), Docked(TheSwitch(), Dock.Top), new Panel { Children = { Terminal, Chat } } } };
    }
 
@@ -121,13 +122,16 @@ sealed class SessionTab : TabItem
       _notice.IsVisible = true;
    }
 
+   /// <summary>Whether the tab shows its chat: else its terminal.</summary>
+   public bool ShowsTheChat => Chat.IsVisible;
+
    /// <summary>Shows the chat when the terminal is shown, else the terminal, as Ctrl+H does, and gives it the keyboard.</summary>
-   public void SwitchBetweenTheTerminalAndTheChat() => Show(chat: !Chat.IsVisible);
+   public void SwitchBetweenTheTerminalAndTheChat() => Show(chat: !ShowsTheChat);
 
    /// <summary>Gives the keyboard to what the tab shows: the terminal, which types into the session, or the chat.</summary>
    public void FocusWhatItShows()
    {
-      if(Chat.IsVisible) Chat.TakeTheKeyboard();
+      if(ShowsTheChat) Chat.TakeTheKeyboard();
       else Terminal.Focus();
    }
 
@@ -144,12 +148,17 @@ sealed class SessionTab : TabItem
       Dispatcher.UIThread.Post(FocusWhatItShows, DispatcherPriority.Loaded);
    }
 
-   /// <summary>Shows the chat when <paramref name="chat"/>, else the terminal, as the switch shows.</summary>
+   /// <summary>
+   /// Shows the chat when <paramref name="chat"/>, else the terminal, as the switch shows. The terminal stays laid out under
+   /// the chat, unseen and out of the mouse's reach: it attaches to its host only once laid out, and reads what the session
+   /// draws, at the size of the tab, only while it is.
+   /// </summary>
    void ShowTheChat(bool chat)
    {
       Chat.IsVisible = chat;
       _showTheChat.IsChecked = chat;
-      Terminal.IsVisible = !chat;
+      Terminal.Opacity = chat ? 0 : 1;
+      Terminal.IsHitTestVisible = !chat;
       _showTheTerminal.IsChecked = !chat;
    }
 

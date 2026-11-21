@@ -18,12 +18,12 @@ sealed record StatusOfAClaudeCode(string AsReported, string? WaitingFor)
    public bool IsWaiting => AsReported == "waiting";
 
    /// <summary>
-   /// What Claude does, as the chat's status line tells it, such as "Claude works", or "Claude waits for you in the
+   /// What Claude does, as the chat's status line tells it, such as "Idle", or "Claude waits for you in the
    /// terminal: permission prompt". A status added after Cloyd was built is told as Claude Code names it.
    /// </summary>
    public string AsShown => AsReported switch
    {
-      "busy" => "Claude works",
+      "busy" => "Working",
       "waiting" => WaitingFor is {} dialog ? $"Claude waits for you in the terminal: {dialog}" : "Claude waits for you in the terminal",
       "shell" => "Idle · a background task runs",
       "idle" => "Idle",

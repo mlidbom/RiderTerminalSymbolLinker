@@ -113,16 +113,17 @@ sealed partial class TheHub
 
    /// <summary>
    /// Has the hub type <paramref name="message"/> into the input box of <paramref name="claudeCode"/>, as Magnus would,
-   /// and send it: answered once Claude Code has taken it, or queued it, as it does while it works. A
-   /// <see cref="RefusedByTheHub"/> with why when it didn't, as when Claude Code shows a dialog, or its own box holds text.
+   /// and send it: answered once Claude Code has taken it, with whether it queued it, as it does while it works, to give it
+   /// to the model once it can. A <see cref="RefusedByTheHub"/> with why when it didn't, as when Claude Code shows a dialog,
+   /// or its own box holds text.
    /// </summary>
-   public async Task Send(MessageFromTheChat message, ClaudeCodeProcessId claudeCode, CancellationToken cancellation = default)
+   public async Task<bool> Send(MessageFromTheChat message, ClaudeCodeProcessId claudeCode, CancellationToken cancellation = default)
    {
       using var answer = await Send(it => new HttpRequestMessage(HttpMethod.Post, it.AddressOf($"running-sessions/{claudeCode}/send")) { Content = JsonContent.Create(message.InTheRequest(), options: LocalApiProtocol.Json) }, cancellation);
       if(answer.StatusCode is HttpStatusCode.Conflict or HttpStatusCode.NotFound)
          throw new RefusedByTheHub((await Read<RefusalAnswer>(answer, cancellation)).Error);
 
-      await Read<MessageSentAnswer>(answer, cancellation);
+      return (await Read<MessageSentAnswer>(answer, cancellation)).Queued;
    }
 
    /// <summary>
@@ -196,6 +197,24 @@ sealed partial class TheHub
                   yield return conversation.AsSentSoFar;
                   break;
             }
+      }
+   }
+
+   /// <summary>
+   /// The block the model writes, or wrote last, in the turn of <paramref name="claudeCode"/>, as the hub's
+   /// <c>GET /running-sessions/{processId}/turn/stream</c> tells of it, and each time it changes: null while none is. From
+   /// the next hub when a publish ends the stream, which tells of the block so far again, until
+   /// <paramref name="cancellation"/>.
+   /// </summary>
+   /// <exception cref="RefusedByTheHub">No Claude Code runs as <paramref name="claudeCode"/>: it has exited.</exception>
+   public async IAsyncEnumerable<BlockBeingWritten?> BlockBeingWrittenIn(ClaudeCodeProcessId claudeCode, [EnumeratorCancellation] CancellationToken cancellation)
+   {
+      await foreach(var stream in EachStreamAt($"running-sessions/{claudeCode}/turn/stream", cancellation))
+      {
+         var turn = new TurnAsStreamed();
+         await foreach(var sent in stream)
+            if(turn.Read(sent))
+               yield return turn.Block;
       }
    }
 

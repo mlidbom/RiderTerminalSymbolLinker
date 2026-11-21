@@ -51,6 +51,19 @@ sealed class ChatOfASession : UserControl
    readonly FollowingTheEnd _end;
    readonly DrawnEndOfTheConversation _drawn = new();
    CancellationTokenSource? _following;
+   CancellationTokenSource? _followingTheTurn;
+
+   /// <summary>The Claude Code that runs in the tab, as the hub last told: null while none runs.</summary>
+   RunningSession? _claudeCode;
+
+   /// <summary>What the chat shows of the conversation, as the hub's stream of it sent it last.</summary>
+   IReadOnlyList<ShownInTheChat> _conversation = [];
+
+   /// <summary>
+   /// The block Claude writes, or wrote last, in the turn under way, which the chat shows at the conversation's end until
+   /// the conversation has it: null while there is none.
+   /// </summary>
+   BlockBeingWritten? _blockBeingWritten;
 
    /// <summary>Whether drawing more above is under way: see <see cref="DrawMoreAboveOnceLaidOut"/>.</summary>
    bool _drawingMoreAbove;
@@ -61,6 +74,8 @@ sealed class ChatOfASession : UserControl
       _hub = hub;
       InputBox = new InputBoxOfTheChat(hub, pastedImages) { MaxWidth = WidthOfTheColumn + 32 };
       StatusLine = new StatusLineOfTheChat { MaxWidth = WidthOfTheColumn + 32 };
+      WorkingLine = new WorkingLineOfTheChat { MaxWidth = WidthOfTheColumn + 32 };
+      WaitingForMagnusInTheTerminal = new WaitingForMagnusInTheTerminal { MaxWidth = WidthOfTheColumn + 32 };
       _column = new ItemsControl
       {
          ItemsSource = _drawn.Drawn,
@@ -75,7 +90,7 @@ sealed class ChatOfASession : UserControl
       _scroller.ScrollChanged += (_, changed) => { if(changed.OffsetDelta.Y < 0 && _scroller.Offset.Y <= NearTheTop) DrawMoreAboveOnceLaidOut(); };
       LookOfTheApp();
       SizeChanged += (_, size) => InputBox.MostHeight = size.NewSize.Height * MostOfTheHeightTheInputBoxTakes;
-      Content = Rows(_notice, _scroller, InputBox, StatusLine);
+      Content = Rows(_notice, _scroller, WaitingForMagnusInTheTerminal, WorkingLine, InputBox, StatusLine);
    }
 
    /// <summary>Where Magnus writes to the Claude Code that runs in the tab.</summary>
@@ -84,16 +99,28 @@ sealed class ChatOfASession : UserControl
    /// <summary>The line under the input box: what Claude does, and Claude Code's own status line.</summary>
    public StatusLineOfTheChat StatusLine { get; }
 
+   /// <summary>The line over the input box while Claude works: at what, and how long it has.</summary>
+   public WorkingLineOfTheChat WorkingLine { get; }
+
+   /// <summary>The box between the conversation and the input box while Claude waits for Magnus in the terminal.</summary>
+   public WaitingForMagnusInTheTerminal WaitingForMagnusInTheTerminal { get; }
+
    /// <summary>
-   /// The Claude Code that runs in the tab's host, as the hub last told: what the input box sends to, and the status line
-   /// tells of. Null while none runs, as before it starts, or after it exits to the shell.
+   /// The Claude Code that runs in the tab's host, as the hub last told: what the input box sends to, and the lines and the
+   /// box around it tell of; whose turn under way the chat shows as Claude writes it. Null while none runs, as before it
+   /// starts, or after it exits to the shell.
    /// </summary>
    public RunningSession? ClaudeCode
    {
       set
       {
+         var anotherRuns = value?.Process != _claudeCode?.Process;
+         _claudeCode = value;
          InputBox.ClaudeCode = value;
          StatusLine.Show(value);
+         WorkingLine.Show(value);
+         WaitingForMagnusInTheTerminal.Show(value);
+         if(anotherRuns) FollowTheTurnWhileShown();
       }
    }
 
@@ -130,26 +157,33 @@ sealed class ChatOfASession : UserControl
    {
       base.OnAttachedToVisualTree(e);
       FollowWhileShown();
+      FollowTheTurnWhileShown();
    }
 
    protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
    {
       base.OnDetachedFromVisualTree(e);
       FollowWhileShown();
+      FollowTheTurnWhileShown();
    }
 
    protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
    {
       base.OnPropertyChanged(change);
-      if(change.Property == IsVisibleProperty) FollowWhileShown();
+      if(change.Property != IsVisibleProperty) return;
+      FollowWhileShown();
+      FollowTheTurnWhileShown();
    }
+
+   /// <summary>Whether the chat is shown: visible, in a window.</summary>
+   bool IsShown => IsVisible && TopLevel.GetTopLevel(this) is not null;
 
    /// <summary>Follows the conversation of <see cref="Session"/> while the chat is shown, and stops following it otherwise.</summary>
    void FollowWhileShown()
    {
       _following?.Cancel();
       _following = null;
-      if(Session is not {} session || !IsVisible || TopLevel.GetTopLevel(this) is null) return;
+      if(Session is not {} session || !IsShown) return;
 
       var following = _following = new CancellationTokenSource();
       _ = Task.Run(async () =>
@@ -170,14 +204,65 @@ sealed class ChatOfASession : UserControl
       });
    }
 
-   /// <summary>Draws <paramref name="now"/>, what the chat is to show, in place of what it shows: see <see cref="DrawnEndOfTheConversation.Show"/>. Its first drawing is scrolled to the end.</summary>
-   void Draw(IReadOnlyList<ShownInTheChat> now)
+   /// <summary>
+   /// Follows the turn of the Claude Code that runs in the tab while the chat is shown: the block Claude writes, which the
+   /// chat shows at the conversation's end until the conversation has it. Stops following it otherwise.
+   /// </summary>
+   void FollowTheTurnWhileShown()
+   {
+      _followingTheTurn?.Cancel();
+      _followingTheTurn = null;
+      Show(block: null);
+      if(_claudeCode?.Process is not {} claudeCode || !IsShown) return;
+
+      var following = _followingTheTurn = new CancellationTokenSource();
+      _ = Task.Run(async () =>
+      {
+         try
+         {
+            await foreach(var block in _hub.BlockBeingWrittenIn(claudeCode, following.Token))
+               Dispatcher.UIThread.Post(() => { if(!following.IsCancellationRequested) Show(block); });
+         }
+         catch(OperationCanceledException) when(following.IsCancellationRequested) {}
+         catch(RefusedByTheHub) {} // The Claude Code has exited: the hub's next list of the running sessions tells the tab so.
+         catch(Exception failure)
+         {
+            Dispatcher.UIThread.Post(() => Tell($"The chat can't follow what Claude writes as it comes: {failure.Message}"));
+         }
+      });
+   }
+
+   /// <summary>
+   /// Draws <paramref name="conversation"/>, what the chat shows of the conversation as the hub sent it last: the block
+   /// Claude wrote last, once ended, is in it now, and no longer shown after it. Tells the input box and the working line
+   /// what it has. Its first drawing is scrolled to the end.
+   /// </summary>
+   void Draw(IReadOnlyList<ShownInTheChat> conversation)
    {
       _notice.IsVisible = false;
-      var isTheFirst = _drawn.Shown.Count == 0;
-      _drawn.Show(now);
+      var isTheFirst = _conversation.Count == 0;
+      _conversation = conversation;
+      if(_blockBeingWritten is { HasEnded: true }) _blockBeingWritten = null;
+      InputBox.Seen(conversation);
+      WorkingLine.Show(conversation);
+      DrawWhatIsShown();
       if(isTheFirst) _end.ScrollToTheEnd();
    }
+
+   /// <summary>Shows <paramref name="block"/>, the block Claude writes, or wrote last, at the conversation's end, until the conversation has it.</summary>
+   void Show(BlockBeingWritten? block)
+   {
+      if(block == _blockBeingWritten) return;
+      _blockBeingWritten = block;
+      DrawWhatIsShown();
+   }
+
+   /// <summary>
+   /// Draws the conversation, and after it the text Claude writes, in place of what the chat draws: see
+   /// <see cref="DrawnEndOfTheConversation.Show"/>.
+   /// </summary>
+   void DrawWhatIsShown() =>
+      _drawn.Show(_blockBeingWritten is { IsText: true } block ? [.. _conversation, new ShownInTheChat.ClaudesText(block.Id, block.Text)] : _conversation);
 
    /// <summary>
    /// Draws more above what is drawn, as Magnus scrolls up near its top, once the layout his scrolling started is done,
