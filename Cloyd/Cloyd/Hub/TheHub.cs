@@ -162,21 +162,10 @@ sealed partial class TheHub
    /// </summary>
    public async IAsyncEnumerable<IReadOnlyList<RunningSession>> RunningSessionsAsTheyChange([EnumeratorCancellation] CancellationToken cancellation)
    {
-      while(!cancellation.IsCancellationRequested)
-      {
-         using var answer = await Send(it => new HttpRequestMessage(HttpMethod.Get, it.AddressOf("running-sessions/stream")), cancellation, HttpCompletionOption.ResponseHeadersRead);
-         if(answer.StatusCode == HttpStatusCode.ServiceUnavailable) // Asked for while the hub stops, as at a publish.
-         {
-            await Task.Delay(BetweenTries, cancellation);
-            continue;
-         }
-
-         answer.EnsureSuccessStatusCode();
-         using var events = new StreamReader(await answer.Content.ReadAsStreamAsync(cancellation));
-         await foreach(var sent in ServerSentEvent.ReadFrom(events, cancellation))
+      await foreach(var stream in EachStreamAt("running-sessions/stream", cancellation))
+         await foreach(var sent in stream)
             if(sent.Name == RunningSessionsStreamEventNames.RunningSessions)
                yield return [.. JsonSerializer.Deserialize<RunningSessionsAnswer>(sent.Data, LocalApiProtocol.Json)!.RunningSessions.Select(RunningSession.InThe)];
-      }
    }
 
    /// <summary>
@@ -188,20 +177,10 @@ sealed partial class TheHub
    /// <exception cref="RefusedByTheHub">The session has no transcript, and no Claude Code runs it.</exception>
    public async IAsyncEnumerable<ConversationAnswer> ConversationAsWritten(ClaudeSessionId session, [EnumeratorCancellation] CancellationToken cancellation)
    {
-      while(!cancellation.IsCancellationRequested)
+      await foreach(var stream in EachStreamAt($"sessions/{session}/conversation/stream", cancellation))
       {
-         using var answer = await Send(it => new HttpRequestMessage(HttpMethod.Get, it.AddressOf($"sessions/{session}/conversation/stream")), cancellation, HttpCompletionOption.ResponseHeadersRead);
-         if(answer.StatusCode == HttpStatusCode.ServiceUnavailable) // Asked for while the hub stops, as at a publish.
-         {
-            await Task.Delay(BetweenTries, cancellation);
-            continue;
-         }
-         if(answer.StatusCode == HttpStatusCode.NotFound) throw new RefusedByTheHub((await Read<RefusalAnswer>(answer, cancellation)).Error);
-
-         answer.EnsureSuccessStatusCode();
          var conversation = new ConversationAsStreamed();
-         using var events = new StreamReader(await answer.Content.ReadAsStreamAsync(cancellation));
-         await foreach(var sent in ServerSentEvent.ReadFrom(events, cancellation))
+         await foreach(var sent in stream)
             switch(sent.Name)
             {
                case ConversationStreamEventNames.Message:
@@ -217,6 +196,30 @@ sealed partial class TheHub
                   yield return conversation.AsSentSoFar;
                   break;
             }
+      }
+   }
+
+   /// <summary>
+   /// The events of the hub's stream at <paramref name="path"/>, such as <c>running-sessions/stream</c>, a stream for each
+   /// hub in turn: from the hub announced, and from the next hub when a publish ends it, which sends all of it again, until
+   /// <paramref name="cancellation"/>. Each stream is read to its end before the next is asked for.
+   /// </summary>
+   /// <exception cref="RefusedByTheHub">The hub doesn't know what the stream would be of: it answered 404.</exception>
+   async IAsyncEnumerable<IAsyncEnumerable<ServerSentEvent>> EachStreamAt(string path, [EnumeratorCancellation] CancellationToken cancellation)
+   {
+      while(!cancellation.IsCancellationRequested)
+      {
+         using var answer = await Send(it => new HttpRequestMessage(HttpMethod.Get, it.AddressOf(path)), cancellation, HttpCompletionOption.ResponseHeadersRead);
+         if(answer.StatusCode == HttpStatusCode.ServiceUnavailable) // Asked for while the hub stops, as at a publish.
+         {
+            await Task.Delay(BetweenTries, cancellation);
+            continue;
+         }
+         if(answer.StatusCode == HttpStatusCode.NotFound) throw new RefusedByTheHub((await Read<RefusalAnswer>(answer, cancellation)).Error);
+
+         answer.EnsureSuccessStatusCode();
+         using var events = new StreamReader(await answer.Content.ReadAsStreamAsync(cancellation));
+         yield return ServerSentEvent.ReadFrom(events, cancellation);
       }
    }
 
