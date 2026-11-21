@@ -15,6 +15,7 @@ using Cloyd.Links;
 using Cloyd.Pasting;
 using Cloyd.Saving;
 using Cloyd.SessionHosts;
+using Cloyd.Theming;
 using Cloyd.Sessions;
 using Cloyd.VirtualDesktops;
 
@@ -58,9 +59,21 @@ sealed class ProjectWindow : Window
    readonly ShellOfNewSessions _shellOfNewSessions;
    readonly SavedProjectWindows _savedWindows;
    readonly PastedImages _pastedImages;
-   readonly TabControl _tabs = new();
+   /// <summary>The glyph of the button that opens the history picker: Windows' icon font's History, a clock with an arrow back.</summary>
+   static readonly string HistoryIcon = char.ConvertFromUtf32(0xE81C);
+
+   /// <summary>The glyph of the button that starts a new session: Windows' icon font's Add.</summary>
+   static readonly string AddIcon = char.ConvertFromUtf32(0xE710);
+
+   /// <summary>Windows' icon font: Segoe Fluent Icons on Windows 11, Segoe MDL2 Assets before it, at the same code points.</summary>
+   static readonly FontFamily IconFont = new("Segoe Fluent Icons, Segoe MDL2 Assets");
+
+   /// <summary>How wide and high each button before the tabs is, in logical pixels.</summary>
+   const double SizeOfAButtonBeforeTheTabs = 30;
+
+   readonly TabControl _tabs = new() { Padding = new Thickness(0) };
    readonly NewSessionButton _newSession = new();
-   readonly Button _openTheHistory = new() { Content = "History" };
+   readonly Button _openTheHistory = new();
    readonly ClaudeSessionHistoryPicker _historyPicker;
    readonly TextBlock _failure = new() { IsVisible = false, Foreground = Brushes.Orange, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(8, 4) };
    readonly CancellationTokenSource _closed = new();
@@ -484,11 +497,46 @@ sealed class ProjectWindow : Window
       _tabs.SelectedIndex = (_tabs.SelectedIndex + step + _tabs.ItemCount) % _tabs.ItemCount;
    }
 
+   /// <summary>
+   /// The window's layout: the tabs on their strip, in <see cref="LookOfTheTabs"/>, with the buttons that start a session
+   /// and open the history at the strip's start, before the tabs and as high (Magnus, 2026-11-21: "could history and +
+   /// move to the beginning of the tab line? And their sizes be harmonized with the tabs?"); a failure under them; the
+   /// history picker over it all.
+   /// </summary>
    Control TheLayout()
    {
-      var bar = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(4), Spacing = 4, Children = { _newSession, _openTheHistory } };
-      DockPanel.SetDock(bar, Dock.Top);
+      const double spacing = 2;
+      var buttons = new StackPanel
+      {
+         Orientation = Orientation.Horizontal,
+         Spacing = spacing,
+         Height = LookOfTheTabs.HowHighATabIs,
+         Margin = new Thickness(4, LookOfTheTabs.RoomAboveTheTabs, 0, 0),
+         HorizontalAlignment = HorizontalAlignment.Left,
+         VerticalAlignment = VerticalAlignment.Top,
+         Children = { AsAButtonBeforeTheTabs(_newSession, AddIcon), AsAButtonBeforeTheTabs(_openTheHistory, HistoryIcon) }
+      };
+      Resources.MergedDictionaries.Add(LookOfTheTabs.AsResources(roomBeforeTheTabs: 4 + 2 * SizeOfAButtonBeforeTheTabs + spacing + 8));
+      LookOfTheTabs.Ground.AsTheBackgroundOf(this);
+      LookOfTheTabs.Strip.AsTheBackgroundOf(_tabs);
       DockPanel.SetDock(_failure, Dock.Bottom);
-      return new Panel { Children = { new DockPanel { Children = { bar, _failure, _tabs } }, _historyPicker } };
+      return new Panel { Children = { new DockPanel { Children = { _failure, new Panel { Children = { _tabs, buttons } } } }, _historyPicker } };
+   }
+
+   /// <summary><paramref name="button"/> as a button before the tabs: <paramref name="icon"/> of Windows' icon font, square, on the strip's ground.</summary>
+   static Button AsAButtonBeforeTheTabs(Button button, string icon)
+   {
+      button.Content = icon;
+      button.FontFamily = IconFont;
+      button.FontSize = 14;
+      button.Width = SizeOfAButtonBeforeTheTabs;
+      button.Height = SizeOfAButtonBeforeTheTabs;
+      button.Padding = new Thickness(0);
+      button.CornerRadius = new CornerRadius(6);
+      button.Background = Brushes.Transparent;
+      button.HorizontalContentAlignment = HorizontalAlignment.Center;
+      button.VerticalContentAlignment = VerticalAlignment.Center;
+      button.VerticalAlignment = VerticalAlignment.Center;
+      return button;
    }
 }

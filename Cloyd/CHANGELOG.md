@@ -61,7 +61,11 @@ All notable changes to Cloyd are documented here. The format follows
     many commands it has run, such as `Thinking… (1m 12s · ↓ 1.2k tokens · 3 commands)`. Where Claude Code doesn't tell
     the hub of its turn, it says `Working…`, and counts the time from when Claude started working.
 - **A tab whose Claude works shows Claude Code's spinner before its title,** so that you see which sessions work, in
-  every tab of a window. The tabs' titles are in the chat's size of text, where they were large.
+  every tab of a window.
+- **The tabs look like tabs:** on a strip a shade darker than the window, the selected tab in the window's own ground,
+  joined to what it shows, as in a browser, with titles at 15 px where they were 24. The **+** and the history button,
+  now a clock icon, are at the strip's start, before the tabs and as high as them, where they were in a row of their own
+  above.
 - **A box in Claude's orange between the conversation and the input box while Claude waits for you in the terminal,**
   such as at a permission prompt, which only the terminal shows and answers: it says what Claude waits for, and its
   **Show the terminal** button switches the tab to the terminal, as Ctrl+H does. The tab doesn't switch by itself, so

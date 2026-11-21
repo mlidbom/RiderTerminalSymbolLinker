@@ -1,6 +1,7 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Documents;
+using Avalonia.Controls.Primitives;
 using Avalonia.Media;
 using Avalonia.Media.Immutable;
 using Avalonia.Styling;
@@ -31,6 +32,9 @@ sealed class ColourOfTheTheme(string inTheLightTheme, string inTheDarkTheme)
 
    /// <summary>Has <paramref name="border"/>'s ground drawn in this colour.</summary>
    public Border AsTheBackgroundOf(Border border) => Painting(border, Border.BackgroundProperty);
+
+   /// <summary>Has <paramref name="control"/>'s ground drawn in this colour, such as a window's or a tab control's.</summary>
+   public TControl AsTheBackgroundOf<TControl>(TControl control) where TControl : TemplatedControl => Painting(control, TemplatedControl.BackgroundProperty);
 
    /// <summary>Has <paramref name="border"/>'s border line drawn in this colour.</summary>
    public Border AsTheBorderOf(Border border) => Painting(border, Border.BorderBrushProperty);

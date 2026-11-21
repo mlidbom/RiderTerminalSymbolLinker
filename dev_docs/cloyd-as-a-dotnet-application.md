@@ -508,7 +508,10 @@ Claude writes shows as it comes") ported, with Magnus's calls of the day.
 picker"), ported, laid over the project's window.
 
 - **Opened by the History button beside the +, and Ctrl+Alt+Shift+Y,** which the window takes before the terminal
-  with the focus would pass it to Claude Code. Escape, or a click beside the picker, closes it.
+  with the focus would pass it to Claude Code. Escape, or a click beside the picker, closes it. Since 2026-11-21 both
+  buttons are at the start of the tab strip, as high as the tabs, as icons of Windows' icon font (Segoe Fluent Icons'
+  Add and History), on Magnus's word; the strip's look, as tabs of what they show, is `Cloyd.Theming.LookOfTheTabs`,
+  through the Fluent theme's own tab resources.
 - **What it lists:** the hub's `GET /sessions`, every session Claude Code has a transcript of, most recently used
   first, but those with no conversation to resume and those `claude -p` ran. Each with its title, else its last prompt;
   below it, greyed, its last prompt, when it was last used, and its folder and branch in the wider scopes. Typing

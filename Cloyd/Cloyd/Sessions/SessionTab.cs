@@ -13,6 +13,7 @@ using Cloyd.Pasting;
 using Cloyd.Saving;
 using Cloyd.SessionHosts;
 using Cloyd.Terminals;
+using Cloyd.Theming;
 
 namespace Cloyd.Sessions;
 
@@ -25,9 +26,6 @@ namespace Cloyd.Sessions;
 sealed class SessionTab : TabItem
 {
    const string TitleOfASessionWithNoName = "Claude";
-
-   /// <summary>The size of the header's text, in logical pixels: the chat's, where Avalonia's theme has 24 (Magnus, 2026-11-21: "make the tabs quite a bit smaller, they are very large").</summary>
-   const double SizeOfTheHeadersText = 14;
 
    readonly AttachmentToASessionHost _attachment;
    readonly TextBlock _title;
@@ -55,14 +53,12 @@ sealed class SessionTab : TabItem
       Chat.Show(latestSession?.Id);
       Chat.InputBox.SentASlashCommand += () => Show(chat: false);
       Chat.WaitingForMagnusInTheTerminal.AsksForTheTerminal += () => Show(chat: false);
-      _title = new TextBlock { Text = latestSession?.Name ?? nameGiven ?? TitleOfASessionWithNoName, FontSize = SizeOfTheHeadersText, VerticalAlignment = VerticalAlignment.Center };
+      _title = new TextBlock { Text = latestSession?.Name ?? nameGiven ?? TitleOfASessionWithNoName, VerticalAlignment = VerticalAlignment.Center };
       Header = TheHeader();
-      MinHeight = 0;
-      Padding = new Thickness(10, 6);
       _showTheChat.Click += (_, _) => Show(chat: true);
       _showTheTerminal.Click += (_, _) => Show(chat: false);
       ShowTheChat(true);
-      Content = new DockPanel { Children = { Docked(_notice, Dock.Top), Docked(TheSwitch(), Dock.Top), new Panel { Children = { Terminal, Chat } } } };
+      Content = LookOfTheTabs.Ground.AsTheBackgroundOf(new Border { Child = new DockPanel { Children = { Docked(_notice, Dock.Top), Docked(TheSwitch(), Dock.Top), new Panel { Children = { Terminal, Chat } } } } });
    }
 
    protected override Type StyleKeyOverride => typeof(TabItem);
@@ -184,7 +180,7 @@ sealed class SessionTab : TabItem
 
    Control TheHeader()
    {
-      var close = new Button { Content = "×", FontSize = SizeOfTheHeadersText, Padding = new Thickness(6, 0), Background = Brushes.Transparent, VerticalAlignment = VerticalAlignment.Center };
+      var close = new Button { Content = "×", Padding = new Thickness(6, 0), Background = Brushes.Transparent, VerticalAlignment = VerticalAlignment.Center };
       ToolTip.SetTip(close, "End the session");
       close.Click += (_, _) => ClosedByMagnus?.Invoke(this);
       return new StackPanel { Orientation = Orientation.Horizontal, Spacing = 2, Children = { _spinner, _title, close } };

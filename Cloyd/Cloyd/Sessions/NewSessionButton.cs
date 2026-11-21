@@ -4,8 +4,8 @@ using Avalonia.Input;
 namespace Cloyd.Sessions;
 
 /// <summary>
-/// The + that starts a new session: a click opens a box for the session's name below it. Enter starts the session with
-/// that name, or with none when the box is empty, and Escape starts none.
+/// The button that starts a new session, at the start of the tab strip: a click opens a box for the session's name below
+/// it. Enter starts the session with that name, or with none when the box is empty, and Escape starts none.
 /// </summary>
 sealed class NewSessionButton : Button
 {
@@ -13,7 +13,6 @@ sealed class NewSessionButton : Button
 
    public NewSessionButton()
    {
-      Content = "+";
       ToolTip.SetTip(this, "New session");
       var flyout = new Flyout { Content = _name, Placement = PlacementMode.BottomEdgeAlignedLeft };
       Flyout = flyout;
