@@ -42,7 +42,7 @@ public class When_a_chats_working_line_shows_a_command_under_way : Specification
       var shown = OnTheUIThread(() => ((StackPanel)window.Content!).Children switch { [CallUnderWayOfTheChat call, WorkingLineOfTheChat line] => (call, line), _ => throw new InvalidOperationException() });
       OnTheUIThread(() =>
       {
-         var claudeCode = new RunningSession(new ClaudeCodeProcessId(4711), new ClaudeCodeSessionId(Guid.NewGuid().ToString()), "a session", new SessionHostId(Guid.NewGuid().ToString()),
+         var claudeCode = new RunningClaudeCode(new ClaudeCodeProcessId(4711), new ClaudeCodeSessionId(Guid.NewGuid().ToString()), "a session", new SessionHostId(Guid.NewGuid().ToString()),
                                              new StatusOfAClaudeCode("busy", WaitingFor: null), StatusLine: null, TurnUnderWay: null, BackgroundWork: null);
          IReadOnlyList<ShownInTheChat> conversation = [new ShownInTheChat.Prompt("prompt", "Which repositories use it?"),
                                                        new ShownInTheChat.RunOfToolCalls([ACall("call-1", "Bash", new { command = "cd /c/Dev && ls" }, done: true), ACall("call-2", "Bash", new { command = Command, description = Description }, done: false)])];

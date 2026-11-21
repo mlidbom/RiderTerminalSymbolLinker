@@ -33,7 +33,7 @@ sealed class CallUnderWayOfTheChat : UserControl
    /// <summary>Counts the time the call has run, a second at a time.</summary>
    readonly DispatcherTimer _ticking = new() { Interval = TimeSpan.FromSeconds(1) };
 
-   RunningSession? _claudeCode;
+   RunningClaudeCode? _claudeCode;
    ToolCallsOfTheLastTurn _callsOfTheTurn = new([]);
 
    public CallUnderWayOfTheChat()
@@ -52,7 +52,7 @@ sealed class CallUnderWayOfTheChat : UserControl
    public string? WhatItWasGiven => IsVisible && _whatItWasGiven.IsVisible ? _whatItWasGiven.Text : null;
 
    /// <summary>Shows the call <paramref name="claudeCode"/>, the Claude Code that runs in the tab, runs, while it is busy. Null while none runs.</summary>
-   public void Show(RunningSession? claudeCode)
+   public void Show(RunningClaudeCode? claudeCode)
    {
       _claudeCode = claudeCode;
       Update();

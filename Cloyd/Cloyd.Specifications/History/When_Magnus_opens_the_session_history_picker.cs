@@ -114,7 +114,7 @@ public class When_Magnus_opens_the_session_history_picker : SpecificationOpening
       public and_presses_Enter() => _tab = Once(() =>
       {
          Press(_window, Key.Enter, PhysicalKey.Enter, RawInputModifiers.None);
-         WaitUntil(() => _window.Tabs.SingleOrDefault()?.SessionRunningInIt?.SessionId == _titled.Id, "the session was resumed in a tab");
+         WaitUntil(() => _window.Tabs.SingleOrDefault()?.SessionRunningInIt?.Session.Id == _titled.Id, "the session was resumed in a tab");
          var tab = OnTheUIThread(() => _window.Tabs.Single());
          Render(_window, "a-session-resumed-from-the-history-picker");
          return tab;

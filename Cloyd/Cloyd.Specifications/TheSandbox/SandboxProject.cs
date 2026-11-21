@@ -60,7 +60,7 @@ sealed class SandboxProject
    /// <summary>The hub's session host <paramref name="id"/>: null once it has ended.</summary>
    public SessionHostOfTheHub? SessionHost(SessionHostId id) => Answer(() => Hub.SessionHosts()).SingleOrDefault(it => it.Id == id);
 
-   /// <summary>The Claude Code that runs in the host <paramref name="id"/>, as the hub lists the running sessions now: null while none does.</summary>
+   /// <summary>The session that runs in the host <paramref name="id"/>, as the hub lists the running sessions now: null while none does.</summary>
    public RunningSession? SessionRunningIn(SessionHostId id) => Answer(async () =>
    {
       using var cancellation = new CancellationTokenSource();

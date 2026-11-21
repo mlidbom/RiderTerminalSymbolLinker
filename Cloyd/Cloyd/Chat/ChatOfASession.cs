@@ -56,7 +56,7 @@ sealed class ChatOfASession : UserControl
    CancellationTokenSource? _followingTheTurn;
 
    /// <summary>The Claude Code that runs in the tab, as the hub last told: null while none runs.</summary>
-   RunningSession? _claudeCode;
+   RunningClaudeCode? _claudeCode;
 
    /// <summary>What the chat shows of the conversation, as the hub's stream of it sent it last.</summary>
    IReadOnlyList<ShownInTheChat> _conversation = [];
@@ -134,7 +134,7 @@ sealed class ChatOfASession : UserControl
    /// box around it tell of; whose turn under way the chat shows as Claude writes it. Null while none runs, as before it
    /// starts, or after it exits to the shell.
    /// </summary>
-   public RunningSession? ClaudeCode
+   public RunningClaudeCode? ClaudeCode
    {
       set
       {

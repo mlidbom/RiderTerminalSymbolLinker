@@ -20,7 +20,7 @@ public class When_a_click_on_a_notification_asks_Cloyd_to_show_a_sessions_tab : 
    readonly ProjectWindow _window;
    readonly SessionTab _first;
    readonly SessionTab _second;
-   readonly RunningSession _firstsClaudeCode;
+   readonly RunningClaudeCode _firstsClaudeCode;
 
    public When_a_click_on_a_notification_asks_Cloyd_to_show_a_sessions_tab()
    {
@@ -31,7 +31,7 @@ public class When_a_click_on_a_notification_asks_Cloyd_to_show_a_sessions_tab : 
       DoneOnTheUIThread(() => _window.StartANewSession("Second"));
       (_first, _second) = OnTheUIThread(() => (_window.Tabs[0], _window.Tabs[1]));
       WaitUntil(() => _first.SessionRunningInIt is not null && _second.SessionRunningInIt is not null, "the hub told each tab of the Claude Code in its host");
-      _firstsClaudeCode = OnTheUIThread(() => _first.SessionRunningInIt!);
+      _firstsClaudeCode = OnTheUIThread(() => (RunningClaudeCode)_first.SessionRunningInIt!);
    }
 
    private protected override IReadOnlyList<SandboxProject> Projects => [_project];
@@ -67,7 +67,7 @@ public class When_a_click_on_a_notification_asks_Cloyd_to_show_a_sessions_tab : 
 
       public and_it_names_the_process_of_the_Claude_Code_that_has_gone_on_in_a_new_session_after_a_clear()
       {
-         TheFirstTabsClaudeCodeRuns("/clear", () => _first.SessionRunningInIt?.SessionId is {} session && session != _firstsClaudeCode.SessionId);
+         TheFirstTabsClaudeCodeRuns("/clear", () => _first.SessionRunningInIt?.Session.Id is {} session && session != _firstsClaudeCode.SessionId);
          _answer = AskedToShow($"session={_firstsClaudeCode.SessionId}&process={_firstsClaudeCode.Process}");
       }
 

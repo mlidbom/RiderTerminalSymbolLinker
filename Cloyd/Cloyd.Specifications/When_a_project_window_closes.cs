@@ -46,7 +46,7 @@ public class When_a_project_window_closes : SpecificationOpeningWindows
       [XF] public void the_tab_is_titled_with_the_name_the_hub_tells_of_the_session()
       {
          WaitUntil(() => _windowAgain.Tabs.Single().SessionRunningInIt is not null, "the hub told the tab of the Claude Code in its host");
-         var name = _project.SessionRunningIn(_host)!.Name;
+         var name = _project.SessionRunningIn(_host)!.Session.Name;
          name.Must().NotBeNullOrEmpty();
          OnTheUIThread(() => _windowAgain.Tabs.Single().Title).Must().Be(name!);
       }

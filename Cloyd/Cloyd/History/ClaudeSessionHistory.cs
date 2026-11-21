@@ -1,7 +1,6 @@
 using Cloyd.ClaudeCode;
 using Cloyd.Hub;
 using Cloyd.Projects;
-using Cloyd.Sessions;
 
 namespace Cloyd.History;
 
@@ -49,7 +48,7 @@ sealed class ClaudeSessionHistory
 
       WhereTheSessionIs WhereIs(ClaudeCodeSessionId session)
       {
-         if(running.Result.FirstOrDefault(it => it.SessionId == session) is {} runningIt) return WhereTheRunning(runningIt);
+         if(running.Result.FirstOrDefault(it => it.Session.Id == session) is {} runningIt) return WhereTheRunning(runningIt);
          if(tabs.FirstOrDefault(it => it.Tab.RunsOrRanLast(session)) is ({} window, {} tab)) return new WhereTheSessionIs.ExitedInATab(window, tab);
          return WhereTheSessionIs.NotRunning.Anywhere;
       }
@@ -58,7 +57,7 @@ sealed class ClaudeSessionHistory
       {
          if(tabs.FirstOrDefault(it => it.Tab.Host.Id == session.SessionHost) is ({} window, {} tab)) return new WhereTheSessionIs.RunningInATab(window, tab);
          if(hosts.Result.FirstOrDefault(it => it.Id == session.SessionHost) is {} host) return new WhereTheSessionIs.RunningInAHostNoTabShows(host);
-         return new WhereTheSessionIs.RunningOutsideASessionHost(session.Process);
+         return new WhereTheSessionIs.RunningOutsideASessionHost();
       }
    }
 }

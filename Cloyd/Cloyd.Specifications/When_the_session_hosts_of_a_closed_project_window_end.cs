@@ -74,7 +74,7 @@ public class When_the_session_hosts_of_a_closed_project_window_end : Specificati
          _tabs.Must().Satisfy(it => it.All(tab => _project.SessionHost(tab.Host.Id)!.Directory == _project.Project.Folder));
 
       [XF] public void each_tab_resumed_its_session() =>
-         _tabs.Select(it => _project.SessionRunningIn(it.Host.Id)!.SessionId).Must().SequenceEqual([_first.Id, _second.Id]);
+         _tabs.Select(it => _project.SessionRunningIn(it.Host.Id)!.Session.Id).Must().SequenceEqual([_first.Id, _second.Id]);
 
       [XF] public void it_selects_the_tab_that_was_selected() => OnTheUIThread(() => _windowAgain.SelectedTab?.LatestSession).Must().Be(_first);
 

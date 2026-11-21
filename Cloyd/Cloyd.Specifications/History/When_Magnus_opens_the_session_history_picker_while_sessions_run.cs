@@ -2,6 +2,7 @@ using Avalonia.Input;
 using ClaudeTooling.SessionHost.Protocol;
 using Cloyd.ClaudeCode;
 using Cloyd.History;
+using Cloyd.Hub;
 using Cloyd.Projects;
 using Cloyd.SessionHosts;
 using Cloyd.Sessions;
@@ -46,8 +47,8 @@ public class When_Magnus_opens_the_session_history_picker_while_sessions_run : S
          WaitUntil(() => !window.Tabs.Contains(takenOver), "the tab let go of the host the console took over");
          var seconds = StartedWithAPrompt(window, "Second").Session;
          var inATerminalOfItsOwn = EndWithTheScenario(ClaudeCodeInATerminalOfItsOwn.Running(Sandbox.HubOfTheSandbox, project.Project.Folder, "In a terminal of its own", "Hello from a terminal of its own"));
-         WaitUntil(() => HasAConversationToResume(Sandbox.HubOfTheSandbox.RunningSessions().SingleOrDefault(it => it.Process == inATerminalOfItsOwn.Process)?.SessionId), "the hub listed the session in a terminal of its own, with its prompt");
-         var inATerminalOfItsOwns = Sandbox.HubOfTheSandbox.RunningSessions().Single(it => it.Process == inATerminalOfItsOwn.Process).SessionId;
+         WaitUntil(() => HasAConversationToResume(Sandbox.HubOfTheSandbox.RunningClaudeCodes().SingleOrDefault(it => it.Process == inATerminalOfItsOwn.Process)?.SessionId), "the hub listed the session in a terminal of its own, with its prompt");
+         var inATerminalOfItsOwns = Sandbox.HubOfTheSandbox.RunningClaudeCodes().Single(it => it.Process == inATerminalOfItsOwn.Process).SessionId;
 
          var picker = OnTheUIThread(() => window.HistoryPicker);
          Press(window, Key.Y, PhysicalKey.Y, RawInputModifiers.Control | RawInputModifiers.Alt | RawInputModifiers.Shift);
@@ -66,7 +67,7 @@ public class When_Magnus_opens_the_session_history_picker_while_sessions_run : S
       DoneOnTheUIThread(() => window.StartANewSession(name));
       var tab = OnTheUIThread(() => window.Tabs[^1]);
       WaitUntil(() => tab.SessionRunningInIt is not null, $"the hub told the tab of {name} of its Claude Code");
-      var session = OnTheUIThread(() => tab.SessionRunningInIt!.SessionId);
+      var session = OnTheUIThread(() => ((RunningClaudeCode)tab.SessionRunningInIt!).SessionId);
       DoneOnTheUIThread(() => tab.Terminal.SendInputAsync($"Hello from {name}\r"));
       WaitUntil(() => HasAConversationToResume(session), $"the hub listed {name} with its prompt");
       return (tab, session);
@@ -116,7 +117,7 @@ public class When_Magnus_opens_the_session_history_picker_while_sessions_run : S
       public and_chooses_a_session_whose_Claude_Code_exited_in_a_tab() => Once(() =>
       {
          Choose(_exiteds);
-         WaitUntil(() => _exited.SessionRunningInIt?.SessionId == _exiteds, "the session was resumed in its tab");
+         WaitUntil(() => _exited.SessionRunningInIt?.Session.Id == _exiteds, "the session was resumed in its tab");
       });
 
       [XF] public void it_resumes_it_in_that_tab_which_is_selected() => OnTheUIThread(() => _window.SelectedTab).Must().ReferenceEqual(_exited);

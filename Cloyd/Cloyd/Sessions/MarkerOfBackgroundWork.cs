@@ -34,7 +34,7 @@ sealed class MarkerOfBackgroundWork : TextBlock
    public string? Tip => IsVisible ? ToolTip.GetTip(this) as string : null;
 
    /// <summary>Shows it while <paramref name="claudeCode"/>, the Claude Code that runs in the tab, runs background work and Claude doesn't work, with what runs in its tip.</summary>
-   public void Show(RunningSession? claudeCode)
+   public void Show(RunningClaudeCode? claudeCode)
    {
       var counted = claudeCode is { Status.IsBusy: false } ? claudeCode.BackgroundWorkCounted : null;
       IsVisible = counted is not null;

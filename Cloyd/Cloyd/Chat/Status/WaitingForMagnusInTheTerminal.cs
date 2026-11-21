@@ -72,7 +72,7 @@ sealed class WaitingForMagnusInTheTerminal : UserControl
    public string? WhatFor => IsVisible ? _whatFor.Text : null;
 
    /// <summary>Shows the box while <paramref name="claudeCode"/>, the Claude Code that runs in the tab, waits for Magnus in a dialog of its own: null while none runs.</summary>
-   public void Show(RunningSession? claudeCode)
+   public void Show(RunningClaudeCode? claudeCode)
    {
       IsVisible = claudeCode?.Status.IsWaiting == true;
       _whatFor.Text = claudeCode?.Status.WaitingFor is {Length: > 0} dialog

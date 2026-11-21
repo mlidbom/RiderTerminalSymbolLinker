@@ -48,6 +48,6 @@ public class When_Claude_waits_for_Magnus_in_the_terminal : SpecificationOpening
          return box.IsVisible;
       }).Must().BeFalse();
 
-   static RunningSession AClaudeCode(StatusOfAClaudeCode status) =>
+   static RunningClaudeCode AClaudeCode(StatusOfAClaudeCode status) =>
       new(new ClaudeCodeProcessId(4711), new ClaudeCodeSessionId(Guid.NewGuid().ToString()), "a session", new SessionHostId(Guid.NewGuid().ToString()), status, StatusLine: null, TurnUnderWay: null, BackgroundWork: null);
 }

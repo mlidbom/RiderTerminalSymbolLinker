@@ -19,7 +19,7 @@ partial record ShownInTheChat
    /// <param name="Ended">When it ended.</param>
    /// <param name="StillRunning">
    /// What it left running in the background, counted, such as <c>1 shell</c>: null after a turn that left nothing running,
-   /// and after every turn but the conversation's last, which is all the hub tells of (<see cref="RunningSession.BackgroundWork"/>).
+   /// and after every turn but the conversation's last, which is all the hub tells of (<see cref="RunningClaudeCode.BackgroundWork"/>).
    /// </param>
    public sealed record EndOfATurn(string Id, TimeTaken Took, WhenItEnded Ended, string? StillRunning) : ShownInTheChat
    {

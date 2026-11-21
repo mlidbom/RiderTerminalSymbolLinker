@@ -1,50 +1,35 @@
 using ClaudeTooling.Hub.LocalApi.Contract;
 using ClaudeTooling.Hub.LocalApi.Contract.RunningSessions;
 using ClaudeTooling.SessionHost.Protocol;
-using Cloyd.ClaudeCode;
+using Cloyd.Sessions;
 
 namespace Cloyd.Hub;
 
-/// <summary>A Claude Code that runs, as the hub's <c>GET /running-sessions</c> lists it: the fields Cloyd uses.</summary>
-/// <param name="Process">The process the Claude Code runs as: the same across a <c>/clear</c>.</param>
-/// <param name="SessionId">The session the Claude Code runs now.</param>
-/// <param name="Name">The name Claude Code shows for the session: null when it has none.</param>
-/// <param name="SessionHost">The session host whose console the Claude Code runs in: null when it runs in none, as in a terminal of its own.</param>
-/// <param name="Status">What the Claude Code reports it is doing: working, waiting for Magnus, or idle.</param>
-/// <param name="StatusLine">What the Claude Code last showed under its input box: null until it has shown its status line to the hub, which it does within a minute.</param>
-/// <param name="TurnUnderWay">
-/// What its turn under way does, as its spinner line tells: null while no turn is under way, and in a session that doesn't
-/// load the <c>tooling-commands</c> mod, which tells the hub of it.
-/// </param>
-/// <param name="BackgroundWork">
-/// What it runs in the background, and the prompts scheduled to wake it, as of the end of its last turn: null until a turn
-/// of it has ended since the hub started, as after a publish of the hub's, while <see cref="StatusOfAClaudeCode.IsIdleWithBackgroundWork"/>
-/// still tells that some runs.
-/// </param>
-sealed record RunningSession(ClaudeCodeProcessId Process, ClaudeCodeSessionId SessionId, string? Name, SessionHostId? SessionHost, StatusOfAClaudeCode Status, ClaudeCodesStatusLine? StatusLine, TurnUnderWay? TurnUnderWay, BackgroundWork? BackgroundWork)
+/// <summary>
+/// A session that runs, of any agent CLI, as the hub's <c>GET /running-sessions</c> lists it: what a tab needs to know of
+/// it, whichever agent CLI runs it. Claude Code's is a <see cref="RunningClaudeCode"/>, with what only Claude Code
+/// tells, which its chat shows; Codex's a <see cref="RunningCodex"/>.
+/// </summary>
+/// <param name="SessionHost">The session host whose console the agent CLI runs in: null when it runs in none, as in a terminal of its own.</param>
+abstract record RunningSession(SessionHostId? SessionHost)
 {
-   /// <summary>
-   /// The running Claude Codes <paramref name="answer"/> lists. A session of another agent CLI is left out, as the hub's
-   /// contract has a reader do with one it doesn't know.
-   /// </summary>
-   public static IReadOnlyList<RunningSession> EachClaudeCodeIn(RunningSessionsAnswer answer) =>
-      //wip: until Codex sessions come to the tabs (the hub's protocol 2), when the running sessions split into Claude Code's and Codex's.
-      [.. answer.RunningSessions.Where(it => it.AgentCli == AgentCliNames.ClaudeCode).Select(InThe)];
+   /// <summary>The session that runs: its id and its name.</summary>
+   public abstract Session Session { get; }
 
-   /// <summary>The Claude Code as the hub's answer <paramref name="session"/> lists it.</summary>
-   static RunningSession InThe(RunningSessionInTheAnswer session) =>
-      new(new ClaudeCodeProcessId(session.ProcessId), new ClaudeCodeSessionId(session.SessionId), session.Name, session.SessionHost is {} host ? new SessionHostId(host) : null, new StatusOfAClaudeCode(session.Status, session.WaitingFor),
-         session.StatusLine is {} statusLine ? ClaudeCodesStatusLine.InThe(statusLine) : null,
-         session.TurnUnderWay is {} turn ? TurnUnderWay.InThe(turn) : null,
-         session.BackgroundWork is {} work ? BackgroundWork.InThe(work) : null);
-
-   /// <summary>The session the Claude Code runs.</summary>
-   public ClaudeCodeSession Session => new(SessionId, Name);
+   /// <summary>Whether the agent CLI works at a turn, which the tab's header shows.</summary>
+   public abstract bool IsBusy { get; }
 
    /// <summary>
-   /// What it runs in the background, as the chat tells Magnus of it, whether Claude works or not: counted by kind, as
-   /// Claude Code's TUI counts it, such as "1 shell" (<see cref="Hub.BackgroundWork.Counted"/>); <see cref="Hub.BackgroundWork.SomeRuns"/>
-   /// while the hub knows only that some runs; null while none does.
+   /// The running sessions <paramref name="answer"/> lists. One of an agent CLI Cloyd doesn't know is left out, as the
+   /// hub's contract has a reader do.
    /// </summary>
-   public string? BackgroundWorkCounted => BackgroundWork is { IsAny: true } work ? work.Counted : Status.IsIdleWithBackgroundWork ? BackgroundWork.SomeRuns : null;
+   public static IReadOnlyList<RunningSession> EachIn(RunningSessionsAnswer answer) => [.. answer.RunningSessions.Select(InThe).OfType<RunningSession>()];
+
+   /// <summary>The session as the hub's answer <paramref name="session"/> lists it: null when it's of an agent CLI Cloyd doesn't know.</summary>
+   static RunningSession? InThe(RunningSessionInTheAnswer session) => session.AgentCli switch
+   {
+      AgentCliNames.ClaudeCode => RunningClaudeCode.InThe(session),
+      AgentCliNames.Codex => RunningCodex.InThe(session),
+      _ => null
+   };
 }

@@ -46,14 +46,14 @@ sealed class StatusLineOfTheChat : UserControl
    /// <summary>The permission mode under it, as Claude Code shows it, such as "⏵⏵ bypass permissions on": null while it shows none.</summary>
    public string? PermissionMode => _permissionMode.IsVisible ? _permissionMode.Text : null;
 
-   /// <summary>The line under the permission mode while background work runs, its <see cref="RunningSession.BackgroundWorkCounted"/>, such as "1 shell": null while none runs.</summary>
+   /// <summary>The line under the permission mode while background work runs, its <see cref="RunningClaudeCode.BackgroundWorkCounted"/>, such as "1 shell": null while none runs.</summary>
    public string? BackgroundWork => _backgroundWork.IsVisible ? _backgroundWork.Text : null;
 
    /// <summary>The tip of the line of the background work: each task and scheduled prompt with what it does (<see cref="Hub.BackgroundWork.Listed"/>), null while the hub knows not what runs.</summary>
    public string? TipOfTheBackgroundWork => ToolTip.GetTip(_backgroundWork) as string;
 
    /// <summary>Shows what <paramref name="claudeCode"/>, the Claude Code that runs in the tab, showed last under its box, and what background work runs: null while none runs.</summary>
-   public void Show(RunningSession? claudeCode)
+   public void Show(RunningClaudeCode? claudeCode)
    {
       _claudeCodesStatusLine.Inlines!.Clear();
       if(claudeCode is null) _claudeCodesStatusLine.Inlines.Add(new Run(NoClaudeCodeRuns));

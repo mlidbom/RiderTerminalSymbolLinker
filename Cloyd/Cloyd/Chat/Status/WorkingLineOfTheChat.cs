@@ -37,7 +37,7 @@ sealed class WorkingLineOfTheChat : UserControl
    /// <summary>Counts the time the turn has taken, a second at a time.</summary>
    readonly DispatcherTimer _ticking = new() { Interval = TimeSpan.FromSeconds(1) };
 
-   RunningSession? _claudeCode;
+   RunningClaudeCode? _claudeCode;
    ToolCallsOfTheLastTurn _callsOfTheTurn = new([]);
 
    /// <summary>When the line saw Claude Code turn busy: null while it isn't.</summary>
@@ -57,7 +57,7 @@ sealed class WorkingLineOfTheChat : UserControl
    public string? Says => IsVisible ? LinesOfTheChat.TextIn(_says) : null;
 
    /// <summary>Shows what <paramref name="claudeCode"/>, the Claude Code that runs in the tab, does: the line shows while it is busy. Null while none runs.</summary>
-   public void Show(RunningSession? claudeCode)
+   public void Show(RunningClaudeCode? claudeCode)
    {
       _claudeCode = claudeCode;
       var isBusy = claudeCode?.Status.IsBusy == true;

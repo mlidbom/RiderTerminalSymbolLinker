@@ -52,7 +52,7 @@ sealed class SandboxHub
    public IReadOnlyList<TranscribedSession> TranscribedSessions() => Task.Run(() => Hub.TranscribedSessions()).GetAwaiter().GetResult();
 
    /// <summary>The Claude Codes that run, as the hub lists them now: asked as <see cref="TranscribedSessions"/> is.</summary>
-   public IReadOnlyList<RunningSession> RunningSessions() => Task.Run(() => Hub.RunningSessions()).GetAwaiter().GetResult();
+   public IReadOnlyList<RunningClaudeCode> RunningClaudeCodes() => [.. Task.Run(() => Hub.RunningSessions()).GetAwaiter().GetResult().OfType<RunningClaudeCode>()];
 
    /// <summary>
    /// The transcript of <paramref name="session"/>, which ran in <paramref name="directory"/>, in the Claude Code folder the

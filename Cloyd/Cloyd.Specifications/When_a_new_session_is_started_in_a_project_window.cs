@@ -17,7 +17,7 @@ public class When_a_new_session_is_started_in_a_project_window : SpecificationOp
    readonly SandboxProject _project;
    readonly ProjectWindow _window;
    readonly SessionTab _tab;
-   readonly RunningSession _session;
+   readonly RunningClaudeCode _session;
 
    public When_a_new_session_is_started_in_a_project_window() => (_project, _window, _tab, _session) = Once(() =>
    {
@@ -26,7 +26,7 @@ public class When_a_new_session_is_started_in_a_project_window : SpecificationOp
       DoneOnTheUIThread(() => window.StartANewSession(NameGiven));
       var tab = OnTheUIThread(() => window.Tabs.Single());
       WaitUntil(() => tab.SessionRunningInIt is not null, "the hub told the tab of the Claude Code in its host");
-      var session = OnTheUIThread(() => tab.SessionRunningInIt!);
+      var session = OnTheUIThread(() => (RunningClaudeCode)tab.SessionRunningInIt!);
       WaitUntil(() => tab.Terminal.TextShown.Contains($"New session {session.SessionId}"), "the tab's terminal showed the stand-in's start");
       Render(window, "A-new-session-started");
       return (project, window, tab, session);

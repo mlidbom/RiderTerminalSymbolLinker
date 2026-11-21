@@ -100,20 +100,24 @@ sealed class SessionTab : TabItem
    /// <summary>Raised on the UI thread, with why, once the host has let the tab go: its shell exited, or another attach client took the session over.</summary>
    public event Action<SessionTab, string>? EndedByItself;
 
-   /// <summary>The Claude Code that runs in the tab's host, as the hub last told: null while none runs, as before it starts, or after it exits to the shell.</summary>
+   /// <summary>
+   /// The session that runs in the tab's host, of whichever agent CLI, as the hub last told: null while none runs, as
+   /// before its agent CLI starts, or after it exits to the shell.
+   /// </summary>
    public RunningSession? SessionRunningInIt
    {
       get;
       set
       {
          field = value;
-         Chat.ClaudeCode = value;
-         _spinner.IsTurning = value?.Status.IsBusy == true;
-         _backgroundWork.Show(value);
+         //wip: the chat and the marker of background work are Claude Code's; a tab of a Codex session is to have neither.
+         Chat.ClaudeCode = value as RunningClaudeCode;
+         _backgroundWork.Show(value as RunningClaudeCode);
+         _spinner.IsTurning = value?.IsBusy == true;
          if(value is null) return;
          LatestSession = value.Session;
-         Chat.Show(value.Session.Id);
-         _title.Text = value.Name ?? TitleOfASessionWithNoName;
+         Chat.Show((value.Session as ClaudeCodeSession)?.Id);
+         _title.Text = value.Session.Name ?? TitleOfASessionWithNoName;
       }
    }
 
@@ -124,7 +128,7 @@ sealed class SessionTab : TabItem
    public Session? LatestSession { get; private set; }
 
    /// <summary>Whether the Claude Code that runs in the tab's host runs as <paramref name="process"/>.</summary>
-   public bool RunsTheClaudeCodeOf(ClaudeCodeProcessId process) => SessionRunningInIt?.Process == process;
+   public bool RunsTheClaudeCodeOf(ClaudeCodeProcessId process) => (SessionRunningInIt as RunningClaudeCode)?.Process == process;
 
    /// <summary>Whether <paramref name="session"/> runs in the tab's host, or ran in it last: its <see cref="LatestSession"/>.</summary>
    public bool RunsOrRanLast(SessionId session) => LatestSession?.Id == session;

@@ -1,6 +1,5 @@
 using Avalonia;
 using Avalonia.Controls;
-using Avalonia.Controls.Documents;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Layout;
@@ -9,7 +8,6 @@ using Avalonia.Media.Imaging;
 using Avalonia.Platform.Storage;
 using AvaloniaEdit;
 using AvaloniaEdit.Document;
-using Cloyd.Chat.Views;
 using Cloyd.Hub;
 using Cloyd.Pasting;
 
@@ -97,7 +95,7 @@ sealed class InputBoxOfTheChat : UserControl
    /// The Claude Code the box sends to: the one that runs in the tab's host, as the hub last told. Null while none runs, as
    /// before it starts, or after it exits to the shell.
    /// </summary>
-   public RunningSession? ClaudeCode
+   public RunningClaudeCode? ClaudeCode
    {
       get;
       set
