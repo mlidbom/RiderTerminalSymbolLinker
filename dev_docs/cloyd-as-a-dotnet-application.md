@@ -629,28 +629,29 @@ sessions"); what happened in a session, the chat and its classes, stays each age
 chat-UI/transcript-data-shape etc, generic [...] would probably cause more problems than it solves"). "Session" is the
 word for every agent CLI's; "thread" only in code that speaks Codex's app-server protocol, which Cloyd doesn't.
 
-**Built ahead of the hosting:** `Cloyd.Sessions.Session` and `SessionId`, of which Claude Code's are
-`ClaudeCodeSession` and `ClaudeCodeSessionId`; `Cloyd.Hub.AgentCliCommand`, of which `ClaudeCodeCommand` is one; tabs,
-saved tabs, resuming and the history's choices take a `Session`; a saved session is saved with its `agentCli`, and one
-saved without reads as Claude Code's (6b5d7ba). Cloyd reads only Claude Code's entries from the hub's lists until the
-rest is built (02f2a82).
+**Built ahead of the hosting:**
+
+- **Sessions of any agent CLI:** `Cloyd.Sessions.Session` and `SessionId`, Claude Code's `ClaudeCodeSession` and
+  `ClaudeCodeSessionId`, Codex's `Cloyd.Codex.CodexSession` and `CodexSessionId`. Tabs, saved tabs, resuming and the
+  history's choices take a `Session`; a saved session is saved with its `agentCli` (`claudeCode`, `codex`), and one
+  saved without reads as Claude Code's (6b5d7ba, 4300aa6).
+- **The commands:** `Cloyd.Hub.AgentCliCommand`: `ClaudeCodeCommand`, and `CodexCommand`, `codex` or
+  `codex resume <id>`, typed through `TheHub.StartCodexIn` (`POST /shells/{processId}/start-codex`). A name given goes
+  in the request; the hub names the session once Codex shows its id (4300aa6).
+- **The running sessions:** `RunningSession`, what a tab needs of any agent CLI's (its session, host, whether it's
+  busy); `RunningClaudeCode`, with what only Claude Code tells, which the chat takes; `RunningCodex` with
+  `StatusOfACodex`. The hub's listings read both, leaving out an agent CLI Cloyd doesn't know (af8601e, agreed with
+  `.NET-cloyd`).
+- **The agent CLIs, as a tab knows them:** `Cloyd.Sessions.AgentCli`, Claude Code or Codex: the title of a session
+  with no name ("Claude", "Codex"), whether it has a chat, the command of a new session. `NewSession(AgentCli, Name)` is
+  what the + asks for. `SessionTab.AgentCli` follows the session that runs in its host, or ran there last, or the new
+  session it was opened for; a Codex session's tab shows its terminal only, with no switch to a chat (be5778c).
+- **The + button:** offers the agent CLIs the hub serves (`AnnouncementOfTheHub.AgentClisItServes`: Codex while the
+  announcement's `codexFolder` isn't null), with a choice above the name box while it offers more than one, Claude
+  Code chosen at each opening (b5a1908).
 
 **To build:**
 
-- **Codex's session:** `Cloyd.Codex.CodexSession` and `CodexSessionId`, saved as `"agentCli": "codex"`; `CodexCommand`,
-  `codex` or `codex resume <id>`, typed through the hub's `POST /shells/{processId}/start-codex`
-  (`CodexToStartInTheRequest`). A name given goes in the request; the hub names the session once its footer shows it.
-- **The agent CLIs, as Cloyd knows them:** what differs between them for a tab: the title of a session with no name
-  ("Claude", "Codex"), whether it has a chat (Codex's doesn't, until its chat comes), the command of a new session.
-- **The running sessions:** what the hub lists of any agent CLI (its session, host, name, whether it's busy) apart from
-  what only Claude Code's has (status line, turn under way, background work, its status's values), which the chat
-  takes. `RunningSession` becomes the generic one, Claude Code's its own type, agreed with `.NET-cloyd`, whose chat
-  code uses it. Codex's status: `busy`, `waiting` (`waitingFor` "approval" or "user input"), `idle`, `error`.
-- **A tab of a Codex session:** paired with its running session by `sessionHost`, as every tab is; its terminal only,
-  with no switch to a chat; titled with the session's name, else "Codex"; its spinner turning while the session is busy.
-  A tab's look follows the agent CLI of the session in it, as a host's shell may run one and then the other.
-- **The + button:** offers a Claude Code session or a Codex session, each with its name box; Codex only while the hub
-  serves Codex sessions (its announcement's `codexFolder` isn't null).
 - **The history picker:** one list, most recently used first, both kinds interleaved, each entry marked with its kind;
   toggles for Claude Code and Codex, both on at first, so that each combination can be shown (Magnus: "clearly
   delimited and filter options on whether to show each combination", and "One list: most recently used first, both
@@ -660,8 +661,13 @@ rest is built (02f2a82).
 - **Bringing back a saved Codex tab:** resumed while the hub lists the session on disk, as a Claude Code one is while
   its transcript is there.
 - **Specified** against a sandbox hub that runs the stand-in for Codex, once the owner's hosting gives sandboxes a Codex
-  home: a new Codex session in a tab, resuming one from the picker, the picker's marks and toggles, a saved Codex tab
-  brought back, and the + offering Codex only from a hub that serves it.
+  home: a new Codex session in a tab, its spinner and title as the hub names it, resuming one from the picker, the
+  picker's marks and toggles, a saved Codex tab brought back, and the + offering Codex from a hub that serves it. What
+  needs no Codex is specified already: a saved Codex tab's look, the + from a hub without Codex, the + offering both.
+- **Until the owner publishes protocol 2,** the contract in `~/.claude/src` is ahead of the published hub, and a build
+  against it refuses the sandbox hub. Run the specifications built against the committed contract: set the environment
+  variable `TheHubsContract` to a snapshot from `git -C ~/.claude archive HEAD src/ClaudeTooling.Hub.LocalApi.Contract`
+  (fa2f597).
 
 ## What's still open
 
