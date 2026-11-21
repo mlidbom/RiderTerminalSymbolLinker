@@ -1,8 +1,11 @@
 using Avalonia.Controls;
 using Avalonia.Input;
+using Avalonia.Input.Platform;
 using Avalonia.Interactivity;
 using Avalonia.Media;
+using Avalonia.Media.Imaging;
 using ClaudeTooling.SessionHost.Protocol;
+using Cloyd.Pasting;
 using Cloyd.SessionHosts;
 using Iciclecreek.Terminal;
 using Porta.Pty;
@@ -26,13 +29,25 @@ sealed class TerminalOfASessionHost : TerminalControl
    /// </summary>
    const string ANewLineInClaudeCodesInputBox = "\n";
 
+   /// <summary>What a terminal sends ahead of a bracketed paste, once the program in it has asked for those.</summary>
+   const string StartOfABracketedPaste = "\u001b[200~";
+
+   /// <summary>What a terminal sends after a bracketed paste.</summary>
+   const string EndOfABracketedPaste = "\u001b[201~";
+
+   readonly PastedImages _pastedImages;
    bool _attached;
 
-   /// <summary>Whether the Enter now held was pressed with Shift, and typed a new line: its release is then no key of the terminal's.</summary>
-   bool _shiftEnterHeld;
+   /// <summary>
+   /// The key now held whose press the terminal didn't get, as Cloyd typed something else for it: its release is then no
+   /// key of the terminal's either. Null while none is.
+   /// </summary>
+   Key? _heldKeyTakenFromTheTerminal;
 
-   public TerminalOfASessionHost(AttachmentToASessionHost attachment)
+   /// <summary>Attached to the host of <paramref name="attachment"/> once laid out: the images pasted into it are saved in <paramref name="pastedImages"/>.</summary>
+   public TerminalOfASessionHost(AttachmentToASessionHost attachment, PastedImages pastedImages)
    {
+      _pastedImages = pastedImages;
       FontFamily = new FontFamily("Cascadia Mono");
       FontSize = 14;
       BufferSize = LinesItKeeps;
@@ -43,9 +58,13 @@ sealed class TerminalOfASessionHost : TerminalControl
          AttachConnection(new SessionHostAsAPseudoConsole(attachment));
       };
       AddHandler(KeyDownEvent, TypeANewLineOnShiftEnter, RoutingStrategies.Tunnel);
-      AddHandler(KeyUpEvent, LetGoOfShiftEnter, RoutingStrategies.Tunnel);
+      AddHandler(KeyDownEvent, PasteOnCtrlV, RoutingStrategies.Tunnel);
+      AddHandler(KeyUpEvent, LetGoOfAKeyTakenFromTheTerminal, RoutingStrategies.Tunnel);
       UrlClicked += OpenAWebPagesUrlInTheBrowser;
    }
+
+   /// <summary>Raised on the UI thread when what Magnus pasted with Ctrl+V couldn't be pasted, with why.</summary>
+   public event Action<Exception>? PasteFailed;
 
    protected override Type StyleKeyOverride => typeof(TerminalControl);
 
@@ -68,18 +87,63 @@ sealed class TerminalOfASessionHost : TerminalControl
    /// </summary>
    void TypeANewLineOnShiftEnter(object? sender, KeyEventArgs key)
    {
-      if(key.Key != Key.Enter || key.KeyModifiers != KeyModifiers.Shift) return;
-      key.Handled = true;
-      _shiftEnterHeld = true;
+      if(key is not { Key: Key.Enter, KeyModifiers: KeyModifiers.Shift }) return;
+      TakeFromTheTerminal(key);
       _ = SendInputAsync(ANewLineInClaudeCodesInputBox);
    }
 
-   /// <summary>Keeps the release of a Shift+Enter that typed a new line from the terminal, which saw no press of it.</summary>
-   void LetGoOfShiftEnter(object? sender, KeyEventArgs key)
+   /// <summary>
+   /// Has Ctrl+V paste, as Ctrl+Shift+V does, and as it does in every other Windows program: in Claude Code on Windows it
+   /// does nothing, as its own key for pasting an image is Alt+V. Text on the clipboard is pasted as text; an image, when
+   /// the clipboard holds no text, is saved by <see cref="PastedImages"/> and its file's path pasted alone, which Claude
+   /// Code takes for the image.
+   /// </summary>
+   void PasteOnCtrlV(object? sender, KeyEventArgs key)
    {
-      if(key.Key != Key.Enter || !_shiftEnterHeld) return;
+      if(key is not { Key: Key.V, KeyModifiers: KeyModifiers.Control }) return;
+      TakeFromTheTerminal(key);
+      _ = PasteWhatTheClipboardHolds();
+   }
+
+   /// <summary>Pastes the clipboard's text, else its image: nothing when it holds neither. A failure is told by <see cref="PasteFailed"/>.</summary>
+   async Task PasteWhatTheClipboardHolds()
+   {
+      try
+      {
+         var clipboard = TopLevel.GetTopLevel(this)!.Clipboard!;
+         if(!string.IsNullOrEmpty(await clipboard.TryGetTextAsync())) await PasteAsync();
+         else if(await clipboard.TryGetBitmapAsync() is {} image) await Paste(image);
+      }
+      catch(Exception failure)
+      {
+         PasteFailed?.Invoke(failure);
+      }
+   }
+
+   /// <summary>
+   /// Pastes <paramref name="image"/> as its file's path, alone: as a bracketed paste, which Claude Code takes for the
+   /// image, once the program in the terminal has asked for those, as Claude Code does; else as the path, as a shell
+   /// takes it.
+   /// </summary>
+   Task Paste(Bitmap image)
+   {
+      var file = _pastedImages.Save(image).FullName;
+      return SendInputAsync(Terminal.BracketedPasteMode ? StartOfABracketedPaste + file + EndOfABracketedPaste : file);
+   }
+
+   /// <summary>Keeps <paramref name="key"/>, pressed, from the terminal, which Cloyd types something else for, and its release with it.</summary>
+   void TakeFromTheTerminal(KeyEventArgs key)
+   {
       key.Handled = true;
-      _shiftEnterHeld = false;
+      _heldKeyTakenFromTheTerminal = key.Key;
+   }
+
+   /// <summary>Keeps the release of a key taken from the terminal from it too, as it saw no press of the key.</summary>
+   void LetGoOfAKeyTakenFromTheTerminal(object? sender, KeyEventArgs key)
+   {
+      if(key.Key != _heldKeyTakenFromTheTerminal) return;
+      key.Handled = true;
+      _heldKeyTakenFromTheTerminal = null;
    }
 
    /// <summary>

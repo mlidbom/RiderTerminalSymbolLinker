@@ -35,13 +35,14 @@ sealed class SandboxProject
    /// <summary>
    /// A new window of the project, not yet shown, one of the sandbox's <see cref="Sandbox.WindowsOfCloyd"/> once it opens,
    /// which saves itself where the project's next window finds it, finds the project's window in the sandbox's IDEs, and
-   /// its C# symbols in the solutions the sandbox's Rider has loaded.
+   /// its C# symbols in the solutions the sandbox's Rider has loaded, and saves the images pasted into it in the sandbox's
+   /// <see cref="Sandbox.CloydsFolder"/>.
    /// </summary>
    public ProjectWindow Window() => Window(_sandbox.WindowsOfCloyd);
 
    /// <summary>A new window of the project, as <see cref="Window()"/>, one of <paramref name="windowsOfCloyd"/> once it opens, as a Cloyd application's.</summary>
    public ProjectWindow Window(ProjectWindows windowsOfCloyd) =>
-      new(Project, windowsOfCloyd, Hub, _sandbox.Ides, _sandbox.DotNetAnalysisAndRefactoringMcp.Mcp, _sandbox.ShellOfItsSessions, _savedWindows);
+      new(Project, windowsOfCloyd, Hub, _sandbox.Ides, _sandbox.DotNetAnalysisAndRefactoringMcp.Mcp, _sandbox.ShellOfItsSessions, _savedWindows, _sandbox.CloydsFolder.PastedImages);
 
    /// <summary>What the project's windows saved last.</summary>
    public SavedProjectWindow SavedWindow => _savedWindows.Of(Project);

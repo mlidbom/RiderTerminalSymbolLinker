@@ -34,6 +34,13 @@ All notable changes to Cloyd are documented here. The format follows
   shows its terminal at first.
 - **Ctrl+H switches a tab between its terminal and its chat,** as the switch at its top does, and gives the keyboard to
   the one it shows. Claude Code binds Ctrl+H to no command of its own: in the terminal it was a Backspace.
+- **Ctrl+V pastes in a session's terminal,** as Ctrl+Shift+V does, and as in every other Windows program: in Claude
+  Code on Windows it did nothing. An image on the clipboard with no text, such as a screenshot, is pasted too: Cloyd
+  saves it as a PNG in `%LOCALAPPDATA%\Cloyd\pasted-images`, kept a week, and pastes its file's path alone, which
+  Claude Code takes for the image and shows as `[Image #1]`. Your clipboard is left as it was. In a shell, the path is
+  pasted as text.
+- **Ctrl+Tab selects a window's next tab, and Ctrl+Shift+Tab the one before,** as in a browser, from the last tab to
+  the first and back, also while a terminal has the keyboard.
 - **Cloyd follows Windows' theme, light or dark,** as the desktop app does. The terminal stays dark.
 - **The session history picker,** as the IDE's was until Claude Sessions 0.2.0. The **History** button beside the
   **+**, or Ctrl+Alt+Shift+Y, lays it over the window: the sessions, most recently used first, filtered by every word

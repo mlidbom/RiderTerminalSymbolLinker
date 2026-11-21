@@ -1,9 +1,11 @@
+using Cloyd.Pasting;
 using Cloyd.Saving;
 
 namespace Cloyd;
 
 /// <summary>
-/// The folder where Cloyd keeps what it keeps on the machine: the <see cref="SavedProjectWindows"/>, and the announcement
+/// The folder where Cloyd keeps what it keeps on the machine: the <see cref="SavedProjectWindows"/>, the
+/// <see cref="PastedImages"/>, and the announcement
 /// of the Cloyd application's local API. <c>%LOCALAPPDATA%\Cloyd</c>, unless <see cref="VariableNamingAnother"/> names
 /// another, as for a Cloyd the specifications run apart from Magnus's.
 /// </summary>
@@ -23,6 +25,9 @@ sealed class CloydsFolder(DirectoryInfo folder)
 
    /// <summary>Where Cloyd's project windows save themselves, a file for each project.</summary>
    public SavedProjectWindows SavedProjectWindows => new(new DirectoryInfo(Path.Combine(Folder.FullName, "project-windows")));
+
+   /// <summary>Where the images Magnus pastes into the sessions are saved, to be handed to Claude Code.</summary>
+   public PastedImages PastedImages => new(new DirectoryInfo(Path.Combine(Folder.FullName, "pasted-images")));
 
    public override string ToString() => Folder.FullName;
 }

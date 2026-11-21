@@ -12,6 +12,7 @@ using Cloyd.History;
 using Cloyd.Hub;
 using Cloyd.Ides;
 using Cloyd.Links;
+using Cloyd.Pasting;
 using Cloyd.Saving;
 using Cloyd.SessionHosts;
 using Cloyd.Sessions;
@@ -56,6 +57,7 @@ sealed class ProjectWindow : Window
    readonly TheIdes _ides;
    readonly ShellOfNewSessions _shellOfNewSessions;
    readonly SavedProjectWindows _savedWindows;
+   readonly PastedImages _pastedImages;
    readonly TabControl _tabs = new();
    readonly NewSessionButton _newSession = new();
    readonly Button _openTheHistory = new() { Content = "History" };
@@ -68,9 +70,10 @@ sealed class ProjectWindow : Window
 
    /// <summary>
    /// The window of <paramref name="project"/>, one of <paramref name="windowsOfCloyd"/> from when it opens until it
-   /// closes: its history picker tells which of their tabs runs what.
+   /// closes: its history picker tells which of their tabs runs what. The images pasted into its tabs are saved in
+   /// <paramref name="pastedImages"/>.
    /// </summary>
-   public ProjectWindow(Project project, ProjectWindows windowsOfCloyd, TheHub hub, TheIdes ides, DotNetAnalysisAndRefactoringMcp dotNetAnalysisAndRefactoringMcp, ShellOfNewSessions shellOfNewSessions, SavedProjectWindows savedWindows)
+   public ProjectWindow(Project project, ProjectWindows windowsOfCloyd, TheHub hub, TheIdes ides, DotNetAnalysisAndRefactoringMcp dotNetAnalysisAndRefactoringMcp, ShellOfNewSessions shellOfNewSessions, SavedProjectWindows savedWindows, PastedImages pastedImages)
    {
       Project = project;
       FilesAndSymbols = new FilesAndSymbolsOfAProject(project, dotNetAnalysisAndRefactoringMcp);
@@ -80,6 +83,7 @@ sealed class ProjectWindow : Window
       _ides = ides;
       _shellOfNewSessions = shellOfNewSessions;
       _savedWindows = savedWindows;
+      _pastedImages = pastedImages;
       Title = $"Cloyd: {project.Name}";
       Width = 1400;
       Height = 900;
@@ -89,6 +93,7 @@ sealed class ProjectWindow : Window
       _openTheHistory.Click += (_, _) => _ = OpenTheHistoryPicker();
       AddHandler(KeyDownEvent, OpenTheHistoryPickerOnItsKey, RoutingStrategies.Tunnel);
       AddHandler(KeyDownEvent, SwitchTheTabOnItsKey, RoutingStrategies.Tunnel);
+      AddHandler(KeyDownEvent, SelectTheNextTabOnCtrlTab, RoutingStrategies.Tunnel);
       _historyPicker.Chosen += entry => _ = TellingOfFailure(() => entry.Choose(this));
       _historyPicker.Closed += () => SelectedTab?.FocusWhatItShows();
       _tabs.SelectionChanged += (_, _) => Dispatcher.UIThread.Post(() => SelectedTab?.FocusWhatItShows(), DispatcherPriority.Loaded);
@@ -282,7 +287,7 @@ sealed class ProjectWindow : Window
 
    SessionTab Show(SessionHostOfTheHub host, ClaudeSession? latestSession, string? nameGiven)
    {
-      var tab = new SessionTab(host, latestSession, nameGiven, SizeOfTheTerminals, _hub);
+      var tab = new SessionTab(host, latestSession, nameGiven, SizeOfTheTerminals, _hub, _pastedImages);
       tab.ClosedByMagnus += it => _ = TellingOfFailure(() => EndTheSessionOf(it));
       tab.EndedByItself += (it, _) => Remove(it);
       _tabs.Items.Add(tab);
@@ -452,6 +457,24 @@ sealed class ProjectWindow : Window
 
       key.Handled = true;
       tab.SwitchBetweenTheTerminalAndTheChat();
+   }
+
+   /// <summary>
+   /// Selects the next tab on Ctrl+Tab, and the one before on Ctrl+Shift+Tab, as in a browser, from the last tab to the
+   /// first and back: before the terminal that has the focus takes the key for Claude Code, which binds neither.
+   /// </summary>
+   void SelectTheNextTabOnCtrlTab(object? sender, KeyEventArgs key)
+   {
+      var step = key switch
+      {
+         { Key: Key.Tab, KeyModifiers: KeyModifiers.Control } => 1,
+         { Key: Key.Tab, KeyModifiers: KeyModifiers.Control | KeyModifiers.Shift } => -1,
+         _ => 0
+      };
+      if(step == 0 || _tabs.ItemCount == 0) return;
+
+      key.Handled = true;
+      _tabs.SelectedIndex = (_tabs.SelectedIndex + step + _tabs.ItemCount) % _tabs.ItemCount;
    }
 
    Control TheLayout()

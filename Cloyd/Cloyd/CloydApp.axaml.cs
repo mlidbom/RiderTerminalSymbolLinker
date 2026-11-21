@@ -29,7 +29,7 @@ sealed class CloydApp : Application
          var shell = ShellOfNewSessions.OnThisMachine();
          var ides = TheIdes.OnThisMachine();
          var dotNetAnalysisAndRefactoringMcp = DotNetAnalysisAndRefactoringMcp.OnThisMachine();
-         var windows = new ProjectWindows((project, windowsOfCloyd) => new ProjectWindow(project, windowsOfCloyd, hub, ides, dotNetAnalysisAndRefactoringMcp, shell, folder.SavedProjectWindows));
+         var windows = new ProjectWindows((project, windowsOfCloyd) => new ProjectWindow(project, windowsOfCloyd, hub, ides, dotNetAnalysisAndRefactoringMcp, shell, folder.SavedProjectWindows, folder.PastedImages));
          desktop.ShutdownMode = ShutdownMode.OnLastWindowClose;
          var localApi = CloydsLocalApi.Start(windows, folder);
          desktop.Exit += (_, _) => localApi.Stop();

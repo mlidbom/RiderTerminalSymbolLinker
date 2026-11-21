@@ -195,6 +195,18 @@ Claude's calls (.NET-cloyd, the session in this repository), which Magnus OK'd o
 - **Shift+Enter types a new line** in Claude Code's input box, as a line feed, which Claude Code takes as Ctrl+J
   (`TerminalOfASessionHost`): Claude Code ignores the Shift on Enter in a Windows console, and sent the message
   (Magnus, 2026-11-20, his first hour in Cloyd).
+- **Ctrl+V pastes** (`TerminalOfASessionHost`), as Ctrl+Shift+V, Iciclecreek's key, does: in Magnus's Cloyd it did
+  nothing (2026-11-21). Claude Code's documents bind its image paste (`chat:imagePaste`) to Alt+V on Windows, though the
+  spike below saw Ctrl+V reach it as the image paste: Cloyd takes the key either way. Text
+  on the clipboard goes through the control's own paste, bracketed once the program asked for that. An image with no
+  text is saved as PNG by `PastedImages`, in `%LOCALAPPDATA%\Cloyd\pasted-images`, kept a week, and its path pasted
+  alone, bracketed, which Claude Code takes for the image, as the hub hands one on (`claude-sessions.md`, "The chat
+  view: what the spikes found"); in a shell, which asked for no bracketed pastes, the path goes as text. Not Alt+V for
+  Claude Code to read the clipboard itself: that can't be specified, as the headless platform's clipboard is no
+  Windows clipboard. Specified with the stand-in, whose input box shows `[Image #1]` only for an image file's path
+  pasted alone. Not seen yet: Avalonia reading a real screenshot off Windows' clipboard.
+- **Ctrl+Tab and Ctrl+Shift+Tab select the next tab and the one before** (`ProjectWindow`), wrapping around, ahead of
+  the terminal that has the keyboard (Magnus, 2026-11-21).
 - **The hosts it shows as it opens:** each of the project's hosts that no attach client shows. The project is told by
   the host's label (`SessionHostLabel`): Cloyd's own, `{"startedBy": "cloyd", "project": …}`, or Claude Sessions',
   `{"ideConfigFolder": …, "project": …}`, so that it takes over the plugin's sessions once no IDE's tab shows them. A

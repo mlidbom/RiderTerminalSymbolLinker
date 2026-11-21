@@ -8,6 +8,7 @@ using ClaudeTooling.SessionHost.Protocol;
 using Cloyd.Chat;
 using Cloyd.ClaudeCode;
 using Cloyd.Hub;
+using Cloyd.Pasting;
 using Cloyd.Saving;
 using Cloyd.SessionHosts;
 using Cloyd.Terminals;
@@ -34,15 +35,17 @@ sealed class SessionTab : TabItem
    /// Attaches to <paramref name="host"/> at <paramref name="size"/>, which its terminal then resizes it from. Until the
    /// hub tells of the session that runs in it, its <see cref="LatestSession"/> is <paramref name="latestSession"/>, as a
    /// saved tab's, and it is titled with that session's name, or <paramref name="nameGiven"/>, as a new session was named.
-   /// Its chat follows the session's conversation through <paramref name="hub"/>.
+   /// Its chat follows the session's conversation through <paramref name="hub"/>. The images pasted into it are saved in
+   /// <paramref name="pastedImages"/>.
    /// </summary>
-   public SessionTab(SessionHostOfTheHub host, ClaudeSession? latestSession, string? nameGiven, ConsoleSize size, TheHub hub)
+   public SessionTab(SessionHostOfTheHub host, ClaudeSession? latestSession, string? nameGiven, ConsoleSize size, TheHub hub, PastedImages pastedImages)
    {
       Host = host;
       LatestSession = latestSession;
       _attachment = AttachmentToASessionHost.To(host.Id, size);
       _attachment.Ended += why => Dispatcher.UIThread.Post(() => EndedByItself?.Invoke(this, why));
-      Terminal = new TerminalOfASessionHost(_attachment);
+      Terminal = new TerminalOfASessionHost(_attachment, pastedImages);
+      Terminal.PasteFailed += failure => Tell($"Cloyd couldn't paste: {failure.Message}");
       Chat = new ChatOfASession(hub) { IsVisible = false };
       Chat.Show(latestSession?.Id);
       _title = new TextBlock { Text = latestSession?.Name ?? nameGiven ?? TitleOfASessionWithNoName, VerticalAlignment = VerticalAlignment.Center };
@@ -109,7 +112,7 @@ sealed class SessionTab : TabItem
    /// <summary>The tab, as its window saves it.</summary>
    public SavedSessionTab AsSaved => new(Host.Id, Host.Directory, LatestSession);
 
-   /// <summary>Shows <paramref name="notice"/> above the terminal.</summary>
+   /// <summary>Shows <paramref name="notice"/> above the terminal, as why the hub didn't start Claude Code in it, or why a paste failed.</summary>
    public void Tell(string notice)
    {
       _notice.Text = notice;
