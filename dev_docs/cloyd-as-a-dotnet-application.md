@@ -382,6 +382,15 @@ than any polish that the chat UI might need."
 works (the line at the end, the text as it streams, the task list); scrolling's `Scroll to bottom` button; the buttons
 and time under a turn; links in Claude's text, with `POST /files/open`; a permission prompt switching to the terminal.
 
+**The input box, Magnus's calls (2026-11-21),** where the app's spec doesn't reach, as it covers only the conversation:
+
+- **Ctrl+Enter sends, Enter starts a new line,** as the Kotlin chat had it: "ctrl+enter for now".
+- **Escape doesn't interrupt Claude:** "This trips me up again and again. I virtually never intended to interrupt claude
+  when this happens. IMO it is a disasterpiece of UI design." Interrupting is the send button's, which stops Claude
+  while it works, as the desktop app's does.
+- **What he was typing survives a restart of Cloyd,** or Cloyd isn't restarted without asking him: "You can restart if
+  you are certain that what I was typing is safe. Otherwise ask me to restart."
+
 ### The session history picker, as it's built
 
 **Built 2026-11-20** (`Cloyd.History`): the Kotlin plugin's picker (`claude-sessions.md`, "The session history
