@@ -664,10 +664,11 @@ word for every agent CLI's; "thread" only in code that speaks Codex's app-server
   home: a new Codex session in a tab, its spinner and title as the hub names it, resuming one from the picker, the
   picker's marks and toggles, a saved Codex tab brought back, and the + offering Codex from a hub that serves it. What
   needs no Codex is specified already: a saved Codex tab's look, the + from a hub without Codex, the + offering both.
-- **Until the owner publishes protocol 2,** the contract in `~/.claude/src` is ahead of the published hub, and a build
-  against it refuses the sandbox hub. Run the specifications built against the committed contract: set the environment
-  variable `TheHubsContract` to a snapshot from `git -C ~/.claude archive HEAD src/ClaudeTooling.Hub.LocalApi.Contract`
-  (fa2f597).
+- **Protocol 2 was published on 2026-11-21 at 18:35.** Cloyd compiles the contract's source that each publish puts
+  beside the published hub, `~/.claude/bin/ClaudeTooling.Hub.LocalApi.Contract`, so it speaks what the hub that runs
+  speaks. The environment variable `TheHubsContract` names another source, such as `~/.claude/src`'s, to build against a
+  change before its publish. A protocol bump still needs a Cloyd deploy, and `everyday reload Cloyd` on Magnus's go:
+  until then his running Cloyd refuses the new hub.
 
 ## What's still open
 
