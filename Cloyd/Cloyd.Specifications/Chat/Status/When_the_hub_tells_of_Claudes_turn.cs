@@ -36,7 +36,7 @@ public class When_the_hub_tells_of_Claudes_turn : SpecificationWritingInAChat
    string? WorkingLineSays => OnTheUIThread(() => _tab.Chat.WorkingLine.Says);
 
    [XF] public void the_working_line_says_Claude_writes_the_Write_call_how_long_the_turn_has_taken_and_its_output_tokens() =>
-      WorkingLineSays.Must().Satisfy(it => it is not null && System.Text.RegularExpressions.Regex.IsMatch(it, @"^Writing the Write call… \(1m 1\ds · ↓ 1\.2k tokens\)$"));
+      WorkingLineSays.Must().Satisfy(it => it is not null && System.Text.RegularExpressions.Regex.IsMatch(it, @"^Writing the Write call… \(1m \d\ds · ↓ 1\.2k tokens\)$"));
 
    /// <summary>Then Claude writes text, in two reports, a quarter of a second apart: the chat shows it at the conversation's end as it comes.</summary>
    public class and_then_Claude_writes_text : When_the_hub_tells_of_Claudes_turn

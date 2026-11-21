@@ -13,7 +13,7 @@ namespace Cloyd.Chat.Status;
 
 /// <summary>
 /// The line over the chat's input box that shows, while Claude works, that it does, and at what, as Claude Code's own
-/// UI, the desktop app and claude.ai show it: a spinner; what the <see cref="TurnUnderWay"/> does, such as thinking or
+/// UI, the desktop app and claude.ai show it: a spinner (<see cref="SpinnerOfTheWorkingLine"/>); what the <see cref="TurnUnderWay"/> does, such as thinking or
 /// writing, or the tool call under way, with what the call was given under it, such as <c>$ ls /c/Dev</c>; how long the
 /// turn has taken; its output tokens; and how many commands it has run, such as <c>Thinking… (12s · ↓ 1.2k tokens)</c>.
 /// It takes no room while Claude doesn't work.
@@ -31,15 +31,12 @@ sealed class WorkingLineOfTheChat : UserControl
    /// <summary>What the line says Claude does while it knows nothing more: no turn is told of, and no tool call is under way.</summary>
    public const string Working = "Working…";
 
-   /// <summary>The glyphs of the spinner, as Claude Code's own: each shown in turn, then back.</summary>
-   const string GlyphsOfTheSpinner = "·✢✳✶✻✽✻✶✳✢";
-
    static readonly IBrush ClaudesOrange = new SolidColorBrush(Color.Parse("#D97757"));
 
-   readonly TextBlock _spinner = new() { Foreground = ClaudesOrange, FontSize = 14, Width = 18, VerticalAlignment = VerticalAlignment.Center };
    readonly TextBlock _says = new() { FontSize = 13, TextTrimming = TextTrimming.CharacterEllipsis, VerticalAlignment = VerticalAlignment.Center };
    readonly TextBlock _callUnderWay = new() { FontFamily = LinesOfTheChat.Monospaced, FontSize = 12, TextTrimming = TextTrimming.CharacterEllipsis, Margin = new Thickness(18, 1, 0, 0), IsVisible = false };
-   readonly DispatcherTimer _ticking = new() { Interval = TimeSpan.FromMilliseconds(120) };
+   /// <summary>Turns the spinner, and counts the time: at half the speed of Claude Code's own spinner, as Magnus asked (2026-11-21).</summary>
+   readonly DispatcherTimer _ticking = new() { Interval = TimeSpan.FromMilliseconds(240) };
 
    RunningSession? _claudeCode;
    ToolCallsOfTheLastTurn _callsOfTheTurn = new([]);
@@ -47,23 +44,24 @@ sealed class WorkingLineOfTheChat : UserControl
    /// <summary>When the line saw Claude Code turn busy: null while it isn't.</summary>
    DateTime? _busySince;
 
-   int _glyph;
-
    public WorkingLineOfTheChat()
    {
       ColoursOfTheChat.Grey.AsTheForegroundOf(_callUnderWay);
       _ticking.Tick += (_, _) =>
       {
-         _glyph = (_glyph + 1) % GlyphsOfTheSpinner.Length;
+         Spinner.Turn();
          Update();
       };
       IsVisible = false;
       Content = new StackPanel
       {
          Margin = new Thickness(28, 2, 28, 2),
-         Children = { new DockPanel { Children = { Docked(_spinner), _says } }, _callUnderWay }
+         Children = { new DockPanel { Children = { Docked(Spinner), _says } }, _callUnderWay }
       };
    }
+
+   /// <summary>The spinner at the line's start, which turns while the line shows.</summary>
+   public SpinnerOfTheWorkingLine Spinner { get; } = new();
 
    /// <summary>What the line says, as Claude Code's own spinner line, such as <c>Thinking… (12s · ↓ 1.2k tokens)</c>: null while it doesn't show.</summary>
    public string? Says => IsVisible ? _says.Inlines!.Aggregate("", (said, it) => said + ((Run)it).Text) : null;
@@ -104,7 +102,6 @@ sealed class WorkingLineOfTheChat : UserControl
 
       var turn = _claudeCode?.TurnUnderWay;
       var callShown = turn is null || turn.Activity.IsRunningTools ? _callsOfTheTurn.UnderWay : null;
-      _spinner.Text = GlyphsOfTheSpinner[_glyph].ToString();
       _says.Inlines!.Clear();
       _says.Inlines.Add(new Run(WhatItDoes()) { FontWeight = FontWeight.SemiBold, Foreground = ClaudesOrange });
       _says.Inlines.Add(ColoursOfTheChat.Grey.AsTheForegroundOf(new Run($" ({string.Join(" · ", HowItGoes())})")));
