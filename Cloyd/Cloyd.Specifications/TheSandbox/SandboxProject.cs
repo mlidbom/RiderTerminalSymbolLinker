@@ -26,7 +26,7 @@ sealed class SandboxProject
    {
       _sandbox = sandbox;
       Project = new Project(Directory.CreateDirectory(Path.Combine(sandbox.ProjectsFolder, name)).FullName);
-      _savedWindows = new SavedProjectWindows(new DirectoryInfo(Path.Combine(sandbox.SavedProjectWindowsFolder, name)));
+      _savedWindows = sandbox.CloydsFolder.SavedProjectWindows;
    }
 
    public Project Project { get; }
@@ -43,7 +43,7 @@ sealed class SandboxProject
 
    /// <summary>A new window of the project, as <see cref="Window()"/>, one of <paramref name="windowsOfCloyd"/> once it opens, as a Cloyd application's.</summary>
    public ProjectWindow Window(ProjectWindows windowsOfCloyd) =>
-      new(Project, windowsOfCloyd, Hub, _sandbox.Ides, _sandbox.DotNetAnalysisAndRefactoringMcp.Mcp, _sandbox.ShellOfItsSessions, _savedWindows, _sandbox.CloydsFolder.PastedImages);
+      new(Project, windowsOfCloyd, Hub, _sandbox.Ides, _sandbox.DotNetAnalysisAndRefactoringMcp.Mcp, _savedWindows);
 
    /// <summary>What the project's windows saved last.</summary>
    public SavedProjectWindow SavedWindow => _savedWindows.Of(Project);

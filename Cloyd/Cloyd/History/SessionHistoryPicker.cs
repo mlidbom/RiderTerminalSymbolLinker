@@ -1,7 +1,9 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Documents;
+using Avalonia.Controls.Primitives;
 using Avalonia.Controls.Templates;
+using Avalonia.Data;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Layout;
@@ -47,25 +49,27 @@ sealed class SessionHistoryPicker : Panel
    /// <summary>The ground of the mark of a Codex session: a tint of grey blue.</summary>
    static readonly ColourOfTheTheme MarkOfCodex = new("#DFE6EF", "#2E3846");
 
-   readonly ProjectWindow _pickedIn;
+   readonly ProjectWindow? _pickedIn;
    readonly TextBox _search = new() { PlaceholderText = "Search the sessions: words of their titles, prompts, folders or branches" };
    readonly StackPanel _scopeButtons = new() { Orientation = Orientation.Horizontal, Spacing = 4, VerticalAlignment = VerticalAlignment.Center };
    readonly StackPanel _agentCliToggles = new() { Orientation = Orientation.Horizontal, Spacing = 8, Margin = new Thickness(0, 0, 24, 0), HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Center };
-   readonly HashSet<AgentCli> _agentClisListed = [];
+   readonly SessionHistoryPickerViewModel _model;
    readonly ListBox _list = new() { SelectionMode = SelectionMode.Single };
    readonly TextBlock _reading = new() { Text = "Reading the sessions…", Margin = new Thickness(12), Opacity = 0.7 };
 
-   SessionHistory? _history;
-
    /// <summary>A picker over <paramref name="pickedIn"/>, closed until <see cref="Open"/> opens it.</summary>
-   public SessionHistoryPicker(ProjectWindow pickedIn)
+   public SessionHistoryPicker(ProjectWindow? pickedIn = null)
    {
       _pickedIn = pickedIn;
+      _model = new SessionHistoryPickerViewModel(pickedIn is null ? SessionHistoryScope.AllProjects : SessionHistoryScope.ThisWorktree);
       IsVisible = false;
       Resources.MergedDictionaries.Add(ColourOfTheTheme.AsResources([Running, Ground, Edge, MarkOfClaudeCode, MarkOfCodex]));
       _list.ItemTemplate = new FuncDataTemplate<SessionHistoryEntry?>((entry, _) => entry is null ? new Panel() : RowOf(entry)); // The list builds a row with no entry as it swaps its entries.
       _list.DoubleTapped += (_, _) => ChooseTheSelected();
-      _search.TextChanged += (_, _) => Refresh();
+      _search.Bind(TextBox.TextProperty, CompiledBinding.Create((SessionHistoryPickerViewModel it) => it.Filter, _model,
+                                                               mode: BindingMode.TwoWay, updateSourceTrigger: UpdateSourceTrigger.PropertyChanged));
+      _list.Bind(ItemsControl.ItemsSourceProperty, CompiledBinding.Create((SessionHistoryPickerViewModel it) => it.Listed, _model));
+      _list.Bind(SelectingItemsControl.SelectedIndexProperty, CompiledBinding.Create((SessionHistoryPickerViewModel it) => it.Selected, _model, mode: BindingMode.TwoWay));
       AddHandler(KeyDownEvent, TakeAKey, RoutingStrategies.Tunnel);
       Children.Add(TheShadeOverTheWindow());
       Children.Add(TheCard());
@@ -74,17 +78,17 @@ sealed class SessionHistoryPicker : Panel
    /// <summary>Whether the picker is open over its window.</summary>
    public bool IsOpen => IsVisible;
 
-   /// <summary>The scope the picker lists: <see cref="SessionHistoryScope.ThisWorktree"/> as it opens.</summary>
-   public SessionHistoryScope Scope { get; private set; } = SessionHistoryScope.ThisWorktree;
+   /// <summary>The scope the picker lists. A project window starts in this worktree and Projects Dashboard starts with all projects.</summary>
+   public SessionHistoryScope Scope => _model.Scope;
 
    /// <summary>The scopes the picker offers: all worktrees only for a project in git. None until it has read the history.</summary>
-   public IReadOnlyList<SessionHistoryScope> Scopes => _history?.Worktrees.Scopes ?? [];
+   public IReadOnlyList<SessionHistoryScope> Scopes => _model.Scopes;
 
    /// <summary>The agent CLIs whose sessions the picker has a toggle for: those the hub serves. None until it has read the history.</summary>
-   public IReadOnlyList<AgentCli> AgentClis => _history?.AgentClis ?? [];
+   public IReadOnlyList<AgentCli> AgentClis => _model.AgentClis;
 
    /// <summary>The agent CLIs whose sessions the picker lists: every one of <see cref="AgentClis"/> as it opens.</summary>
-   public IReadOnlySet<AgentCli> AgentClisListed => _agentClisListed;
+   public IReadOnlySet<AgentCli> AgentClisListed => _model.AgentClisListed;
 
    /// <summary>
    /// Whether the picker marks each entry with its agent CLI, and shows a toggle for each: while the hub serves more than one
@@ -95,18 +99,18 @@ sealed class SessionHistoryPicker : Panel
    /// <summary>What is typed into the search box, which filters the entries.</summary>
    public string Filter
    {
-      get => _search.Text ?? "";
-      set => _search.Text = value;
+      get => _model.Filter;
+      set => _model.Filter = value;
    }
 
    /// <summary>The entries the picker lists, in their order: none until it has read the history.</summary>
-   public IReadOnlyList<SessionHistoryEntry> Listed => _list.ItemsSource as IReadOnlyList<SessionHistoryEntry> ?? [];
+   public IReadOnlyList<SessionHistoryEntry> Listed => _model.Listed;
 
    /// <summary>The listed entry that is selected, by its place: -1 when none is.</summary>
    public int Selected
    {
-      get => _list.SelectedIndex;
-      set => _list.SelectedIndex = value;
+      get => _model.Selected;
+      set => _model.Selected = value;
    }
 
    /// <summary>Whether the search box has the keyboard focus, as it has once the picker opens.</summary>
@@ -121,13 +125,9 @@ sealed class SessionHistoryPicker : Panel
    /// <summary>Opens the picker over its window, reading the history until <see cref="Show"/> shows it, with the keyboard focus in the search box.</summary>
    public void Open()
    {
-      _history = null;
-      Scope = SessionHistoryScope.ThisWorktree;
-      _search.Text = "";
+      _model.Open();
       _scopeButtons.Children.Clear();
       _agentCliToggles.Children.Clear();
-      _agentClisListed.Clear();
-      _list.ItemsSource = null;
       _reading.IsVisible = true;
       IsVisible = true;
       Dispatcher.UIThread.Post(() => _search.Focus(), DispatcherPriority.Loaded);
@@ -136,7 +136,7 @@ sealed class SessionHistoryPicker : Panel
    /// <summary>Shows <paramref name="history"/>, as read for the window's project, in the open picker.</summary>
    public void Show(SessionHistory history)
    {
-      _history = history;
+      _model.Show(history);
       _reading.IsVisible = false;
       foreach(var scope in history.Worktrees.Scopes)
       {
@@ -148,14 +148,9 @@ sealed class SessionHistoryPicker : Panel
          _scopeButtons.Children.Add(button);
       }
 
-      foreach(var agentCli in history.AgentClis)
-      {
-         _agentClisListed.Add(agentCli);
-         _agentCliToggles.Children.Add(TheToggleOf(agentCli));
-      }
+      foreach(var agentCli in history.AgentClis) _agentCliToggles.Children.Add(TheToggleOf(agentCli));
 
       _agentCliToggles.IsVisible = TellsTheAgentClisApart;
-      Refresh();
    }
 
    /// <summary>Lists the sessions of <paramref name="agentCli"/>, as switching its toggle on does, and gives the search box the focus back.</summary>
@@ -172,9 +167,7 @@ sealed class SessionHistoryPicker : Panel
       var toggle = new CheckBox { Content = agentCli.Name, Tag = agentCli, IsChecked = true };
       toggle.IsCheckedChanged += (_, _) =>
       {
-         if(toggle.IsChecked == true) _agentClisListed.Add(agentCli);
-         else _agentClisListed.Remove(agentCli);
-         Refresh();
+         _model.ListSessionsOf(agentCli, toggle.IsChecked == true);
          _search.Focus();
       };
       return toggle;
@@ -183,16 +176,15 @@ sealed class SessionHistoryPicker : Panel
    /// <summary>Lists the entries <paramref name="scope"/> covers, as a click on its button does, and gives the search box the focus back.</summary>
    public void List(SessionHistoryScope scope)
    {
-      Scope = scope;
+      _model.List(scope);
       foreach(var button in _scopeButtons.Children.OfType<RadioButton>()) button.IsChecked = Equals(button.Content, scope.Label);
-      Refresh();
       _search.Focus();
    }
 
    /// <summary>Chooses the selected entry, as Enter does: closes the picker and tells of the choice, unless the entry can't be chosen.</summary>
    public void ChooseTheSelected()
    {
-      if(_list.SelectedItem is not SessionHistoryEntry { Where.CanBeChosen: true } chosen) return;
+      if(_model.Choice is not {} chosen) return;
 
       Close();
       Chosen?.Invoke(chosen);
@@ -205,15 +197,6 @@ sealed class SessionHistoryPicker : Panel
 
       IsVisible = false;
       Closed?.Invoke();
-   }
-
-   void Refresh()
-   {
-      if(_history is null) return;
-
-      var listed = _history.Listed(Scope, Filter, _agentClisListed);
-      _list.ItemsSource = listed;
-      _list.SelectedIndex = listed.Count > 0 ? 0 : -1;
    }
 
    void TakeAKey(object? sender, KeyEventArgs key)
@@ -232,10 +215,8 @@ sealed class SessionHistoryPicker : Panel
 
    void MoveTheSelection(int by)
    {
-      if(Listed.Count == 0) return;
-
-      _list.SelectedIndex = Math.Clamp(_list.SelectedIndex + by, 0, Listed.Count - 1);
-      _list.ScrollIntoView(_list.SelectedIndex);
+      _model.MoveSelection(by);
+      if(_model.Selected >= 0) _list.ScrollIntoView(_model.Selected);
    }
 
    /// <summary>

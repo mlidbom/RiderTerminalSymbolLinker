@@ -47,8 +47,6 @@ sealed class InputBoxOfTheChat : ChatComposer
    public IReadOnlyList<MessageOnItsWay> MessagesOnTheirWay => _input.MessagesOnTheirWay;
    public event Action? MessagesOnTheirWayChanged;
    public event Action? SentASlashCommand;
-   public void Seen(IReadOnlyList<ShownInTheChat> conversation) => _input.Seen(conversation);
-   public IReadOnlyList<PartOfAMessage> AsSaved => _input.AsSaved;
 
    void Refresh()
    {

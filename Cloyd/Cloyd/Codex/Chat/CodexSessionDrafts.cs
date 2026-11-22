@@ -4,7 +4,7 @@ namespace Cloyd.Codex.Chat;
 
 /// <summary>The drafts of the Codex sessions this terminal has shown. Text typed before the first ID
 /// appears belongs to that first session.</summary>
-sealed class CodexDraftsOfATab
+sealed class CodexSessionDrafts
 {
    readonly Dictionary<CodexSessionId, CodexSessionDraft> _bySession = [];
    CodexSessionDraft _beforeTheSessionIsKnown = new();

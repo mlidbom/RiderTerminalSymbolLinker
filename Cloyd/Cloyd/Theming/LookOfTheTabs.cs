@@ -39,7 +39,7 @@ static class LookOfTheTabs
    /// The resources the theme draws the tabs with, the tabs starting <paramref name="roomBeforeTheTabs"/> logical pixels
    /// into the strip, after what is before them, such as the buttons that start a session and open the history.
    /// </summary>
-   public static ResourceDictionary AsResources(double roomBeforeTheTabs)
+   public static ResourceDictionary AsResources(double roomBeforeTheTabs, double roomAfterTheTabs = 0)
    {
       var resources = new ResourceDictionary
       {
@@ -47,7 +47,7 @@ static class LookOfTheTabs
          ["TabItemMinHeight"] = HowHighATabIs,
          ["TabItemHeaderMinHeight"] = HowHighATabIs,
          ["TabItemHeaderCornerRadius"] = new CornerRadius(8, 8, 0, 0),
-         ["TabControlTopPlacementItemMargin"] = new Thickness(roomBeforeTheTabs, RoomAboveTheTabs, 0, 0),
+         ["TabControlTopPlacementItemMargin"] = new Thickness(roomBeforeTheTabs, RoomAboveTheTabs, roomAfterTheTabs, 0),
          ThemeDictionaries =
          {
             [ThemeVariant.Light] = InThe(ThemeVariant.Light),

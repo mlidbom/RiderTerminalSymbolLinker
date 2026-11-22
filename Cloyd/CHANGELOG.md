@@ -7,6 +7,12 @@ All notable changes to Cloyd are documented here. The format follows
 ## [0.1.0]
 
 ### Added
+- **Projects Dashboard shows the sessions of every project in one window.** Open it at the far right of a
+  project window's tab strip. Select a session to read its chat, write or send a message, or bring its
+  terminal here with its scrollback. The project tab and dashboard share the same draft, including
+  pasted text and images. The tree marks projects and sessions waiting for you and includes projects
+  whose windows are closed. Start sessions with a project's **+**, end them with **×**, and open the session
+  history with **Ctrl+Alt+Shift+Y**. Sessions running outside a host can be read when their chat is available.
 - **Drag a tab header to rearrange sessions in a project window.** A marker shows where the tab will land,
   including on a wrapped row. Release to move it or press Escape to cancel. The window remembers the new
   order when it reopens, and Ctrl+Tab follows that order.

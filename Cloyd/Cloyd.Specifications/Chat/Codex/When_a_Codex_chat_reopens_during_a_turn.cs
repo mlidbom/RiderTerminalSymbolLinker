@@ -38,7 +38,7 @@ public class When_a_Codex_chat_reopens_during_a_turn : SpecificationOpeningWindo
          ContextUsedPercent = 64, WeeklyRemainingPercent = 15, UsedTokens = 1_130_000, TotalInputTokens = 141_000_000, TotalOutputTokens = 172_000,
          PermissionProfile = ":workspace", ApprovalPolicy = "on-request", ApprovalsReviewer = "user"
       };
-      var window = Open(() => new Window { Width = 650, Height = 530, Content = new ChatOfACodexSession(hub, new PastedImages(new DirectoryInfo(Path.GetTempPath())), new CodexDraftsOfATab()) });
+      var window = Open(() => new Window { Width = 650, Height = 530, Content = new ChatOfACodexSession(hub, new PastedImages(new DirectoryInfo(Path.GetTempPath())), new CodexSessionDrafts()) });
       var chat = OnTheUIThread(() => (ChatOfACodexSession)window.Content!);
       OnTheUIThread(() => chat.Show(session, new RunningCodex(session, "The chat", null, new StatusOfACodex("busy"))));
       var prompt = new ShownInTheChat.Prompt("prompt", "Check the result");
