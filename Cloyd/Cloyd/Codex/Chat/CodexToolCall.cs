@@ -1,5 +1,4 @@
 using Avalonia.Controls;
-using Cloyd.Theming;
 using Cloyd.Chat.Views;
 using static Cloyd.Chat.Views.LinesOfTheChat;
 
@@ -29,7 +28,7 @@ sealed record CodexToolCall(string Id, string Label, CodexToolCallDetails Detail
    static Control LineOfPatch(string line)
    {
       var shown = new Border { Child = InMonospace(line) };
-      var ground = line.StartsWith('+') ? ColoursOfTheChat.GroundOfAnAddedLine : line.StartsWith('-') ? ColoursOfTheChat.GroundOfARemovedLine : (ColourOfTheTheme?)null;
+      var ground = line.StartsWith('+') ? ColoursOfTheChat.GroundOfAnAddedLine : line.StartsWith('-') ? ColoursOfTheChat.GroundOfARemovedLine : null;
       return ground?.AsTheBackgroundOf(shown) ?? shown;
    }
 }

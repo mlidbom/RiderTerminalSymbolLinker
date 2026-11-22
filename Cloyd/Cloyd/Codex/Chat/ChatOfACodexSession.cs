@@ -65,7 +65,7 @@ sealed class ChatOfACodexSession : SessionChat
    protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
    {
       base.OnPropertyChanged(change);
-      if(change.Property == IsVisibleProperty && InputBox is not null) FollowWhileShown();
+      if(change.Property == IsVisibleProperty && TopLevel.GetTopLevel(this) is not null) FollowWhileShown();
    }
 
    void StopFollowing()
