@@ -668,7 +668,7 @@ word for every agent CLI's; "thread" only in code that speaks Codex's app-server
   CLI, as the first tab of it needs it).
 - **Specified** against the sandbox hub, which serves Codex sessions through the stand-in for Codex
   (`~/.claude/src/StandInForCodex`, first on the sessions' shell `PATH`): a new Codex session in a tab, named as Magnus
-  named it, its spinner while the stand-in is busy; the picker's marks and toggles over sessions of both, and resuming a
+  named it, its pulsing dot while the stand-in is busy; the picker's marks and toggles over sessions of both, and resuming a
   Codex session from it; saved Codex tabs brought back after their hosts are gone; the + offering both. A Codex session
   on disk is written as the stand-in keeps it (`CodexSessionOfASpecification`, the stand-in's `RecordOfAThread`, a
   format gpt-collaborators keep as a contract with these specifications).
@@ -721,7 +721,10 @@ The Claude Code `SendMessage` tool, Peers' `send_to_peer` and Codex's native `se
 each appear once as outgoing messages. Codex's native incoming delegations are identified by the tool that
 delivered them and its envelope. Other tools stay in the expandable tool-call rows.
 
-In Codex Chat the active tool and the turn's progress sit above the composer. The turn and item clocks come from
+In Codex Chat the active tool and the turn's progress sit above the composer. The blue `CodexProgressDot` there
+and in the tab header grows and shrinks during a turn. Between turns, the header keeps a still dot for Codex
+and a warm star for Claude Code. Each indicator occupies the same space through a change of activity.
+The turn and item clocks come from
 Codex, so opening Chat halfway through a command preserves its elapsed time. A completed turn uses the same
 duration and local time formats as Claude Code Chat. An older history can lack those measurements.
 

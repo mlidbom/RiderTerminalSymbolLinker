@@ -7,11 +7,14 @@ All notable changes to Cloyd are documented here. The format follows
 ## [0.1.0]
 
 ### Added
+- **A warm star marks Claude Code tabs and a blue dot marks Codex tabs, even when idle.** During a turn,
+  Claude’s star spins and the Codex dot slowly grows and shrinks. Codex Chat shows the same pulse above its input box.
+  The title and close button stay in place. A grey star still marks a Claude Code session with background work.
 - **Drag a tab header to rearrange sessions in a project window.** A marker shows where the tab will land,
   including on a wrapped row. Release to move it or press Escape to cancel. The window remembers the new
   order when it reopens, and Ctrl+Tab follows that order.
 - **Codex Chat shows live progress above the input box and the configured status line below it.** While Codex
-  works, a spinner shows its activity, elapsed time and command count. The latest active tool has its own line,
+  works, a pulsing dot accompanies its activity, elapsed time and command count. The latest active tool has its own line,
   with its input and elapsed time. Completed turns show how long they took and when they finished, including
   in saved conversations when Codex recorded the times.
   The footer wraps to fit the window. It shows the model and effort, directory, context used,
@@ -140,7 +143,7 @@ All notable changes to Cloyd are documented here. The format follows
   from the tooling that hosts Codex on a machine where npm installed Codex, whether any Codex session runs or not; else
   Claude Code alone, with no choice to make. With an older hub that offers Codex terminals only, the tab keeps its
   terminal and Ctrl+H leaves it there. It is titled with the session's name, else
-  "Codex", with the spinner while Codex works. A tab whose host runs Claude Code and then Codex, or the other way round,
+  "Codex", with a pulsing dot while Codex works. A tab whose host runs Claude Code and then Codex, or the other way round,
   follows the one that runs.
   - **The history picker lists Codex sessions too,** in one list with Claude Code's, most recently used first, each
     marked **Claude Code** or **Codex**. A toggle for each, both on as the picker opens, lists its sessions or leaves

@@ -6,7 +6,6 @@ using Avalonia.Media;
 using Avalonia.Threading;
 using ClaudeTooling.SessionHost.Protocol;
 using Cloyd.Chat;
-using Cloyd.Chat.Status;
 using Cloyd.Codex;
 using Cloyd.Codex.Chat;
 using Cloyd.ClaudeCode;
@@ -34,8 +33,7 @@ sealed class SessionTab : TabItem
 {
    AttachmentToASessionHost? _attachment;
    readonly TextBlock _title;
-   readonly SpinnerOfClaudeCode _spinner = new();
-   readonly MarkerOfBackgroundWork _backgroundWork = new();
+   readonly IndicatorOfASessionTab _indicator = new();
    readonly TextBlock _notice = new() { IsVisible = false, Foreground = Brushes.Orange, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(8, 4) };
    readonly ToggleButton _showTheChat = SwitchTo("Chat", TipOfTheChatsSwitch);
    readonly ToggleButton _showTheTerminal = SwitchTo("Terminal", TipOfTheTerminalsSwitch);
@@ -129,14 +127,14 @@ sealed class SessionTab : TabItem
    /// <summary>The tab's title: the name of the session that runs in its host, or ran in it last.</summary>
    public string Title => _title.Text!;
 
-   /// <summary>Whether its header shows that its session works, with a spinner before its title: while the session that runs in it is busy.</summary>
-   public bool ShowsThatItsSessionWorks => _spinner.IsTurning;
+   /// <summary>Whether the <see cref="IndicatorOfASessionTab"/> before the title shows a turn in progress.</summary>
+   public bool ShowsThatItsSessionWorks => _indicator.ShowsThatItsSessionWorks;
 
    /// <summary>
    /// What the marker in its header tells, while it shows that background work runs and Claude doesn't work, such as
    /// "1 shell" and the shell's command: null while it doesn't show (<see cref="MarkerOfBackgroundWork"/>).
    /// </summary>
-   public string? BackgroundWorkMarked => _backgroundWork.Tip;
+   public string? BackgroundWorkMarked => _indicator.BackgroundWorkMarked;
 
    /// <summary>What the tab tells above its terminal, as why the hub didn't start Claude Code in it: null while it tells nothing.</summary>
    public string? Notice => _notice.IsVisible ? _notice.Text : null;
@@ -158,8 +156,6 @@ sealed class SessionTab : TabItem
       {
          field = value;
          ClaudeCodeChat.ClaudeCode = value as RunningClaudeCode;
-         _backgroundWork.Show(value as RunningClaudeCode);
-         _spinner.IsTurning = value?.IsBusy == true;
          if(value is not null) LatestSession = value.Session;
          CodexChat?.Show((LatestSession as CodexSession)?.Id, value as RunningCodex);
          FollowItsAgentCli();
@@ -258,6 +254,7 @@ sealed class SessionTab : TabItem
    /// </summary>
    void FollowItsAgentCli()
    {
+      _indicator.Show(AgentCli, SessionRunningInIt);
       if(AgentCli == AgentCli.Codex && _codexChatInTheHub is {} hub && CodexChat is null)
       {
          CodexChat = new ChatOfACodexSession(hub, _pastedImages, _codexDrafts) { IsVisible = false };
@@ -280,7 +277,7 @@ sealed class SessionTab : TabItem
       var close = new Button { Content = "×", Padding = new Thickness(6, 0), Background = Brushes.Transparent, VerticalAlignment = VerticalAlignment.Center };
       ToolTip.SetTip(close, "End the session");
       close.Click += (_, _) => ClosedByMagnus?.Invoke(this);
-      return new StackPanel { Orientation = Orientation.Horizontal, Spacing = 2, Children = { _spinner, _backgroundWork, _title, close } };
+      return new StackPanel { Orientation = Orientation.Horizontal, Spacing = 2, Children = { _indicator, _title, close } };
    }
 
    static Control Docked(Control control, Dock dock)

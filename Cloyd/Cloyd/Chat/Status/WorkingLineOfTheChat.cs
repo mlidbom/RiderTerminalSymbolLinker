@@ -30,8 +30,6 @@ sealed class WorkingLineOfTheChat : UserControl
    /// <summary>What the line says Claude does while the hub tells of no turn under way.</summary>
    public const string Working = "Working…";
 
-   static readonly IBrush ClaudesOrange = new SolidColorBrush(Color.Parse("#D97757"));
-
    readonly TextBlock _says = new() { FontSize = 13, TextTrimming = TextTrimming.CharacterEllipsis, VerticalAlignment = VerticalAlignment.Center };
 
    /// <summary>Counts the time the turn has taken, a second at a time.</summary>
@@ -82,7 +80,7 @@ sealed class WorkingLineOfTheChat : UserControl
 
       var turn = _claudeCode?.TurnUnderWay;
       _says.Inlines!.Clear();
-      _says.Inlines.Add(new Run(turn?.Activity.AsShown ?? Working) { FontWeight = FontWeight.SemiBold, Foreground = ClaudesOrange });
+      _says.Inlines.Add(ColoursOfTheChat.ClaudeActivity.AsTheForegroundOf(new Run(turn?.Activity.AsShown ?? Working) { FontWeight = FontWeight.SemiBold }));
       _says.Inlines.Add(ColoursOfTheChat.Grey.AsTheForegroundOf(new Run($" ({string.Join(" · ", HowTheTurnGoes())})")));
 
       IEnumerable<string> HowTheTurnGoes()
