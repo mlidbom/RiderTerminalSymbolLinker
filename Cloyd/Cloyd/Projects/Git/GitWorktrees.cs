@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Text;
 
 namespace Cloyd.Projects.Git;
 
@@ -11,7 +12,7 @@ sealed record GitWorktrees(Project Repository, IReadOnlyList<GitWorktree> Checko
       if(!Directory.Exists(folder.Folder)) return null;
       var start = new ProcessStartInfo("git", ["-C", folder.Folder, "worktree", "list", "--porcelain", "-z"])
       {
-         CreateNoWindow = true, RedirectStandardOutput = true, RedirectStandardError = true,
+         CreateNoWindow = true, RedirectStandardOutput = true, RedirectStandardError = true, StandardOutputEncoding = Encoding.UTF8,
          Environment = { ["LC_ALL"] = "C" }
       };
       using var git = Process.Start(start)!;

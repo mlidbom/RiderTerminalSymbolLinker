@@ -1,59 +1,92 @@
 using System.Collections.ObjectModel;
 using Cloyd.Projects;
+using Cloyd.Saving;
 
 namespace Cloyd.ProjectsDashboard;
 
-/// <summary>Every session the hub lists, grouped by its project even when its project window is closed.</summary>
-sealed class DashboardTree(ProjectWindows windows)
+/// <summary>The tab strip's selection and visible rows. Refreshing membership or rearranging a group
+/// keeps the same <see cref="ActiveSession"/> and its view while the session remains in the hierarchy.</summary>
+sealed class DashboardTree
 {
-   public ObservableCollection<DashboardProject> Projects { get; } = [];
-   public IEnumerable<DashboardSession> Sessions => Projects.SelectMany(it => it.Sessions);
+   readonly ProjectWindows _windows;
+   readonly DashboardWorktrees _worktrees = new();
+   readonly DashboardHierarchy _hierarchy;
+   readonly DashboardArrangement _arrangement = new();
+
+   public DashboardTree(ProjectWindows windows)
+   {
+      _windows = windows;
+      _hierarchy = new DashboardHierarchy(windows, _worktrees);
+   }
+
+   public IEnumerable<DashboardProject> Projects => _hierarchy.Projects;
+   public IEnumerable<DashboardSession> Sessions => RowsInOrder(_hierarchy.Roots, expandAll: true).OfType<DashboardSession>();
+   public ObservableCollection<DashboardRow> VisibleRows { get; } = [];
+   public SavedDashboardArrangement Arrangement { get => _arrangement.Saved; set => _arrangement.Saved = value; }
+   public DashboardSession? ActiveSession { get; private set; }
+   public event Action? ActiveSessionChanged;
+
+   public Task DiscoverWorktrees(Action refreshed, Action<Exception> failed, CancellationToken cancellation) =>
+      _worktrees.Discover(_windows, Arrangement, refreshed, failed, cancellation);
 
    public void Refresh()
    {
-      var sessions = windows.Sessions;
-      var live = new HashSet<DashboardSession>();
-      var groups = windows.Open.Select(it => Group(it.Project)).ToHashSet();
-      foreach(var host in sessions.Hosts)
-      {
-         var group = Group(host.Project ?? new Project(host.Directory));
-         groups.Add(group);
-         var row = group.Sessions.FirstOrDefault(it => it.Host?.Id == host.Id) ?? new DashboardSession(group);
-         var running = sessions.Running.FirstOrDefault(it => it.SessionHost == host.Id);
-         var latest = sessions.Known(host.Id)?.LatestSession ?? row.Latest;
-         if(latest is null && row.Host is null) latest = sessions.Saved(host)?.Session;
-         row.Update(host, running, latest);
-         Keep(row);
-      }
-      foreach(var running in sessions.Running.Where(it => it.SessionHost is null))
-      {
-         var group = Group(null);
-         groups.Add(group);
-         var row = group.Sessions.FirstOrDefault(it => it.Latest?.Id == running.Session.Id) ?? new DashboardSession(group);
-         row.Update(null, running, running.Session);
-         Keep(row);
-      }
-
-      foreach(var group in Projects.ToArray())
-      {
-         foreach(var gone in group.Sessions.Where(it => !live.Contains(it)).ToArray()) group.Sessions.Remove(gone);
-         if(!groups.Contains(group)) Projects.Remove(group);
-         else group.UpdateWaiting();
-      }
-
-      void Keep(DashboardSession row)
-      {
-         if(!row.Group.Sessions.Contains(row)) row.Group.Sessions.Add(row);
-         live.Add(row);
-      }
+      _hierarchy.Refresh();
+      _arrangement.Restore(_hierarchy);
+      if(ActiveSession is {} active && !_hierarchy.Contains(active)) Select(null);
+      else ShowExpandedGroups();
    }
 
-   DashboardProject Group(Project? project)
+   public void Select(DashboardSession? row)
    {
-      if(Projects.FirstOrDefault(it => Equals(it.Project, project)) is {} existing) return existing;
-      var group = new DashboardProject(project);
-      var index = Projects.TakeWhile(it => it.Project is not null && (project is null || string.Compare(it.Name, group.Name, StringComparison.OrdinalIgnoreCase) <= 0)).Count();
-      Projects.Insert(index, group);
-      return group;
+      if(ActiveSession == row) return;
+      if(ActiveSession is {} old) old.IsActive = false;
+      ActiveSession = row;
+      if(row is not null) row.IsActive = true;
+      ShowExpandedGroups();
+      ActiveSessionChanged?.Invoke();
+   }
+
+   public void Toggle(DashboardGroup group)
+   {
+      _arrangement.Toggle(group);
+      ShowExpandedGroups();
+   }
+
+   public void Move(DashboardRow row, DashboardRow neighbour, bool after)
+   {
+      _arrangement.Move(_hierarchy, row, neighbour, after);
+      ShowExpandedGroups();
+   }
+
+   /// <summary>A collapsed group exposes just the active tab beneath its heading.
+   /// Reuse existing row containers whenever their place in the visible list stays the same.</summary>
+   void ShowExpandedGroups()
+   {
+      var wanted = RowsInOrder(_hierarchy.Roots, expandAll: false).ToArray();
+      for(var i = 0; i < wanted.Length; i++)
+      {
+         if(i < VisibleRows.Count && VisibleRows[i] == wanted[i]) continue;
+         var old = VisibleRows.IndexOf(wanted[i]);
+         if(old >= 0) VisibleRows.Move(old, i);
+         else VisibleRows.Insert(i, wanted[i]);
+      }
+      while(VisibleRows.Count > wanted.Length) VisibleRows.RemoveAt(VisibleRows.Count - 1);
+   }
+
+   /// <summary>Walks the arranged rows in the same order for the tab strip and Ctrl+Tab.
+   /// Navigation also visits the sessions hidden under a collapsed heading.</summary>
+   IEnumerable<DashboardRow> RowsInOrder(IEnumerable<DashboardRow> rows, bool expandAll)
+   {
+      foreach(var row in rows)
+      {
+         yield return row;
+         if(row is not DashboardGroup group) continue;
+         if(expandAll || group.Expanded)
+         {
+            foreach(var child in RowsInOrder(group.Children, expandAll)) yield return child;
+         }
+         else if(ActiveSession?.BelongsTo(group) == true) yield return ActiveSession;
+      }
    }
 }

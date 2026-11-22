@@ -4,5 +4,5 @@ namespace Cloyd.Projects.Git;
 sealed record GitWorktree(Project Root, string? Branch, bool IsMain)
 {
    public string Name => IsMain ? Branch ?? Root.Name : Root.Name;
-   public string Description => $"{Branch ?? "Detached HEAD"}{Environment.NewLine}{Root.Folder}";
+   public string Description => Branch is {} branch ? $"Branch {branch}" : "Detached HEAD";
 }

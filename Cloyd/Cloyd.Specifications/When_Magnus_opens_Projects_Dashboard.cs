@@ -23,6 +23,7 @@ public class When_Magnus_opens_Projects_Dashboard : SpecificationOpeningWindows
    public When_Magnus_opens_Projects_Dashboard()
    {
       _project = Sandbox.Project("Project with a window");
+      GitRepositoryOfASpecification.In(new DirectoryInfo(_project.Project.Folder));
       _projectWindow = Open(_project.Window);
       WaitUntil(() => _projectWindow.BringingBackTheTabs.IsCompleted, "the project window restored its tabs");
       DoneOnTheUIThread(() => _projectWindow.StartANewSession(new NewSession(AgentCli.Codex, "Codex in both windows")));
@@ -35,13 +36,13 @@ public class When_Magnus_opens_Projects_Dashboard : SpecificationOpeningWindows
    }
 
 
-   [XF] public void the_tree_shows_each_busy_agents_own_mark_and_clears_it_at_idle()
+   [XF] public void the_vertical_tabs_keep_each_agents_mark_and_animate_it_only_while_working()
    {
       DoneOnTheUIThread(() => _projectWindow.StartANewSession(new NewSession(AgentCli.ClaudeCode, "Claude beside Codex")));
       var claude = OnTheUIThread(() => _projectWindow.SelectedTab!);
       WaitUntil(() => RowOf(claude) is not null && RowOf(_tab) is not null && claude.SessionRunningInIt is not null && claude.Terminal.TextShown.Contains("New session"),
                 "the dashboard showed both sessions");
-      OnTheUIThread(() => (VisibleMarks(claude), VisibleMarks(_tab))).Must().Be((0, 0));
+      OnTheUIThread(() => (VisibleMarks(claude), VisibleMarks(_tab))).Must().Be((1, 1));
 
       foreach(var tab in new[] { claude, _tab })
          DoneOnTheUIThread(() => tab.Terminal.SendInputAsync("Be busy for 8 seconds\r"));
@@ -49,9 +50,10 @@ public class When_Magnus_opens_Projects_Dashboard : SpecificationOpeningWindows
                    && RowOf(_tab)!.GetVisualDescendants().OfType<CodexProgressDot>().Any(it => it.IsEffectivelyVisible && it.IsPulsing),
                 "the dashboard showed Claude's spinner and Codex's pulsing dot");
       OnTheUIThread(() => (VisibleMarks(claude), VisibleMarks(_tab))).Must().Be((1, 1));
-      WaitUntil(() => VisibleMarks(claude) == 0 && VisibleMarks(_tab) == 0, "both dashboard indicators disappeared when the turns ended");
+      WaitUntil(() => RowOf(claude)!.FindDescendantOfType<SpinnerOfClaudeCode>() is { IsTurning: false, IsEffectivelyVisible: true }
+                   && RowOf(_tab)!.FindDescendantOfType<CodexProgressDot>() is { IsPulsing: false, IsEffectivelyVisible: true }, "the two idle agent marks remained in their tabs");
 
-      TreeViewItem? RowOf(SessionTab tab) => _dashboard.GetVisualDescendants().OfType<TreeViewItem>()
+      ListBoxItem? RowOf(SessionTab tab) => _dashboard.GetVisualDescendants().OfType<ListBoxItem>()
         .SingleOrDefault(it => it.DataContext is DashboardSession row && row.Host?.Id == tab.Host.Id);
 
       int VisibleMarks(SessionTab tab) => RowOf(tab)!.GetVisualDescendants().OfType<Control>()
@@ -61,6 +63,7 @@ public class When_Magnus_opens_Projects_Dashboard : SpecificationOpeningWindows
    [XF] public void a_host_with_no_open_project_window_is_listed_without_attaching_to_it()
    {
       var other = Sandbox.Project("Closed project");
+      GitRepositoryOfASpecification.In(new DirectoryInfo(other.Project.Folder));
       var host = other.StartASessionHost(other.LabelOfCloydsHosts);
       WaitUntil(() => _dashboard.Tree.Sessions.Any(it => it.Host?.Id == host.Id && it.Group.Project!.Equals(other.Project)), "the shell appeared under its project");
       other.SessionHost(host.Id)!.Attached.Must().BeFalse();
@@ -99,6 +102,7 @@ public class When_Magnus_opens_Projects_Dashboard : SpecificationOpeningWindows
    [XF] public void reopening_the_dashboard_restores_the_host_selected_in_another_project()
    {
       var other = Sandbox.Project("Another project");
+      GitRepositoryOfASpecification.In(new DirectoryInfo(other.Project.Folder));
       var host = other.StartASessionHost(other.LabelOfCloydsHosts);
       WaitUntil(() => _dashboard.Tree.Sessions.Any(it => it.Host?.Id == host.Id), "the second project's shell appeared");
       OnTheUIThread(() => _dashboard.Select(_dashboard.Tree.Sessions.Single(it => it.Host?.Id == host.Id)));
@@ -118,7 +122,7 @@ public class When_Magnus_opens_Projects_Dashboard : SpecificationOpeningWindows
    [XF] public void a_session_waiting_for_approval_marks_its_project_even_when_collapsed()
    {
       var group = OnTheUIThread(() => _dashboard.Tree.Projects.Single(it => it.Project?.Equals(_project.Project) == true));
-      OnTheUIThread(() => ((TreeViewItem)_dashboard.GetVisualDescendants().OfType<TreeView>().Single().ContainerFromItem(group)!).IsExpanded = false);
+      OnTheUIThread(() => _dashboard.Tree.Toggle(group));
       OnTheUIThread(_tab.FocusWhatItShows);
       Type(_projectWindow, "Ask for approval");
       Press(_projectWindow, Key.Enter, PhysicalKey.Enter, RawInputModifiers.Control);

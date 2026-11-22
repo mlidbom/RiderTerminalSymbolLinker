@@ -35,7 +35,7 @@ sealed partial class ProjectsDashboardWindow : Window, ISessionHistoryTarget
    public DashboardTree Tree { get; }
    public SessionView? View => SelectedSession.Content as SessionView;
    public SessionHistoryPicker HistoryPicker => _history;
-   Project SelectedProject => (ProjectTree.SelectedItem as DashboardProject ?? (ProjectTree.SelectedItem as DashboardSession)?.Group)?.Project ?? _openedFrom;
+   Project SelectedProject => Tree.ActiveSession?.Parent?.StartFolder ?? _openedFrom;
 
    public ProjectsDashboardWindow(ProjectWindows windows, Project openedFrom)
    {
@@ -44,6 +44,8 @@ sealed partial class ProjectsDashboardWindow : Window, ISessionHistoryTarget
       Tree = new DashboardTree(windows);
       InitializeComponent();
       DataContext = Tree;
+      Tree.ActiveSessionChanged += ShowActiveSession;
+      Tabs.TabChosen += Select;
       Overlays.Children.Add(_history);
       _history.Chosen += entry => _ = ReportFailure(() => entry.Choose(this));
       _history.Closed += () => View?.FocusWhatItShows();
@@ -55,6 +57,7 @@ sealed partial class ProjectsDashboardWindow : Window, ISessionHistoryTarget
    {
       base.OnOpened(e);
       var saved = SavedProjectsDashboard.Read(Sessions.Folder.ProjectsDashboard);
+      Tree.Arrangement = saved.Arrangement ?? new();
       _desktop = saved.Desktop;
       if(_desktop is {} desktop) NativeWindow.Of(this)?.MoveTo(desktop);
       _restoreSelection = saved.Selected ?? _windows.Open.FirstOrDefault(it => it.Project.Equals(_openedFrom))?.SelectedTab?.Host.Id;
@@ -70,6 +73,7 @@ sealed partial class ProjectsDashboardWindow : Window, ISessionHistoryTarget
       _save.Stop();
       _closed.Cancel();
       Sessions.Changed -= Refresh;
+      Tree.ActiveSessionChanged -= ShowActiveSession;
       Sessions.Failed -= Tell;
       Save();
       CloseView();
@@ -83,8 +87,8 @@ sealed partial class ProjectsDashboardWindow : Window, ISessionHistoryTarget
       try
       {
          _desktop = NativeWindow.Of(this)?.Desktop ?? _desktop;
-         var outside = ProjectTree.SelectedItem as DashboardSession;
-         new SavedProjectsDashboard(View?.Host.Id ?? _restoreSelection, _desktop, outside?.Host is null ? outside?.Latest : null).Write(Sessions.Folder.ProjectsDashboard);
+         var outside = Tree.ActiveSession;
+         new SavedProjectsDashboard(View?.Host.Id ?? _restoreSelection, _desktop, outside?.Host is null ? outside?.Latest : null, Tree.Arrangement).Write(Sessions.Folder.ProjectsDashboard);
       }
       catch(Exception failure) { Tell(failure); }
    }
@@ -97,26 +101,33 @@ sealed partial class ProjectsDashboardWindow : Window, ISessionHistoryTarget
 
    void Refresh()
    {
+      _ = ReportFailure(() => Tree.DiscoverWorktrees(RefreshRows, Tell, _closed.Token));
+      RefreshRows();
+   }
+
+   void RefreshRows()
+   {
       Tree.Refresh();
       if(_restoringSelection && Sessions.HasReadHosts && (_restoreOutsideHost is null || Sessions.HasReadRunningSessions))
       {
          var row = Tree.Sessions.FirstOrDefault(it => _restoreOutsideHost is not null && it.Latest?.Id == _restoreOutsideHost.Id)
                    ?? Tree.Sessions.FirstOrDefault(it => _restoreSelection is not null && it.Host?.Id == _restoreSelection)
-                   ?? Tree.Sessions.FirstOrDefault(it => it.Group.Project?.Equals(_openedFrom) == true)
+                   ?? Tree.Sessions.FirstOrDefault(it => it.Host?.Project?.Equals(_openedFrom) == true)
                    ?? Tree.Sessions.FirstOrDefault();
          _restoringSelection = false;
          _restoreSelection = null;
          if(row is not null) Select(row);
       }
       if(View is {} view) Sessions.ShowPeerNames(view);
-      if(_outsideHost is {} outside && ProjectTree.SelectedItem is DashboardSession { Running: {} running }) outside.Update(running);
+      if(_outsideHost is {} outside && Tree.ActiveSession is { Running: {} running }) outside.Update(running);
    }
 
-   void SelectionChanged(object? sender, SelectionChangedEventArgs e)
+   void ShowActiveSession()
    {
-      if(!ReferenceEquals(e.Source, ProjectTree)) return;
       CloseView();
-      if(ProjectTree.SelectedItem is not DashboardSession row) return;
+      if(Tree.ActiveSession is not {} row) return;
+      Tabs.SelectedItem = row;
+      Tabs.ScrollIntoView(row);
       _restoringSelection = false;
       _restoreSelection = null;
       if(row.Host is not {} host)
@@ -140,8 +151,7 @@ sealed partial class ProjectsDashboardWindow : Window, ISessionHistoryTarget
 
    void SelectedHostEnded(string why)
    {
-      CloseView();
-      ProjectTree.SelectedItem = null;
+      Tree.Select(null);
    }
 
    void CloseView()
@@ -157,9 +167,13 @@ sealed partial class ProjectsDashboardWindow : Window, ISessionHistoryTarget
 
    public void Select(DashboardSession row)
    {
-      if(ProjectTree.ContainerFromItem(row.Group) is TreeViewItem group) group.IsExpanded = true;
-      ProjectTree.SelectedItem = row;
-      Dispatcher.UIThread.Post(() => ProjectTree.TreeContainerFromItem(row)?.BringIntoView(), DispatcherPriority.Loaded);
+      if(Tree.ActiveSession != row) Tree.Select(row);
+      else
+      {
+         Tabs.SelectedItem = row;
+         Tabs.ScrollIntoView(row);
+         View?.FocusWhatItShows();
+      }
    }
 
    public WindowInTheAnswer? ShowSession(ClaudeCodeSessionId? session, ClaudeCodeProcessId? process)
@@ -167,10 +181,10 @@ sealed partial class ProjectsDashboardWindow : Window, ISessionHistoryTarget
       var rows = Tree.Sessions.Where(it => it.Host is not null).ToArray();
       var row = rows.FirstOrDefault(it => process is not null && it.Running is RunningClaudeCode claude && claude.Process == process)
                 ?? rows.FirstOrDefault(it => session is not null && it.Latest?.Id == session);
-      if(row?.Group.Project is not {} project) return null;
+      if(row?.Host is not {} host) return null;
       Select(row);
       BringForward();
-      return new WindowInTheAnswer(project.Folder, WindowTitle);
+      return new WindowInTheAnswer(host.Project?.Folder ?? host.Directory, WindowTitle);
    }
 
    void PrepareNewSessionButton(object? sender, RoutedEventArgs e)
@@ -181,11 +195,15 @@ sealed partial class ProjectsDashboardWindow : Window, ISessionHistoryTarget
       button.Opened += () => _ = ReportFailure(async () => button.Offer(await Sessions.Hub.AgentClisItServes(_closed.Token)));
       button.NewSessionAsked += session =>
       {
-         if(button.DataContext is DashboardProject { Project: {} project }) _ = ReportFailure(() => Start(project, session));
+         if(button.DataContext is DashboardGroup { StartFolder: {} folder } group)
+            _ = ReportFailure(() => StartInNewHost(OwningProject(group, folder), folder, null, session, session.Command));
       };
    }
 
-   public Task Start(Project project, NewSession session) => StartInNewHost(project, null, session, session.Command);
+   Project OwningProject(DashboardGroup group, Project folder) =>
+      _windows.Open.FirstOrDefault(it => it.Project.Equals(folder))?.Project ?? group.Group.Project ?? folder;
+
+   public Task Start(Project project, NewSession session) => StartInNewHost(project, project, null, session, session.Command);
 
    void ShowHost(SessionHostOfTheHub host, Session? latest, NewSession? startedAs)
    {
@@ -198,11 +216,11 @@ sealed partial class ProjectsDashboardWindow : Window, ISessionHistoryTarget
 
    public void ShowInATab(SessionHostOfTheHub host, Session session) => ShowHost(host, session, null);
 
-   public Task ResumeInANewTab(Session session) => StartInNewHost(SelectedProject, session, null, session.CommandThatResumesIt);
+   public Task ResumeInANewTab(Session session) => StartInNewHost(Tree.ActiveSession?.Host?.Project ?? SelectedProject, SelectedProject, session, null, session.CommandThatResumesIt);
 
-   async Task StartInNewHost(Project project, Session? latest, NewSession? startedAs, AgentCliCommand command)
+   async Task StartInNewHost(Project project, Project worktree, Session? latest, NewSession? startedAs, AgentCliCommand command)
    {
-      var host = await Sessions.StartHost(project, project.Folder, _closed.Token);
+      var host = await Sessions.StartHost(project, worktree.Folder, _closed.Token);
       ShowHost(host, latest, startedAs);
       var view = View!;
       _windows.Open.FirstOrDefault(it => it.Project.Equals(project))?.Include(view.Session);
@@ -220,7 +238,7 @@ sealed partial class ProjectsDashboardWindow : Window, ISessionHistoryTarget
 
    void EndSession(object? sender, RoutedEventArgs e)
    {
-      if(sender is Button { DataContext: DashboardSession { Host: {} host } })
+      if(sender is SessionTabHeader { DataContext: DashboardSession { Host: {} host } })
          _ = ReportFailure(() => Sessions.End(host.Id));
    }
 
@@ -235,7 +253,8 @@ sealed partial class ProjectsDashboardWindow : Window, ISessionHistoryTarget
 
    void TakeShortcut(object? sender, KeyEventArgs key)
    {
-      if(key is { Key: Key.Y, KeyModifiers: KeyModifiers.Control | KeyModifiers.Alt | KeyModifiers.Shift })
+      if(key.Key == Key.Escape && Tabs.CancelDrag()) key.Handled = true;
+      else if(key is { Key: Key.Y, KeyModifiers: KeyModifiers.Control | KeyModifiers.Alt | KeyModifiers.Shift })
          _ = OpenHistory();
       else if(_history.IsOpen) return;
       else if(key is { Key: Key.H, KeyModifiers: KeyModifiers.Control }) View?.SwitchBetweenTheTerminalAndTheChat();
@@ -243,7 +262,7 @@ sealed partial class ProjectsDashboardWindow : Window, ISessionHistoryTarget
       {
          var rows = Tree.Sessions.ToList();
          if(rows.Count == 0) return;
-         var index = rows.FindIndex(it => it == ProjectTree.SelectedItem);
+         var index = rows.FindIndex(it => it == Tree.ActiveSession);
          var step = key.KeyModifiers.HasFlag(KeyModifiers.Shift) ? -1 : 1;
          Select(rows[index < 0 ? step > 0 ? 0 : rows.Count - 1 : (index + step + rows.Count) % rows.Count]);
       }

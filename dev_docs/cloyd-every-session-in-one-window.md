@@ -6,12 +6,16 @@ Magnus named the window **Projects Dashboard** on 2026-11-22. The button at the 
 tab strip opens the dashboard or brings its existing window forward. A project window can close while the
 dashboard stays open. The dashboard saves its selected session and virtual desktop in `projects-dashboard.json`.
 
-- **The tree** lists hosted Claude Code and Codex sessions, including shells left running after the agent exits.
-  It uses the project in the host label, or the shell's directory for an unlabeled host. During a turn,
-  Claude Code shows its orange spinner and Codex shows a slowly pulsing blue dot. Idle rows have no activity mark.
-  A waiting session and its project are orange even when the project is collapsed. The second line
-  shows the current activity. Sessions running outside a host have a separate, dimmed group. Select one to read
-  its conversation when the hub offers chat for that agent. The editor and terminal actions belong to hosted sessions.
+- **The vertical tab strip** groups sessions under their project and then their worktree. It discovers a
+  repository from the open project or the host's actual working directory. Git's registered worktree list
+  supplies every checkout, including empty checkouts anywhere on disk. Previously seen repositories come back
+  even when their last session and project window have closed. For a folder outside Git, tabs
+  sit directly under the project. Sessions outside a host have a separate read-only group.
+- Project tabs and dashboard tabs share their heading, including the idle agent mark, busy animation,
+  title and close button. A group heading toggles expansion independently of the active session. A
+  collapsed group shows its active tab and counts of sessions, including those busy or waiting. Reordering
+  siblings moves entire groups and preserves the selected chat or terminal. Order and expansion are
+  saved with the dashboard. Only the presentation changes when Magnus rearranges a group.
 - **The selected session** uses the same `SessionView` as the project tab. Each view has its own editor,
   selection, search and scroll position. `HostedSession` owns the shared `SessionChatState`. Claude Code's
   draft, ordered sends and delivery notices are shared, as are Codex drafts and steer receipts. Both editors of
@@ -22,7 +26,7 @@ dashboard stays open. The dashboard saves its selected session and virtual deskt
   opens no connection. The first layout of its terminal starts the reader. Asking for Terminal in the other
   window reparents the existing control there. The previous view shows Chat, or a button to bring Terminal
   back when the hub offers no chat. An explicit terminal request can take over an external attach client.
-- **Session actions** include starting a Claude Code or Codex session from a project's **+**, ending a session
+- **Session actions** include starting a Claude Code or Codex session from a worktree's **+** (or a non-Git project's **+**), ending a session
   with **×**, switching Chat/Terminal with Ctrl+H, and navigating sessions with Ctrl+Tab or Ctrl+Shift+Tab.
   Ctrl+Alt+Shift+Y opens the history picker with **All projects** selected. A notification still prefers an open
   project tab and otherwise selects the hosted session in Projects Dashboard.

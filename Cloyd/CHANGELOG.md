@@ -7,6 +7,11 @@ All notable changes to Cloyd are documented here. The format follows
 ## [0.1.0]
 
 ### Added
+- **Projects Dashboard arranges sessions as vertical tabs grouped by project and worktree.** Every registered
+  worktree of a displayed Git repository is available, including empty checkouts and checkouts on another drive.
+  A worktree’s **+** starts a session there. Drag projects, worktrees or tabs to reorder siblings. Click either
+  group heading to collapse it. Its active tab stays visible and keeps its chat or terminal open. Collapsed
+  headings count the sessions working or waiting. Cloyd remembers group expansion and tab order on reopening.
 - **Coordinators can start a named Claude Code or Codex helper in a Cloyd tab.** The helper runs in the requested
   worktree and the existing tab stays selected. A repeated launch returns the original session's address.
 - **A grey star marks an idle Claude Code tab and a lighter grey dot marks an idle Codex tab.** During a turn,

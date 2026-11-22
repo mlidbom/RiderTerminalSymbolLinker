@@ -6,7 +6,7 @@ using System.Text.Json;
 namespace Cloyd.Saving;
 
 /// <summary>The host selected in Projects Dashboard and the Windows virtual desktop where Magnus left it.</summary>
-sealed record SavedProjectsDashboard(SessionHostId? Selected, VirtualDesktop? Desktop, Session? OutsideHost = null)
+sealed record SavedProjectsDashboard(SessionHostId? Selected, VirtualDesktop? Desktop, Session? OutsideHost = null, SavedDashboardArrangement? Arrangement = null)
 {
    static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web) { WriteIndented = true };
    public static SavedProjectsDashboard Read(FileWrittenWhole file) =>

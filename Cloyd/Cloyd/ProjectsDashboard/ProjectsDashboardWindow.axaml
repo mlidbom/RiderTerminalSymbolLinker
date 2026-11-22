@@ -2,63 +2,137 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:dashboard="using:Cloyd.ProjectsDashboard"
         xmlns:sessions="using:Cloyd.Sessions"
-        xmlns:status="using:Cloyd.Chat.Status"
-        xmlns:agents="using:Cloyd.Hub.RunningSessions"
-        xmlns:codex="using:Cloyd.Codex"
         x:Class="Cloyd.ProjectsDashboard.ProjectsDashboardWindow"
         x:ClassModifier="internal" x:DataType="dashboard:DashboardTree"
         Title="Projects Dashboard" Width="1400" Height="900">
+  <Window.Resources>
+    <ResourceDictionary>
+      <ResourceDictionary.ThemeDictionaries>
+        <ResourceDictionary x:Key="Light">
+          <SolidColorBrush x:Key="TabStripGround" Color="#E9E9E7"/>
+          <SolidColorBrush x:Key="ActiveTabGround" Color="#FFFFFF"/>
+          <SolidColorBrush x:Key="TabUnderPointer" Color="#DCDCD9"/>
+          <SolidColorBrush x:Key="GroupDivider" Color="#CCCCC8"/>
+          <SolidColorBrush x:Key="WaitingText" Color="#98500E"/>
+        </ResourceDictionary>
+        <ResourceDictionary x:Key="Dark">
+          <SolidColorBrush x:Key="TabStripGround" Color="#191919"/>
+          <SolidColorBrush x:Key="ActiveTabGround" Color="#303030"/>
+          <SolidColorBrush x:Key="TabUnderPointer" Color="#262626"/>
+          <SolidColorBrush x:Key="GroupDivider" Color="#373737"/>
+          <SolidColorBrush x:Key="WaitingText" Color="#ECA766"/>
+        </ResourceDictionary>
+      </ResourceDictionary.ThemeDictionaries>
+    </ResourceDictionary>
+  </Window.Resources>
   <Window.Styles>
-    <Style Selector="TreeViewItem" x:DataType="dashboard:DashboardRow">
-      <Setter Property="IsExpanded" Value="True"/>
+    <Style Selector="Border.group">
+      <Setter Property="Margin" Value="4,8,4,0"/>
+      <Setter Property="Padding" Value="6,3"/>
+      <Setter Property="MinHeight" Value="32"/>
+      <Setter Property="CornerRadius" Value="5"/>
+      <Setter Property="Background" Value="Transparent"/>
+    </Style>
+    <Style Selector="Border.group.worktree">
+      <Setter Property="Margin" Value="18,1,4,0"/>
+      <Setter Property="MinHeight" Value="28"/>
+    </Style>
+    <Style Selector="Border.projectLabel">
+      <Setter Property="Opacity" Value="0.24"/>
+    </Style>
+    <Style Selector="TextBlock.groupName">
+      <Setter Property="FontWeight" Value="SemiBold"/>
+    </Style>
+    <Style Selector="Border.group.worktree Border.projectLabel">
+      <Setter Property="Opacity" Value="0"/>
+    </Style>
+    <Style Selector="Border.group.worktree TextBlock.groupName">
+      <Setter Property="FontWeight" Value="Normal"/>
+    </Style>
+    <Style Selector="Border.session">
+      <Setter Property="Margin" Value="25,1,3,1"/>
+      <Setter Property="Padding" Value="7,2,2,2"/>
+      <Setter Property="MinHeight" Value="32"/>
+      <Setter Property="CornerRadius" Value="6"/>
+      <Setter Property="Background" Value="Transparent"/>
+    </Style>
+    <Style Selector="ListBoxItem:pointerover Border.group, ListBoxItem:pointerover Border.session">
+      <Setter Property="Background" Value="{DynamicResource TabUnderPointer}"/>
+    </Style>
+    <Style Selector="Border.session.active, ListBoxItem:pointerover Border.session.active">
+      <Setter Property="Background" Value="{DynamicResource ActiveTabGround}"/>
     </Style>
     <Style Selector="TextBlock.waiting">
-      <Setter Property="Foreground" Value="#D97737"/>
-      <Setter Property="FontWeight" Value="Bold"/>
+      <Setter Property="Foreground" Value="{DynamicResource WaitingText}"/>
+      <Setter Property="FontWeight" Value="SemiBold"/>
     </Style>
   </Window.Styles>
   <Panel x:Name="Overlays">
     <DockPanel>
-      <TextBlock x:Name="FailureText" DockPanel.Dock="Bottom" IsVisible="False"
-                 Foreground="DarkOrange" Margin="8" TextWrapping="Wrap"/>
-      <Grid ColumnDefinitions="330,5,*">
-        <DockPanel Grid.Column="0" Margin="6">
-          <Button DockPanel.Dock="Top" Content="Resume a session" ToolTip.Tip="Resume a session: Ctrl+Alt+Shift+Y"
-                  HorizontalAlignment="Stretch" Margin="2,2,2,6" Click="OpenHistory"/>
-          <TreeView x:Name="ProjectTree" ItemsSource="{Binding Projects}" SelectionChanged="SelectionChanged">
-            <TreeView.DataTemplates>
-              <TreeDataTemplate DataType="dashboard:DashboardProject" x:DataType="dashboard:DashboardProject" ItemsSource="{Binding Sessions}">
-                <StackPanel Orientation="Horizontal" Spacing="8">
-                  <TextBlock Text="{Binding Name}" FontWeight="SemiBold" Classes.waiting="{Binding IsWaiting}"
-                             ToolTip.Tip="{Binding Project.Folder}" VerticalAlignment="Center"/>
-                  <sessions:NewSessionButton Content="+" IsVisible="{Binding CanStartSession}" Padding="6,0"
-                                             Loaded="PrepareNewSessionButton"/>
-                </StackPanel>
-              </TreeDataTemplate>
-              <DataTemplate DataType="dashboard:DashboardSession" x:DataType="dashboard:DashboardSession">
-                <StackPanel Margin="0,2" Opacity="{Binding Opacity}">
-                  <StackPanel Orientation="Horizontal" Spacing="5">
-                    <ContentControl Content="{Binding WorkingSession}"
-                                    IsVisible="{Binding WorkingSession, Converter={x:Static ObjectConverters.IsNotNull}}">
-                      <ContentControl.DataTemplates>
-                        <DataTemplate DataType="agents:RunningClaudeCode">
-                          <status:SpinnerOfClaudeCode IsTurning="True"/>
-                        </DataTemplate>
-                        <DataTemplate DataType="agents:RunningCodex">
-                          <codex:CodexProgressDot IsPulsing="True"/>
-                        </DataTemplate>
-                      </ContentControl.DataTemplates>
-                    </ContentControl>
-                    <TextBlock Text="{Binding Name}" Classes.waiting="{Binding IsWaiting}" VerticalAlignment="Center"/>
-                    <Button Content="×" ToolTip.Tip="End the session" IsVisible="{Binding HasHost}" Padding="4,0" Click="EndSession"/>
-                  </StackPanel>
-                  <TextBlock Text="{Binding Activity}" Opacity="0.7" FontSize="12" Classes.waiting="{Binding IsWaiting}"/>
-                </StackPanel>
+      <TextBlock x:Name="FailureText" DockPanel.Dock="Bottom" IsVisible="False" Foreground="DarkOrange" Margin="8" TextWrapping="Wrap"/>
+      <Grid ColumnDefinitions="330,4,*">
+        <DockPanel Background="{DynamicResource TabStripGround}">
+          <Border DockPanel.Dock="Bottom" BorderBrush="{DynamicResource GroupDivider}" BorderThickness="0,1,0,0" Padding="6">
+            <Button Content="Resume a session" ToolTip.Tip="Resume a session: Ctrl+Alt+Shift+Y"
+                    HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Background="Transparent" Click="OpenHistory"/>
+          </Border>
+          <dashboard:DashboardTabStrip x:Name="Tabs" ItemsSource="{Binding VisibleRows}" Padding="3,0"
+                                       Background="Transparent" BorderThickness="0" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+            <dashboard:DashboardTabStrip.ItemContainerTheme>
+              <ControlTheme TargetType="ListBoxItem">
+                <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                <Setter Property="Template">
+                  <ControlTemplate>
+                    <Border Name="KeyboardFocus" BorderThickness="1" BorderBrush="Transparent" CornerRadius="5">
+                      <ContentPresenter Name="PART_ContentPresenter" Content="{TemplateBinding Content}"
+                                        ContentTemplate="{TemplateBinding ContentTemplate}" HorizontalContentAlignment="Stretch"/>
+                    </Border>
+                  </ControlTemplate>
+                </Setter>
+                <Style Selector="^:focus-visible /template/ Border#KeyboardFocus">
+                  <Setter Property="BorderBrush" Value="{DynamicResource SystemControlHighlightAccentBrush}"/>
+                </Style>
+              </ControlTheme>
+            </dashboard:DashboardTabStrip.ItemContainerTheme>
+            <dashboard:DashboardTabStrip.DataTemplates>
+              <DataTemplate DataType="dashboard:DashboardGroup" x:DataType="dashboard:DashboardGroup">
+                <Border Classes="group" Classes.worktree="{Binding IsWorktree}" ToolTip.Tip="{Binding Description}">
+                  <Grid ColumnDefinitions="16,*,Auto,Auto" ColumnSpacing="4">
+                    <TextBlock Text="{Binding Disclosure}" VerticalAlignment="Center" Opacity="0.75"/>
+                    <Panel Grid.Column="1" HorizontalAlignment="Left">
+                      <Border Classes="projectLabel" Background="{Binding Group.GroupColour}" CornerRadius="5"/>
+                      <Grid ColumnDefinitions="Auto,*" ColumnSpacing="5" Margin="6,2">
+                        <PathIcon IsVisible="{Binding IsWorktree}" Width="13" Height="13" Opacity="0.75"
+                                  Data="M 5,2 A 2,2 0 1 0 5,6 A 2,2 0 1 0 5,2 Z M 4,6 H 6 V 14 C 6,11 13,12 13,8 V 7 H 15 V 8 C 15,14 7,13 6,17 V 18 H 4 Z M 14,3 A 2,2 0 1 0 14,7 A 2,2 0 1 0 14,3 Z M 5,17 A 2,2 0 1 0 5,21 A 2,2 0 1 0 5,17 Z"/>
+                        <TextBlock Grid.Column="1" Text="{Binding Name}" Classes="groupName" Classes.waiting="{Binding IsWaiting}"
+                                   TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
+                      </Grid>
+                    </Panel>
+                    <TextBlock Grid.Column="2" Text="{Binding Summary}" FontSize="12" Opacity="0.85"
+                               Classes.waiting="{Binding IsWaiting}" VerticalAlignment="Center"/>
+                    <sessions:NewSessionButton Grid.Column="3" Content="+" IsVisible="{Binding CanStartSession}" Background="Transparent"
+                                               Padding="6,0" Loaded="PrepareNewSessionButton"/>
+                  </Grid>
+                </Border>
               </DataTemplate>
-            </TreeView.DataTemplates>
-          </TreeView>
+              <DataTemplate DataType="dashboard:DashboardSession" x:DataType="dashboard:DashboardSession">
+                <Grid ColumnDefinitions="2,*" Margin="16,0,0,0">
+                  <Border Width="2" Opacity="0.62" Background="{Binding Group.GroupColour}"/>
+                  <Border Grid.Column="1" Classes="session" Classes.active="{Binding IsActive}" Opacity="{Binding Opacity}">
+                  <Grid RowDefinitions="Auto,Auto" ColumnDefinitions="3,*" ColumnSpacing="4">
+                    <Border Grid.RowSpan="2" Width="3" Margin="0,5" CornerRadius="2" IsVisible="{Binding IsActive}"
+                            Background="{DynamicResource SystemControlHighlightAccentBrush}"/>
+                    <sessions:SessionTabHeader Grid.Row="0" Grid.Column="1" Heading="{Binding Heading}" CanEnd="{Binding HasHost}" EndRequested="EndSession"/>
+                    <TextBlock Grid.Column="1" Grid.Row="1" Text="{Binding Activity}" IsVisible="{Binding HasActivity}"
+                               Margin="21,0,6,2" TextTrimming="CharacterEllipsis" FontSize="12" Opacity="0.8" Classes.waiting="{Binding IsWaiting}"/>
+                  </Grid>
+                  </Border>
+                </Grid>
+              </DataTemplate>
+            </dashboard:DashboardTabStrip.DataTemplates>
+          </dashboard:DashboardTabStrip>
         </DockPanel>
-        <GridSplitter Grid.Column="1" ResizeDirection="Columns" HorizontalAlignment="Stretch"/>
+        <GridSplitter Grid.Column="1" Background="{DynamicResource GroupDivider}" ResizeDirection="Columns" HorizontalAlignment="Stretch"/>
         <ContentControl Grid.Column="2" x:Name="SelectedSession"/>
       </Grid>
     </DockPanel>
