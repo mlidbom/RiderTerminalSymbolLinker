@@ -56,7 +56,7 @@ sealed class TheCloydApplication(CloydsFolder folder)
    /// <summary>Starts Cloyd if necessary and obtains the address of the named helper in its project window.</summary>
    public PeerSessionStarted StartPeerSession(SessionToStartForAPeer session)
    {
-      var announcement = TheOneThatRunsOrStarted();
+      var announcement = TheOneThatRunsOrStarted(requireIndependentLifetime: true);
       using var request = new HttpRequestMessage(HttpMethod.Post, announcement.AddressOf("sessions/start"));
       request.Content = JsonContent.Create(session, options: CloydsLocalApiProtocol.Json);
       return Answer<PeerSessionStarted>(announcement, request, PeerLaunches) ?? throw new InvalidOperationException("Cloyd stopped answering. Retry the same launch to find its tab.");
@@ -66,14 +66,14 @@ sealed class TheCloydApplication(CloydsFolder folder)
    public int? ProcessId => TheOneThatRuns()?.ProcessId;
 
    /// <summary>The announcement of the application that runs, once it answers: the one that runs, else one started now.</summary>
-   AnnouncementOfCloydsLocalApi TheOneThatRunsOrStarted()
+   AnnouncementOfCloydsLocalApi TheOneThatRunsOrStarted(bool requireIndependentLifetime = false)
    {
       using var findingOrStarting = IMutex.Local($"Cloyd.FindingOrStartingTheApplication.{NameOf(_folder)}", LockTimeout.Seconds(2 * (long)HowLongStartingMayTake.TotalSeconds));
       return findingOrStarting.Locked(() =>
       {
          if(TheOneThatRuns() is {} running) return running;
 
-         StartingTheApplication.Start(_folder);
+         StartingTheApplication.Start(_folder, requireIndependentLifetime);
          var clock = Stopwatch.StartNew();
          while(true)
          {

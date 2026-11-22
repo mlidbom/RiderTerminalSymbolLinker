@@ -24,6 +24,10 @@ namespace Cloyd.LocalApi;
 /// <c>Cloyd.exe --project</c> asks it.
 /// </item>
 /// <item>
+/// <c>POST /sessions/start</c> creates or finds a coordinator's tab by its stable request ID,
+/// and returns the observed CLI session address. Its launch journal is <see cref="PeerSessionLaunchReceipt"/>.
+/// </item>
+/// <item>
 /// <c>POST /sessions/show?session=&lt;session id&gt;&amp;process=&lt;Claude Code's process id&gt;</c>: shows the tab whose Claude
 /// Code runs as the process, else the one that runs the session or ran it last, selecting it and bringing its window
 /// forward, and answers with the window, a <see cref="WindowInTheAnswer"/>: 404 when no window has such a tab. Either may

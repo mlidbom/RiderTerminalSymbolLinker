@@ -8,7 +8,7 @@ namespace Cloyd.Projects;
 sealed partial class ProjectWindow
 {
    /// <summary>Starts or recovers a coordinator's helper in its worktree, keeping the current tab selected.
-   /// Its address comes from the CLI observed in the host, after the requested name takes effect.</summary>
+   /// Its address comes from the CLI observed in the host. Peers names a Codex session by this ID.</summary>
    public async Task<Session> SessionForAPeer(PeerSessionLaunchReceipt receipt)
    {
       await BringingBackTheTabs;

@@ -32,11 +32,13 @@ static unsafe partial class StartingTheApplication
    /// Starts the application, serving <paramref name="folder"/>, and returns as soon as its process is created: it takes
    /// a while longer to announce its local API.
    /// </summary>
-   public static void Start(CloydsFolder folder)
+   public static void Start(CloydsFolder folder, bool requireIndependentLifetime = false)
    {
       var commandLine = $"\"{Executable}\" {string.Join(' ', Program.ArgumentsOfTheApplication(folder).Select(it => $"\"{it}\""))}";
       if(StartedWith(commandLine, DetachedInAGroupOfItsOwn | BreakingAwayFromItsJobs) is not {} refused) return;
       if(refused != ErrorAccessDenied) throw new Win32Exception(refused, $"Could not start {commandLine}");
+      if(requireIndependentLifetime)
+         throw new Win32Exception(refused, "Windows did not allow an independent Cloyd application to start. Open Cloyd or restart the Peers relay, then repeat the same launch. No helper was started.");
       if(StartedWith(commandLine, DetachedInAGroupOfItsOwn) is {} failed) throw new Win32Exception(failed, $"Could not start {commandLine}");
    }
 
