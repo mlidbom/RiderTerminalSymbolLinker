@@ -13,6 +13,7 @@ sealed class DashboardTree : ObservableObject
    readonly DashboardWorktrees _worktrees = new();
    readonly DashboardHierarchy _hierarchy;
    readonly DashboardArrangement _arrangement = new();
+   readonly DashboardGitStatuses _gitStatuses = new();
 
    public DashboardTree(ProjectWindows windows)
    {
@@ -47,9 +48,17 @@ sealed class DashboardTree : ObservableObject
    public Task DiscoverWorktrees(Action refreshed, Action<Exception> failed, CancellationToken cancellation) =>
       _worktrees.Discover(_windows, Sessions.Select(it => it.WorkingFolder).OfType<Project>(), Arrangement, refreshed, failed, cancellation);
 
+   public Task ReadGitStatus(CancellationToken cancellation) => _gitStatuses.Refresh(_worktrees.Repositories, ShowGitStatus, cancellation);
+
+   void ShowGitStatus()
+   {
+      foreach(var worktree in _hierarchy.Groups.OfType<DashboardWorktree>()) worktree.ShowGitStatus(_gitStatuses);
+   }
+
    public void Refresh()
    {
       _hierarchy.Refresh();
+      ShowGitStatus();
       ReadPins();
       _arrangement.Restore(_hierarchy);
       if(ActiveSession is {} active && !_hierarchy.Contains(active)) Select(null);

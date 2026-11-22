@@ -11,6 +11,7 @@ abstract class DashboardGroup(string key) : DashboardRow(key)
    public abstract Project? StartFolder { get; }
    public bool CanStartSession => StartFolder is not null;
    public bool IsWorktree => this is DashboardWorktree;
+   public DashboardWorktree? Worktree => this as DashboardWorktree;
    public string Disclosure => Expanded ? "▾" : "▸";
    public bool Expanded
    {

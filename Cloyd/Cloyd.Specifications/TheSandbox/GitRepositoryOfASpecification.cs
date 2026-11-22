@@ -50,7 +50,7 @@ sealed class GitRepositoryOfASpecification
       Folder.Delete(recursive: true);
    }
 
-   void Git(params string[] arguments) => Succeeds(arguments).Must().BeTrue();
+   public void Git(params string[] arguments) => Succeeds(arguments).Must().BeTrue();
 
    /// <summary>Whether git, run with <paramref name="arguments"/> in the repository's folder, exits with 0.</summary>
    bool Succeeds(params string[] arguments)

@@ -116,8 +116,21 @@
                     <Panel Grid.Column="1" HorizontalAlignment="Left">
                       <Border Classes="projectLabel" Background="{Binding Group.GroupColour}" CornerRadius="5"/>
                       <Grid ColumnDefinitions="Auto,*" ColumnSpacing="5" Margin="6,2">
-                        <PathIcon IsVisible="{Binding IsWorktree}" Width="13" Height="13" Opacity="0.75"
-                                  Data="M 5,2 A 2,2 0 1 0 5,6 A 2,2 0 1 0 5,2 Z M 4,6 H 6 V 14 C 6,11 13,12 13,8 V 7 H 15 V 8 C 15,14 7,13 6,17 V 18 H 4 Z M 14,3 A 2,2 0 1 0 14,7 A 2,2 0 1 0 14,3 Z M 5,17 A 2,2 0 1 0 5,21 A 2,2 0 1 0 5,17 Z"/>
+                        <ContentControl IsVisible="{Binding IsWorktree}" Content="{Binding Worktree}">
+                          <ContentControl.ContentTemplate>
+                            <DataTemplate x:DataType="dashboard:DashboardWorktree">
+                              <StackPanel Orientation="Horizontal" Spacing="2" VerticalAlignment="Center">
+                                <Panel Width="17" Height="17">
+                                  <PathIcon Width="14" Height="14" Foreground="{Binding BranchColour}"
+                                            Data="M 5,2 A 2,2 0 1 0 5,6 A 2,2 0 1 0 5,2 Z M 4,6 H 6 V 14 C 6,11 13,12 13,8 V 7 H 15 V 8 C 15,14 7,13 6,17 V 18 H 4 Z M 14,3 A 2,2 0 1 0 14,7 A 2,2 0 1 0 14,3 Z M 5,17 A 2,2 0 1 0 5,21 A 2,2 0 1 0 5,17 Z"/>
+                                  <Ellipse Width="7" Height="7" Fill="#E4A11B" IsVisible="{Binding HasUncommittedChanges}"
+                                           HorizontalAlignment="Right" VerticalAlignment="Bottom"/>
+                                </Panel>
+                                <TextBlock Text="{Binding PushPullArrows}" FontWeight="SemiBold" Foreground="{Binding BranchColour}"/>
+                              </StackPanel>
+                            </DataTemplate>
+                          </ContentControl.ContentTemplate>
+                        </ContentControl>
                         <TextBlock Grid.Column="1" Text="{Binding Name}" Classes="groupName" Classes.waiting="{Binding IsWaiting}"
                                    TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
                       </Grid>

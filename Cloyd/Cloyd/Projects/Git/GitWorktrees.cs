@@ -1,6 +1,3 @@
-using System.Diagnostics;
-using System.Text;
-
 namespace Cloyd.Projects.Git;
 
 /// <summary>The main and linked worktrees of one Git repository as Git lists them. The first record
@@ -10,22 +7,9 @@ sealed record GitWorktrees(Project Repository, IReadOnlyList<GitWorktree> Checko
    public static async Task<GitWorktrees?> Read(Project folder, CancellationToken cancellation)
    {
       if(!Directory.Exists(folder.Folder)) return null;
-      var start = new ProcessStartInfo("git", ["-C", folder.Folder, "worktree", "list", "--porcelain", "-z"])
-      {
-         CreateNoWindow = true, RedirectStandardOutput = true, RedirectStandardError = true, StandardOutputEncoding = Encoding.UTF8,
-         Environment = { ["LC_ALL"] = "C" }
-      };
-      using var git = Process.Start(start)!;
-      var output = git.StandardOutput.ReadToEndAsync(cancellation);
-      var error = git.StandardError.ReadToEndAsync(cancellation);
-      await Task.WhenAll(output, error, git.WaitForExitAsync(cancellation));
-      if(git.ExitCode != 0)
-      {
-         if(error.Result.Contains("not a git repository", StringComparison.Ordinal)) return null;
-         throw new InvalidOperationException($"Git couldn't list the worktrees for {folder}: {error.Result.TrimEnd()}");
-      }
-
-      var records = output.Result.Split("\0\0", StringSplitOptions.RemoveEmptyEntries);
+      var listing = await GitRead.In(folder, cancellation, "worktree", "list", "--porcelain", "-z");
+      if(listing.ExitCode != 0 && listing.Error.Contains("not a git repository", StringComparison.Ordinal)) return null;
+      var records = listing.CheckedOutput().Split("\0\0", StringSplitOptions.RemoveEmptyEntries);
       var checkouts = new List<GitWorktree>();
       Project? repository = null;
       foreach(var record in records)

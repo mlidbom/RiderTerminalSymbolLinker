@@ -7,6 +7,10 @@ All notable changes to Cloyd are documented here. The format follows
 ## [0.1.0]
 
 ### Added
+- **Worktree branch icons show Git status.** Green means all commits are in the local integration branch,
+  purple means some are still outside it, and an amber dot marks uncommitted changes. On the integration
+  branch itself the colour compares against its upstream. ↑ marks outgoing commits and ↓ incoming commits.
+  Hover for counts. Cloyd reads local Git state without fetching.
 - **Pin sessions in Projects Dashboard and choose Only pinned above the tabs.** The filter shows each
   pinned session under its worktree and project, hiding groups with no pins. Pins and the filter survive
   reopening the dashboard. Filtering leaves the current chat or terminal open.

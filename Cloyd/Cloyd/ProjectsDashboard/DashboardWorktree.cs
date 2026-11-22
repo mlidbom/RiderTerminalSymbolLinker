@@ -1,5 +1,6 @@
 using Cloyd.Projects;
 using Cloyd.Projects.Git;
+using Avalonia.Media;
 
 namespace Cloyd.ProjectsDashboard;
 
@@ -9,8 +10,26 @@ sealed class DashboardWorktree(GitWorktree checkout) : DashboardGroup(KeyFor(che
    GitWorktree _checkout = checkout;
    public static string KeyFor(Project root) => $"worktree:{root.Folder}";
    public override string Name => _checkout.Name;
-   public override string Description => _checkout.Description;
+   public override string Description => Status is {} status ? $"{_checkout.Description} · {status.Description}" : _checkout.Description;
    public override Project StartFolder => _checkout.Root;
+   public WorktreeStatus? Status
+   {
+      get => field;
+      set
+      {
+         if(!SetProperty(ref field, value)) return;
+         OnPropertyChanged(nameof(Description));
+         OnPropertyChanged(nameof(BranchColour));
+         OnPropertyChanged(nameof(HasUncommittedChanges));
+         OnPropertyChanged(nameof(PushPullArrows));
+      }
+   }
+   public IBrush BranchColour => Status?.Integrated switch { true => Brushes.SeaGreen, false => Brushes.MediumPurple, null => Brushes.Gray };
+   public bool HasUncommittedChanges => Status?.ChangedPaths > 0;
+   public string PushPullArrows => Status?.Arrows ?? "";
+
+   /// <summary>A branch switch invalidates the last reading even though the checkout's folder is the same.</summary>
+   public void ShowGitStatus(DashboardGitStatuses statuses) => Status = statuses.Of(_checkout);
 
    public void Update(GitWorktree checkout)
    {

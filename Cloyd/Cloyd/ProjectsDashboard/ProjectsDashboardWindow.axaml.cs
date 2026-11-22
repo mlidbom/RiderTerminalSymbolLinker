@@ -108,6 +108,7 @@ sealed partial class ProjectsDashboardWindow : Window, ISessionHistoryTarget
    void RefreshRows()
    {
       Tree.Refresh();
+      _ = ReportFailure(() => Tree.ReadGitStatus(_closed.Token));
       if(_restoringSelection && Sessions.HasReadHosts && (_restoreOutsideHost is null || Sessions.HasReadRunningSessions))
       {
          var row = Tree.Sessions.FirstOrDefault(it => _restoreOutsideHost is not null && it.Latest?.Id == _restoreOutsideHost.Id)
