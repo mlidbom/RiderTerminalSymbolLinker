@@ -1,4 +1,5 @@
 using Avalonia;
+using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Controls.Documents;
 using Avalonia.Media;
@@ -19,6 +20,7 @@ sealed class StatusLineOfACodexChat : UserControl
    public StatusLineOfACodexChat()
    {
       Resources.MergedDictionaries.Add(ColoursOfTheTerminal.AsResources());
+      AutomationProperties.SetAutomationId(_items, "CodexStatusLine");
       IsVisible = false;
       Content = new StackPanel { Margin = new Thickness(28, 0, 28, 4), Spacing = 2, Children = { _items, _permissions } };
    }
@@ -45,6 +47,7 @@ sealed class StatusLineOfACodexChat : UserControl
          _permissions.Text = line.PermissionsLine is {Length: > 0} permissions ? permissions : null;
       }
       _items.IsVisible = _items.Inlines.Count > 0;
+      AutomationProperties.SetName(_items, TextShown);
       _permissions.IsVisible = _permissions.Text is not null;
       IsVisible = _items.IsVisible || _permissions.IsVisible;
    }
