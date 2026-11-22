@@ -17,6 +17,7 @@ sealed class DashboardTree : ObservableObject
    readonly DashboardHierarchy _hierarchy;
    readonly DashboardArrangement _arrangement = new();
    readonly DashboardGitStatuses _gitStatuses = new();
+   DashboardSearch _search = new("");
 
    public DashboardTree(ProjectWindows windows)
    {
@@ -27,7 +28,20 @@ sealed class DashboardTree : ObservableObject
 
    public IEnumerable<DashboardProject> Projects => _hierarchy.Projects;
    public IEnumerable<DashboardSession> Sessions => RowsInOrder(_hierarchy.Roots, expandAll: true, filter: false).OfType<DashboardSession>();
-   public IEnumerable<DashboardSession> NavigableSessions => Sessions.Where(Filters.Includes);
+   public IEnumerable<DashboardSession> NavigableSessions => Sessions.Where(Includes);
+   [AllowNull] public string SearchText
+   {
+      get => field;
+      set
+      {
+         value ??= "";
+         if(!SetProperty(ref field, value)) return;
+         _search = new DashboardSearch(value);
+         foreach(var group in _hierarchy.Groups) group.ExpandedDuringSearch = _search.IsActive ? true : null;
+         RefreshFilter();
+      }
+   } = "";
+   bool Includes(DashboardSession session) => Filters.Includes(session) && _search.Matches(session);
    public ObservableCollection<DashboardRow> VisibleRows { get; } = [];
    public SavedDashboardArrangement Arrangement
    {
@@ -36,24 +50,11 @@ sealed class DashboardTree : ObservableObject
       {
          _arrangement.Saved = value;
          Filters = new DashboardSessionFilters(value);
-         OnPropertyChanged(nameof(Activity));
          NotifyFiltersChanged();
       }
    }
    public DashboardSessionFilters Filters { get; private set; }
    public event Action? FiltersChanged;
-   public IReadOnlyList<ActivityChoice> Activities => ActivityChoice.Choices;
-   [AllowNull] public ActivityChoice Activity
-   {
-      get => Activities.Single(it => it.Filter == Arrangement.ActivityFilter);
-      set
-      {
-         if(value is null || value.Filter == Arrangement.ActivityFilter) return;
-         Arrangement.ActivityFilter = value.Filter;
-         OnPropertyChanged();
-         NotifyFiltersChanged();
-      }
-   }
    public bool EditingFilters
    {
       get => field;
@@ -103,7 +104,11 @@ sealed class DashboardTree : ObservableObject
       ShowGitStatus();
       ReadPins();
       _arrangement.Restore(_hierarchy);
-      foreach(var group in _hierarchy.Groups) group.Summarize(Filters.Includes);
+      foreach(var group in _hierarchy.Groups)
+      {
+         if(_search.IsActive) group.ExpandedDuringSearch ??= true;
+         group.Summarize(Includes);
+      }
       if(ActiveSession is {} active && !_hierarchy.Contains(active)) Select(active.Latest is {} latest ? Find(latest.Id) : null);
       else ShowExpandedGroups();
    }
@@ -132,7 +137,7 @@ sealed class DashboardTree : ObservableObject
 
    void RefreshFilter()
    {
-      foreach(var group in _hierarchy.Groups) group.Summarize(Filters.Includes);
+      foreach(var group in _hierarchy.Groups) group.Summarize(Includes);
       ShowExpandedGroups();
    }
 
@@ -148,8 +153,9 @@ sealed class DashboardTree : ObservableObject
 
    public void Toggle(DashboardGroup group)
    {
-      _arrangement.Toggle(group);
-      group.Summarize(Filters.Includes);
+      if(_search.IsActive) group.ExpandedDuringSearch = !group.ShownExpanded;
+      else _arrangement.Toggle(group);
+      group.Summarize(Includes);
       ShowExpandedGroups();
    }
 
@@ -181,15 +187,19 @@ sealed class DashboardTree : ObservableObject
    {
       foreach(var row in rows)
       {
-         if(filter && row is DashboardSession session && !Filters.Includes(session)) continue;
-         if(filter && row is DashboardGroup heading && !EditingFilters && !Filters.ShowsEmpty(heading) && !heading.Sessions.Any(Filters.Includes)) continue;
+         if(filter && row is DashboardSession session && !Includes(session)) continue;
+         if(filter && row is DashboardGroup heading && !ShowsHeading(heading)) continue;
          yield return row;
          if(row is not DashboardGroup group) continue;
-         if(expandAll || group.Expanded)
+         if(expandAll || group.ShownExpanded)
          {
             foreach(var child in RowsInOrder(group.Children, expandAll, filter)) yield return child;
          }
-         else if(ActiveSession is {} active && (!filter || Filters.Includes(active)) && active.BelongsTo(group)) yield return active;
+         else if(ActiveSession is {} active && (!filter || Includes(active)) && active.BelongsTo(group)) yield return active;
       }
    }
+
+   bool ShowsHeading(DashboardGroup group) =>
+      (EditingFilters || Filters.ShowsEmpty(group)) && _search.Matches(group)
+      || group.Children.Any(it => it is DashboardSession session ? Includes(session) : ShowsHeading((DashboardGroup)it));
 }

@@ -9,6 +9,8 @@ using Cloyd.ProjectsDashboard.Filters;
 using Cloyd.ClaudeCode;
 using Cloyd.Codex;
 using Avalonia.Automation;
+using Avalonia.Controls.Primitives;
+using System.Diagnostics;
 using Cloyd.Sessions;
 using System.Text.Json;
 using Cloyd.Specifications.TheSandbox;
@@ -54,6 +56,116 @@ public class When_Magnus_arranges_the_dashboard_tabs : SpecificationOpeningWindo
 
    SessionHostId StartHelperShell() => Sandbox.HubOfTheSandbox.Hub.StartASessionHost(Sandbox.ShellOfItsSessions,
       _linked.FullName, _alpha.LabelOfCloydsHosts).GetAwaiter().GetResult().Id;
+
+   [XF] public void each_All_switch_temporarily_bypasses_only_its_strip_and_restores_its_choices_after_reopening()
+   {
+      Close(_dashboard);
+      Sandbox.WindowsOfCloyd.Sessions.Folder.ProjectsDashboard.Write("""{"arrangement":{"rootInclusions":2,"activityFilter":6}}""");
+      var window = OnTheUIThread(() => Sandbox.WindowsOfCloyd.ShowDashboard(_alpha.Project));
+      WaitUntil(() => window.Tree.Sessions.Count() == 2, "the two tabs were in the dashboard");
+      OnTheUIThread(() =>
+      {
+         var memberships = window.GetVisualDescendants().OfType<SessionFilterStrip>().Single(it => it.DataContext == window.Tree);
+         var statuses = window.GetVisualDescendants().OfType<SessionStatusFilterStrip>().Single();
+         Names(memberships).Must().SequenceEqual(["Pinned", "Open tabs", "Sessions outside tabs", "All session memberships"]);
+         Names(statuses).Must().SequenceEqual(["Running", "Ready to resume", "Working", "Waiting for you", "Idle", "Error", "All statuses"]);
+         Switch(window, "Error").IsChecked.Must().Be(true);
+      });
+      PressSwitch(window, "Waiting for you");
+      PressSwitch(window, "All statuses");
+      OnTheUIThread(() => window.Tree.NoMatches).Must().BeTrue();
+      PressSwitch(window, "All session memberships");
+      WaitUntil(() => window.Tree.NavigableSessions.Count() == 2, "both All switches admitted the two unpinned shells");
+      Close(window);
+      var reopened = OnTheUIThread(() => Sandbox.WindowsOfCloyd.ShowDashboard(_alpha.Project));
+      WaitUntil(() => reopened.Tree.NavigableSessions.Count() == 2, "both temporary All choices survived reopening");
+      PressSwitch(reopened, "All statuses");
+      OnTheUIThread(() =>
+      {
+         Switch(reopened, "Waiting for you").IsChecked.Must().Be(true);
+         Switch(reopened, "Error").IsChecked.Must().Be(true);
+         Switch(reopened, "Idle").IsChecked.Must().Be(false);
+         reopened.Tree.NoMatches.Must().BeTrue();
+      });
+      PressSwitch(reopened, "All session memberships");
+      OnTheUIThread(() =>
+      {
+         Switch(reopened, "Pinned").IsChecked.Must().Be(true);
+         Switch(reopened, "Open tabs").IsChecked.Must().Be(false);
+         Switch(reopened, "Sessions outside tabs").IsChecked.Must().Be(false);
+      });
+
+      string[] Names(DashboardFilterStrip strip) => strip.Children.OfType<ToggleButton>().Select(it => AutomationProperties.GetName(it)!).ToArray();
+      ToggleButton Switch(ProjectsDashboardWindow dashboard, string name) => dashboard.GetVisualDescendants().OfType<DashboardFilterStrip>().Where(it => it.DataContext == dashboard.Tree)
+         .SelectMany(it => it.Children.OfType<ToggleButton>()).Single(it => AutomationProperties.GetName(it) == name);
+      void PressSwitch(ProjectsDashboardWindow dashboard, string name)
+      {
+         Focus(OnTheUIThread(() => Switch(dashboard, name)));
+         Press(dashboard, Key.Space, PhysicalKey.Space, RawInputModifiers.None);
+      }
+   }
+
+   [XF] public void tree_search_reveals_matches_beneath_collapsed_headings_and_restores_the_view_when_dismissed()
+   {
+      OnTheUIThread(() => _dashboard.Tree.Toggle(_alphaGroup));
+      var selected = OnTheUIThread(() => _dashboard.Tree.ActiveSession);
+      var search = OnTheUIThread(() => _dashboard.FindControl<TextBox>("TreeSearchBox")!);
+      var chat = OnTheUIThread(() =>
+      {
+         var view = _dashboard.View!;
+         if(!view.ShowsTheChat) view.SwitchBetweenTheTerminalAndTheChat();
+         view.FocusWhatItShows();
+         return view.Chat!;
+      });
+      WaitUntil(() => chat.InputBox.IsKeyboardFocusWithin, "the transcript had focus");
+      Press(_dashboard, Key.F, PhysicalKey.F, RawInputModifiers.Control);
+      WaitUntil(() => chat.FindBar.HasTheKeyboard, "Ctrl+F opened transcript search");
+      OnTheUIThread(() => search.IsEffectivelyVisible).Must().BeFalse();
+      Press(_dashboard, Key.F, PhysicalKey.F, RawInputModifiers.Control | RawInputModifiers.Shift);
+      WaitUntil(() => search.IsKeyboardFocusWithin, "Ctrl+Shift+F focused the newly visible search box");
+      Type(_dashboard, "ALPHA fix-the-editor shell");
+      WaitUntil(() => _dashboard.Tree.VisibleRows.Count == 4 && _dashboard.Tree.VisibleRows.Contains(_linkedGroup)
+                      && _dashboard.Tree.NavigableSessions.Count() == 2, "the project, branch and session name matched together");
+      OnTheUIThread(() => _dashboard.Tree.ActiveSession).Must().ReferenceEqual(selected!);
+      Type(_dashboard, " other");
+      WaitUntil(() => _dashboard.Tree.NoMatches, "typing removed the rows immediately");
+      Press(_dashboard, Key.Escape, PhysicalKey.Escape, RawInputModifiers.None);
+      WaitUntil(() => !search.IsEffectivelyVisible && !_alphaGroup.ShownExpanded && _dashboard.Tree.SearchText == "",
+                "Escape hid the box and restored the collapsed project");
+      OnTheUIThread(() => chat.FindBar.IsOpen).Must().BeTrue();
+      Click(OnTheUIThread(() => _dashboard.FindControl<Button>("SearchTreeButton")!));
+      WaitUntil(() => search.IsKeyboardFocusWithin, "the search icon focused the box");
+      Type(_dashboard, "unused checkout");
+      WaitUntil(() => _dashboard.Tree.VisibleRows.SequenceEqual([_alphaGroup, _emptyGroup]), "the search found an empty worktree with its project heading");
+   }
+
+   [XF] public void the_worktree_context_menu_opens_Git_Extensions_for_the_clicked_checkout()
+   {
+      OnTheUIThread(() =>
+      {
+         var active = _dashboard.Tree.ActiveSession;
+         var rows = _dashboard.GetVisualDescendants().OfType<ListBoxItem>().ToArray();
+         rows.Where(it => it.DataContext is DashboardProject or DashboardSession).All(it => it.ContextMenu is null).Must().BeTrue();
+         var menu = rows.Single(it => it.DataContext == _emptyGroup).ContextMenu!;
+         var at = PointOf(_emptyGroup, .5);
+         _dashboard.MouseDown(at, MouseButton.Right);
+         _dashboard.MouseUp(at, MouseButton.Right);
+         menu.IsOpen.Must().BeTrue();
+         var gitExtensions = menu.Items.OfType<MenuItem>().Single();
+         gitExtensions.Header.Must().Be("Git Extensions");
+         var actions = gitExtensions.Items.OfType<MenuItem>().ToArray();
+         actions.Select(it => it.Header).ToArray().Must().SequenceEqual(["Browse", "Commit"]);
+         foreach(var action in actions)
+         {
+            var launch = (ProcessStartInfo)action.CommandParameter!;
+            launch.WorkingDirectory.Must().Be(_empty.FullName);
+            launch.FileName.Must().Be("GitExtensions.exe");
+            launch.ArgumentList.Single().Must().Be(((string)action.Header!).ToLowerInvariant());
+         }
+         menu.Close();
+         _dashboard.Tree.ActiveSession.Must().ReferenceEqual(active!);
+      });
+   }
 
    [XF] public void both_agents_follow_the_worktree_where_they_run_even_when_their_host_was_started_elsewhere()
    {
@@ -101,7 +213,7 @@ public class When_Magnus_arranges_the_dashboard_tabs : SpecificationOpeningWindo
       var root = OnTheUIThread(() => _dashboard.GetVisualDescendants().OfType<SessionFilterStrip>().Single(it => it.DataContext == _dashboard.Tree));
       foreach(var name in new[] { "Pinned", "Open tabs", "Sessions outside tabs" })
          Click(OnTheUIThread(() => root.GetVisualDescendants().OfType<Button>().Single(it => AutomationProperties.GetName(it) == name)));
-      WaitUntil(() => _dashboard.Tree.Filters.Effective(null) == IncludedSessions.Pinned, "the root switches included pinned sessions alone");
+      WaitUntil(() => (_dashboard.Tree.Filters.Effective(null) & IncludedSessions.MembershipSwitches) == IncludedSessions.Pinned, "the root switches included pinned sessions alone");
       OnTheUIThread(() => _dashboard.Tree.VisibleRows.ToArray()).Must().SequenceEqual([_alphaGroup, _linkedGroup, pinned]);
       Render(_dashboard, "Projects-Dashboard-only-pinned");
       OnTheUIThread(() => _dashboard.View).Must().ReferenceEqual(view);
@@ -113,7 +225,7 @@ public class When_Magnus_arranges_the_dashboard_tabs : SpecificationOpeningWindo
       WaitUntil(() => _dashboard.View!.Host.Id == _first, "Ctrl+Tab chose the one pinned session");
       Close(_dashboard);
       var reopened = OnTheUIThread(() => Sandbox.WindowsOfCloyd.ShowDashboard(_alpha.Project));
-      WaitUntil(() => reopened.Tree.Filters.Effective(null) == IncludedSessions.Pinned && reopened.Tree.VisibleRows.Count == 3 && reopened.Tree.NavigableSessions.SingleOrDefault()?.Host?.Id == _first,
+      WaitUntil(() => (reopened.Tree.Filters.Effective(null) & IncludedSessions.MembershipSwitches) == IncludedSessions.Pinned && reopened.Tree.VisibleRows.Count == 3 && reopened.Tree.NavigableSessions.SingleOrDefault()?.Host?.Id == _first,
                 "the saved pin and filter came back beneath the linked checkout");
       Click(PinButton(reopened, OnTheUIThread(() => reopened.Tree.NavigableSessions.Single())));
       WaitUntil(() => reopened.Tree.VisibleRows.Count == 0 && reopened.Tree.NoMatches, "removing the last pin hid every group");
@@ -129,13 +241,13 @@ public class When_Magnus_arranges_the_dashboard_tabs : SpecificationOpeningWindo
       var saved = Sandbox.WindowsOfCloyd.Sessions.Folder.ProjectsDashboard;
       saved.Write(JsonSerializer.Serialize(new { arrangement = new { onlyPinned = true, pinnedSessions = new[] { $"host:{_first}" } } }));
       var reopened = OnTheUIThread(() => Sandbox.WindowsOfCloyd.ShowDashboard(_alpha.Project));
-      WaitUntil(() => reopened.Tree.Filters.Effective(null) == IncludedSessions.Pinned
+      WaitUntil(() => (reopened.Tree.Filters.Effective(null) & IncludedSessions.MembershipSwitches) == IncludedSessions.Pinned
                       && reopened.Tree.NavigableSessions.SingleOrDefault()?.Host?.Id == _first,
                 "the former checkbox became the Pinned inclusion switch");
       OnTheUIThread(() => reopened.Tree.ToggleInclusion(null, IncludedSessions.OpenTabs));
       Close(reopened);
       var changed = OnTheUIThread(() => Sandbox.WindowsOfCloyd.ShowDashboard(_alpha.Project));
-      WaitUntil(() => changed.Tree.Filters.Effective(null) == (IncludedSessions.Pinned | IncludedSessions.OpenTabs)
+      WaitUntil(() => (changed.Tree.Filters.Effective(null) & IncludedSessions.MembershipSwitches) == (IncludedSessions.Pinned | IncludedSessions.OpenTabs)
                       && changed.Tree.NavigableSessions.Count() == 2,
                 "later changes to the switches took precedence over the migrated preference");
    }
@@ -199,7 +311,7 @@ public class When_Magnus_arranges_the_dashboard_tabs : SpecificationOpeningWindo
       Press(reopened, Key.Delete, PhysicalKey.Delete, RawInputModifiers.None);
       WaitUntil(() => reopened.Tree.Filters.IsInherited(linked, IncludedSessions.OpenTabs) && reopened.Tree.NoMatches,
                 "Delete restored the project's explicit off setting");
-      Focus(OnTheUIThread(() => reopened.GetVisualDescendants().OfType<Button>().Single(it => AutomationProperties.GetName(it) == "Edit group filters")));
+      Focus(OnTheUIThread(() => reopened.GetVisualDescendants().OfType<Button>().Single(it => AutomationProperties.GetName(it) == "All groups")));
       Press(reopened, Key.Space, PhysicalKey.Space, RawInputModifiers.None);
       WaitUntil(() => reopened.Tree.VisibleRows.Contains(linked) && !reopened.Tree.VisibleRows.OfType<DashboardSession>().Any(),
                 "the gear revealed the hidden worktree's switches");
@@ -213,7 +325,8 @@ public class When_Magnus_arranges_the_dashboard_tabs : SpecificationOpeningWindo
       var codex = new CodexSessionOfASpecification(new CodexSessionId("9f222222-0000-4321-9876-000000000003"), _elsewhere.Project.Folder, "A different repository");
       codex.WriteItsRecordFor(Sandbox.HubOfTheSandbox);
       OnTheUIThread(() => _dashboard.Tree.ToggleInclusion(null, IncludedSessions.OutsideTabs));
-      DoneOnTheUIThread(() => _dashboard.OpenHistory());
+      Click(OnTheUIThread(() => _dashboard.GetVisualDescendants().OfType<Button>().Single(it => AutomationProperties.GetName(it) == "All projects history")));
+      WaitUntil(() => _dashboard.HistoryPicker.Listed.Count == 3, "the top history clock listed all projects");
       OnTheUIThread(() => _dashboard.HistoryPicker.Listed.Select(it => it.Id).ToHashSet().SetEquals([saved.Id, other.Id, codex.Id])).Must().BeTrue();
       OnTheUIThread(() =>
       {
@@ -243,7 +356,8 @@ public class When_Magnus_arranges_the_dashboard_tabs : SpecificationOpeningWindo
          tree.VisibleRows.Contains(tree.ActiveSession!).Must().BeFalse();
          tree.ToggleInclusion(_alphaGroup, IncludedSessions.Pinned);
          tree.NavigableSessions.Count().Must().Be(3);
-         tree.Activity = tree.Activities.Single(it => it.Filter == SessionActivityFilter.ReadyToResume);
+         tree.ToggleInclusion(null, IncludedSessions.AllStatuses);
+         tree.ToggleInclusion(null, IncludedSessions.ReadyToResume);
          tree.NavigableSessions.Select(it => it.Latest!.Id).ToArray().Must().SequenceEqual([saved.Id]);
       });
       Sandbox.HubOfTheSandbox.RunningClaudeCodes().Any(it => it.SessionId == saved.Id).Must().BeFalse();

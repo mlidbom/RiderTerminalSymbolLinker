@@ -10,6 +10,7 @@ sealed class DashboardWorktree(GitWorktree checkout) : DashboardGroup(KeyFor(che
    GitWorktree _checkout = checkout;
    public static string KeyFor(Project root) => $"worktree:{root.Folder}";
    public override string Name => _checkout.Name;
+   public string? Branch => _checkout.Branch;
    public override string Description => Status is {} status ? $"{_checkout.Description} · {status.Description}" : _checkout.Description;
    public override Project StartFolder => _checkout.Root;
    public WorktreeStatus? Status

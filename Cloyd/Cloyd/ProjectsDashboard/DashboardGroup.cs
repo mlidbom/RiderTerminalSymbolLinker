@@ -12,7 +12,13 @@ abstract class DashboardGroup(string key) : DashboardRow(key)
    public bool CanStartSession => StartFolder is not null;
    public bool IsWorktree => this is DashboardWorktree;
    public DashboardWorktree? Worktree => this as DashboardWorktree;
-   public string Disclosure => Expanded ? "▾" : "▸";
+   public string Disclosure => ShownExpanded ? "▾" : "▸";
+   public bool ShownExpanded => ExpandedDuringSearch ?? Expanded;
+   public bool? ExpandedDuringSearch
+   {
+      get => field;
+      set { if(SetProperty(ref field, value)) OnPropertyChanged(nameof(Disclosure)); }
+   }
    public bool Expanded
    {
       get => field;
@@ -27,13 +33,13 @@ abstract class DashboardGroup(string key) : DashboardRow(key)
       var waiting = sessions.Count(it => it.IsWaiting);
       var busy = sessions.Count(it => it.Heading?.Running?.IsBusy == true);
       IsWaiting = waiting > 0;
-      Summary = Expanded && !IsWaiting ? "" : string.Join(" · ", Details());
+      Summary = ShownExpanded && !IsWaiting ? "" : string.Join(" · ", Details());
 
       IEnumerable<string> Details()
       {
-         if(!Expanded) yield return sessions.Length == 1 ? "1 session" : $"{sessions.Length} sessions";
+         if(!ShownExpanded) yield return sessions.Length == 1 ? "1 session" : $"{sessions.Length} sessions";
          if(waiting > 0) yield return $"{waiting} waiting";
-         if(!Expanded && busy > 0) yield return $"{busy} working";
+         if(!ShownExpanded && busy > 0) yield return $"{busy} working";
       }
    }
 }

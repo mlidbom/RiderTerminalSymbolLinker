@@ -7,6 +7,15 @@ All notable changes to Cloyd are documented here. The format follows
 ## [0.1.0]
 
 ### Added
+- **Search the Projects Dashboard tree.** Click the magnifier or press Ctrl+Shift+F, then type words
+  from a project, worktree, branch or session name. Matching rows appear under their headings, including
+  in collapsed groups. Escape clears the search and brings back the previous expansion. The clock beside
+  the magnifier opens history for all projects.
+- **Right-click a dashboard worktree to open Git Extensions.** Choose **Browse** for its revision graph
+  or **Commit** for its commit dialog. Both open in the checkout you clicked.
+- **Combine dashboard status icons above the tree.** Pinned comes first in the session switches. Each
+  strip ends with **A**, which temporarily includes all its sessions or statuses and remembers the
+  individual switches. **AG** shows all group headings, including those with no matching sessions.
 - **History and Projects Dashboard share a session list.** Click a stored conversation to read it and choose
   **Resume session** to run it. The dashboard clock searches all projects; each project and worktree clock
   searches its own sessions, including those the sidebar filters hide.

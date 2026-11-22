@@ -27,6 +27,11 @@
     </ResourceDictionary>
   </Window.Resources>
   <Window.Styles>
+    <Style Selector="PathIcon.historyClock">
+      <Setter Property="Width" Value="14"/>
+      <Setter Property="Height" Value="14"/>
+      <Setter Property="Data" Value="M10 1 A9 9 0 1 1 10 19 A9 9 0 1 1 10 1 Z M10 3 A7 7 0 1 0 10 17 A7 7 0 1 0 10 3 Z M9 5 H11 V10 L15 12 L14 14 L9 11 Z"/>
+    </Style>
     <Style Selector="Border.group">
       <Setter Property="Margin" Value="4,8,4,0"/>
       <Setter Property="Padding" Value="6,3"/>
@@ -80,12 +85,12 @@
       <Setter Property="Background" Value="Transparent"/>
       <Setter Property="BorderBrush" Value="Transparent"/>
     </Style>
-    <Style Selector="ToggleButton.inherited PathIcon">
-      <Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
+    <Style Selector="ToggleButton.inherited PathIcon, ToggleButton.inherited TextBlock.filterAll">
+      <Setter Property="TextElement.Foreground" Value="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
       <Setter Property="Opacity" Value="0.40"/>
     </Style>
-    <Style Selector="ToggleButton.inherited:checked PathIcon">
-      <Setter Property="Foreground" Value="{DynamicResource SystemControlHighlightAccentBrush}"/>
+    <Style Selector="ToggleButton.inherited:checked PathIcon, ToggleButton.inherited:checked TextBlock.filterAll">
+      <Setter Property="TextElement.Foreground" Value="{DynamicResource SystemControlHighlightAccentBrush}"/>
       <Setter Property="Opacity" Value="1"/>
     </Style>
     <Style Selector="ToggleButton.inherited:pointerover /template/ ContentPresenter#PART_ContentPresenter">
@@ -98,17 +103,31 @@
       <Grid ColumnDefinitions="405,4,*">
         <DockPanel Background="{DynamicResource TabStripGround}">
           <Border DockPanel.Dock="Top" Padding="12,4" BorderBrush="{DynamicResource GroupDivider}" BorderThickness="0,0,0,1">
-            <Grid ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="6">
-              <filters:SessionFilterStrip/>
-              <ComboBox Grid.Column="2" ItemsSource="{Binding Activities}" SelectedItem="{Binding Activity, Mode=TwoWay}"
-                        AutomationProperties.Name="Session status" MinWidth="118" Padding="7,2"/>
-              <ToggleButton Grid.Column="3" Content="⚙" IsChecked="{Binding EditingFilters, Mode=TwoWay}" Padding="6,2"
-                            AutomationProperties.Name="Edit group filters" ToolTip.Tip="Show hidden group headings to edit their filters"/>
+            <Grid RowDefinitions="Auto,Auto" ColumnDefinitions="*,Auto" ColumnSpacing="6">
+              <WrapPanel VerticalAlignment="Center">
+                <filters:SessionFilterStrip Margin="0,2,8,2"/>
+                <filters:SessionStatusFilterStrip Margin="0,2"/>
+              </WrapPanel>
+              <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="3" VerticalAlignment="Center">
+                <ToggleButton Content="AG" IsChecked="{Binding EditingFilters, Mode=TwoWay}" Padding="5,2"
+                              AutomationProperties.Name="All groups" ToolTip.Tip="All groups · Show group headings even when no sessions match"/>
+                <Button Padding="4,2" Background="Transparent" Click="OpenHistory"
+                        AutomationProperties.Name="All projects history" ToolTip.Tip="History for all projects (Ctrl+Alt+Shift+Y)">
+                  <PathIcon Classes="historyClock"/>
+                </Button>
+                <Button x:Name="SearchTreeButton" Padding="4,2" Background="Transparent" Click="ShowTreeSearch"
+                        AutomationProperties.Name="Search tree" ToolTip.Tip="Search the tree (Ctrl+Shift+F)">
+                  <PathIcon Width="15" Height="15" Data="M8 1 A7 7 0 1 0 12.3 13.5 L18 19.2 L19.5 17.7 L13.9 12.1 A7 7 0 0 0 8 1 Z M8 3 A5 5 0 1 1 8 13 A5 5 0 1 1 8 3 Z"/>
+                </Button>
+              </StackPanel>
+              <Grid x:Name="TreeSearchPanel" Grid.Row="1" Grid.ColumnSpan="2" ColumnDefinitions="*,Auto"
+                    IsVisible="False" ColumnSpacing="4" Margin="0,4,0,0">
+                <TextBox x:Name="TreeSearchBox" Text="{Binding SearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                         PlaceholderText="Search projects, worktrees, branches and sessions" AutomationProperties.Name="Filter tree by name"/>
+                <Button Grid.Column="1" Content="×" Padding="6,2" Click="CloseTreeSearch" Background="Transparent"
+                        AutomationProperties.Name="Close tree search" ToolTip.Tip="Clear and close tree search (Esc)"/>
+              </Grid>
             </Grid>
-          </Border>
-          <Border DockPanel.Dock="Bottom" BorderBrush="{DynamicResource GroupDivider}" BorderThickness="0,1,0,0" Padding="6">
-            <Button Content="◷   History" ToolTip.Tip="History for all projects: Ctrl+Alt+Shift+Y"
-                    HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Background="Transparent" Click="OpenHistory"/>
           </Border>
           <Panel>
           <dashboard:DashboardTabStrip x:Name="Tabs" ItemsSource="{Binding VisibleRows}" Padding="3,0"
@@ -160,8 +179,10 @@
                     <TextBlock Grid.Column="2" Text="{Binding Summary}" FontSize="12" Opacity="0.85"
                                Classes.waiting="{Binding IsWaiting}" VerticalAlignment="Center"/>
                     <filters:SessionFilterStrip Grid.Column="3" VerticalAlignment="Center"/>
-                    <Button Grid.Column="4" Content="◷" Click="OpenHistory" ToolTip.Tip="History for this group"
-                            AutomationProperties.Name="Group history" FontSize="16" Background="Transparent" Padding="4,0"/>
+                    <Button Grid.Column="4" Click="OpenHistory" ToolTip.Tip="History for this group"
+                            AutomationProperties.Name="Group history" Background="Transparent" Padding="3,2">
+                      <PathIcon Classes="historyClock"/>
+                    </Button>
                     <sessions:NewSessionButton Grid.Column="5" Content="+" IsVisible="{Binding CanStartSession}" Background="Transparent"
                                                Padding="6,0" Loaded="PrepareNewSessionButton"/>
                   </Grid>

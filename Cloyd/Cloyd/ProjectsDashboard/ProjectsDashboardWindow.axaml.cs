@@ -47,6 +47,9 @@ sealed partial class ProjectsDashboardWindow : Window, ISessionHistoryTarget
       DataContext = Tree;
       Tree.ActiveSessionChanged += ShowActiveSession;
       Tabs.TabChosen += Select;
+      Tabs.ContainerPrepared += (_, prepared) =>
+         prepared.Container.ContextMenu = Tabs.Items[prepared.Index] is DashboardWorktree worktree
+            ? new WorktreeContextMenu(worktree.StartFolder, Tell) : null;
       Overlays.Children.Add(_history);
       _history.Chosen += entry =>
       {
@@ -259,6 +262,22 @@ sealed partial class ProjectsDashboardWindow : Window, ISessionHistoryTarget
 
    void OpenHistory(object? sender, RoutedEventArgs e) => _ = OpenHistory((sender as Control)?.DataContext as DashboardGroup);
 
+   void ShowTreeSearch(object? sender, RoutedEventArgs e) => ShowTreeSearch();
+   void ShowTreeSearch()
+   {
+      TreeSearchPanel.IsVisible = true;
+      TreeSearchBox.Focus();
+      TreeSearchBox.SelectAll();
+   }
+
+   void CloseTreeSearch(object? sender, RoutedEventArgs e) => CloseTreeSearch();
+   void CloseTreeSearch()
+   {
+      Tree.SearchText = "";
+      TreeSearchPanel.IsVisible = false;
+      SearchTreeButton.Focus();
+   }
+
    public Task OpenHistory(DashboardGroup? group = null)
    {
       var title = group switch
@@ -315,6 +334,8 @@ sealed partial class ProjectsDashboardWindow : Window, ISessionHistoryTarget
       else if(key is { Key: Key.Y, KeyModifiers: KeyModifiers.Control | KeyModifiers.Alt | KeyModifiers.Shift })
          _ = OpenHistory();
       else if(_history.IsOpen) return;
+      else if(key is { Key: Key.F, KeyModifiers: KeyModifiers.Control | KeyModifiers.Shift }) ShowTreeSearch();
+      else if(key.Key == Key.Escape && TreeSearchPanel.IsKeyboardFocusWithin) CloseTreeSearch();
       else if(key is { Key: Key.H, KeyModifiers: KeyModifiers.Control }) View?.SwitchBetweenTheTerminalAndTheChat();
       else if(key.Key == Key.Tab && key.KeyModifiers is KeyModifiers.Control or (KeyModifiers.Control | KeyModifiers.Shift))
       {
