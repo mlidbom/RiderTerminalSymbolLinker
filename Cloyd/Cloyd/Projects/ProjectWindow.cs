@@ -38,7 +38,7 @@ namespace Cloyd.Projects;
 /// A window with no desktop saved, as on its first opening, goes to the desktop of the project's window in an IDE, once
 /// an IDE shows the project. It follows neither afterwards: where Magnus moves it, it stays.
 /// </remarks>
-sealed class ProjectWindow : Window, ISessionHistoryTarget
+sealed partial class ProjectWindow : Window, ISessionHistoryTarget
 {
    static readonly TimeSpan BetweenSaves = TimeSpan.FromSeconds(2);
    static readonly TimeSpan BetweenLooksForItsIdesWindow = TimeSpan.FromSeconds(2);
@@ -257,6 +257,7 @@ sealed class ProjectWindow : Window, ISessionHistoryTarget
       _tabs.SelectedItem = tab;
       await StartIn(tab, session.Command);
    }
+
 
    /// <summary>
    /// Brings back the tabs the project's last window <paramref name="saved"/>, in their order, then shows the project's

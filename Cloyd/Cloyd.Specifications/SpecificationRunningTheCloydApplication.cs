@@ -3,6 +3,7 @@ using Cloyd.LocalApi;
 using Cloyd.LocalApi.Contract;
 using Cloyd.Projects;
 using Cloyd.Specifications.TheSandbox;
+using Cloyd.Sessions;
 
 namespace Cloyd.Specifications;
 
@@ -20,10 +21,11 @@ public abstract class SpecificationRunningTheCloydApplication : SpecificationOpe
    readonly CloydsLocalApi _localApi;
 
    /// <summary>Runs the application, with the <see cref="TheSandbox.Sandbox.CloydsFolder"/> of the fact's sandbox.</summary>
-   private protected SpecificationRunningTheCloydApplication()
+   private protected SpecificationRunningTheCloydApplication(bool withPeersChannel = false)
    {
       CloydsFolder = Sandbox.CloydsFolder;
-      Windows = OnTheUIThread(() => new ProjectWindows((project, windowsOfCloyd) => Projects.Single(it => it.Project.Equals(project)).Window(windowsOfCloyd), Sandbox.WindowsOfCloyd.Sessions));
+      Windows = OnTheUIThread(() => new ProjectWindows((project, windowsOfCloyd) => Projects.Single(it => it.Project.Equals(project)).Window(windowsOfCloyd),
+         withPeersChannel ? new SessionsOfCloyd(Sandbox.HubOfTheSandbox.Hub, CloydsFolder, Sandbox.ShellWithPeersChannel) : Sandbox.WindowsOfCloyd.Sessions));
       _localApi = CloydsLocalApi.Start(Windows, CloydsFolder);
       Application = new TheCloydApplication(CloydsFolder);
    }
@@ -54,12 +56,12 @@ public abstract class SpecificationRunningTheCloydApplication : SpecificationOpe
    /// What the application's API answers <c>POST /<paramref name="pathAndQuery"/></c> with an empty body, asked with the
    /// token of its announcement, as a client that read it asks, such as the hub.
    /// </summary>
-   private protected HttpResponseMessage Posted(string pathAndQuery)
+   private protected HttpResponseMessage Posted(string pathAndQuery, HttpContent? content = null)
    {
       var announcement = AnnouncementOfCloydsLocalApi.In(CloydsFolder)!;
       return Answered(() =>
       {
-         using var request = new HttpRequestMessage(HttpMethod.Post, announcement.AddressOf(pathAndQuery)) { Content = new ByteArrayContent([]) };
+         using var request = new HttpRequestMessage(HttpMethod.Post, announcement.AddressOf(pathAndQuery)) { Content = content ?? new ByteArrayContent([]) };
          request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", announcement.Token);
          return Http.Send(request);
       }, $"the application answered POST /{pathAndQuery}");

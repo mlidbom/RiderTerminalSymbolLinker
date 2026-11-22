@@ -7,6 +7,8 @@ All notable changes to Cloyd are documented here. The format follows
 ## [0.1.0]
 
 ### Added
+- **Coordinators can start a named Claude Code or Codex helper in a Cloyd tab.** The helper runs in the requested
+  worktree and the existing tab stays selected. A repeated launch returns the original session's address.
 - **A grey star marks an idle Claude Code tab and a grey dot marks an idle Codex tab.** During a turn,
   Claude's star spins in orange and the Codex dot pulses in blue, growing to the same diameter as Claude's spinner.
   Codex Chat shows the same pulse above its input box.

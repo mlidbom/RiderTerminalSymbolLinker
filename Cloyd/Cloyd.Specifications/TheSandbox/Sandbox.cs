@@ -74,6 +74,12 @@ sealed class Sandbox : IDisposable
    /// </summary>
    public ShellOfNewSessions ShellOfItsSessions { get; }
 
+   /// <summary>Loads the Peers channel for a private Claude stand-in, as the interactive PowerShell profile does.</summary>
+   public ShellOfNewSessions ShellWithPeersChannel => ShellOfItsSessions with
+   {
+      CommandLine = """pwsh.exe -NoLogo -NoProfile -NoExit -Command "function global:claude { & claude.exe --channels plugin:peers@home-claude @args }" """
+   };
+
    /// <summary>The folder of the sandbox's projects, each in a folder of its own.</summary>
    public string ProjectsFolder => Path.Combine(_folder.FullName, "projects");
 

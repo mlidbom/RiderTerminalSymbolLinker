@@ -24,6 +24,10 @@ namespace Cloyd.LocalApi;
 /// <c>Cloyd.exe --project</c> asks it.
 /// </item>
 /// <item>
+/// <c>POST /sessions/start</c> creates or finds a coordinator's tab by its stable request ID,
+/// and returns the observed CLI session address. Its launch journal is <see cref="PeerSessionLaunchReceipt"/>.
+/// </item>
+/// <item>
 /// <c>POST /sessions/show?session=&lt;session id&gt;&amp;process=&lt;Claude Code's process id&gt;</c>: shows the tab whose Claude
 /// Code runs as the process, else the one that runs the session or ran it last, selecting it and bringing its window
 /// forward, and answers with the window, a <see cref="WindowInTheAnswer"/>: 404 when no window has such a tab. Either may
@@ -63,6 +67,8 @@ sealed class CloydsLocalApi
       web.Use((exchange, next) => Guard(exchange, next, token));
       web.MapGet("/windows", exchange => AnswerWithTheWindows(exchange, windows));
       web.MapPost("/windows/show", exchange => Show(exchange, windows));
+      var starts = new SessionStartsForPeers(folder, windows);
+      web.MapPost("/sessions/start", exchange => StartForAPeer(exchange, starts));
       web.MapPost("/sessions/show", exchange => ShowTheTabOfASession(exchange, windows));
       Task.Run(() => web.StartAsync()).GetAwaiter().GetResult();
       new AnnouncementOfCloydsLocalApi(CloydsLocalApiProtocol.Version, Environment.ProcessId, new Uri(web.Urls.Single()).Port, token).WriteIn(folder);
@@ -127,6 +133,29 @@ sealed class CloydsLocalApi
    }
 
    static WindowInTheAnswer InTheAnswer(ProjectWindow window) => new(window.Project.Folder, window.Title ?? "");
+
+   static async Task StartForAPeer(HttpContext exchange, SessionStartsForPeers starts)
+   {
+      var request = await JsonSerializer.DeserializeAsync<SessionToStartForAPeer>(exchange.Request.Body, CloydsLocalApiProtocol.Json, exchange.RequestAborted);
+      if(request?.IsValid != true)
+      {
+         await Reply(exchange, 400, new ErrorAnswer("Supply a request ID, fingerprint, existing absolute project and worktree folders, a name and agentCli (claude or codex)."));
+         return;
+      }
+      try
+      {
+         PeerSessionStarted result = await Dispatcher.UIThread.InvokeAsync(() => starts.Start(request));
+         await Reply(exchange, 200, result);
+      }
+      catch(UnconfirmedPeerSessionIdentity uncertain)
+      {
+         await Reply(exchange, 409, new ErrorAnswer(uncertain.Message));
+      }
+      catch(PeerSessionRequestConflict conflict)
+      {
+         await Reply(exchange, 409, new ErrorAnswer(conflict.Message));
+      }
+   }
 
    /// <summary>Lets the request of <paramref name="exchange"/> on to <paramref name="next"/>, or answers it 403 or 401: see the API's remarks.</summary>
    static async Task Guard(HttpContext exchange, RequestDelegate next, string token)

@@ -25,6 +25,13 @@ static class SessionHostLabel
    /// <summary>The label a project window starts the hosts of <paramref name="project"/>'s new sessions with.</summary>
    public static string OfANewHostOf(Project project) => new JsonObject { [StartedBy] = Cloyd, [ProjectsFolder] = project.Folder }.ToJsonString();
 
+   /// <summary>The same project label, identifying a coordinator's one launch across a Cloyd restart.</summary>
+   public static string ForAPeer(Project project, Guid requestId) =>
+      new JsonObject { [StartedBy] = Cloyd, [ProjectsFolder] = project.Folder, ["peerRequest"] = requestId.ToString("D") }.ToJsonString();
+
+   public static bool IdentifiesPeerRequest(string? label, Guid requestId) =>
+      label is not null && ObjectIn(label)?["peerRequest"] is JsonValue value && value.TryGetValue<string>(out var id) && Guid.TryParse(id, out var recorded) && recorded == requestId;
+
    /// <summary>
    /// The project whose window shows the host labelled <paramref name="label"/>: null for a label neither Cloyd nor Claude
    /// Sessions gave, as another tool's, or none.

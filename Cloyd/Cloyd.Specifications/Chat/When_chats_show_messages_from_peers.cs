@@ -68,6 +68,14 @@ public class When_chats_show_messages_from_peers : SpecificationOpeningWindows
       return (codex, claude);
    });
 
+   [XF] public void a_helpers_exact_reply_address_preserves_its_readable_sender_and_body()
+   {
+      var addressed = CodexEnvelope.Replace("from_kind=\"codex\"", "from_kind=\"codex\" reply_to=\"codex:8c30430f-82bf-41f8-8ff7-ad7425ed291d\"");
+      var row = ShownInTheChat.PeerMessage.FromCodex("helper", addressed)!;
+      row.Peer.Must().Be(Sender);
+      row.Body.Must().Be(Body);
+   }
+
    [XF] public void Codex_labels_Peers_deliveries_by_sender_and_protocol_and_shows_each_send_once() =>
       OnTheUIThread(() => _codex.Shown.OfType<ShownInTheChat.PeerMessage>().Select(it => it.TextShown).ToArray())
         .Must().SequenceEqual([Sender + " · Peers", "Claude & Co · Peers", "↗ cloyd-gpt · Peers"]);

@@ -114,6 +114,10 @@ sealed class SessionsOfCloyd(TheHub hub, CloydsFolder folder, ShellOfNewSessions
    public Task<SessionHostOfTheHub> StartHost(Project project, string directory, CancellationToken cancellation) =>
       Hub.StartASessionHost(shell, directory, SessionHostLabel.OfANewHostOf(project), cancellation);
 
+   /// <summary>Starts the one labelled host for a coordinator in its worktree through the hub pinned for this launch.</summary>
+   public Task<SessionHostOfTheHub> StartPeerHost(TheHub launchHub, Project project, string worktree, Guid requestId, CancellationToken cancellation) =>
+      launchHub.StartASessionHost(shell, worktree, SessionHostLabel.ForAPeer(project, requestId), cancellation);
+
    public async Task StartIn(SessionView tab, AgentCliCommand command, CancellationToken cancellation)
    {
       try { await command.HaveTheHubTypeItInto(tab.Host, Hub, cancellation); }

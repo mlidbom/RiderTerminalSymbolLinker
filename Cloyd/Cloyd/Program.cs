@@ -8,7 +8,7 @@ using Cloyd.Projects;
 namespace Cloyd;
 
 /// <summary>
-/// Cloyd.exe, run in one of three ways:
+/// The Cloyd application and its commands:
 /// <list type="bullet">
 /// <item>
 /// <c>Cloyd.exe --project &lt;folder&gt;</c>, the command, as an IDE runs it for a project it opens: has the Cloyd
@@ -18,6 +18,10 @@ namespace Cloyd;
 /// <item>
 /// <c>Cloyd.exe --application &lt;Cloyd's folder&gt;</c>, the Cloyd application: the one process on the machine that shows
 /// every project's window, serving the <see cref="CloydsFolder"/> given. The command starts it.
+/// </item>
+/// <item>
+/// <c>Cloyd.exe --start-peer-session</c> reads a coordinator's launch metadata from standard input and prints
+/// the observed session address. Peers delivers its brief through that session's transport.
 /// </item>
 /// <item>
 /// <c>Cloyd.exe --links-in &lt;folder&gt; &lt;line&gt;</c>, a development tool: what links in the line of a terminal's
@@ -36,8 +40,26 @@ static class Program
       {
          [ArgumentThatMakesItTheApplication, _] => BuildAvaloniaApp().StartWithClassicDesktopLifetime(arguments),
          [ArgumentThatAsksWhatLinks, var folder, var line] => TellWhatLinksIn(line, new Project(folder)),
+         ["--start-peer-session"] => StartPeerSession(),
          _ => ShowTheWindowOf(ProjectNamedBy(arguments))
       };
+
+   /// <summary>The Peers command. Reads the launch request as JSON on stdin and prints the qualified session address.</summary>
+   static int StartPeerSession()
+   {
+      try
+      {
+         var request = System.Text.Json.JsonSerializer.Deserialize<LocalApi.Contract.SessionToStartForAPeer>(Console.OpenStandardInput(), CloydsLocalApiProtocol.Json);
+         if(request?.IsValid != true) throw new ArgumentException("Invalid peer session launch request.");
+         Console.WriteLine(TheCloydApplication.OfCloydsEnvironment().StartPeerSession(request).Address);
+         return 0;
+      }
+      catch(Exception failure)
+      {
+         Console.Error.WriteLine(failure.Message);
+         return 1;
+      }
+   }
 
    /// <summary>The application on the desktop. Also found by name by Avalonia's designer.</summary>
    public static AppBuilder BuildAvaloniaApp() => AppBuilder.Configure<CloydApp>().UsePlatformDetect();
