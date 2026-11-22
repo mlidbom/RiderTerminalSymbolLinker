@@ -70,6 +70,26 @@ public class When_a_peer_starts_a_session_in_a_project_window : SpecificationRun
       OnTheUIThread(() => Windows.Open.Single().Tabs.Single().Host.Id).Must().Be(original.Id);
    }
 
+   [XF] public void an_incompatible_hub_can_be_upgraded_then_the_same_launch_can_be_retried()
+   {
+      HandedOver(_project);
+      var request = new SessionToStartForAPeer(Guid.NewGuid(), new string('D', 64), _project.Project.Folder, _worktree.Project.Folder, "codex", "After upgrade");
+      var folder = Sandbox.HubOfTheSandbox.Environment["CLAUDE_TOOLING_LOCAL_API_FOLDER"];
+      var file = new FileWrittenWhole(Path.Combine(folder, "local-api.json"));
+      var original = file.Text()!;
+      var announcement = System.Text.Json.Nodes.JsonNode.Parse(original)!.AsObject();
+      announcement["protocol"] = -1;
+      try
+      {
+         file.Write(announcement.ToJsonString());
+         using var refusal = Posted("sessions/start", JsonContent.Create(request));
+         refusal.StatusCode.Must().Be(HttpStatusCode.InternalServerError);
+         new PeerSessionLaunchReceipt(CloydsFolder, request).HostWasRequested.Must().BeFalse();
+      }
+      finally { file.Write(original); }
+      Start(request).Must().Satisfy(it => it.StartsWith("codex:"));
+   }
+
    string Start(SessionToStartForAPeer request)
    {
       using var answer = Posted("sessions/start", JsonContent.Create(request));

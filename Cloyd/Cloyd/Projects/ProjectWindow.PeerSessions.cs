@@ -32,7 +32,10 @@ sealed partial class ProjectWindow
       if(receipt.HostWhereCliWasRequested is null)
       {
          receipt.RecordCliRequest(tab.Host.Id);
-         try { await session.Command.HaveTheHubTypeItInto(tab.Host, launchHub, deadline.Token); }
+         // Peers names the exact Codex ID before briefing it. A background naming task in this hub
+         // would disappear if the hub restarted after typing the launch line.
+         var command = session.AgentCli == AgentCli.Codex ? AgentCli.Codex.CommandOfANewSession(null) : session.Command;
+         try { await command.HaveTheHubTypeItInto(tab.Host, launchHub, deadline.Token); }
          catch(RefusedByTheHub)
          {
             receipt.RecordHostRequest(); // The hub explicitly refused to type into this shell.
@@ -44,7 +47,12 @@ sealed partial class ProjectWindow
 
       while(true)
       {
-         if(tab.SessionRunningInIt?.Session is {} running && running.AgentCli == session.AgentCli && running.Name == session.Name) return running;
+         if(tab.SessionRunningInIt?.Session is {} running && running.AgentCli == session.AgentCli)
+         {
+            if(running.AgentCli == AgentCli.Codex || running.Name == session.Name) return running;
+            if(!string.IsNullOrEmpty(running.Name))
+               throw new InvalidOperationException($"The helper's host now shows {running.Name} ({running.Id.Value}), expected {session.Name}. Inspect the tab before sending the brief.");
+         }
          await Task.Delay(150, deadline.Token);
       }
 

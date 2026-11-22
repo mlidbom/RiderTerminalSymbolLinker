@@ -57,8 +57,12 @@ sealed partial class TheHub
 
    /// <summary>For a peer's persistent launch, submit each command to one generation of the hub just once.
    /// Losing a reply can leave a live host or CLI. A retry finds it through the launch receipt.</summary>
-   public async Task<TheHub> ForOnePeerLaunch(CancellationToken cancellation) =>
-      new(this, await TheAnnouncement(new TimeToAnswer(_folderOfTheAnnouncement), cancellation));
+   public async Task<TheHub> ForOnePeerLaunch(CancellationToken cancellation)
+   {
+      var announcement = await TheAnnouncement(new TimeToAnswer(_folderOfTheAnnouncement), cancellation);
+      RequireSupportedProtocol(announcement);
+      return new(this, announcement);
+   }
 
    /// <summary>
    /// The hub Cloyd's environment names: the one tried out apart from the published one, whose announcement's folder
@@ -82,7 +86,13 @@ sealed partial class TheHub
 
    /// <summary>The agent CLIs whose sessions the hub starts and lists, as its announcement says: Claude Code first.</summary>
    public async Task<IReadOnlyList<AgentCli>> AgentClisItServes(CancellationToken cancellation = default) =>
-      (await TheAnnouncement(new TimeToAnswer(_folderOfTheAnnouncement), cancellation)).AgentClisItServes;
+      (_oneHubForThisLaunch ?? await TheAnnouncement(new TimeToAnswer(_folderOfTheAnnouncement), cancellation)).AgentClisItServes;
+
+   static void RequireSupportedProtocol(AnnouncementOfTheHub announcement)
+   {
+      if(announcement.Protocol != LocalApiProtocol.Version)
+         throw new InvalidOperationException($"The hub speaks protocol {announcement.Protocol}, and this Cloyd protocol {LocalApiProtocol.Version}: Cloyd needs updating.");
+   }
 
    /// <summary>Every session host that runs, in the order they started.</summary>
    public async Task<IReadOnlyList<SessionHostOfTheHub>> SessionHosts(CancellationToken cancellation = default)
@@ -323,8 +333,7 @@ sealed partial class TheHub
    async Task<HttpResponseMessage> SendOnce(AnnouncementOfTheHub announcement, Func<AnnouncementOfTheHub, HttpRequestMessage> request,
                                             HttpCompletionOption completion, CancellationToken cancellation)
    {
-      if(announcement.Protocol != LocalApiProtocol.Version)
-         throw new InvalidOperationException($"The hub speaks protocol {announcement.Protocol}, and this Cloyd protocol {LocalApiProtocol.Version}: Cloyd needs updating.");
+      RequireSupportedProtocol(announcement);
       using var asked = request(announcement);
       asked.Headers.Authorization = new AuthenticationHeaderValue("Bearer", announcement.Token);
       return await _http.SendAsync(asked, completion, cancellation);
