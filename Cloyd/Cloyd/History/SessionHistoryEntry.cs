@@ -1,5 +1,4 @@
 using System.Globalization;
-using Cloyd.Hub;
 using Cloyd.Sessions;
 
 namespace Cloyd.History;
@@ -10,17 +9,17 @@ namespace Cloyd.History;
 /// </summary>
 sealed class SessionHistoryEntry
 {
-   readonly SessionOnDisk _onDisk;
+   readonly SessionListing _listing;
 
-   /// <summary>The entry of <paramref name="onDisk"/>, which is <paramref name="where"/> now.</summary>
-   public SessionHistoryEntry(SessionOnDisk onDisk, WhereTheSessionIs where)
+   /// <summary>The entry of <paramref name="listing"/>, which is <paramref name="where"/> now.</summary>
+   public SessionHistoryEntry(SessionListing listing, WhereTheSessionIs where)
    {
-      _onDisk = onDisk;
+      _listing = listing;
       Where = where;
    }
 
    /// <summary>The session, named as its agent CLI shows it, as a tab that resumes it is titled.</summary>
-   public Session Session => _onDisk.Session;
+   public Session Session => _listing.Session;
 
    public SessionId Id => Session.Id;
 
@@ -31,28 +30,23 @@ sealed class SessionHistoryEntry
    public WhereTheSessionIs Where { get; }
 
    /// <summary>What the picker calls the session: its name, else its <see cref="Prompt"/>, else its id.</summary>
-   public string Title => Session.Name ?? ThePrompt ?? Id.Value;
+   public string Title => _listing.Title;
 
    /// <summary>
    /// The session's prompt, which the picker shows below a <see cref="Title"/> that is the session's name: its last, or a
    /// Codex session's first, as Codex previews a session. Null otherwise.
    /// </summary>
-   public string? Prompt => Session.Name is null ? null : ThePrompt;
-
-   string? ThePrompt => _onDisk.LastPrompt ?? _onDisk.FirstPrompt;
+   public string? Prompt => _listing.Prompt;
 
    /// <summary>
    /// The directory the session last ran in: null when the hub can't tell, as for a Claude Code transcript none of whose
    /// entries name a git branch, which the hub takes the directory from. Only <see cref="SessionHistoryScope.AllProjects"/> covers
    /// such a session.
    /// </summary>
-   public string? Directory => _onDisk.Directory;
+   public string? Directory => _listing.Directory;
 
    /// <summary>The git branch checked out in <see cref="Directory"/> as the session last ran: null outside git.</summary>
-   public string? Branch => _onDisk.Branch;
-
-   /// <summary>When the session was last written to, in UTC: a Claude Code session's transcript, or a Codex session by Codex.</summary>
-   public DateTime LastUsed => _onDisk.LastUsed;
+   public string? Branch => _listing.Branch;
 
    /// <summary>
    /// When the session was last used, as the picker tells it <paramref name="now"/>, in local time: <c>today 14:22</c>,
@@ -60,7 +54,8 @@ sealed class SessionHistoryEntry
    /// </summary>
    public string LastUsedAsToldAt(DateTime now)
    {
-      var used = LastUsed.ToLocalTime();
+      if(_listing.Recorded is not {} recorded) return "Running now";
+      var used = recorded.LastUsed.ToLocalTime();
       var today = now.ToLocalTime().Date;
       return used.Date == today ? $"today {used:HH:mm}"
          : used.Date == today.AddDays(-1) ? $"yesterday {used:HH:mm}"
@@ -69,13 +64,16 @@ sealed class SessionHistoryEntry
    }
 
    /// <summary>
-   /// Whether every word of <paramref name="filter"/> is in what the picker shows of the session, in any case: its name,
+   /// Whether every word of <paramref name="words"/> is in what the picker shows of the session, in any case: its name,
    /// its prompt, its directory and its branch. An empty filter has no words, so every entry has them.
    /// </summary>
-   public bool Matches(string filter)
+   public bool Matches(IReadOnlyList<string> words)
    {
-      var shown = string.Join('\n', new[] { Session.Name, ThePrompt, Directory, Branch }.OfType<string>());
-      return filter.Split([' ', '\t'], StringSplitOptions.RemoveEmptyEntries).All(word => shown.Contains(word, StringComparison.OrdinalIgnoreCase));
+      foreach(var word in words)
+         if(!Contains(Title, word) && !Contains(Prompt, word) && !Contains(Directory, word) && !Contains(Branch, word)) return false;
+      return true;
+
+      static bool Contains(string? text, string word) => text?.Contains(word, StringComparison.OrdinalIgnoreCase) == true;
    }
 
    /// <summary>Does what choosing the entry in the picker of <paramref name="pickedIn"/> does, as <see cref="Where"/> it is decides.</summary>

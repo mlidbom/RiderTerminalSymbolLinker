@@ -9,13 +9,18 @@ namespace Cloyd.History;
 sealed class SessionHistoryPickerViewModel : ObservableObject
 {
    readonly SessionHistoryScope _initialScope;
+   readonly bool _canPreview;
    readonly HashSet<AgentCli> _agentClisListed = [];
    SessionHistory? _history;
 
-   public SessionHistoryPickerViewModel(SessionHistoryScope initialScope) => Scope = _initialScope = initialScope;
+   public SessionHistoryPickerViewModel(SessionHistoryScope initialScope, bool canPreview)
+   {
+      Scope = _initialScope = initialScope;
+      _canPreview = canPreview;
+   }
 
    public SessionHistoryScope Scope { get; private set; }
-   public IReadOnlyList<SessionHistoryScope> Scopes => _history?.Worktrees.Scopes ?? [];
+   public IReadOnlyList<SessionHistoryScope> Scopes => _history?.Scopes ?? [];
    public IReadOnlyList<AgentCli> AgentClis => _history?.AgentClis ?? [];
    public IReadOnlySet<AgentCli> AgentClisListed => _agentClisListed;
    public IReadOnlyList<SessionHistoryEntry> Listed { get => field; private set => SetProperty(ref field, value); } = [];
@@ -27,7 +32,8 @@ sealed class SessionHistoryPickerViewModel : ObservableObject
    } = "";
 
    /// <summary>The selected entry if it can be resumed or brought forward.</summary>
-   public SessionHistoryEntry? Choice => Selected >= 0 && Selected < Listed.Count && Listed[Selected].Where.CanBeChosen ? Listed[Selected] : null;
+   public SessionHistoryEntry? Choice => Selected >= 0 && Selected < Listed.Count && CanChoose(Listed[Selected]) ? Listed[Selected] : null;
+   public bool CanChoose(SessionHistoryEntry entry) => _canPreview || entry.Where.CanBeChosen;
 
    /// <summary>Starts a new reading, with the initial scope of this window and an empty search.</summary>
    public void Open()

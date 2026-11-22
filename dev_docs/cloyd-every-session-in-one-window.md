@@ -15,10 +15,23 @@ dashboard stays open. The dashboard saves its selected session and virtual deskt
   even when their last session and project window have closed. For a folder outside Git, tabs
   sit directly under the project. Sessions outside a host with a known folder appear there read-only.
   Sessions outside a host whose folder is unknown share a read-only group.
-- **Pins** belong to the agent session, including across a change of host. A shell pinned before its first
-  session is known passes its pin to that session. **Only pinned** hides unpinned tabs and all worktrees and
-  projects with no pinned sessions. Its counts and Ctrl+Tab apply to the pinned sessions. The open chat or
-  terminal stays in place when filtered from the sidebar.
+- **The session catalogue** combines interactive, resumable conversations on disk with current agents by
+  session ID. History and the dashboard both use it. A host with no known session still has its shell tab.
+  Selecting a stopped conversation opens a read-only transcript. **Resume session** starts it explicitly.
+  The root, project and worktree clocks open the same history picker, scoped to the clicked heading's full
+  membership independently of sidebar filters. Session rows open their conversations directly.
+- **Inclusion switches** at the root, project and worktree match open project tabs, pins, and sessions in
+  no project tab. A match on any enabled switch includes the session. The nearest manually set value for
+  each switch wins. A context-menu action or Delete on a local switch restores inheritance. The gear shows
+  hidden group headings so their switches remain reachable. The independent activity selector narrows the
+  included sessions. Counts and Ctrl+Tab follow those filters; the open chat or terminal stays in place.
+  Pins belong to the agent session, including across a change of host. Older pinned-only settings migrate
+  to the pinned switch alone.
+- **Branch icons** compare checkout commits against local main (otherwise the available integration branch).
+  Green means integrated; purple means commits are still outside it. On the integration branch, green and
+  purple compare against the last locally known remote upstream, and ↑/↓ mark outgoing/incoming commits.
+  An amber dot independently marks staged, unstaged or non-ignored untracked files. Gray means the comparison
+  is unavailable. Tooltips name the target and counts. The dashboard performs local Git reads without fetching.
 - Project tabs and dashboard tabs share their heading, including the idle agent mark, busy animation,
   title and close button. A group heading toggles expansion independently of the active session. A
   collapsed group shows its active tab and counts of sessions, including those busy or waiting. Reordering

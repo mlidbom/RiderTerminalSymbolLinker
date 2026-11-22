@@ -1,23 +1,25 @@
 using Cloyd.Chat;
 using Cloyd.Codex.Chat;
+using Cloyd.ClaudeCode;
+using Cloyd.Codex;
 using Cloyd.Hub.RunningSessions;
 using Cloyd.Sessions;
 
 namespace Cloyd.ProjectsDashboard;
 
-/// <summary>Shows the conversation of a running session with no session host. There is no terminal to
-/// bring forward, and neither editor nor send actions are offered.</summary>
+/// <summary>Opens the read-only conversation of a session outside a host, including the saved
+/// conversation of an agent that has stopped.</summary>
 sealed class ConversationOutsideAHost
 {
    public SessionChat Chat { get; }
 
-   public ConversationOutsideAHost(SessionsOfCloyd sessions, RunningSession running)
+   public ConversationOutsideAHost(SessionsOfCloyd sessions, Session session, RunningSession? running)
    {
-      Chat = running switch
+      Chat = session switch
       {
-         RunningClaudeCode => new ChatOfAClaudeCodeSession(sessions.Hub, sessions.Images),
-         RunningCodex => new ChatOfACodexSession(sessions.Hub, sessions.Images, new CodexSessionDrafts()),
-         _ => throw new ArgumentOutOfRangeException(nameof(running))
+         ClaudeCodeSession => new ChatOfAClaudeCodeSession(sessions.Hub, sessions.Images),
+         CodexSession => new ChatOfACodexSession(sessions.Hub, sessions.Images, new CodexSessionDrafts()),
+         _ => throw new ArgumentOutOfRangeException(nameof(session))
       };
       Chat.InputBox.IsVisible = false;
       switch(Chat)
@@ -25,19 +27,19 @@ sealed class ConversationOutsideAHost
          case ChatOfAClaudeCodeSession claude: claude.WaitingForMagnusInTheTerminal.IsEnabled = false; break;
          case ChatOfACodexSession codex: codex.WaitingForMagnusInTheTerminal.IsEnabled = false; break;
       }
-      Update(running);
+      Update(session, running);
    }
 
-   public void Update(RunningSession running)
+   public void Update(Session session, RunningSession? running)
    {
-      switch(Chat, running)
+      switch(Chat, session)
       {
-         case (ChatOfAClaudeCodeSession chat, RunningClaudeCode claude):
-            chat.ClaudeCode = claude;
-            chat.Show(claude.SessionId);
+         case (ChatOfAClaudeCodeSession chat, ClaudeCodeSession claude):
+            chat.ClaudeCode = running as RunningClaudeCode;
+            chat.Show(claude.Id);
             break;
-         case (ChatOfACodexSession chat, RunningCodex codex):
-            chat.Show(codex.SessionId, codex);
+         case (ChatOfACodexSession chat, CodexSession codex):
+            chat.Show(codex.Id, running as RunningCodex);
             break;
       }
    }

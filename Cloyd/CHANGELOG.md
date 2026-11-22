@@ -7,6 +7,14 @@ All notable changes to Cloyd are documented here. The format follows
 ## [0.1.0]
 
 ### Added
+- **History and Projects Dashboard share a session list.** Click a stored conversation to read it and choose
+  **Resume session** to run it. The dashboard clock searches all projects; each project and worktree clock
+  searches its own sessions, including those the sidebar filters hide.
+- **Choose which sessions to include at each level.** The three icons include open project tabs, pinned
+  sessions, and sessions outside project tabs. A match on any enabled icon is enough. Each individual
+  switch inherits from its parent until changed locally. Right-click a local switch and choose **Use parent
+  setting** to restore inheritance. The gear reveals hidden group headings for editing. The status selector
+  narrows the resulting list to running, resumable, working, waiting, idle or failed sessions.
 - **Worktree branch icons show Git status.** Green means all commits are in the local integration branch,
   purple means some are still outside it, and an amber dot marks uncommitted changes. On the integration
   branch itself the colour compares against its upstream. ↑ marks outgoing commits and ↓ incoming commits.

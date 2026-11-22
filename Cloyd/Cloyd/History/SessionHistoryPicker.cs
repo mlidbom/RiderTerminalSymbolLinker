@@ -16,11 +16,10 @@ using Cloyd.Theming;
 namespace Cloyd.History;
 
 /// <summary>
-/// The session history picker: laid over a <see cref="ProjectWindow"/>, it lists the <see cref="SessionHistory"/>,
-/// most recently used first, for Magnus to resume a session from, or to bring forward the tab it runs in. Typing filters
-/// it, and its <see cref="SessionHistoryScope"/>s widen it from the project's worktree to every project. Enter, or a
-/// double click, chooses the selected session, and Escape, or a click beside the picker, closes it. A session that runs
-/// where no tab can show it is greyed out, and can't be chosen.
+/// Lists <see cref="SessionHistory"/> with a search box. A <see cref="ProjectWindow"/> can resume a session
+/// or bring its tab forward. Its <see cref="SessionHistoryScope"/>s widen the search from the current worktree
+/// to every project. Projects Dashboard opens a conversation from the clicked heading's history.
+/// Enter or a double click chooses the session. Escape or a click beside the picker closes it.
 /// </summary>
 /// <remarks>
 /// The sessions of every agent CLI the hub serves are in one list, Claude Code's and Codex's interleaved, each marked with
@@ -50,10 +49,12 @@ sealed class SessionHistoryPicker : Panel
    static readonly ColourOfTheTheme MarkOfCodex = new("#DFE6EF", "#2E3846");
 
    readonly ProjectWindow? _pickedIn;
+   readonly TextBlock _heading = new() { FontWeight = FontWeight.SemiBold, FontSize = 15, VerticalAlignment = VerticalAlignment.Center };
    readonly TextBox _search = new() { PlaceholderText = "Search the sessions: words of their titles, prompts, folders or branches" };
    readonly StackPanel _scopeButtons = new() { Orientation = Orientation.Horizontal, Spacing = 4, VerticalAlignment = VerticalAlignment.Center };
    readonly StackPanel _agentCliToggles = new() { Orientation = Orientation.Horizontal, Spacing = 8, Margin = new Thickness(0, 0, 24, 0), HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Center };
    readonly SessionHistoryPickerViewModel _model;
+   CancellationTokenSource? _readingHistory;
    readonly ListBox _list = new() { SelectionMode = SelectionMode.Single };
    readonly TextBlock _reading = new() { Text = "Reading the sessions…", Margin = new Thickness(12), Opacity = 0.7 };
 
@@ -61,7 +62,8 @@ sealed class SessionHistoryPicker : Panel
    public SessionHistoryPicker(ProjectWindow? pickedIn = null)
    {
       _pickedIn = pickedIn;
-      _model = new SessionHistoryPickerViewModel(pickedIn is null ? SessionHistoryScope.AllProjects : SessionHistoryScope.ThisWorktree);
+      _model = new SessionHistoryPickerViewModel(pickedIn is null ? SessionHistoryScope.AllProjects : SessionHistoryScope.ThisWorktree,
+                                                canPreview: pickedIn is null);
       IsVisible = false;
       Resources.MergedDictionaries.Add(ColourOfTheTheme.AsResources([Running, Ground, Edge, MarkOfClaudeCode, MarkOfCodex]));
       _list.ItemTemplate = new FuncDataTemplate<SessionHistoryEntry?>((entry, _) => entry is null ? new Panel() : RowOf(entry)); // The list builds a row with no entry as it swaps its entries.
@@ -122,9 +124,36 @@ sealed class SessionHistoryPicker : Panel
    /// <summary>Raised once the picker has closed, whether for a choice or not.</summary>
    public event Action? Closed;
 
-   /// <summary>Opens the picker over its window, reading the history until <see cref="Show"/> shows it, with the keyboard focus in the search box.</summary>
-   public void Open()
+   /// <summary>Shows the picker immediately, then the history from <paramref name="read"/> once available.
+   /// Closing the picker or opening another scope cancels this request while other windows can keep reading.</summary>
+   public async Task Open(Func<CancellationToken, Task<SessionHistory>> read, CancellationToken windowClosed,
+                          string title = "Resume a session", bool fixedScope = false)
    {
+      _readingHistory?.Cancel();
+      using var reading = CancellationTokenSource.CreateLinkedTokenSource(windowClosed);
+      _readingHistory = reading;
+      OpenWhileReading(title, fixedScope);
+      try
+      {
+         var history = await read(reading.Token);
+         if(!reading.IsCancellationRequested) Show(history);
+      }
+      catch(Exception) when(reading.IsCancellationRequested)
+      {
+         // The window closed or a newer picker replaced this request. Only its current reading can report to it.
+      }
+      catch
+      {
+         Close();
+         throw;
+      }
+      finally { if(_readingHistory == reading) _readingHistory = null; }
+   }
+
+   void OpenWhileReading(string title, bool fixedScope)
+   {
+      _heading.Text = title;
+      _scopeButtons.IsVisible = !fixedScope;
       _model.Open();
       _scopeButtons.Children.Clear();
       _agentCliToggles.Children.Clear();
@@ -134,23 +163,25 @@ sealed class SessionHistoryPicker : Panel
    }
 
    /// <summary>Shows <paramref name="history"/>, as read for the window's project, in the open picker.</summary>
-   public void Show(SessionHistory history)
+   void Show(SessionHistory history)
    {
       _model.Show(history);
       _reading.IsVisible = false;
-      foreach(var scope in history.Worktrees.Scopes)
-      {
-         var button = new RadioButton { Content = scope.Label, GroupName = $"scope-{GetHashCode()}", IsChecked = scope == Scope };
-         button.IsCheckedChanged += (_, _) =>
-         {
-            if(button.IsChecked == true && scope != Scope) List(scope);
-         };
-         _scopeButtons.Children.Add(button);
-      }
-
+      if(_scopeButtons.IsVisible)
+         foreach(var scope in history.Scopes) _scopeButtons.Children.Add(ScopeButton(scope));
       foreach(var agentCli in history.AgentClis) _agentCliToggles.Children.Add(TheToggleOf(agentCli));
 
       _agentCliToggles.IsVisible = TellsTheAgentClisApart;
+   }
+
+   RadioButton ScopeButton(SessionHistoryScope scope)
+   {
+      var button = new RadioButton { Content = scope.Label, GroupName = $"scope-{GetHashCode()}", IsChecked = scope == Scope };
+      button.IsCheckedChanged += (_, _) =>
+      {
+         if(button.IsChecked == true && scope != Scope) List(scope);
+      };
+      return button;
    }
 
    /// <summary>Lists the sessions of <paramref name="agentCli"/>, as switching its toggle on does, and gives the search box the focus back.</summary>
@@ -195,6 +226,7 @@ sealed class SessionHistoryPicker : Panel
    {
       if(!IsVisible) return;
 
+      _readingHistory?.Cancel();
       IsVisible = false;
       Closed?.Invoke();
    }
@@ -226,18 +258,19 @@ sealed class SessionHistoryPicker : Panel
    /// </summary>
    Control RowOf(SessionHistoryEntry entry)
    {
+      var canChoose = _model.CanChoose(entry);
       var title = new TextBlock { TextTrimming = TextTrimming.CharacterEllipsis, FontWeight = FontWeight.SemiBold };
       title.Inlines!.Add(new Run(OneLine(entry.Title)));
       if(entry.Where.AsToldIn(_pickedIn) is {} where)
       {
-         var told = new Run("   " + where) { FontWeight = entry.Where.CanBeChosen ? FontWeight.Bold : FontWeight.Normal, FontStyle = entry.Where.CanBeChosen ? FontStyle.Normal : FontStyle.Italic };
-         title.Inlines.Add(entry.Where is { IsRunning: true, CanBeChosen: true } ? Running.AsTheForegroundOf(told) : told);
+         var told = new Run("   " + where) { FontWeight = canChoose ? FontWeight.Bold : FontWeight.Normal, FontStyle = canChoose ? FontStyle.Normal : FontStyle.Italic };
+         title.Inlines.Add(entry.Where.IsRunning && canChoose ? Running.AsTheForegroundOf(told) : told);
       }
 
       var below = new TextBlock { Text = string.Join("   ·   ", WhatIsToldBelow()), TextTrimming = TextTrimming.CharacterEllipsis, FontSize = 12, Opacity = 0.65 };
       var top = new DockPanel { Children = { title } };
       if(TellsTheAgentClisApart) top.Children.Insert(0, Docked(TheMarkOf(entry.AgentCli), Dock.Left));
-      return new StackPanel { Margin = new Thickness(2, 3), Spacing = 1, Opacity = entry.Where.CanBeChosen ? 1 : 0.5, Children = { top, below } };
+      return new StackPanel { Margin = new Thickness(2, 3), Spacing = 1, Opacity = canChoose ? 1 : 0.5, Children = { top, below } };
 
       IEnumerable<string> WhatIsToldBelow()
       {
@@ -279,8 +312,7 @@ sealed class SessionHistoryPicker : Panel
 
    Control TheCard()
    {
-      var heading = new TextBlock { Text = "Resume a session", FontWeight = FontWeight.SemiBold, FontSize = 15, VerticalAlignment = VerticalAlignment.Center };
-      var top = new DockPanel { Margin = new Thickness(0, 0, 0, 8), Children = { Docked(heading, Dock.Left), Docked(_scopeButtons, Dock.Right), Docked(_agentCliToggles, Dock.Right) } };
+      var top = new DockPanel { Margin = new Thickness(0, 0, 0, 8), Children = { Docked(_heading, Dock.Left), Docked(_scopeButtons, Dock.Right), Docked(_agentCliToggles, Dock.Right) } };
       var search = new DockPanel { Margin = new Thickness(0, 0, 0, 8), Children = { _search } };
       var content = new DockPanel { Children = { Docked(top, Dock.Top), Docked(search, Dock.Top), Docked(_reading, Dock.Top), _list } };
       var card = new Border

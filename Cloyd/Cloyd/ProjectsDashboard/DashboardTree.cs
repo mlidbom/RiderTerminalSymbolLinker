@@ -1,7 +1,10 @@
 using System.Collections.ObjectModel;
+using System.Diagnostics.CodeAnalysis;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Cloyd.Projects;
+using Cloyd.ProjectsDashboard.Filters;
 using Cloyd.Saving;
+using Cloyd.Sessions;
 
 namespace Cloyd.ProjectsDashboard;
 
@@ -18,35 +21,74 @@ sealed class DashboardTree : ObservableObject
    public DashboardTree(ProjectWindows windows)
    {
       _windows = windows;
+      Filters = new DashboardSessionFilters(_arrangement.Saved);
       _hierarchy = new DashboardHierarchy(windows, _worktrees);
    }
 
    public IEnumerable<DashboardProject> Projects => _hierarchy.Projects;
-   public IEnumerable<DashboardSession> Sessions => RowsInOrder(_hierarchy.Roots, expandAll: true, onlyPinned: false).OfType<DashboardSession>();
-   public IEnumerable<DashboardSession> NavigableSessions => Sessions.Where(it => !OnlyPinned || it.MatchesPinFilter);
+   public IEnumerable<DashboardSession> Sessions => RowsInOrder(_hierarchy.Roots, expandAll: true, filter: false).OfType<DashboardSession>();
+   public IEnumerable<DashboardSession> NavigableSessions => Sessions.Where(Filters.Includes);
    public ObservableCollection<DashboardRow> VisibleRows { get; } = [];
    public SavedDashboardArrangement Arrangement
    {
       get => _arrangement.Saved;
-      set { _arrangement.Saved = value; OnPropertyChanged(nameof(OnlyPinned)); }
-   }
-   public bool OnlyPinned
-   {
-      get => Arrangement.OnlyPinned;
       set
       {
-         if(Arrangement.OnlyPinned == value) return;
-         Arrangement.OnlyPinned = value;
-         OnPropertyChanged();
-         RefreshPinFilter();
+         _arrangement.Saved = value;
+         Filters = new DashboardSessionFilters(value);
+         OnPropertyChanged(nameof(Activity));
+         NotifyFiltersChanged();
       }
    }
-   public bool ShowNoPinnedSessions => OnlyPinned && VisibleRows.Count == 0;
+   public DashboardSessionFilters Filters { get; private set; }
+   public event Action? FiltersChanged;
+   public IReadOnlyList<ActivityChoice> Activities => ActivityChoice.Choices;
+   [AllowNull] public ActivityChoice Activity
+   {
+      get => Activities.Single(it => it.Filter == Arrangement.ActivityFilter);
+      set
+      {
+         if(value is null || value.Filter == Arrangement.ActivityFilter) return;
+         Arrangement.ActivityFilter = value.Filter;
+         OnPropertyChanged();
+         NotifyFiltersChanged();
+      }
+   }
+   public bool EditingFilters
+   {
+      get => field;
+      set { if(SetProperty(ref field, value)) ShowExpandedGroups(); }
+   }
+   public bool NoMatches => VisibleRows.Count == 0;
+   public void ToggleInclusion(DashboardGroup? group, IncludedSessions kind)
+   {
+      Filters.Toggle(group, kind);
+      NotifyFiltersChanged();
+   }
+   public void UseParentSetting(DashboardGroup group, IncludedSessions kind)
+   {
+      Filters.Inherit(group, kind);
+      NotifyFiltersChanged();
+   }
+   void NotifyFiltersChanged()
+   {
+      FiltersChanged?.Invoke();
+      RefreshFilter();
+   }
    public DashboardSession? ActiveSession { get; private set; }
    public event Action? ActiveSessionChanged;
 
    public Task DiscoverWorktrees(Action refreshed, Action<Exception> failed, CancellationToken cancellation) =>
       _worktrees.Discover(_windows, Sessions.Select(it => it.WorkingFolder).OfType<Project>(), Arrangement, refreshed, failed, cancellation);
+
+   /// <summary>A scoped history reading may introduce folders while an earlier Git discovery is underway.
+   /// Finish that discovery and include the new folders before taking the heading's membership.</summary>
+   public async Task DiscoverHistoryWorktrees(Action refreshed, Action<Exception> failed, CancellationToken windowClosed, CancellationToken pickerClosed)
+   {
+      await _worktrees.CurrentReading.WaitAsync(pickerClosed);
+      pickerClosed.ThrowIfCancellationRequested();
+      await DiscoverWorktrees(refreshed, failed, windowClosed).WaitAsync(pickerClosed);
+   }
 
    public Task ReadGitStatus(CancellationToken cancellation) => _gitStatuses.Refresh(_worktrees.Repositories, ShowGitStatus, cancellation);
 
@@ -61,9 +103,13 @@ sealed class DashboardTree : ObservableObject
       ShowGitStatus();
       ReadPins();
       _arrangement.Restore(_hierarchy);
-      if(ActiveSession is {} active && !_hierarchy.Contains(active)) Select(null);
+      foreach(var group in _hierarchy.Groups) group.Summarize(Filters.Includes);
+      if(ActiveSession is {} active && !_hierarchy.Contains(active)) Select(active.Latest is {} latest ? Find(latest.Id) : null);
       else ShowExpandedGroups();
    }
+
+   public DashboardSession? Find(SessionId id) => Sessions.Where(it => it.Latest?.Id == id)
+                                                          .OrderByDescending(it => it.Running is not null).FirstOrDefault();
 
    public void TogglePin(DashboardSession session)
    {
@@ -73,7 +119,7 @@ sealed class DashboardTree : ObservableObject
          Arrangement.PinnedSessions.Add(session.PinKey);
       }
       ReadPins();
-      RefreshPinFilter();
+      RefreshFilter();
    }
 
    void ReadPins()
@@ -84,9 +130,9 @@ sealed class DashboardTree : ObservableObject
             _windows.Sessions.RememberPinnedHost(host, row.Latest, row.WorkingFolder);
    }
 
-   void RefreshPinFilter()
+   void RefreshFilter()
    {
-      foreach(var group in _hierarchy.Groups) group.Summarize(OnlyPinned);
+      foreach(var group in _hierarchy.Groups) group.Summarize(Filters.Includes);
       ShowExpandedGroups();
    }
 
@@ -103,6 +149,7 @@ sealed class DashboardTree : ObservableObject
    public void Toggle(DashboardGroup group)
    {
       _arrangement.Toggle(group);
+      group.Summarize(Filters.Includes);
       ShowExpandedGroups();
    }
 
@@ -116,7 +163,7 @@ sealed class DashboardTree : ObservableObject
    /// Reuse existing row containers whenever their place in the visible list stays the same.</summary>
    void ShowExpandedGroups()
    {
-      var wanted = RowsInOrder(_hierarchy.Roots, expandAll: false, OnlyPinned).ToArray();
+      var wanted = RowsInOrder(_hierarchy.Roots, expandAll: false, filter: true).ToArray();
       for(var i = 0; i < wanted.Length; i++)
       {
          if(i < VisibleRows.Count && VisibleRows[i] == wanted[i]) continue;
@@ -125,23 +172,24 @@ sealed class DashboardTree : ObservableObject
          else VisibleRows.Insert(i, wanted[i]);
       }
       while(VisibleRows.Count > wanted.Length) VisibleRows.RemoveAt(VisibleRows.Count - 1);
-      OnPropertyChanged(nameof(ShowNoPinnedSessions));
+      OnPropertyChanged(nameof(NoMatches));
    }
 
    /// <summary>Walks the arranged rows in the same order for the tab strip and Ctrl+Tab.
    /// Navigation also visits the sessions hidden under a collapsed heading.</summary>
-   IEnumerable<DashboardRow> RowsInOrder(IEnumerable<DashboardRow> rows, bool expandAll, bool onlyPinned)
+   IEnumerable<DashboardRow> RowsInOrder(IEnumerable<DashboardRow> rows, bool expandAll, bool filter)
    {
       foreach(var row in rows)
       {
-         if(onlyPinned && (row is DashboardSession { MatchesPinFilter: false } || row is DashboardGroup filtered && !filtered.Sessions.Any(it => it.MatchesPinFilter))) continue;
+         if(filter && row is DashboardSession session && !Filters.Includes(session)) continue;
+         if(filter && row is DashboardGroup heading && !EditingFilters && !Filters.ShowsEmpty(heading) && !heading.Sessions.Any(Filters.Includes)) continue;
          yield return row;
          if(row is not DashboardGroup group) continue;
          if(expandAll || group.Expanded)
          {
-            foreach(var child in RowsInOrder(group.Children, expandAll, onlyPinned)) yield return child;
+            foreach(var child in RowsInOrder(group.Children, expandAll, filter)) yield return child;
          }
-         else if(ActiveSession is {} active && (!onlyPinned || active.MatchesPinFilter) && active.BelongsTo(group)) yield return active;
+         else if(ActiveSession is {} active && (!filter || Filters.Includes(active)) && active.BelongsTo(group)) yield return active;
       }
    }
 }

@@ -1,81 +1,51 @@
 using Cloyd.Hub;
-using Cloyd.Hub.RunningSessions;
 using Cloyd.Projects;
 using Cloyd.Sessions;
 
 namespace Cloyd.History;
 
-/// <summary>
-/// The sessions on disk of every agent CLI the hub serves, Claude Code's and Codex's in one list, most recently used
-/// first, each with where it is now: what the <see cref="SessionHistoryPicker"/> lists, as it was when the picker opened.
-/// Left out are the sessions with no conversation to resume, and those a tool or a script ran, as with <c>claude -p</c>
-/// or <c>codex exec</c>.
-/// </summary>
-sealed class SessionHistory
+/// <summary>A reading of the application's <see cref="SessionCatalogue"/> for a history picker.
+/// Each entry remembers where it was when the picker opened. New agents with no recorded history come
+/// first, followed by recordings in order of their latest use.</summary>
+sealed class SessionHistory(IReadOnlyList<SessionHistoryEntry> entries, IReadOnlyList<AgentCli> agentClis, ProjectWorktrees? worktrees)
 {
-   SessionHistory(IReadOnlyList<SessionHistoryEntry> entries, IReadOnlyList<AgentCli> agentClis, ProjectWorktrees worktrees)
+   public IReadOnlyList<SessionHistoryEntry> Entries { get; } = entries;
+   public IReadOnlyList<AgentCli> AgentClis { get; } = agentClis;
+   public IReadOnlyList<SessionHistoryScope> Scopes => worktrees?.Scopes ?? [SessionHistoryScope.AllProjects];
+
+   /// <summary>The entries the picker's scope, selected agent CLIs and search words include.</summary>
+   public IReadOnlyList<SessionHistoryEntry> Listed(SessionHistoryScope scope, string filter, IReadOnlySet<AgentCli> agentClisListed)
    {
-      Entries = entries;
-      AgentClis = agentClis;
-      Worktrees = worktrees;
+      var words = filter.Split([' ', '\t'], StringSplitOptions.RemoveEmptyEntries);
+      return [.. Entries.Where(it => agentClisListed.Contains(it.AgentCli) &&
+                                    (scope == SessionHistoryScope.AllProjects || worktrees!.Cover(scope, it.Directory)) && it.Matches(words))];
    }
 
-   /// <summary>Every session of the history, most recently used first.</summary>
-   public IReadOnlyList<SessionHistoryEntry> Entries { get; }
+   /// <summary>Reads the project picker's sessions and the Git scopes it can switch between.</summary>
+   public static Task<SessionHistory> ReadFor(Project project, ProjectWindows windows, TheHub hub, CancellationToken cancellation) =>
+      Read(windows, hub, ProjectWorktrees.Of(project, cancellation), cancellation);
 
-   /// <summary>
-   /// The agent CLIs whose sessions the history holds: those the hub serves, as its announcement tells
-   /// (<see cref="AnnouncementOfTheHub.AgentClisItServes"/>), whether any of their sessions is on disk or not.
-   /// </summary>
-   public IReadOnlyList<AgentCli> AgentClis { get; }
+   /// <summary>Reads every concrete session for Projects Dashboard. Its project and worktree pickers
+   /// use membership of their dashboard heading to narrow this same reading.</summary>
+   public static Task<SessionHistory> ReadForAllProjects(ProjectWindows windows, TheHub hub, CancellationToken cancellation) =>
+      Read(windows, hub, null, cancellation);
 
-   /// <summary>The folders the scopes cover for the project the picker opened in.</summary>
-   public ProjectWorktrees Worktrees { get; }
-
-   /// <summary>
-   /// The entries of <paramref name="agentClis"/> that <paramref name="scope"/> covers and that match
-   /// <paramref name="filter"/>, most recently used first.
-   /// </summary>
-   public IReadOnlyList<SessionHistoryEntry> Listed(SessionHistoryScope scope, string filter, IReadOnlySet<AgentCli> agentClis) =>
-      [.. Entries.Where(it => agentClis.Contains(it.AgentCli) && Worktrees.Cover(scope, it.Directory) && it.Matches(filter))];
-
-   /// <summary>
-   /// Reads the history for <paramref name="project"/>'s picker: the sessions on disk, the agent CLIs that run them, the
-   /// session hosts, and the agent CLIs the hub serves, from <paramref name="hub"/>; the project's worktrees from git; and
-   /// the tabs of Cloyd's <paramref name="windows"/>. On the UI thread, where the tabs are.
-   /// </summary>
-   public static async Task<SessionHistory> ReadFor(Project project, ProjectWindows windows, TheHub hub, CancellationToken cancellation)
+   static async Task<SessionHistory> Read(ProjectWindows windows, TheHub hub, Task<ProjectWorktrees>? scope, CancellationToken cancellation)
    {
-      var onDisk = hub.SessionsOnDisk(cancellation);
+      var catalogue = windows.Sessions.Catalogue;
+      var agents = hub.AgentClisItServes(cancellation);
+      await Task.WhenAll(catalogue.Read(cancellation, force: true), agents, scope ?? Task.CompletedTask);
+
+      // Reading a large history can take time. Determine where a choice will go once that history is available.
       var running = hub.RunningSessions(cancellation);
       var hosts = hub.SessionHosts(cancellation);
-      var agentClis = hub.AgentClisItServes(cancellation);
-      var worktrees = ProjectWorktrees.Of(project, cancellation);
-      await Task.WhenAll(onDisk, running, hosts, agentClis, worktrees);
-      var tabs = windows.Open.SelectMany(window => window.Tabs.Select(tab => (Window: window, Tab: tab))).ToList();
-      var dashboardRows = windows.Dashboard?.Tree.Sessions.Where(it => it.Host is not null).ToArray() ?? [];
-
-      var entries = onDisk.Result
-                          .Where(it => it is { HasAConversationToResume: true, RunByAProgram: false })
-                          .Select(it => new SessionHistoryEntry(it, WhereIs(it.Session.Id)));
-      return new SessionHistory([.. entries], agentClis.Result, worktrees.Result);
-
-      WhereTheSessionIs WhereIs(SessionId session)
-      {
-         if(running.Result.FirstOrDefault(it => it.Session.Id == session) is {} runningIt) return WhereTheRunning(runningIt);
-         if(tabs.FirstOrDefault(it => it.Tab.RunsOrRanLast(session)) is ({} window, {} tab)) return new WhereTheSessionIs.ExitedInATab(window, tab);
-         if(dashboardRows.FirstOrDefault(it => it.Latest?.Id == session && it.Running is null)?.Host is {} host && hosts.Result.Any(it => it.Id == host.Id))
-            return new WhereTheSessionIs.InProjectsDashboard(host, running: false);
-         return WhereTheSessionIs.NotRunning.Anywhere;
-      }
-
-      WhereTheSessionIs WhereTheRunning(RunningSession session)
-      {
-         if(tabs.FirstOrDefault(it => it.Tab.Host.Id == session.SessionHost) is ({} window, {} tab)) return new WhereTheSessionIs.RunningInATab(window, tab);
-         if(dashboardRows.FirstOrDefault(it => it.Host?.Id == session.SessionHost)?.Host is {} listed)
-            return new WhereTheSessionIs.InProjectsDashboard(listed, running: true);
-         if(hosts.Result.FirstOrDefault(it => it.Id == session.SessionHost) is {} host) return new WhereTheSessionIs.RunningInAHostNoTabShows(host);
-         return new WhereTheSessionIs.RunningOutsideASessionHost();
-      }
+      await Task.WhenAll(running, hosts);
+      cancellation.ThrowIfCancellationRequested();
+      var locations = new SessionHistoryLocations(windows, running.Result, hosts.Result);
+      var listed = catalogue.WithRunning(running.Result).Values.OrderByDescending(it => it.Recorded?.LastUsed ?? DateTime.MaxValue);
+      return new SessionHistory([.. listed.Select(it => new SessionHistoryEntry(it, locations.Of(it.Session.Id)))], agents.Result, scope?.Result);
    }
+
+   public SessionHistory Within(IReadOnlySet<SessionId> sessions) =>
+      new(Entries.Where(it => sessions.Contains(it.Id)).ToArray(), AgentClis, worktrees);
 }

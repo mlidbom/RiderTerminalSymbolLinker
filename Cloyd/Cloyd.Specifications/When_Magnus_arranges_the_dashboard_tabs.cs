@@ -5,6 +5,10 @@ using Avalonia.Input;
 using Avalonia.VisualTree;
 using ClaudeTooling.SessionHost.Protocol;
 using Cloyd.ProjectsDashboard;
+using Cloyd.ProjectsDashboard.Filters;
+using Cloyd.ClaudeCode;
+using Cloyd.Codex;
+using Avalonia.Automation;
 using Cloyd.Sessions;
 using System.Text.Json;
 using Cloyd.Specifications.TheSandbox;
@@ -94,10 +98,10 @@ public class When_Magnus_arranges_the_dashboard_tabs : SpecificationOpeningWindo
       OnTheUIThread(() => _dashboard.Select(_linkedGroup.Sessions.Single(it => it.Host!.Id == _second)));
       var view = OnTheUIThread(() => _dashboard.View);
       Click(PinButton(_dashboard, pinned));
-      var filter = OnTheUIThread(() => _dashboard.GetVisualDescendants().OfType<CheckBox>().Single(it => Equals(it.Content, "Only pinned")));
-      Focus(filter);
-      Press(_dashboard, Key.Space, PhysicalKey.Space, RawInputModifiers.None);
-      WaitUntil(() => _dashboard.Tree.OnlyPinned, "the checkbox applied the filter");
+      var root = OnTheUIThread(() => _dashboard.GetVisualDescendants().OfType<SessionFilterStrip>().Single(it => it.DataContext == _dashboard.Tree));
+      foreach(var name in new[] { "Pinned", "Open tabs", "Sessions outside tabs" })
+         Click(OnTheUIThread(() => root.GetVisualDescendants().OfType<Button>().Single(it => AutomationProperties.GetName(it) == name)));
+      WaitUntil(() => _dashboard.Tree.Filters.Effective(null) == IncludedSessions.Pinned, "the root switches included pinned sessions alone");
       OnTheUIThread(() => _dashboard.Tree.VisibleRows.ToArray()).Must().SequenceEqual([_alphaGroup, _linkedGroup, pinned]);
       Render(_dashboard, "Projects-Dashboard-only-pinned");
       OnTheUIThread(() => _dashboard.View).Must().ReferenceEqual(view);
@@ -109,14 +113,31 @@ public class When_Magnus_arranges_the_dashboard_tabs : SpecificationOpeningWindo
       WaitUntil(() => _dashboard.View!.Host.Id == _first, "Ctrl+Tab chose the one pinned session");
       Close(_dashboard);
       var reopened = OnTheUIThread(() => Sandbox.WindowsOfCloyd.ShowDashboard(_alpha.Project));
-      WaitUntil(() => reopened.Tree.OnlyPinned && reopened.Tree.VisibleRows.Count == 3 && reopened.Tree.NavigableSessions.SingleOrDefault()?.Host?.Id == _first,
+      WaitUntil(() => reopened.Tree.Filters.Effective(null) == IncludedSessions.Pinned && reopened.Tree.VisibleRows.Count == 3 && reopened.Tree.NavigableSessions.SingleOrDefault()?.Host?.Id == _first,
                 "the saved pin and filter came back beneath the linked checkout");
       Click(PinButton(reopened, OnTheUIThread(() => reopened.Tree.NavigableSessions.Single())));
-      WaitUntil(() => reopened.Tree.VisibleRows.Count == 0 && reopened.Tree.ShowNoPinnedSessions, "removing the last pin hid every group");
+      WaitUntil(() => reopened.Tree.VisibleRows.Count == 0 && reopened.Tree.NoMatches, "removing the last pin hid every group");
       OnTheUIThread(() => reopened.View!.Host.Id).Must().Be(_first);
 
       Button PinButton(ProjectsDashboardWindow window, DashboardSession row) => OnTheUIThread(() => window.GetVisualDescendants()
         .OfType<Button>().Single(it => it.DataContext == row && Equals(ToolTip.GetTip(it), row.PinAction)));
+   }
+
+   [XF] public void a_dashboard_saved_with_the_old_Only_pinned_checkbox_restores_only_its_pinned_session()
+   {
+      Close(_dashboard);
+      var saved = Sandbox.WindowsOfCloyd.Sessions.Folder.ProjectsDashboard;
+      saved.Write(JsonSerializer.Serialize(new { arrangement = new { onlyPinned = true, pinnedSessions = new[] { $"host:{_first}" } } }));
+      var reopened = OnTheUIThread(() => Sandbox.WindowsOfCloyd.ShowDashboard(_alpha.Project));
+      WaitUntil(() => reopened.Tree.Filters.Effective(null) == IncludedSessions.Pinned
+                      && reopened.Tree.NavigableSessions.SingleOrDefault()?.Host?.Id == _first,
+                "the former checkbox became the Pinned inclusion switch");
+      OnTheUIThread(() => reopened.Tree.ToggleInclusion(null, IncludedSessions.OpenTabs));
+      Close(reopened);
+      var changed = OnTheUIThread(() => Sandbox.WindowsOfCloyd.ShowDashboard(_alpha.Project));
+      WaitUntil(() => changed.Tree.Filters.Effective(null) == (IncludedSessions.Pinned | IncludedSessions.OpenTabs)
+                      && changed.Tree.NavigableSessions.Count() == 2,
+                "later changes to the switches took precedence over the migrated preference");
    }
 
    [XF] public void Claudes_trust_config_lists_dormant_projects_and_all_their_worktrees_including_inherited_trust()
@@ -151,12 +172,93 @@ public class When_Magnus_arranges_the_dashboard_tabs : SpecificationOpeningWindo
       OnTheUIThread(() => reopened.Tree.Projects.Any(it => it.Project?.Equals(parent) == true || it.Project?.Folder == nested.FullName)).Must().BeFalse();
    }
 
+   [XF] public void a_local_inclusion_overrides_only_its_own_switch_and_can_inherit_again()
+   {
+      OnTheUIThread(() =>
+      {
+         var tree = _dashboard.Tree;
+         tree.ToggleInclusion(null, IncludedSessions.OpenTabs);
+         tree.ToggleInclusion(null, IncludedSessions.OutsideTabs);
+         tree.ToggleInclusion(null, IncludedSessions.Pinned);
+         tree.VisibleRows.Count.Must().Be(0);
+         tree.ToggleInclusion(_linkedGroup, IncludedSessions.OpenTabs);
+         tree.NavigableSessions.Count().Must().Be(2);
+         tree.Filters.IsInherited(_linkedGroup, IncludedSessions.Pinned).Must().BeTrue();
+         tree.ToggleInclusion(_alphaGroup, IncludedSessions.OpenTabs);
+         tree.ToggleInclusion(_alphaGroup, IncludedSessions.OpenTabs);
+         tree.NavigableSessions.Count().Must().Be(2);
+      });
+      Close(_dashboard);
+      var reopened = OnTheUIThread(() => Sandbox.WindowsOfCloyd.ShowDashboard(_alpha.Project));
+      WaitUntil(() => reopened.Tree.NavigableSessions.Count() == 2, "the worktree's local Open tabs override survived reopening");
+      var linked = OnTheUIThread(() => reopened.Tree.Projects.SelectMany(it => it.Children).OfType<DashboardWorktree>()
+                                             .Single(it => it.StartFolder.Folder == _linked.FullName));
+      var localSwitch = OnTheUIThread(() => reopened.GetVisualDescendants().OfType<SessionFilterStrip>()
+         .Single(it => it.DataContext == linked).GetVisualDescendants().OfType<Button>().Single(it => AutomationProperties.GetName(it) == "Open tabs"));
+      Focus(localSwitch);
+      Press(reopened, Key.Delete, PhysicalKey.Delete, RawInputModifiers.None);
+      WaitUntil(() => reopened.Tree.Filters.IsInherited(linked, IncludedSessions.OpenTabs) && reopened.Tree.NoMatches,
+                "Delete restored the project's explicit off setting");
+      Focus(OnTheUIThread(() => reopened.GetVisualDescendants().OfType<Button>().Single(it => AutomationProperties.GetName(it) == "Edit group filters")));
+      Press(reopened, Key.Space, PhysicalKey.Space, RawInputModifiers.None);
+      WaitUntil(() => reopened.Tree.VisibleRows.Contains(linked) && !reopened.Tree.VisibleRows.OfType<DashboardSession>().Any(),
+                "the gear revealed the hidden worktree's switches");
+   }
+
+   [XF] public void the_worktree_clock_opens_a_filtered_out_conversation_and_only_Resume_starts_an_agent()
+   {
+      var saved = new SessionOfASpecification(new ClaudeCodeSessionId("9f222222-0000-4321-9876-000000000001"), _linked.FullName, "A saved worktree conversation");
+      var other = new SessionOfASpecification(new ClaudeCodeSessionId("9f222222-0000-4321-9876-000000000002"), _alpha.Project.Folder, "Main conversation");
+      foreach(var item in new[] { saved, other }) item.WriteItsTranscriptFor(Sandbox.HubOfTheSandbox);
+      var codex = new CodexSessionOfASpecification(new CodexSessionId("9f222222-0000-4321-9876-000000000003"), _elsewhere.Project.Folder, "A different repository");
+      codex.WriteItsRecordFor(Sandbox.HubOfTheSandbox);
+      OnTheUIThread(() => _dashboard.Tree.ToggleInclusion(null, IncludedSessions.OutsideTabs));
+      DoneOnTheUIThread(() => _dashboard.OpenHistory());
+      OnTheUIThread(() => _dashboard.HistoryPicker.Listed.Select(it => it.Id).ToHashSet().SetEquals([saved.Id, other.Id, codex.Id])).Must().BeTrue();
+      OnTheUIThread(() =>
+      {
+         _dashboard.HistoryPicker.Selected = _dashboard.HistoryPicker.Listed.ToList().FindIndex(it => it.Id == codex.Id);
+         _dashboard.HistoryPicker.ChooseTheSelected();
+      });
+      WaitUntil(() => _dashboard.GetVisualDescendants().OfType<Cloyd.Codex.Chat.ChatOfACodexSession>()
+         .Any(it => it.Shown.OfType<Cloyd.Codex.Chat.CodexReply>().Any(reply => reply.Markdown.Contains(codex.Prompt))), "the recorded Codex conversation was readable without starting Codex");
+      DoneOnTheUIThread(() => _dashboard.OpenHistory(_alphaGroup));
+      OnTheUIThread(() => _dashboard.HistoryPicker.Listed.Select(it => it.Id).ToHashSet().SetEquals([saved.Id, other.Id])).Must().BeTrue();
+      OnTheUIThread(_dashboard.HistoryPicker.Close);
+      var button = OnTheUIThread(() => _dashboard.GetVisualDescendants().OfType<Button>()
+         .Single(it => it.DataContext == _linkedGroup && AutomationProperties.GetName(it) == "Group history"));
+      Click(button);
+      WaitUntil(() => _dashboard.HistoryPicker.Listed.Any(it => it.Id == saved.Id), "the worktree clock found the archived conversation");
+      OnTheUIThread(() => _dashboard.HistoryPicker.Listed.Select(it => it.Id).ToArray()).Must().SequenceEqual([saved.Id]);
+      OnTheUIThread(_dashboard.HistoryPicker.ChooseTheSelected);
+      WaitUntil(() => _dashboard.Tree.ActiveSession?.Latest?.Id == saved.Id, "the dashboard opened the archived conversation");
+      WaitUntil(() => _dashboard.GetVisualDescendants().OfType<Cloyd.Chat.ChatOfAClaudeCodeSession>().Any(it =>
+         it.Shown.OfType<Cloyd.Chat.ShownInTheChat.Prompt>().Any(prompt => prompt.Text == saved.Prompt)), "the recorded Claude Code conversation was visible");
+      OnTheUIThread(() => _dashboard.Tree.ActiveSession!.ReadyToResume).Must().BeTrue();
+      OnTheUIThread(() => _dashboard.Tree.VisibleRows.Contains(_dashboard.Tree.ActiveSession!)).Must().BeFalse();
+      OnTheUIThread(() =>
+      {
+         var tree = _dashboard.Tree;
+         tree.TogglePin(tree.ActiveSession!);
+         tree.VisibleRows.Contains(tree.ActiveSession!).Must().BeFalse();
+         tree.ToggleInclusion(_alphaGroup, IncludedSessions.Pinned);
+         tree.NavigableSessions.Count().Must().Be(3);
+         tree.Activity = tree.Activities.Single(it => it.Filter == SessionActivityFilter.ReadyToResume);
+         tree.NavigableSessions.Select(it => it.Latest!.Id).ToArray().Must().SequenceEqual([saved.Id]);
+      });
+      Sandbox.HubOfTheSandbox.RunningClaudeCodes().Any(it => it.SessionId == saved.Id).Must().BeFalse();
+      DoneOnTheUIThread(_dashboard.ResumeSelected);
+      WaitUntil(() => _dashboard.View?.Session.Running?.Session.Id == saved.Id, "Resume started the original session");
+      OnTheUIThread(() => _dashboard.View!.Host.Directory).Must().Be(_linked.FullName);
+   }
+
    [XF] public void the_worktree_and_its_sessions_belong_to_the_repository_that_registered_it()
    {
       OnTheUIThread(() => _linkedGroup.Sessions.Select(it => it.Host!.Id).ToHashSet().SetEquals([_first, _second])).Must().BeTrue();
       OnTheUIThread(() => _elsewhereGroup.Sessions.Count()).Must().Be(0);
       OnTheUIThread(() => _emptyGroup.Sessions.Count()).Must().Be(0);
       OnTheUIThread(() => _emptyGroup.CanStartSession).Must().BeTrue();
+      WaitUntil(() => _linkedGroup.Status?.Integrated == true, "the linked branch icon reported its commits were merged into the local integration branch");
       Render(_dashboard, "Projects-Dashboard-vertical-tabs");
    }
 

@@ -2,6 +2,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:dashboard="using:Cloyd.ProjectsDashboard"
         xmlns:sessions="using:Cloyd.Sessions"
+        xmlns:filters="using:Cloyd.ProjectsDashboard.Filters"
         x:Class="Cloyd.ProjectsDashboard.ProjectsDashboardWindow"
         x:ClassModifier="internal" x:DataType="dashboard:DashboardTree"
         Title="Projects Dashboard" Width="1400" Height="900">
@@ -75,17 +76,38 @@
     <Style Selector="ToggleButton.sessionPin:checked, ToggleButton.sessionPin:pointerover">
       <Setter Property="Opacity" Value="1"/>
     </Style>
+    <Style Selector="ToggleButton.inherited /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="Transparent"/>
+      <Setter Property="BorderBrush" Value="Transparent"/>
+    </Style>
+    <Style Selector="ToggleButton.inherited PathIcon">
+      <Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
+      <Setter Property="Opacity" Value="0.40"/>
+    </Style>
+    <Style Selector="ToggleButton.inherited:checked PathIcon">
+      <Setter Property="Foreground" Value="{DynamicResource SystemControlHighlightAccentBrush}"/>
+      <Setter Property="Opacity" Value="1"/>
+    </Style>
+    <Style Selector="ToggleButton.inherited:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource TabUnderPointer}"/>
+    </Style>
   </Window.Styles>
   <Panel x:Name="Overlays">
     <DockPanel>
       <TextBlock x:Name="FailureText" DockPanel.Dock="Bottom" IsVisible="False" Foreground="DarkOrange" Margin="8" TextWrapping="Wrap"/>
-      <Grid ColumnDefinitions="330,4,*">
+      <Grid ColumnDefinitions="405,4,*">
         <DockPanel Background="{DynamicResource TabStripGround}">
           <Border DockPanel.Dock="Top" Padding="12,4" BorderBrush="{DynamicResource GroupDivider}" BorderThickness="0,0,0,1">
-            <CheckBox Content="Only pinned" IsChecked="{Binding OnlyPinned, Mode=TwoWay}"/>
+            <Grid ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="6">
+              <filters:SessionFilterStrip/>
+              <ComboBox Grid.Column="2" ItemsSource="{Binding Activities}" SelectedItem="{Binding Activity, Mode=TwoWay}"
+                        AutomationProperties.Name="Session status" MinWidth="118" Padding="7,2"/>
+              <ToggleButton Grid.Column="3" Content="⚙" IsChecked="{Binding EditingFilters, Mode=TwoWay}" Padding="6,2"
+                            AutomationProperties.Name="Edit group filters" ToolTip.Tip="Show hidden group headings to edit their filters"/>
+            </Grid>
           </Border>
           <Border DockPanel.Dock="Bottom" BorderBrush="{DynamicResource GroupDivider}" BorderThickness="0,1,0,0" Padding="6">
-            <Button Content="Resume a session" ToolTip.Tip="Resume a session: Ctrl+Alt+Shift+Y"
+            <Button Content="◷   History" ToolTip.Tip="History for all projects: Ctrl+Alt+Shift+Y"
                     HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Background="Transparent" Click="OpenHistory"/>
           </Border>
           <Panel>
@@ -111,7 +133,7 @@
             <dashboard:DashboardTabStrip.DataTemplates>
               <DataTemplate DataType="dashboard:DashboardGroup" x:DataType="dashboard:DashboardGroup">
                 <Border Classes="group" Classes.worktree="{Binding IsWorktree}" ToolTip.Tip="{Binding Description}">
-                  <Grid ColumnDefinitions="16,*,Auto,Auto" ColumnSpacing="4">
+                  <Grid ColumnDefinitions="14,*,Auto,Auto,23,22" ColumnSpacing="3">
                     <TextBlock Text="{Binding Disclosure}" VerticalAlignment="Center" Opacity="0.75"/>
                     <Panel Grid.Column="1" HorizontalAlignment="Left">
                       <Border Classes="projectLabel" Background="{Binding Group.GroupColour}" CornerRadius="5"/>
@@ -137,7 +159,10 @@
                     </Panel>
                     <TextBlock Grid.Column="2" Text="{Binding Summary}" FontSize="12" Opacity="0.85"
                                Classes.waiting="{Binding IsWaiting}" VerticalAlignment="Center"/>
-                    <sessions:NewSessionButton Grid.Column="3" Content="+" IsVisible="{Binding CanStartSession}" Background="Transparent"
+                    <filters:SessionFilterStrip Grid.Column="3" VerticalAlignment="Center"/>
+                    <Button Grid.Column="4" Content="◷" Click="OpenHistory" ToolTip.Tip="History for this group"
+                            AutomationProperties.Name="Group history" FontSize="16" Background="Transparent" Padding="4,0"/>
+                    <sessions:NewSessionButton Grid.Column="5" Content="+" IsVisible="{Binding CanStartSession}" Background="Transparent"
                                                Padding="6,0" Loaded="PrepareNewSessionButton"/>
                   </Grid>
                 </Border>
@@ -166,12 +191,17 @@
               </DataTemplate>
             </dashboard:DashboardTabStrip.DataTemplates>
           </dashboard:DashboardTabStrip>
-          <TextBlock Text="No pinned sessions" IsVisible="{Binding ShowNoPinnedSessions}" IsHitTestVisible="False"
+          <TextBlock Text="No matching sessions" IsVisible="{Binding NoMatches}" IsHitTestVisible="False"
                      HorizontalAlignment="Center" VerticalAlignment="Top" Margin="8,22" Opacity="0.7"/>
           </Panel>
         </DockPanel>
         <GridSplitter Grid.Column="1" Background="{DynamicResource GroupDivider}" ResizeDirection="Columns" HorizontalAlignment="Stretch"/>
-        <ContentControl Grid.Column="2" x:Name="SelectedSession"/>
+        <DockPanel Grid.Column="2">
+          <Border DockPanel.Dock="Top" x:Name="ResumeBar" IsVisible="False" Padding="12,6">
+            <Button x:Name="ResumeButton" Content="Resume session" Click="ResumeSelected" HorizontalAlignment="Right"/>
+          </Border>
+          <ContentControl x:Name="SelectedSession"/>
+        </DockPanel>
       </Grid>
     </DockPanel>
   </Panel>

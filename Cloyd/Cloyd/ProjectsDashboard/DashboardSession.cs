@@ -3,6 +3,7 @@ using Cloyd.Hub;
 using Cloyd.Hub.RunningSessions;
 using Cloyd.Sessions;
 using Cloyd.Projects;
+using Cloyd.History;
 
 namespace Cloyd.ProjectsDashboard;
 
@@ -14,6 +15,8 @@ sealed class DashboardSession(string key) : DashboardRow(key)
    public Session? Latest { get; private set; }
    public Project? WorkingFolder { get; private set; }
    public bool HasHost => Host is not null;
+   public bool OpenInProjectTab { get; private set; }
+   public bool ReadyToResume { get; private set; }
    /// <summary>The agent's session ID survives moving between hosts. A shell can be pinned by host until its first session is known.</summary>
    public string PinKey => Latest is {} session ? $"session:{session.AgentCli.NameInTheHub}:{session.Id}" : Key;
    public bool IsPinned { get => field; private set { if(SetProperty(ref field, value)) OnPropertyChanged(nameof(PinAction)); } }
@@ -34,13 +37,16 @@ sealed class DashboardSession(string key) : DashboardRow(key)
    public SessionTabHeading? Heading { get => field; private set => SetProperty(ref field, value); }
    public bool HasActivity => Activity.Length != 0;
 
-   public void Update(SessionHostOfTheHub? host, RunningSession? running, Session? latest, AgentCli? knownAgent, Project? workingFolder)
+   public void Update(SessionHostOfTheHub? host, RunningSession? running, Session? latest, AgentCli? knownAgent, Project? workingFolder,
+                      SessionListing? listing = null, bool open = false)
    {
+      OpenInProjectTab = open;
+      ReadyToResume = listing is { Running: null, Recorded.HasAConversationToResume: true };
       Host = host;
       WorkingFolder = workingFolder;
       Running = running;
-      Latest = running?.Session ?? latest ?? Latest;
-      Name = Latest?.Name ?? Latest?.AgentCli.TitleOfASessionWithNoName ?? "Shell";
+      Latest = running?.Session ?? latest;
+      Name = Latest?.Name ?? listing?.Title ?? Latest?.AgentCli.TitleOfASessionWithNoName ?? "Shell";
       Heading = new SessionTabHeading(Name, Latest?.AgentCli ?? knownAgent, running);
       IsWaiting = running is RunningClaudeCode { Status.IsWaiting: true } or RunningCodex { Status.IsWaiting: true };
       Activity = running switch
@@ -51,6 +57,7 @@ sealed class DashboardSession(string key) : DashboardRow(key)
          RunningCodex { Status.IsWaiting: true } it => it.Status.WaitingFor ?? "Waiting for you",
          RunningCodex it when it.IsBusy => "Working",
          RunningCodex { Status.AsReported: "error" } => "Error",
+         null when ReadyToResume => "Ready to resume",
          _ => ""
       };
       OnPropertyChanged(nameof(HasActivity));

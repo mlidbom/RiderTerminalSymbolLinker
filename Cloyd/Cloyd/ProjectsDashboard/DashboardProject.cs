@@ -13,7 +13,7 @@ sealed class DashboardProject(Project? project) : DashboardGroup(KeyFor(project)
    /// <summary>The muted group colour used by this project's heading and the guide beside its worktrees and tabs.</summary>
    public IBrush GroupColour { get; } = ColourFor(project);
    public static string KeyFor(Project? project) => project is null ? "outside-hosts" : $"project:{project.Folder}";
-   public override string Name => Project is null ? "Outside session hosts" : Project.Name.Length > 0 ? Project.Name : Project.Folder;
+   public override string Name => Project is null ? "Unknown project" : Project.Name.Length > 0 ? Project.Name : Project.Folder;
    public override string Description => Project?.Folder ?? Name;
    public override Project? StartFolder => Children.OfType<DashboardWorktree>().Any() ? null : Project;
    public void UpdateStartFolder() => OnPropertyChanged(nameof(CanStartSession));

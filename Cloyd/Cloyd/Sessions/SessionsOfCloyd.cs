@@ -1,6 +1,7 @@
 using System.Collections.Immutable;
 using ClaudeTooling.SessionHost.Protocol;
 using Cloyd.Hub;
+using Cloyd.History;
 using Cloyd.Hub.Commands;
 using Cloyd.Hub.RunningSessions;
 using Cloyd.Projects;
@@ -24,6 +25,8 @@ sealed class SessionsOfCloyd(TheHub hub, CloydsFolder folder, ShellOfNewSessions
    ImmutableDictionary<string, string> _peerNames = ImmutableDictionary.Create<string, string>(StringComparer.OrdinalIgnoreCase);
 
    public TheHub Hub { get; } = hub;
+   SessionCatalogue? _catalogue;
+   public SessionCatalogue Catalogue => _catalogue ?? throw new InvalidOperationException("No Cloyd window is open.");
    public CloydsFolder Folder { get; } = folder;
    public PastedImages Images { get; } = folder.PastedImages;
    public IReadOnlyList<RunningSession> Running { get; private set; } = [];
@@ -38,6 +41,7 @@ sealed class SessionsOfCloyd(TheHub hub, CloydsFolder folder, ShellOfNewSessions
    {
       if(++_windows != 1) return;
       _following = new CancellationTokenSource();
+      _catalogue = new SessionCatalogue(Hub, _following.Token);
       _ = FollowRunningSessions(_following.Token);
       _ = FollowHosts(_following.Token);
    }
@@ -47,6 +51,7 @@ sealed class SessionsOfCloyd(TheHub hub, CloydsFolder folder, ShellOfNewSessions
       if(--_windows != 0) return;
       _following!.Cancel();
       _following = null;
+      _catalogue = null;
       foreach(var session in _sessions.Values) session.LetGo();
       _sessions.Clear();
       Hosts = [];

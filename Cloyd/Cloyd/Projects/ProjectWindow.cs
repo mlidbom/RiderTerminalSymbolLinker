@@ -199,19 +199,8 @@ sealed partial class ProjectWindow : Window, ISessionHistoryTarget
    /// Opens the session history picker over the window, as the History button and Ctrl+Alt+Shift+Y do, and shows the
    /// history in it once it has read it. Done once it shows it, or the window has told why not and closed it.
    /// </summary>
-   public Task OpenTheHistoryPicker() => TellingOfFailure(async () =>
-   {
-      _historyPicker.Open();
-      try
-      {
-         _historyPicker.Show(await SessionHistory.ReadFor(Project, _windowsOfCloyd, _hub, _closed.Token));
-      }
-      catch
-      {
-         _historyPicker.Close(); // The window's foot tells why, not the picker, which would wait for the history.
-         throw;
-      }
-   });
+   public Task OpenTheHistoryPicker() => TellingOfFailure(() =>
+      _historyPicker.Open(token => SessionHistory.ReadFor(Project, _windowsOfCloyd, _hub, token), _closed.Token));
 
    /// <summary>Resumes <paramref name="session"/> in a new tab, in the project's folder, which it selects, as choosing it in the history picker does.</summary>
    public async Task ResumeInANewTab(Session session)

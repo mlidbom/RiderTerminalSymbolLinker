@@ -1,3 +1,6 @@
+using Cloyd.ProjectsDashboard.Filters;
+using System.Text.Json.Serialization;
+
 namespace Cloyd.Saving;
 
 /// <summary>Magnus's ordering of the dashboard's sibling groups and tabs and the groups he collapsed.
@@ -7,7 +10,15 @@ sealed class SavedDashboardArrangement
    public List<string> Collapsed { get; init; } = [];
    public List<string> Repositories { get; set; } = [];
    public HashSet<string> PinnedSessions { get; init; } = [];
-   public bool OnlyPinned { get; set; }
+   /// <summary>Dashboard files written before the three inclusion switches stored just this preference.</summary>
+   [JsonInclude] public bool OnlyPinned { get; private init; }
+   public IncludedSessions? RootInclusions { get; set; }
+   public Dictionary<string, GroupFilterOverride> GroupFilters
+   {
+      get => field;
+      init => field = new Dictionary<string, GroupFilterOverride>(value, StringComparer.OrdinalIgnoreCase);
+   } = new(StringComparer.OrdinalIgnoreCase);
+   public SessionActivityFilter ActivityFilter { get; set; }
    public Dictionary<string, List<string>> Order
    {
       get => field;

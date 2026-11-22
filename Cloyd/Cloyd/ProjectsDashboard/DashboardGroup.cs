@@ -21,9 +21,9 @@ abstract class DashboardGroup(string key) : DashboardRow(key)
    public string Summary { get => field; private set => SetProperty(ref field, value); } = "";
    public IEnumerable<DashboardSession> Sessions => Children.OfType<DashboardSession>().Concat(Children.OfType<DashboardGroup>().SelectMany(it => it.Sessions));
 
-   public void Summarize(bool onlyPinned)
+   public void Summarize(Func<DashboardSession, bool> included)
    {
-      var sessions = Sessions.Where(it => !onlyPinned || it.MatchesPinFilter).ToArray();
+      var sessions = Sessions.Where(included).ToArray();
       var waiting = sessions.Count(it => it.IsWaiting);
       var busy = sessions.Count(it => it.Heading?.Running?.IsBusy == true);
       IsWaiting = waiting > 0;

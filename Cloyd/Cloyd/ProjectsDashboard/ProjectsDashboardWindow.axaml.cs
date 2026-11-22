@@ -30,6 +30,7 @@ sealed partial class ProjectsDashboardWindow : Window, ISessionHistoryTarget
    Session? _restoreOutsideHost;
    ConversationOutsideAHost? _outsideHost;
    bool _restoringSelection = true;
+   bool _resuming;
    VirtualDesktop? _desktop;
    SessionsOfCloyd Sessions => _windows.Sessions;
    public DashboardTree Tree { get; }
@@ -47,7 +48,11 @@ sealed partial class ProjectsDashboardWindow : Window, ISessionHistoryTarget
       Tree.ActiveSessionChanged += ShowActiveSession;
       Tabs.TabChosen += Select;
       Overlays.Children.Add(_history);
-      _history.Chosen += entry => _ = ReportFailure(() => entry.Choose(this));
+      _history.Chosen += entry =>
+      {
+         if(Tree.Find(entry.Id) is {} row) Select(row);
+         else Tell(new InvalidOperationException($"The session {entry.Title} is no longer available."));
+      };
       _history.Closed += () => View?.FocusWhatItShows();
       AddHandler(KeyDownEvent, TakeShortcut, RoutingStrategies.Tunnel);
       _save.Tick += (_, _) => Save();
@@ -63,6 +68,7 @@ sealed partial class ProjectsDashboardWindow : Window, ISessionHistoryTarget
       _restoreSelection = saved.Selected ?? _windows.Open.FirstOrDefault(it => it.Project.Equals(_openedFrom))?.SelectedTab?.Host.Id;
       _restoreOutsideHost = saved.OutsideHost;
       Sessions.Changed += Refresh;
+      Sessions.Catalogue.Changed += Refresh;
       Sessions.Failed += Tell;
       Refresh();
       _save.Start();
@@ -73,6 +79,7 @@ sealed partial class ProjectsDashboardWindow : Window, ISessionHistoryTarget
       _save.Stop();
       _closed.Cancel();
       Sessions.Changed -= Refresh;
+      Sessions.Catalogue.Changed -= Refresh;
       Tree.ActiveSessionChanged -= ShowActiveSession;
       Sessions.Failed -= Tell;
       Save();
@@ -101,15 +108,16 @@ sealed partial class ProjectsDashboardWindow : Window, ISessionHistoryTarget
 
    void Refresh()
    {
-      _ = ReportFailure(() => Tree.DiscoverWorktrees(RefreshRows, Tell, _closed.Token));
+      _ = ReportFailure(() => Sessions.Catalogue.Read(_closed.Token));
       RefreshRows();
+      _ = ReportFailure(() => Tree.DiscoverWorktrees(RefreshRows, Tell, _closed.Token));
    }
 
    void RefreshRows()
    {
       Tree.Refresh();
       _ = ReportFailure(() => Tree.ReadGitStatus(_closed.Token));
-      if(_restoringSelection && Sessions.HasReadHosts && (_restoreOutsideHost is null || Sessions.HasReadRunningSessions))
+      if(_restoringSelection && Sessions.HasReadHosts && (_restoreOutsideHost is null || Sessions.HasReadRunningSessions && Sessions.Catalogue.HasRead))
       {
          var row = Tree.Sessions.FirstOrDefault(it => _restoreOutsideHost is not null && it.Latest?.Id == _restoreOutsideHost.Id)
                    ?? Tree.Sessions.FirstOrDefault(it => _restoreSelection is not null && it.Host?.Id == _restoreSelection)
@@ -120,23 +128,25 @@ sealed partial class ProjectsDashboardWindow : Window, ISessionHistoryTarget
          if(row is not null) Select(row);
       }
       if(View is {} view) Sessions.ShowPeerNames(view);
-      if(_outsideHost is {} outside && Tree.ActiveSession is { Running: {} running }) outside.Update(running);
+      if(_outsideHost is {} outside && Tree.ActiveSession is { Latest: {} session } selected) outside.Update(session, selected.Running);
+      ResumeBar.IsVisible = Tree.ActiveSession?.ReadyToResume == true;
    }
 
    void ShowActiveSession()
    {
       CloseView();
+      ResumeBar.IsVisible = Tree.ActiveSession?.ReadyToResume == true;
       if(Tree.ActiveSession is not {} row) return;
       RevealTabIfListed(row);
       _restoringSelection = false;
       _restoreSelection = null;
       if(row.Host is not {} host)
       {
-         if(row.Running is RunningCodex && !Sessions.OffersCodexChat)
+         if(row.Latest?.AgentCli == AgentCli.Codex && !Sessions.OffersCodexChat)
             SelectedSession.Content = new TextBlock { Text = "This hub does not offer Codex chat.", Margin = new Avalonia.Thickness(16) };
-         else if(row.Running is {} running)
+         else if(row.Latest is {} latest)
          {
-            _outsideHost = new ConversationOutsideAHost(Sessions, running);
+            _outsideHost = new ConversationOutsideAHost(Sessions, latest, row.Running);
             SelectedSession.Content = _outsideHost.Chat;
          }
          return;
@@ -247,14 +257,57 @@ sealed partial class ProjectsDashboardWindow : Window, ISessionHistoryTarget
          _ = ReportFailure(() => Sessions.End(host.Id));
    }
 
-   void OpenHistory(object? sender, RoutedEventArgs e) => _ = OpenHistory();
+   void OpenHistory(object? sender, RoutedEventArgs e) => _ = OpenHistory((sender as Control)?.DataContext as DashboardGroup);
 
-   public Task OpenHistory() => ReportFailure(async () =>
+   public Task OpenHistory(DashboardGroup? group = null)
    {
-      _history.Open();
-      try { _history.Show(await SessionHistory.ReadFor(SelectedProject, _windows, Sessions.Hub, _closed.Token)); }
-      catch { _history.Close(); throw; }
-   });
+      var title = group switch
+      {
+         DashboardWorktree checkout => $"History · {checkout.Group.Name} · {checkout.Name}",
+         DashboardProject project => $"History · {project.Name}",
+         _ => "History · All projects"
+      };
+      return ReportFailure(() => _history.Open(ReadScope, _closed.Token, title, fixedScope: true));
+
+      async Task<SessionHistory> ReadScope(CancellationToken cancellation)
+      {
+         var history = await SessionHistory.ReadForAllProjects(_windows, Sessions.Hub, cancellation);
+         cancellation.ThrowIfCancellationRequested();
+         RefreshRows();
+         if(group is null) return history;
+         await Tree.DiscoverHistoryWorktrees(RefreshRows, Tell, _closed.Token, cancellation);
+         return history.Within(Tree.Sessions.Where(it => it.BelongsTo(group)).Select(it => it.Latest?.Id).OfType<SessionId>().ToHashSet());
+      }
+   }
+
+   void ResumeSelected(object? sender, RoutedEventArgs e) => _ = ReportFailure(ResumeSelected);
+
+   public async Task ResumeSelected()
+   {
+      if(_resuming || Tree.ActiveSession is not { ReadyToResume: true, Latest: {} session } row) return;
+      _resuming = true;
+      ResumeButton.IsEnabled = false;
+      try
+      {
+         var running = await Sessions.Hub.RunningSessions(_closed.Token);
+         if(Tree.ActiveSession != row || row.Latest?.Id != session.Id) return;
+         if(running.Any(it => it.Session.Id == session.Id))
+         {
+            if(Tree.Find(session.Id) is {} already) Select(already);
+            return;
+         }
+         if(row.Host is {} host && View is {} view && !running.Any(it => it.SessionHost == host.Id))
+            await Sessions.StartIn(view, session.CommandThatResumesIt, _closed.Token);
+         else
+         {
+            var folder = new[] { row.WorkingFolder, row.Parent?.StartFolder, row.Group.Project, _openedFrom }.OfType<Project>()
+                         .FirstOrDefault(it => Directory.Exists(it.Folder)) ?? throw new DirectoryNotFoundException($"No working folder is available for {row.Name}.");
+            var owner = row.Group.Project is {} project && Directory.Exists(project.Folder) ? project : folder;
+            await StartInNewHost(owner, folder, session, null, session.CommandThatResumesIt);
+         }
+      }
+      finally { _resuming = false; ResumeButton.IsEnabled = true; }
+   }
 
    void TakeShortcut(object? sender, KeyEventArgs key)
    {
