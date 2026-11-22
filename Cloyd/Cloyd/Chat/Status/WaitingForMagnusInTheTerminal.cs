@@ -27,7 +27,7 @@ sealed class WaitingForMagnusInTheTerminal : UserControl
 
    readonly TextBlock _whatFor = new() { Foreground = Brushes.White, FontSize = 13, TextWrapping = TextWrapping.Wrap };
 
-   public WaitingForMagnusInTheTerminal()
+   public WaitingForMagnusInTheTerminal(string headline = Headline)
    {
       var showTheTerminal = new Button
       {
@@ -58,7 +58,7 @@ sealed class WaitingForMagnusInTheTerminal : UserControl
                {
                   Spacing = 2,
                   VerticalAlignment = VerticalAlignment.Center,
-                  Children = { new TextBlock { Text = "⚠  " + Headline, Foreground = Brushes.White, FontSize = 17, FontWeight = FontWeight.Bold, TextWrapping = TextWrapping.Wrap }, _whatFor }
+                  Children = { new TextBlock { Text = "⚠  " + headline, Foreground = Brushes.White, FontSize = 17, FontWeight = FontWeight.Bold, TextWrapping = TextWrapping.Wrap }, _whatFor }
                }
             }
          }
@@ -72,11 +72,15 @@ sealed class WaitingForMagnusInTheTerminal : UserControl
    public string? WhatFor => IsVisible ? _whatFor.Text : null;
 
    /// <summary>Shows the box while <paramref name="claudeCode"/>, the Claude Code that runs in the tab, waits for Magnus in a dialog of its own: null while none runs.</summary>
-   public void Show(RunningClaudeCode? claudeCode)
+   public void Show(RunningClaudeCode? claudeCode) =>
+      Show(claudeCode?.Status.IsWaiting == true, claudeCode?.Status.WaitingFor is {Length: > 0} dialog
+                                                   ? $"{char.ToUpperInvariant(dialog[0])}{dialog[1..]}: answer it in the terminal."
+                                                   : "Answer it in the terminal.");
+
+   /// <summary>Shows what the session is waiting for and lets Magnus switch to its terminal.</summary>
+   public void Show(bool waiting, string whatFor)
    {
-      IsVisible = claudeCode?.Status.IsWaiting == true;
-      _whatFor.Text = claudeCode?.Status.WaitingFor is {Length: > 0} dialog
-                         ? $"{char.ToUpperInvariant(dialog[0])}{dialog[1..]}: answer it in the terminal."
-                         : "Answer it in the terminal.";
+      IsVisible = waiting;
+      _whatFor.Text = whatFor;
    }
 }
