@@ -7,6 +7,8 @@ All notable changes to Cloyd are documented here. The format follows
 ## [0.1.0]
 
 ### Added
+- **Coordinators can start a named Claude Code or Codex helper in a Cloyd tab.** The helper runs in the requested
+  worktree and the existing tab stays selected. A repeated launch returns the original session's address.
 - **Drag a tab header to rearrange sessions in a project window.** A marker shows where the tab will land,
   including on a wrapped row. Release to move it or press Escape to cancel. The window remembers the new
   order when it reopens, and Ctrl+Tab follows that order.

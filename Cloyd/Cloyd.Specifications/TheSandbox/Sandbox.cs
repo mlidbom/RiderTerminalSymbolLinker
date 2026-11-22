@@ -72,7 +72,13 @@ sealed class Sandbox : IDisposable
    /// The shell the sessions of the sandbox's project windows start in: PowerShell 7 without Magnus's profile, so that it
    /// starts the same anywhere, with the hub's stand-ins for Claude Code and for Codex first on its <c>PATH</c>.
    /// </summary>
-   public ShellOfNewSessions ShellOfItsSessions { get; }
+   public ShellOfNewSessions ShellOfItsSessions { get; private set; }
+
+   /// <summary>Loads the Peers channel for a private Claude stand-in, as the interactive PowerShell profile does.</summary>
+   public void StartClaudeWithThePeersChannel() => ShellOfItsSessions = ShellOfItsSessions with
+   {
+      CommandLine = """pwsh.exe -NoLogo -NoProfile -NoExit -Command "function global:claude { & claude.exe --channels plugin:peers@home-claude @args }" """
+   };
 
    /// <summary>The folder of the sandbox's projects, each in a folder of its own.</summary>
    public string ProjectsFolder => Path.Combine(_folder.FullName, "projects");

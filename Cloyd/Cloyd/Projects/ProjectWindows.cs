@@ -16,6 +16,16 @@ sealed class ProjectWindows(Func<Project, ProjectWindows, ProjectWindow> newWind
    /// <summary>The windows open, in the order they opened.</summary>
    public IReadOnlyList<ProjectWindow> Open => _open;
 
+   /// <summary>Where a coordinator's helper will be visible, keeping Magnus's active window in front.</summary>
+   public ProjectWindow ForAPeer(Project project)
+   {
+      if(_open.SingleOrDefault(it => it.Project.Equals(project)) is {} existing) return existing;
+      var window = _newWindowOf(project, this);
+      window.ShowActivated = false;
+      window.Show();
+      return window;
+   }
+
    /// <summary>
    /// Shows the window of <paramref name="project"/>, as an IDE opening the project asks: brings it forward when it is
    /// open on the virtual desktop shown, else opens a new one. One open on another desktop, as its IDE window's

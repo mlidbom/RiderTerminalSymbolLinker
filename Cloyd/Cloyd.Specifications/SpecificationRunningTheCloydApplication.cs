@@ -54,12 +54,12 @@ public abstract class SpecificationRunningTheCloydApplication : SpecificationOpe
    /// What the application's API answers <c>POST /<paramref name="pathAndQuery"/></c> with an empty body, asked with the
    /// token of its announcement, as a client that read it asks, such as the hub.
    /// </summary>
-   private protected HttpResponseMessage Posted(string pathAndQuery)
+   private protected HttpResponseMessage Posted(string pathAndQuery, HttpContent? content = null)
    {
       var announcement = AnnouncementOfCloydsLocalApi.In(CloydsFolder)!;
       return Answered(() =>
       {
-         using var request = new HttpRequestMessage(HttpMethod.Post, announcement.AddressOf(pathAndQuery)) { Content = new ByteArrayContent([]) };
+         using var request = new HttpRequestMessage(HttpMethod.Post, announcement.AddressOf(pathAndQuery)) { Content = content ?? new ByteArrayContent([]) };
          request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", announcement.Token);
          return Http.Send(request);
       }, $"the application answered POST /{pathAndQuery}");
