@@ -28,8 +28,10 @@ tab of Cloyd. `TerminalOfASessionHost.TypeANewLineOnShiftEnter` types a line fee
 keeps the change to `TerminalOfASessionHost`, plus the least that hands it the tab's `AgentCli`. new-view's
 refactoring of each session's state will move where the terminal is made, and builds on this once it's merged.
 
-**Then:** review, merge, run the full specifications, deploy. If the specification needs the stand-in for Codex to take
-Codex's key for a new line, ask the stand-in's owner, gpt-collaborators.
+**Then:** review, merge, run the full specifications, deploy. Codex takes Shift+Enter itself (crossterm keeps the Shift;
+`keymap.rs` binds it to `editor.insert_newline`). The stand-in for Codex doesn't yet: gpt-collaborators' helper adds it,
+and the tooling owner publishes it. Until then the helper's specification is skipped. Tell the helper to unskip it
+once gpt-collaborators says it's published.
 
 ## Waiting for Compze
 
