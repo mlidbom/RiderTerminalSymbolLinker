@@ -8,11 +8,11 @@
       <Version>0.1.0</Version>
       <!-- For starting the Cloyd application through CreateProcessW, as the hub is started: see StartingTheApplication. -->
       <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-      <!-- An older hub can run alongside a newer Cloyd. When its installed contract predates steer receipts,
+      <!-- An older hub can run alongside a newer Cloyd. When its installed contract predates the Codex Chat footer or steer receipts,
            build against the tooling checkout that also supplies the session-host protocol. An explicitly selected
            contract (e.g. an isolated sandbox build) always takes precedence. -->
       <InstalledHubContract>$(USERPROFILE)\.claude\bin\ClaudeTooling.Hub.LocalApi.Contract</InstalledHubContract>
-      <TheHubsContract Condition="'$(TheHubsContract)' == '' and Exists('$(InstalledHubContract)\CodexChat\CodexChatSteerAccepted.cs')">$(InstalledHubContract)</TheHubsContract>
+      <TheHubsContract Condition="'$(TheHubsContract)' == '' and Exists('$(InstalledHubContract)\CodexChat\CodexChatFooter.cs') and Exists('$(InstalledHubContract)\CodexChat\CodexChatSteerAccepted.cs')">$(InstalledHubContract)</TheHubsContract>
       <TheHubsContract Condition="'$(TheHubsContract)' == ''">$(USERPROFILE)\.claude\src\ClaudeTooling.Hub.LocalApi.Contract</TheHubsContract>
    </PropertyGroup>
    <ItemGroup>

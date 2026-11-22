@@ -4,6 +4,7 @@ using Avalonia.Threading;
 using Cloyd.Chat;
 using Cloyd.Chat.Status;
 using Cloyd.Chat.Views;
+using Cloyd.Codex.Chat.Status;
 using Cloyd.Hub.RunningSessions;
 using Cloyd.Pasting;
 using static Cloyd.Chat.Views.LinesOfTheChat;
@@ -26,11 +27,15 @@ sealed class ChatOfACodexSession : SessionChat
    {
       _hub = hub;
       InputBox = new CodexChatComposer(hub, pastedImages, drafts) { MaxWidth = WidthOfTheColumn + 32 };
+      BackgroundTerminals = new BackgroundTerminalsOfACodexChat(hub.BackgroundTerminals) { MaxWidth = WidthOfTheColumn + 32 };
       ColoursOfTheChat.Grey.AsTheForegroundOf(_status);
-      ArrangeRows(WaitingForMagnusInTheTerminal, _status, InputBox);
+      ArrangeRows(WaitingForMagnusInTheTerminal, Progress, InputBox, StatusLine, BackgroundTerminals, _status);
    }
 
    public override CodexChatComposer InputBox { get; }
+   public ProgressOfACodexChat Progress { get; } = new() { MaxWidth = WidthOfTheColumn + 32 };
+   public StatusLineOfACodexChat StatusLine { get; } = new() { MaxWidth = WidthOfTheColumn + 32 };
+   public BackgroundTerminalsOfACodexChat BackgroundTerminals { get; }
    public WaitingForMagnusInTheTerminal WaitingForMagnusInTheTerminal { get; } = new("Codex waits for you in the terminal") { MaxWidth = WidthOfTheColumn + 32 };
 
    /// <summary>Follows the last session in the tab, including its saved history after exit. Only a running session can take input.</summary>
@@ -141,9 +146,10 @@ sealed class ChatOfACodexSession : SessionChat
                                                      ? "Review the approval request in the terminal."
                                                      : "Answer the prompt in the terminal.");
       var turn = _reading?.TurnUnderWay;
-      _status.Text = _running is null && _session is not null ? "Saved conversation · Codex is not running in this tab."
-                   : turn is not null && !waiting             ? "Codex is working…"
-                                                             : null;
+      Progress.Show(_running is not null && !waiting ? _reading?.Progress : null);
+      StatusLine.Show(_running is not null ? _reading?.Footer : null);
+      BackgroundTerminals.Observe(_reading?.Footer is not null ? _running?.SessionId : null, turn);
+      _status.Text = _running is null && _session is not null ? "Saved conversation · Codex is not running in this tab." : null;
       _status.IsVisible = _status.Text is not null;
       InputBox.Target(_session, _reading is not null && _running?.SessionId == _session, turn);
    }
@@ -155,6 +161,7 @@ sealed class ChatOfACodexSession : SessionChat
       CodexReply reply => MarkdownOf(reply.Markdown),
       CodexToolCalls calls => calls.Draw(_opened),
       CodexChatNotice notice => Grey(notice.Line),
+      EndOfACodexTurn end => Grey(end.TextShown),
       _ => throw new ArgumentOutOfRangeException(nameof(shown), shown, "Unknown Codex conversation row.")
    };
 }

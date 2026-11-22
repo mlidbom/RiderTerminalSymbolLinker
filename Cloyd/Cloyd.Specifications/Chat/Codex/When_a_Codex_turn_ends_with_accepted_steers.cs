@@ -123,6 +123,7 @@ public class When_a_Codex_turn_ends_with_accepted_steers : SpecificationOpeningW
          return _receipt;
       }
       public Task Send(CodexSessionId session, MessageFromTheChat message) => throw new NotSupportedException();
+      public Task<CodexChatBackgroundTerminals?> BackgroundTerminals(CodexSessionId session, CancellationToken cancellation) => throw new NotSupportedException();
       public Task Interrupt(CodexSessionId session, CodexTurnId turn) => throw new NotSupportedException();
       public Task<CodexChatReading> SavedConversation(CodexSessionId session, CancellationToken cancellation) => throw new NotSupportedException();
       public IAsyncEnumerable<CodexChatReading?> Follow(CodexSessionId session, CancellationToken cancellation) => throw new NotSupportedException();

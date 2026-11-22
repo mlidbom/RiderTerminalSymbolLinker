@@ -233,7 +233,9 @@ public sealed class SandboxRider
                 {
                    if(TheMcpServersHealth() is not {} health) return false;
                    using var document = JsonDocument.Parse(health);
-                   var tools = document.RootElement.GetProperty("solutions").EnumerateArray().First().GetProperty("tools");
+                   var solutions = document.RootElement.GetProperty("solutions").EnumerateArray().ToList();
+                   if(solutions.Count == 0) return false; //A server that has no solution open yet serves no tools build yet.
+                   var tools = solutions[0].GetProperty("tools");
                    served = tools.GetProperty("build").GetString()!;
                    return served == (_mcpTools.NewestBuiltAgainst(tools.GetProperty("host").GetString()!) ?? served);
                 },

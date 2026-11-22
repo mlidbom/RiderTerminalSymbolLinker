@@ -1,4 +1,5 @@
 using Cloyd.Chat.Writing;
+using ClaudeTooling.Hub.LocalApi.Contract.CodexChat;
 
 namespace Cloyd.Codex.Chat;
 
@@ -8,6 +9,8 @@ interface ICodexChatInTheHub
 {
    IAsyncEnumerable<CodexChatReading?> Follow(CodexSessionId session, CancellationToken cancellation);
    Task<CodexChatReading> SavedConversation(CodexSessionId session, CancellationToken cancellation);
+   /// <summary>Null when the daemon lacks this optional listing. An empty list means the daemon supports it and none run.</summary>
+   Task<CodexChatBackgroundTerminals?> BackgroundTerminals(CodexSessionId session, CancellationToken cancellation);
    Task Send(CodexSessionId session, MessageFromTheChat message);
    Task Steer(CodexSessionId session, SubmittedCodexSteer steer);
    Task Interrupt(CodexSessionId session, CodexTurnId turn);

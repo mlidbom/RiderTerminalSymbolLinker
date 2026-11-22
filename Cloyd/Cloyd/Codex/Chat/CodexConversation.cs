@@ -1,14 +1,29 @@
 using ClaudeTooling.Hub.LocalApi.Contract.CodexChat;
-using Cloyd.Chat;
 
 namespace Cloyd.Codex.Chat;
 
 /// <summary>One subscription's ordered Codex turns. The first snapshot replaces the entire conversation.
 /// Thereafter the hub sends a whole turn whenever one of its items changes.</summary>
-sealed class CodexConversation(CodexChatSnapshot snapshot)
+sealed class CodexConversation
 {
-   readonly List<CodexTurnInTheChat> _turns = [.. snapshot.Turns.Select(CodexTurnInTheChat.From)];
-   readonly bool _supportsSteerReceipts = snapshot.SupportsCodexSteerReceipts;
+   readonly string _sessionId;
+   readonly bool _supportsSteerReceipts;
+   readonly List<CodexTurnInTheChat> _turns;
+   CodexChatFooter? _footer;
+
+   public CodexConversation(CodexChatSnapshot snapshot)
+   {
+      _sessionId = snapshot.SessionId;
+      _supportsSteerReceipts = snapshot.SupportsCodexSteerReceipts;
+      _turns = [.. snapshot.Turns.Select(CodexTurnInTheChat.From)];
+      if(snapshot.Footer is {} footer) Update(footer);
+   }
+
+   public void Update(CodexChatFooter footer)
+   {
+      if(footer.SessionId != _sessionId) throw new InvalidDataException("The hub sent a footer for a different Codex session.");
+      _footer = footer;
+   }
 
    public void Update(CodexChatTurn turn)
    {
@@ -19,6 +34,6 @@ sealed class CodexConversation(CodexChatSnapshot snapshot)
    }
 
    public CodexChatReading AsShown() =>
-      new([.. _turns.SelectMany(it => it.Rows)], _turns.LastOrDefault(it => it.IsUnderWay) is {} active ? new CodexTurnId(active.Id) : null)
+      new([.. _turns.SelectMany(it => it.Rows)], _turns.LastOrDefault()?.Progress, _footer)
       { Turns = _turns.ToArray(), SupportsCodexSteerReceipts = _supportsSteerReceipts };
 }
