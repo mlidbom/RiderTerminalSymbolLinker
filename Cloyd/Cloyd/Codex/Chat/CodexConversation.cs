@@ -32,5 +32,5 @@ sealed class CodexConversation
    }
 
    public CodexChatReading AsShown() =>
-      new([.. _turns.SelectMany(it => it.Rows)], _turns.LastOrDefault(it => it.Progress is not null)?.Progress, _footer);
+      new([.. _turns.SelectMany(it => it.Rows)], _turns.LastOrDefault()?.Progress, _footer);
 }

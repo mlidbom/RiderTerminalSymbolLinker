@@ -61,6 +61,12 @@ public class When_Codex_reports_turn_and_tool_progress
       EndOfACodexTurn.From(new CodexChatTurn("old", "interrupted", []))!.TextShown.Must().Be("Turn interrupted");
    }
 
+   [XF] public void a_later_finished_turn_leaves_no_working_line_for_an_unfinished_older_record()
+   {
+      var chat = new CodexConversation(new CodexChatSnapshot("session", [Turn, new CodexChatTurn("later", "completed", [])]));
+      chat.AsShown().TurnUnderWay.Must().BeNull();
+   }
+
    [XF] public void image_generation_has_an_activity_and_a_clock_even_without_command_details()
    {
       var image = new CodexChatItem("drawing", "imageGeneration", "", null) { Lifecycle = CodexChatItemLifecycle.InProgress, StartedAt = Started };
