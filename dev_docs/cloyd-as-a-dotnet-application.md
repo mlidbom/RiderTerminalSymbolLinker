@@ -702,11 +702,19 @@ Codex session when that capability is present. Older hubs can still open Codex t
   supplies the full text. Also, if Terminal starts a turn just as Chat submits an idle Send, Codex can steer that
   new turn with the submitted text. The tooling's `dev_docs/the-hubs-local-api.md` records both behaviors.
 
-Both chats show incoming peer messages as expandable rows with the sender and a first-line preview.
+Both chats show Magnus's prompts in gray bubbles on the right and the session's Markdown replies in blue
+bubbles on the left. Peer messages in either direction start folded, with just the peer name and protocol.
+Received messages are violet with a band on the left edge. Sent messages are teal with a band on the right
+edge and an outgoing arrow. Opening a peer message reveals its body and any recorded delivery details.
+Cloyd resolves session IDs using the hub's running session names and looks up saved names for exited peers.
+If neither source has a name, the recorded address identifies the peer.
 Codex records a Peers delivery as a text prompt wrapped in `<peer-message>`. Claude Code records its own
 peer sender, or receives Peers through `<channel source="plugin:peers:peers" …>`. Cloyd reads only the opening
 tag for attribution and displays the body as plain text. Claude prompts recorded as human keep their authorship.
 A verbatim copy of the complete Codex envelope has the same representation in Codex history as a Peers delivery.
+The Claude Code `SendMessage` tool, Peers' `send_to_peer` and Codex's native `send_message_to_thread`
+each appear once as outgoing messages. Codex's native incoming delegations are identified by the tool that
+delivered them and its envelope. Other tools stay in the expandable tool-call rows.
 
 In Codex Chat the active tool and the turn's progress sit above the composer. The turn and item clocks come from
 Codex, so opening Chat halfway through a command preserves its elapsed time. A completed turn uses the same

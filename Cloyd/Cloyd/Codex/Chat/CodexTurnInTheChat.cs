@@ -20,6 +20,12 @@ sealed record CodexTurnInTheChat(string Id, CodexTurnProgress? Progress, IReadOn
       foreach(var item in turn.Items)
       {
          var id = $"{turn.Id}/{item.Id}";
+         if(ShownInTheChat.PeerMessage.FromCodexTool(id, item) is {} peerMessage)
+         {
+            EndRunOfCalls();
+            rows.Add(peerMessage);
+            continue;
+         }
          if(Call(id, item) is {} call)
          {
             calls.Add(call);

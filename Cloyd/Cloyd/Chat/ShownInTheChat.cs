@@ -47,6 +47,11 @@ abstract partial record ShownInTheChat
                break;
             case MessageInTheAnswer.ToolCall call when ToolCallInTheChat.IsShown(call):
                var callShown = new ToolCallInTheChat(call, results.GetValueOrDefault(call.ToolUseId));
+               if(PeerMessage.SentByClaude(callShown) is {} sent)
+               {
+                  shown.Add(sent);
+                  break;
+               }
                if(shown.LastOrDefault() is RunOfToolCalls run) shown[^1] = run.With(callShown);
                else shown.Add(new RunOfToolCalls([callShown]));
                break;

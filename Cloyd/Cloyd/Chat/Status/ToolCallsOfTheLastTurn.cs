@@ -16,7 +16,7 @@ sealed record ToolCallsOfTheLastTurn(IReadOnlyList<ToolCallInTheChat> Calls)
    /// <summary>The calls of the last turn <paramref name="conversation"/> has.</summary>
    public static ToolCallsOfTheLastTurn In(IReadOnlyList<ShownInTheChat> conversation) =>
       new([.. conversation.Reverse()
-                          .TakeWhile(it => it is not (ShownInTheChat.Prompt or ShownInTheChat.PromptFromElsewhere or ShownInTheChat.PeerMessage or ShownInTheChat.SlashCommand or ShownInTheChat.EndOfATurn))
+                          .TakeWhile(it => it is not (ShownInTheChat.Prompt or ShownInTheChat.PromptFromElsewhere or ShownInTheChat.PeerMessage { IsOutgoing: false } or ShownInTheChat.SlashCommand or ShownInTheChat.EndOfATurn))
                           .OfType<ShownInTheChat.RunOfToolCalls>()
                           .Reverse()
                           .SelectMany(it => it.Calls)]);

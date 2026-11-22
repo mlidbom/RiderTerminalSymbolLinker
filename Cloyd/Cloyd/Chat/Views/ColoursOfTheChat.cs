@@ -21,6 +21,12 @@ static class ColoursOfTheChat
    /// <summary>The bubble of a prompt of Magnus's.</summary>
    public static readonly ColourOfTheTheme BubbleOfAPrompt = new("#F3F3F2", "#30302E");
 
+   public static readonly ColourOfTheTheme ReplyBubble = new("#EDF4FC", "#202F40");
+   public static readonly ColourOfTheTheme IncomingPeerBubble = new("#F1E8FC", "#392B4B");
+   public static readonly ColourOfTheTheme IncomingPeerAccent = new("#704398", "#D7B5F5");
+   public static readonly ColourOfTheTheme OutgoingPeerBubble = new("#DCF3ED", "#183E37");
+   public static readonly ColourOfTheTheme OutgoingPeerAccent = new("#096A55", "#8ADDC6");
+
    /// <summary>A slash command in its bubble.</summary>
    public static readonly ColourOfTheTheme SlashCommand = new("#1A5BAD", "#7FA8F5");
 
@@ -51,7 +57,9 @@ static class ColoursOfTheChat
    /// <summary>The ground of the match a search shows, over that of the other matches.</summary>
    public static readonly ColourOfTheTheme TheMatchShown = new("#F7A35C", "#9C5A1C");
 
-   static readonly ColourOfTheTheme[] All = [Text, Grey, BubbleOfAPrompt, SlashCommand, Failed, Added, Removed, GroundOfAnAddedLine, GroundOfARemovedLine, Border, GroundOfACodeBlock, AMatch, TheMatchShown];
+   static readonly ColourOfTheTheme[] All = [Text, Grey, BubbleOfAPrompt, ReplyBubble, IncomingPeerBubble, IncomingPeerAccent,
+                                              OutgoingPeerBubble, OutgoingPeerAccent, SlashCommand, Failed, Added, Removed,
+                                              GroundOfAnAddedLine, GroundOfARemovedLine, Border, GroundOfACodeBlock, AMatch, TheMatchShown];
 
    /// <summary>
    /// The colours LiveMarkdown.Avalonia draws Claude's markdown in, by the keys of its <c>Defaults.axaml</c>, which are

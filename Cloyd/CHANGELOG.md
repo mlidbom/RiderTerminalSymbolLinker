@@ -155,9 +155,11 @@ All notable changes to Cloyd are documented here. The format follows
   the editor. If history cannot settle delivery, you can copy the pending input into the editor yourself.
   Chat refuses to steer through an older hub without message receipts and keeps the draft. Terminal is available
   during that upgrade window. Press Send to try again.
-- **Codex Chat and Claude Code Chat identify incoming peer messages.** A row names the sending session and previews
-  its message. Open it to read or copy the full text. This also applies to saved conversations and to Peers channel
-  messages received while Claude was working.
+- **Both chats distinguish your conversation from messages between agents.** Your messages appear in gray bubbles on
+  the right and the session's replies in blue on the left. Incoming peer messages have a violet bubble with a band on
+  the left edge. Outgoing peer messages have a teal bubble with a band on the right edge and an outgoing arrow.
+  Both start folded, showing the peer's name and protocol, such as `cloyd-gpt · Peers`. Open a message to read or
+  copy it and see any delivery details. Ordinary tool calls keep their compact expandable rows.
 - **Moving the mouse over a session's terminal no longer types text into it.** In some Codex sessions each move typed
   characters such as `CO!CL!CI!` into Codex's input box. A program in the session had turned off a way of reporting the
   mouse that Windows' console can't read; Cloyd's terminal took that for turning off them all, and fell back to an older

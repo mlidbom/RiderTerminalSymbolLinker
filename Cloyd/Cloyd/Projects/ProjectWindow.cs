@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
@@ -59,6 +60,8 @@ sealed class ProjectWindow : Window
    readonly ShellOfNewSessions _shellOfNewSessions;
    readonly SavedProjectWindows _savedWindows;
    readonly PastedImages _pastedImages;
+   ImmutableDictionary<string, string> _peerNames = ImmutableDictionary.Create<string, string>(StringComparer.OrdinalIgnoreCase);
+   bool _requestedArchivedPeerNames;
    /// <summary>The glyph of the button that opens the history picker: Windows' icon font's History, a clock with an arrow back.</summary>
    static readonly string HistoryIcon = char.ConvertFromUtf32(0xE81C);
 
@@ -314,10 +317,28 @@ sealed class ProjectWindow : Window
       tab.ClosedByMagnus += it => _ = TellingOfFailure(() => EndTheSessionOf(it));
       tab.EndedByItself += (it, _) => Remove(it);
       _tabs.Items.Add(tab);
+      ShowPeerNames(tab);
       return tab;
    }
 
    bool IsShown(SessionHostId host) => Tabs.Any(it => it.Host.Id == host);
+
+   void ShowPeerNames(SessionTab tab) => tab.Chat?.ShowPeerNames(_peerNames, RequestArchivedPeerNames);
+
+   /// <summary>Read saved names on the first ID the running sessions cannot identify. A live name takes precedence.</summary>
+   void RequestArchivedPeerNames()
+   {
+      if(_requestedArchivedPeerNames) return;
+      _requestedArchivedPeerNames = true;
+      _ = TellingOfFailure(async () =>
+      {
+         var archived = await _hub.SessionsOnDisk(_closed.Token);
+         foreach(var entry in archived)
+            if(entry.Session is { Name: { Length: > 0 } name } session && !_peerNames.ContainsKey(session.Id.Value))
+               _peerNames = _peerNames.Add(session.Id.Value, name);
+         foreach(var tab in Tabs) ShowPeerNames(tab);
+      });
+   }
 
    /// <summary>Ends the session of <paramref name="tab"/>, as Magnus asked by closing it: whether or not the window closes meanwhile.</summary>
    async Task EndTheSessionOf(SessionTab tab)
@@ -365,10 +386,14 @@ sealed class ProjectWindow : Window
          {
             await foreach(var (hub, runningSessions) in _hub.RunningSessionsAsTheyChange(_closed.Token))
             {
+               foreach(var running in runningSessions)
+                  if(running.Session is { Name: { Length: > 0 } name } session)
+                     _peerNames = _peerNames.SetItem(session.Id.Value, name);
                foreach(var tab in Tabs)
                {
                   tab.OfferCodexChat(hub.Says.SupportsCodexChat ? _hub : null);
                   tab.SessionRunningInIt = runningSessions.FirstOrDefault(it => it.SessionHost == tab.Host.Id);
+                  ShowPeerNames(tab);
                }
             }
          });

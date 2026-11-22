@@ -1,6 +1,7 @@
 using System.Text.Json.Nodes;
 using Avalonia.Controls;
 using Avalonia.VisualTree;
+using Cloyd.Chat;
 using Cloyd.Codex;
 using Cloyd.Codex.Chat;
 using Cloyd.Saving;
@@ -21,7 +22,12 @@ public class When_Chat_opens_for_a_saved_Codex_session_after_it_exited : Specifi
    {
       var project = Sandbox.Project("after-codex-exited");
       var session = new CodexSession(new CodexSessionId(Guid.NewGuid().ToString()), "previous run");
-      new CodexSessionOfASpecification(session.Id, project.Project.Folder, "saved prompt") { RecordedItems = RecordedTurn() }.WriteItsRecordFor(Sandbox.HubOfTheSandbox);
+      var peer = new CodexSessionId(Guid.NewGuid().ToString());
+      new CodexSessionOfASpecification(peer, project.Project.Folder, "peer's prompt") { Name = "archived collaborator" }.WriteItsRecordFor(Sandbox.HubOfTheSandbox);
+      var recorded = RecordedTurn();
+      recorded.Add(new JsonObject { ["id"] = "send", ["type"] = "mcpToolCall", ["server"] = "codex_tui", ["tool"] = "send_message_to_thread",
+                                    ["status"] = "completed", ["arguments"] = new JsonObject { ["threadId"] = peer.Value, ["prompt"] = "Check the build." } });
+      new CodexSessionOfASpecification(session.Id, project.Project.Folder, "saved prompt") { RecordedItems = recorded }.WriteItsRecordFor(Sandbox.HubOfTheSandbox);
       var host = project.StartASessionHost(project.LabelOfCloydsHosts);
       project.SaveTheWindowAs(new SavedProjectWindow([new SavedSessionTab(host.Id, project.Project.Folder, session)], host.Id, null));
       var window = Open(project.Window);
@@ -42,6 +48,10 @@ public class When_Chat_opens_for_a_saved_Codex_session_after_it_exited : Specifi
 
    [XF] public void the_session_is_still_exited() => OnTheUIThread(() => _tab.SessionRunningInIt).Must().BeNull();
    [XF] public void the_saved_conversation_cannot_take_input() => OnTheUIThread(() => _tab.CodexChat!.InputBox.CanSend).Must().BeFalse();
+
+   [XF] public void the_restored_tab_names_the_peer_even_after_both_sessions_exit() =>
+      WaitUntil(() => _tab.CodexChat!.Shown.OfType<ShownInTheChat.PeerMessage>().Single().TextShown == "↗ archived collaborator · Codex",
+                "the saved peer's name arrived");
 
    [XF] public void the_multiline_command_and_its_output_are_shown_separately() =>
       SelectableText().Must().Satisfy(it => it.Contains("Get-Location\nGet-Date") && it.Contains("command output\nsecond line"));

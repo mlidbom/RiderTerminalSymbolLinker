@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Presenters;
@@ -33,6 +34,9 @@ abstract class SessionChat : UserControl
 
    readonly WhatTheViewFollows _followed;
    readonly DrawnEndOfTheConversation _drawn = new();
+   ImmutableDictionary<string, string> _peerNames = ImmutableDictionary<string, string>.Empty;
+   IReadOnlyList<ShownInTheChat> _recorded = [];
+   Action? _requestArchivedPeerNames;
 
    /// <summary>Whether drawing more above is under way: see <see cref="DrawMoreAboveOnceLaidOut"/>.</summary>
    bool _drawingMoreAbove;
@@ -94,10 +98,36 @@ abstract class SessionChat : UserControl
    /// <summary>Draws the latest reading of the conversation and updates the active search.</summary>
    protected void ShowConversation(IReadOnlyList<ShownInTheChat> conversation)
    {
-      _drawn.Show(conversation);
+      _recorded = conversation;
+      _drawn.Show(WithPeerNames());
+      RefreshSearch();
+   }
+
+   void RefreshSearch()
+   {
       if(_found is null) return;
       _found = _found.In(Shown);
       FindBar.Show(_found.Counted);
+   }
+
+   /// <summary>Resolves peers addressed by session ID, including rows that arrived before the hub listed their names.</summary>
+   public void ShowPeerNames(ImmutableDictionary<string, string> names, Action requestArchivedPeerNames)
+   {
+      if(ReferenceEquals(_peerNames, names) && _requestArchivedPeerNames is not null) return;
+      _requestArchivedPeerNames = requestArchivedPeerNames;
+      _peerNames = names;
+      _drawn.RefreshLabels(WithPeerNames());
+      RefreshSearch();
+   }
+
+   IReadOnlyList<ShownInTheChat> WithPeerNames() => _requestArchivedPeerNames is null ? _recorded : _recorded.Select(WithPeerName).ToArray();
+
+   ShownInTheChat WithPeerName(ShownInTheChat row)
+   {
+      if(row is not ShownInTheChat.PeerMessage peer || !Guid.TryParseExact(peer.Peer, "D", out _)) return row;
+      if(_peerNames.TryGetValue(peer.Peer, out var name)) return peer with { Peer = name };
+      _requestArchivedPeerNames!();
+      return row;
    }
 
    protected void ScrollToTheEnd() => _followed.ScrollToTheEnd();
@@ -267,14 +297,14 @@ abstract class SessionChat : UserControl
       Resources["FontSizeXl"] = 14.0;
    }
 
-   protected static Control MarkdownOf(string markdown)
+   protected static Control ReplyBubble(string markdown)
    {
       var text = new ObservableStringBuilder();
       text.Append(markdown);
       var renderer = ColoursOfTheChat.Text.AsTheForegroundOf(new MarkdownRenderer { MarkdownBuilder = text });
       renderer.AttachedToVisualTree += (_, _) => ColourTheCode();
       renderer.ActualThemeVariantChanged += (_, _) => ColourTheCode();
-      return renderer;
+      return LinesOfTheChat.AgentBubble(renderer, ColoursOfTheChat.ReplyBubble);
 
       void ColourTheCode() => renderer.CodeBlockColorTheme = ColoursOfTheChat.OfCodeIn(renderer.ActualThemeVariant);
    }

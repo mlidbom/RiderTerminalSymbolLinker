@@ -15,7 +15,7 @@ namespace Cloyd.Chat;
 /// <summary>
 /// The chat of a session: its conversation, as the hub's stream of it tells, drawn as the Claude desktop app's Code tab
 /// draws one (<c>dev_docs/cloyd-chat-specification.md</c>) in a column down the middle: Magnus's prompts in bubbles at the
-/// right, what Claude wrote across the column, its tool calls folded into grey lines. Under it, the
+/// right, Claude's replies in bubbles on the left, its tool calls folded into grey lines. Under it, the
 /// <see cref="InputBoxOfTheChat"/>, where Magnus writes to Claude.
 /// </summary>
 /// <remarks>
@@ -236,7 +236,7 @@ sealed class ChatOfAClaudeCodeSession : SessionChat
    {
       ShownInTheChat.Prompt prompt => Bubble(Coloured(prompt.Text, ColoursOfTheChat.Text)),
       ShownInTheChat.SlashCommand command => Bubble(Coloured(command.Command, ColoursOfTheChat.SlashCommand), Coloured(command.Arguments, ColoursOfTheChat.Text)),
-      ShownInTheChat.ClaudesText text => MarkdownOf(text.Markdown),
+      ShownInTheChat.ClaudesText text => ReplyBubble(text.Markdown),
       ShownInTheChat.RunOfToolCalls run => ToolCallsInTheChat.Of(run, _opened),
       ShownInTheChat.Compaction compaction => Grey(compaction.Line),
       ShownInTheChat.Clearing => Grey(ShownInTheChat.Clearing.Line),

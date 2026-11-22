@@ -33,6 +33,15 @@ sealed class DrawnEndOfTheConversation
    /// <summary>Where in <see cref="Shown"/> what is drawn starts.</summary>
    public int FirstDrawn => Shown.Count - _drawn.Count;
 
+   /// <summary>Refreshes labels in the same conversation without replacing the range Magnus has scrolled back to.</summary>
+   public void RefreshLabels(IReadOnlyList<ShownInTheChat> relabelled)
+   {
+      var first = FirstDrawn;
+      Shown = relabelled;
+      for(var at = 0; at < _drawn.Count; at++)
+         if(_drawn[at] != relabelled[first + at]) _drawn[at] = relabelled[first + at];
+   }
+
    /// <summary>
    /// Shows <paramref name="now"/> in place of what it shows: redraws only what differs, from the first thing that does on,
    /// as what the conversation adds is at its end. It draws the end of <paramref name="now"/> anew when what differs

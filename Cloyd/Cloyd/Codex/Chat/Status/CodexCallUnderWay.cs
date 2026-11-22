@@ -1,4 +1,5 @@
 using ClaudeTooling.Hub.LocalApi.Contract.CodexChat;
+using Cloyd.Chat;
 using Cloyd.Chat.Status;
 
 namespace Cloyd.Codex.Chat.Status;
@@ -11,6 +12,7 @@ sealed record CodexCallUnderWay(string Description, string? Input, DateTimeOffse
    {
       if((item.Lifecycle ?? item.Details?.Status) != CodexChatItemLifecycle.InProgress) return null;
       var details = item.Details;
+      if(ShownInTheChat.PeerMessage.IsCodexSend(item)) return new("Sending a peer message", null, item.StartedAt);
       return item.Kind switch
       {
          "commandExecution" => new("Running command", details?.Command, item.StartedAt),

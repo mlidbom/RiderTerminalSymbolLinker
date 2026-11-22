@@ -33,7 +33,9 @@ Pictures: `04-turn-done.png`, `09-markdown.png`.
   Above the first message, in small grey: `Started on this computer · sample-shop · Save as environment`.
 - **What the user wrote:** at the right, in a light grey bubble with round corners, as wide as its text up to about three
   quarters of the column. Plain text; a link in it is blue.
-- **What Claude wrote:** at the left, the column's full width, with no bubble.
+- **What Claude wrote:** the reference app uses the column's full width with no bubble. In Cloyd, Magnus
+  chose a left-aligned blue reply bubble for both chats. Peer messages stay folded, with a violet band on the
+  left for incoming messages and a teal band on the right for outgoing messages.
 - **Claude's markdown:**
   - headings bold, and barely larger than the text: `#` about 1.25 times, `##` and `###` the text's size;
   - inline code in a monospaced font on a light grey ground with round corners;

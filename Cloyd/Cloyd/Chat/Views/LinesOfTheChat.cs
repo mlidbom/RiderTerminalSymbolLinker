@@ -1,4 +1,5 @@
 using Avalonia;
+using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Controls.Documents;
 using Avalonia.Layout;
@@ -41,6 +42,15 @@ static class LinesOfTheChat
    /// <summary>A grey line, such as <c>Compacted session</c>.</summary>
    public static Control Grey(string line) => ColoursOfTheChat.Grey.AsTheForegroundOf(new MarkdownTextBlock { Text = line, TextWrapping = TextWrapping.Wrap });
 
+   /// <summary>A left-aligned bubble for an agent's message. Long replies can use the full conversation column.</summary>
+   public static Border AgentBubble(Control message, ColourOfTheTheme ground) => ground.AsTheBackgroundOf(new Border
+   {
+      HorizontalAlignment = HorizontalAlignment.Left,
+      CornerRadius = new CornerRadius(4, 12, 12, 12),
+      Padding = new Thickness(14, 9),
+      Child = message
+   });
+
    /// <summary><paramref name="text"/> in the monospaced font, selectable, as a tool's output is shown: in <paramref name="colour"/>, or the chat's text colour.</summary>
    public static SelectableTextBlock InMonospace(string text, ColourOfTheTheme? colour = null) =>
       (colour ?? ColoursOfTheChat.Text).AsTheForegroundOf(new SelectableTextBlock { Text = text, FontFamily = Monospaced, FontSize = 12, TextWrapping = TextWrapping.Wrap });
@@ -56,7 +66,7 @@ static class LinesOfTheChat
    /// under it when clicked, and closes it when clicked again: <paramref name="isOpen"/> at first, and
    /// <paramref name="toggled"/> told each time.
    /// </summary>
-   public static Control Opening(Inline[] inlines, Func<Control> opened, bool isOpen, Action<bool> toggled)
+   public static Control Opening(Inline[] inlines, Func<Control> opened, bool isOpen, Action<bool> toggled, string? accessibleName = null)
    {
       var text = ColoursOfTheChat.Grey.AsTheForegroundOf(new MarkdownTextBlock { TextWrapping = TextWrapping.Wrap, IsHitTestVisible = false });
       var chevron = Coloured("", ColoursOfTheChat.Grey);
@@ -71,6 +81,7 @@ static class LinesOfTheChat
          HorizontalAlignment = HorizontalAlignment.Left,
          Cursor = new Avalonia.Input.Cursor(Avalonia.Input.StandardCursorType.Hand)
       };
+      if(accessibleName is not null) AutomationProperties.SetName(line, accessibleName);
       foreach(var key in new[] { "ButtonBackgroundPointerOver", "ButtonBackgroundPressed" }) line.Resources[key] = Brushes.Transparent;
       var under = new ContentControl();
       Show(isOpen);
