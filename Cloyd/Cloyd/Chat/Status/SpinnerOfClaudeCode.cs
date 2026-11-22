@@ -1,8 +1,8 @@
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Threading;
-using Avalonia.VisualTree;
 using Cloyd.Chat.Views;
 using Cloyd.Theming;
 
@@ -15,6 +15,8 @@ namespace Cloyd.Chat.Status;
 /// </summary>
 sealed class SpinnerOfClaudeCode : TextBlock
 {
+   public static readonly StyledProperty<bool> IsTurningProperty = AvaloniaProperty.Register<SpinnerOfClaudeCode, bool>(nameof(IsTurning));
+
    /// <summary>The glyphs, as Claude Code's spinner shows them: each in turn, then back.</summary>
    const string Glyphs = "·✢✳✶✻✽✻✶✳✢";
    const string IdleStar = "✶";
@@ -49,8 +51,8 @@ sealed class SpinnerOfClaudeCode : TextBlock
       TextAlignment = TextAlignment.Center;
       Text = IdleStar;
       _turning.Tick += (_, _) => Turn();
-      AttachedToVisualTree += (_, _) => _turning.IsEnabled = IsTurning;
-      DetachedFromVisualTree += (_, _) => _turning.Stop();
+      Loaded += (_, _) => _turning.IsEnabled = IsTurning;
+      Unloaded += (_, _) => _turning.Stop();
    }
 
    protected override Type StyleKeyOverride => typeof(TextBlock);
@@ -58,14 +60,16 @@ sealed class SpinnerOfClaudeCode : TextBlock
    /// <summary>Whether Claude is working. An attached spinner cycles through its glyphs until the turn ends.</summary>
    public bool IsTurning
    {
-      get;
-      set
-      {
-         if(field == value) return;
-         field = value;
-         _turning.IsEnabled = value && this.IsAttachedToVisualTree();
-         if(!value) Text = IdleStar;
-      }
+      get => GetValue(IsTurningProperty);
+      set => SetValue(IsTurningProperty, value);
+   }
+
+   protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
+   {
+      base.OnPropertyChanged(change);
+      if(change.Property != IsTurningProperty) return;
+      _turning.IsEnabled = IsLoaded && IsTurning;
+      if(!IsTurning) Text = IdleStar;
    }
 
    /// <summary>Shows the next glyph.</summary>
