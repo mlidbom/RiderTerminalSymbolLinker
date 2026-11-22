@@ -16,7 +16,7 @@ sealed class ChatOfACodexSession : SessionChat
 {
    readonly ICodexChatInTheHub _hub;
    OpenedInTheChat _opened = new();
-   readonly TextBlock _working = new() { MaxWidth = WidthOfTheColumn, Margin = new Thickness(16, 4), Text = "Codex is working…", IsVisible = false };
+   readonly TextBlock _status = new() { MaxWidth = WidthOfTheColumn, Margin = new Thickness(16, 4), IsVisible = false };
    CodexSessionId? _session;
    RunningCodex? _running;
    CodexChatReading? _reading;
@@ -26,8 +26,8 @@ sealed class ChatOfACodexSession : SessionChat
    {
       _hub = hub;
       InputBox = new CodexChatComposer(hub, pastedImages, drafts) { MaxWidth = WidthOfTheColumn + 32 };
-      ColoursOfTheChat.Grey.AsTheForegroundOf(_working);
-      ArrangeRows(WaitingForMagnusInTheTerminal, _working, InputBox);
+      ColoursOfTheChat.Grey.AsTheForegroundOf(_status);
+      ArrangeRows(WaitingForMagnusInTheTerminal, _status, InputBox);
    }
 
    public override CodexChatComposer InputBox { get; }
@@ -81,19 +81,24 @@ sealed class ChatOfACodexSession : SessionChat
       StopFollowing();
       if(!IsShown || _session is not {} session) return;
       var subscription = _following = new CancellationTokenSource();
-      _ = Follow(session, subscription);
+      _ = Follow(session, _running is not null, subscription);
    }
 
-   async Task Follow(CodexSessionId session, CancellationTokenSource subscription)
+   async Task Follow(CodexSessionId session, bool running, CancellationTokenSource subscription)
    {
       try
       {
          await Task.Run(async () =>
          {
-            await foreach(var reading in _hub.Follow(session, subscription.Token))
-               await Dispatcher.UIThread.InvokeAsync(() => DrawIfStillFollowing(reading));
+            if(running)
+               await foreach(var reading in _hub.Follow(session, subscription.Token))
+                  await Dispatcher.UIThread.InvokeAsync(() => DrawIfStillFollowing(reading));
+            else
+            {
+               var saved = await _hub.SavedConversation(session, subscription.Token);
+               await Dispatcher.UIThread.InvokeAsync(() => DrawIfStillFollowing(saved));
+            }
          });
-
       }
       catch(OperationCanceledException) when(subscription.IsCancellationRequested) {}
       catch(Exception failure)
@@ -135,7 +140,10 @@ sealed class ChatOfACodexSession : SessionChat
                                                      ? "Review the approval request in the terminal."
                                                      : "Answer the prompt in the terminal.");
       var turn = _reading?.TurnUnderWay;
-      _working.IsVisible = turn is not null && !waiting;
+      _status.Text = _running is null && _session is not null ? "Saved conversation · Codex is not running in this tab."
+                   : turn is not null && !waiting             ? "Codex is working…"
+                                                             : null;
+      _status.IsVisible = _status.Text is not null;
       InputBox.Target(_session, _reading is not null && _running?.SessionId == _session, turn);
    }
 

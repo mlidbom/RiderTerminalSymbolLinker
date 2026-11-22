@@ -7,6 +7,7 @@ namespace Cloyd.Codex.Chat;
 interface ICodexChatInTheHub
 {
    IAsyncEnumerable<CodexChatReading?> Follow(CodexSessionId session, CancellationToken cancellation);
+   Task<CodexChatReading> SavedConversation(CodexSessionId session, CancellationToken cancellation);
    Task Send(CodexSessionId session, MessageFromTheChat message, CodexTurnId? steerInto);
    Task Interrupt(CodexSessionId session, CodexTurnId turn);
 }

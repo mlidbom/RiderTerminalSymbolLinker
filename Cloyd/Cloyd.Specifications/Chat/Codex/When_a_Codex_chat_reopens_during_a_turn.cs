@@ -26,7 +26,7 @@ public class When_a_Codex_chat_reopens_during_a_turn : SpecificationOpeningWindo
       var chat = OnTheUIThread(() => (ChatOfACodexSession)window.Content!);
       OnTheUIThread(() => chat.Show(session, new RunningCodex(session, "The chat", null, new StatusOfACodex("busy"))));
       var prompt = new ShownInTheChat.Prompt("prompt", "Check the result");
-      var calls = new CodexToolCalls([new CodexToolCall("call", "Ran a command", "Get-Date", "Sunday", false)]);
+      var calls = new CodexToolCalls([new CodexToolCall("call", "Ran a command", new CodexToolCallDetails("Get-Date", "Sunday"))]);
       var firstSubscription = hub.NextSubscription();
       firstSubscription.TryWrite(new CodexChatReading([prompt, calls, new CodexReply("answer", "The re")], turn));
       WaitUntil(() => chat.Shown.LastOrDefault()?.TextShown == "The re" && chat.InputBox.ShowsTheStopButton, "the chat showed the partial answer and Stop");
@@ -58,6 +58,7 @@ public class When_a_Codex_chat_reopens_during_a_turn : SpecificationOpeningWindo
       public ChannelWriter<CodexChatReading> NextSubscription() =>
          _subscriptions.Reader.ReadAsync().AsTask().WaitAsync(TimeSpan.FromSeconds(10)).GetAwaiter().GetResult();
       public Task Send(CodexSessionId session, MessageFromTheChat message, CodexTurnId? steerInto) => throw new NotSupportedException();
+      public Task<CodexChatReading> SavedConversation(CodexSessionId session, CancellationToken cancellation) => throw new NotSupportedException();
       public Task Interrupt(CodexSessionId session, CodexTurnId turn) => throw new NotSupportedException();
    }
 }

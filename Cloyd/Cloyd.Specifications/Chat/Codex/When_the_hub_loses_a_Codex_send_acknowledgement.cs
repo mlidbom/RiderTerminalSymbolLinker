@@ -65,6 +65,7 @@ public class When_the_hub_loses_a_Codex_send_acknowledgement : SpecificationOpen
       public void LoseTheAcknowledgement() => _acknowledgement.SetException(new HttpRequestException("The connection closed without a response."));
 
       public IAsyncEnumerable<CodexChatReading> Follow(CodexSessionId session, CancellationToken cancellation) => throw new NotSupportedException();
+      public Task<CodexChatReading> SavedConversation(CodexSessionId session, CancellationToken cancellation) => throw new NotSupportedException();
       public Task Interrupt(CodexSessionId session, CodexTurnId turn) => throw new NotSupportedException();
    }
 }

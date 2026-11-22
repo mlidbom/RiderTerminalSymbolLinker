@@ -28,4 +28,11 @@ public class When_the_hub_replaces_an_item_in_a_Codex_turn
       _conversation.AsShown().Rows.OfType<CodexToolCalls>().Select(it => it.Calls.Single().Id).Must().SequenceEqual(["turn/one", "turn/two"]);
 
    [XF] public void a_finished_turn_can_no_longer_be_steered() => _conversation.AsShown().TurnUnderWay.Must().BeNull();
+
+   [XF] public void a_prompt_attaching_the_same_image_twice_preserves_its_numbering()
+   {
+      const string path = @"C:\screenshots\figure.png";
+      var images = new CodexChatItem("photos", "userMessage", $"{path}\n{path}", null) { Details = new CodexChatItemDetails { ImagePaths = [path, path] } };
+      CodexTurnInTheChat.From(new CodexChatTurn("images", "completed", [images])).Rows.Single().TextShown.Must().Be("[Image #1]\n[Image #2]");
+   }
 }

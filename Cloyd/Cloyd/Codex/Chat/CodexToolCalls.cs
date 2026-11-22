@@ -10,9 +10,9 @@ namespace Cloyd.Codex.Chat;
 /// opens to its individual calls. Expansion follows the item IDs across stream updates.</summary>
 sealed record CodexToolCalls(IReadOnlyList<CodexToolCall> Calls) : ShownInTheChat
 {
-   public override string TextShown => Calls.Count == 1 ? Calls[0].Label : $"{Calls.Count} tool calls" + Failures;
+   public override string TextShown => Calls.Count == 1 ? Calls[0].Heading : $"{Calls.Count} tool calls" + Failures;
 
-   string Failures => Calls.Count(it => it.Failed) is var count and > 0 ? $", {count} failed" : "";
+   string Failures => Calls.Count(it => it.Details.Failed) is var count and > 0 ? $", {count} failed" : "";
 
    public Control Draw(OpenedInTheChat opened)
    {

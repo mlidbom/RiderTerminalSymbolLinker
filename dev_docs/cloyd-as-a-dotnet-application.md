@@ -686,7 +686,8 @@ Codex session when that capability is present. Older hubs can still open Codex t
   session's conversation and decide how to submit input.
 - Opening Codex Chat follows `GET /codex-chat/{sessionId}/stream`. Its first event supplies a snapshot. Each
   subsequent turn replaces the turn with that ID. Item text is cumulative. After a reconnect the new snapshot
-  supplies everything that happened while Cloyd was disconnected.
+  supplies everything that happened while Cloyd was disconnected. An exited session's tab reads
+  `GET /codex-chat/{sessionId}` once. Reading the saved snapshot leaves the session unloaded.
 - Ctrl+Enter submits input to the displayed session. While a turn runs it steers that turn. Stop names the same
   observed turn. Terminal owns approvals, including one that was pending when Chat opened. The hub can explicitly
   refuse a stale command. If an acknowledgement is lost, Cloyd puts the message back in the editor for Magnus.

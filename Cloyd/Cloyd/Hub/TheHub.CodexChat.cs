@@ -12,6 +12,17 @@ namespace Cloyd.Hub;
 
 partial class TheHub : ICodexChatInTheHub
 {
+   /// <summary>Reads the saved conversation without attaching a client or waking a Codex session that exited.</summary>
+   public async Task<CodexChatReading> SavedConversation(CodexSessionId session, CancellationToken cancellation)
+   {
+      using var answer = await Send(it => new HttpRequestMessage(HttpMethod.Get, it.AddressOf($"codex-chat/{session}")), cancellation);
+      if(answer.StatusCode == HttpStatusCode.NotFound) throw new RefusedByTheHub((await Read<RefusalAnswer>(answer, cancellation)).Error);
+      return ConversationOf(session, await Read<CodexChatSnapshot>(answer, cancellation)).AsShown();
+   }
+
+   static CodexConversation ConversationOf(CodexSessionId session, CodexChatSnapshot snapshot) =>
+      snapshot.SessionId == session.Value ? new CodexConversation(snapshot) : throw new InvalidDataException("The hub returned the conversation of a different Codex session.");
+
    /// <summary>A fresh snapshot on each connection, followed by ordered whole-turn replacements.
    /// A null reading tells the composer the connection ended, before the next hub is contacted.</summary>
    public async IAsyncEnumerable<CodexChatReading?> Follow(CodexSessionId session, [EnumeratorCancellation] CancellationToken cancellation)
@@ -27,8 +38,7 @@ partial class TheHub : ICodexChatInTheHub
             {
                case CodexChatEvents.Snapshot:
                   var snapshot = JsonSerializer.Deserialize<CodexChatSnapshot>(sent.Data, LocalApiProtocol.Json)!;
-                  if(snapshot.SessionId != session.Value) throw new InvalidDataException("The hub sent the snapshot of a different Codex session.");
-                  conversation = new CodexConversation(snapshot);
+                  conversation = ConversationOf(session, snapshot);
                   break;
                case CodexChatEvents.Turn:
                   if(conversation is null) throw new InvalidDataException("The hub sent a Codex turn before the session snapshot.");
@@ -52,11 +62,12 @@ partial class TheHub : ICodexChatInTheHub
 
    public Task Send(CodexSessionId session, MessageFromTheChat message, CodexTurnId? steerInto)
    {
-      if(message.Parts.Any(it => it is PartOfAMessage.PastedImage))
-         throw new RefusedByTheHub("This hub accepts text only. Attach the image in Terminal.");
+      var images = message.Parts.OfType<PartOfAMessage.PastedImage>().Select(it => it.File.FullName).ToArray();
+      var imagePaths = images.Length == 0 ? null : images;
+      var text = images.Length == message.Parts.Count ? "" : message.AsShownInTheChat;
       return steerInto is null
-                ? CodexChatCommand(session, "send", new SendToCodexChat(message.AsShownInTheChat))
-                : CodexChatCommand(session, "steer", new SteerCodexChat(steerInto.Value, message.AsShownInTheChat), steerInto);
+                ? CodexChatCommand(session, "send", new SendToCodexChat(text) { ImagePaths = imagePaths })
+                : CodexChatCommand(session, "steer", new SteerCodexChat(steerInto.Value, text) { ImagePaths = imagePaths }, steerInto);
    }
 
    public Task Interrupt(CodexSessionId session, CodexTurnId turn) => CodexChatCommand(session, "stop", new StopCodexChat(turn.Value), turn);

@@ -14,6 +14,8 @@ All notable changes to Cloyd are documented here. The format follows
   so you can answer there. If Cloyd loses the acknowledgement of a message, it puts the text back in the editor
   and tells you to check the conversation before sending again. If Terminal changes sessions, each Codex draft
   stays with the session it was written for, including when you close and reopen the project window.
+  You can paste an image into a prompt or into a running turn. Open a tool call to see the command and its output,
+  file changes, or tool arguments and results. A tab whose Codex has exited can still show its saved conversation.
 - **A window for each project, beside its IDE, whose tabs are the project's Claude Code sessions.** As a project opens
   in an IDE, Claude Sessions 0.2.0 has Cloyd show its window. Each tab shows a session in its terminal: the terminal of
   the session's host, which runs outside both Cloyd and the IDE, so the session runs on as either exits. The **+**

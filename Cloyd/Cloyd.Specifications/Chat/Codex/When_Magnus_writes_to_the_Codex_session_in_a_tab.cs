@@ -1,4 +1,8 @@
+using Avalonia;
 using Avalonia.Input;
+using Avalonia.Input.Platform;
+using Avalonia.Media.Imaging;
+using Avalonia.Platform;
 using Cloyd.Chat;
 using Cloyd.Codex;
 using Cloyd.Codex.Chat;
@@ -79,6 +83,32 @@ public class When_Magnus_writes_to_the_Codex_session_in_a_tab : SpecificationOpe
       [XF] public void the_interruption_also_appears_in_Terminal() => OnTheUIThread(() => _tab.Terminal.TextShown).Must().Contain("Conversation interrupted");
    }
 
+   public class and_Magnus_sends_a_pasted_image_with_no_text : When_Magnus_writes_to_the_Codex_session_in_a_tab
+   {
+      public and_Magnus_sends_a_pasted_image_with_no_text() => Once(() =>
+      {
+         PasteAndSendAnImage();
+      });
+
+      [XF] public void the_image_is_sent_and_the_composer_is_empty() => OnTheUIThread(() => Chat.InputBox.Draft.IsEmpty && Chat.InputBox.Thumbnails.Count == 0).Must().BeTrue();
+   }
+
+   public class and_Magnus_steers_a_running_turn_with_an_image : When_Magnus_writes_to_the_Codex_session_in_a_tab
+   {
+      readonly bool _steered;
+      public and_Magnus_steers_a_running_turn_with_an_image() => _steered = Once(() =>
+      {
+         SendFromChat("Be busy for 60 seconds");
+         WaitUntil(() => Chat.InputBox.ShowsTheStopButton, "the busy turn had started");
+         PasteAndSendAnImage();
+         var stayedActive = OnTheUIThread(() => Chat.InputBox.ShowsTheStopButton);
+         Click(TheButtonWithTheTip(Chat, "Stop Codex"));
+         return stayedActive;
+      });
+
+      [XF] public void the_image_joined_the_current_turn() => _steered.Must().BeTrue();
+   }
+
    public class and_Chat_reopens_in_the_middle_of_the_reply : When_Magnus_writes_to_the_Codex_session_in_a_tab
    {
       readonly string _idOfThePartialReply;
@@ -137,5 +167,15 @@ public class When_Magnus_writes_to_the_Codex_session_in_a_tab : SpecificationOpe
    {
       Type(_window, text);
       Press(_window, Key.Enter, PhysicalKey.Enter, RawInputModifiers.Control);
+   }
+
+   void PasteAndSendAnImage()
+   {
+      using var bitmap = OnTheUIThread(() => new WriteableBitmap(new PixelSize(16, 16), new Vector(96, 96), PixelFormat.Bgra8888, AlphaFormat.Premul));
+      DoneOnTheUIThread(() => _window.Clipboard!.SetBitmapAsync(bitmap));
+      Press(_window, Key.V, PhysicalKey.V, RawInputModifiers.Control);
+      WaitUntil(() => Chat.InputBox.Thumbnails.Count == 1, "the pasted image appeared over the editor");
+      Press(_window, Key.Enter, PhysicalKey.Enter, RawInputModifiers.Control);
+      WaitUntil(() => Chat.Shown.OfType<ShownInTheChat.Prompt>().Any(it => it.Text == "[Image #1]"), "Codex received the image attachment", () => Chat.InputBox.Notice ?? "");
    }
 }

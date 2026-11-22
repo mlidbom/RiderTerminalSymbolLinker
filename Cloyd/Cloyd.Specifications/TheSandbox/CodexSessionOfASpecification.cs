@@ -25,6 +25,9 @@ sealed record CodexSessionOfASpecification(CodexSessionId Id, string Directory, 
    /// <summary>How long before it is written it was last used: when its record says Codex last changed it.</summary>
    public TimeSpan LastUsedAgo { get; init; } = TimeSpan.FromHours(1);
 
+   /// <summary>The original Codex items of a turn that ran tools. Simpler sessions use the prompt and reply.</summary>
+   public JsonArray? RecordedItems { get; init; }
+
    /// <summary>Writes its record into the Codex home <paramref name="hub"/> serves, last used <see cref="LastUsedAgo"/>.</summary>
    public void WriteItsRecordFor(SandboxHub hub)
    {
@@ -45,7 +48,7 @@ sealed record CodexSessionOfASpecification(CodexSessionId Id, string Directory, 
          ["createdAt"] = lastUsed - 60,
          ["updatedAt"] = lastUsed,
          ["source"] = "cli",
-         ["turns"] = new JsonArray(new JsonObject { ["prompts"] = new JsonArray(Prompt), ["reply"] = $"Heard: {Prompt}", ["status"] = "completed" })
+         ["turns"] = new JsonArray(new JsonObject { ["prompts"] = new JsonArray(Prompt), ["reply"] = $"Heard: {Prompt}", ["status"] = "completed", ["items"] = RecordedItems?.DeepClone() })
       };
    }
 }
