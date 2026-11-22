@@ -28,12 +28,12 @@ sealed class CodexProgressDot : Border
       HorizontalAlignment = HorizontalAlignment.Center;
       VerticalAlignment = VerticalAlignment.Center;
       CornerRadius = new CornerRadius(Diameter / 2);
-      Resources.MergedDictionaries.Add(ColourOfTheTheme.AsResources([ColoursOfTheChat.Grey, ColoursOfTheChat.CodexActivity]));
-      Styles.Add(new Style { Setters = { ColoursOfTheChat.Grey.AsASetterFor(BackgroundProperty) } });
+      Resources.MergedDictionaries.Add(ColourOfTheTheme.AsResources([ColoursOfTheChat.IdleCodexDot, ColoursOfTheChat.WorkingCodexDot]));
+      Styles.Add(new Style { Setters = { ColoursOfTheChat.IdleCodexDot.AsASetterFor(BackgroundProperty) } });
       RenderTransform = new ScaleTransform(ScaleAtRest, ScaleAtRest);
       Styles.Add(new Style(it => it.Class(Pulsing))
       {
-         Setters = { ColoursOfTheChat.CodexActivity.AsASetterFor(BackgroundProperty) },
+         Setters = { ColoursOfTheChat.WorkingCodexDot.AsASetterFor(BackgroundProperty) },
          Animations =
          {
             new Animation

@@ -45,7 +45,10 @@ public class When_Claude_Code_and_Codex_tabs_have_the_same_title : Specification
    [XF] public void the_idle_Codex_tab_shows_a_stationary_dot() => OnTheUIThread(() => (_dot.IsEffectivelyVisible, _dot.IsPulsing)).Must().Be((true, false));
 
    [XF] public void both_idle_marks_are_grey_in_each_theme() =>
-      _idleColours.Must().SequenceEqual(new[] { ThemeVariant.Light, ThemeVariant.Dark }.Select(it => (ColoursOfTheChat.Grey.In(it), ColoursOfTheChat.Grey.In(it))));
+      _idleColours.Must().SequenceEqual(new[] { ThemeVariant.Light, ThemeVariant.Dark }.Select(it => (ColoursOfTheChat.IdleClaudeStar.In(it), ColoursOfTheChat.IdleCodexDot.In(it))));
+
+   [XF] public void the_idle_Codex_dot_uses_a_lighter_grey_than_the_Claude_star() =>
+      _idleColours.Must().Satisfy(it => it.All(marks => marks.Dot.R > marks.Star.R));
 
    static bool HasTheAgentColours((Color Star, Color Dot) marks) =>
       marks.Star.R > marks.Star.G && marks.Star.G > marks.Star.B && marks.Dot.B > marks.Dot.G && marks.Dot.G > marks.Dot.R;
@@ -88,6 +91,9 @@ public class When_Claude_Code_and_Codex_tabs_have_the_same_title : Specification
       [XF] public void Claude_Code_uses_its_spinner() => OnTheUIThread(() => _star is { IsEffectivelyVisible: true, IsTurning: true }).Must().BeTrue();
 
       [XF] public void the_working_star_is_warm_and_the_working_dot_blue_in_both_themes() => _workingColours.Must().Satisfy(it => it.All(HasTheAgentColours));
+
+      [XF] public void the_working_Codex_dot_uses_the_same_blue_in_both_themes() =>
+         _workingColours[0].Dot.Must().Be(_workingColours[1].Dot);
 
       [XF] public void the_dot_in_the_header_and_chat_peaks_at_the_width_of_Claudes_spinner_glyphs() =>
          OnTheUIThread(() => (_dot.Bounds.Width, _dot.Bounds.Height, _chatDot.Bounds.Width, _chatDot.Bounds.Height)).Must().Be((11d, 11d, 11d, 11d));

@@ -41,8 +41,8 @@ sealed class SpinnerOfClaudeCode : TextBlock
 
    public SpinnerOfClaudeCode()
    {
-      Resources.MergedDictionaries.Add(ColourOfTheTheme.AsResources([ColoursOfTheChat.Grey, ColoursOfTheChat.ClaudeActivity]));
-      Styles.Add(new Style { Setters = { ColoursOfTheChat.Grey.AsASetterFor(ForegroundProperty) } });
+      Resources.MergedDictionaries.Add(ColourOfTheTheme.AsResources([ColoursOfTheChat.IdleClaudeStar, ColoursOfTheChat.ClaudeActivity]));
+      Styles.Add(new Style { Setters = { ColoursOfTheChat.IdleClaudeStar.AsASetterFor(ForegroundProperty) } });
       Styles.Add(new Style(it => it.PropertyEquals(IsTurningProperty, true)) { Setters = { ColoursOfTheChat.ClaudeActivity.AsASetterFor(ForegroundProperty) } });
       FontFamily = new FontFamily("Segoe UI Symbol");
       FontSize = SizeOfItsGlyphs;

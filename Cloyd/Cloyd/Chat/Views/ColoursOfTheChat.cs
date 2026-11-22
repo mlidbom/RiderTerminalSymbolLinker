@@ -18,11 +18,20 @@ static class ColoursOfTheChat
    /// <summary>The grey lines: a run of tool calls counted, a call's verb, a compaction.</summary>
    public static readonly ColourOfTheTheme Grey = new("#6B6966", "#9C9A95");
 
+   /// <summary>The grey of an idle Claude Code star in a project tab.</summary>
+   public static readonly ColourOfTheTheme IdleClaudeStar = new("#7C7C7C", "#B4B4B4");
+
+   /// <summary>The idle Codex dot uses a lighter grey than the star because its circle is filled.</summary>
+   public static readonly ColourOfTheTheme IdleCodexDot = new("#868686", "#C2C2C2");
+
    /// <summary>The orange of the Claude Code star and its turn's activity.</summary>
    public static readonly ColourOfTheTheme ClaudeActivity = new("#AA4F32", "#E59676");
 
-   /// <summary>The blue of the Codex dot and its turn's activity.</summary>
-   public static readonly ColourOfTheTheme CodexActivity = new("#24639E", "#80BAF2");
+   /// <summary>The text describing the activity of a Codex turn.</summary>
+   public static readonly ColourOfTheTheme CodexActivity = new("#0076CF", "#68C9FF");
+
+   /// <summary>The blue of the pulsing Codex dot.</summary>
+   public static readonly ColourOfTheTheme WorkingCodexDot = new("#68C9FF", "#68C9FF");
 
    /// <summary>The bubble of a prompt of Magnus's.</summary>
    public static readonly ColourOfTheTheme BubbleOfAPrompt = new("#F3F3F2", "#30302E");
