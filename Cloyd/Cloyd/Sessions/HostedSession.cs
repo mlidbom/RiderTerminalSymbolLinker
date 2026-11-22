@@ -102,7 +102,9 @@ sealed class HostedSession
 
    public void HostEnded(string why)
    {
-      Ended?.Invoke(why);
+      _showingTerminal?.ReleaseTerminal();
+      _showingTerminal = null;
       LetGo();
+      Ended?.Invoke(why);
    }
 }

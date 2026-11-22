@@ -99,6 +99,17 @@ public class When_Magnus_opens_Projects_Dashboard : SpecificationOpeningWindows
                 "the dashboard showed the external conversation without an editor");
    }
 
+   [XF] public void a_terminal_taken_over_by_another_client_keeps_its_host_selected_in_the_dashboard()
+   {
+      var active = OnTheUIThread(() => _dashboard.View!);
+      Click(TheButtonWithTheTip(active, SessionView.TipOfTheTerminalsSwitch));
+      WaitUntil(() => !active.ShowsTheChat && TopLevel.GetTopLevel(_tab.Terminal) == _dashboard, "the dashboard showed the attached terminal");
+      using var other = Cloyd.SessionHosts.AttachmentToASessionHost.To(_tab.Host.Id, ClaudeTooling.SessionHost.Protocol.ConsoleSize.Default);
+      WaitUntil(() => !_projectWindow.Tabs.Contains(_tab) && active.ShowsTheChat, "the project tab released the host and the dashboard showed its chat");
+      OnTheUIThread(() => _dashboard.View).Must().ReferenceEqual(active);
+      OnTheUIThread(() => _dashboard.Tree.ActiveSession!.Host!.Id).Must().Be(_tab.Host.Id);
+   }
+
    [XF] public void reopening_the_dashboard_restores_the_host_selected_in_another_project()
    {
       var other = Sandbox.Project("Another project");

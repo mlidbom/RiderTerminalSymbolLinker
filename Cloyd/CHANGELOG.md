@@ -178,6 +178,8 @@ All notable changes to Cloyd are documented here. The format follows
     the session, as after it was archived. Windows saved before read their sessions as Claude Code's.
 
 ### Fixed
+- **The dashboard keeps the selected session when another terminal takes over its host.** Chat stays open
+  until the host actually exits. The terminal can be brought back on request.
 - **Busy sessions keep running after Cloyd restores their tabs.** A restored tab first attaches when its
   terminal is laid out. Previously, output from a never-selected tab could fill its pipe and stall the session.
 - **Moving a tab keeps its terminal connected to the same session.** You can continue typing at the same

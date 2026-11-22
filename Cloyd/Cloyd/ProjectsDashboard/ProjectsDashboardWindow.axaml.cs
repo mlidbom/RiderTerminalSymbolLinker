@@ -143,14 +143,8 @@ sealed partial class ProjectsDashboardWindow : Window, ISessionHistoryTarget
       var session = Sessions.Open(host, row.Latest);
       var view = new SessionView(session, inProjectWindow: false, showTerminal: !host.Attached || session.HasAttachment);
       SelectedSession.Content = view;
-      session.Ended += SelectedHostEnded;
       Sessions.ShowPeerNames(view);
       Dispatcher.UIThread.Post(view.FocusWhatItShows, DispatcherPriority.Loaded);
-   }
-
-   void SelectedHostEnded(string why)
-   {
-      Tree.Select(null);
    }
 
    void CloseView()
@@ -160,7 +154,6 @@ sealed partial class ProjectsDashboardWindow : Window, ISessionHistoryTarget
       _outsideHost?.Chat.InputBox.Release();
       _outsideHost = null;
       if(view is null) return;
-      view.Session.Ended -= SelectedHostEnded;
       Sessions.Release(view, keepTerminal: !_closed.IsCancellationRequested);
    }
 
