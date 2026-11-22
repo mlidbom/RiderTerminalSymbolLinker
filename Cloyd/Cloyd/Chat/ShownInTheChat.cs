@@ -56,6 +56,9 @@ abstract partial record ShownInTheChat
             case MessageInTheAnswer.Clearing clearing:
                shown.Add(new Clearing(clearing.Id));
                break;
+            case MessageInTheAnswer.PromptFromElsewhere prompt when PeerMessage.FromClaudeCode(prompt) is {} peer:
+               shown.Add(peer);
+               break;
             case MessageInTheAnswer.PromptFromElsewhere prompt when PromptFromElsewhere.IsShown(prompt):
                shown.Add(PromptFromElsewhere.Of(prompt));
                break;

@@ -21,6 +21,7 @@ sealed record CodexTurnInTheChat(string Id, bool IsUnderWay, IReadOnlyList<Shown
          }
          ShownInTheChat? row = item.Kind switch
          {
+            "userMessage" when item.Details?.ImagePaths is not {Count: > 0} && ShownInTheChat.PeerMessage.FromCodex(id, item.Text) is {} peer => peer,
             "userMessage" => new ShownInTheChat.Prompt(id, PromptText(item)),
             "agentMessage" or "plan" when item.Text.Length > 0 => new CodexReply(id, item.Text),
             "contextCompaction" => new CodexChatNotice(id, "Compacted session"),

@@ -8,4 +8,5 @@ sealed class OpenedInTheChat
 {
    public OpenedChatRows Runs { get; } = new();
    public OpenedChatRows Calls { get; } = new();
+   public OpenedChatRows PeerMessages { get; } = new();
 }

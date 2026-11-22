@@ -138,6 +138,9 @@ All notable changes to Cloyd are documented here. The format follows
     the session, as after it was archived. Windows saved before read their sessions as Claude Code's.
 
 ### Fixed
+- **Codex Chat and Claude Code Chat identify incoming peer messages.** A row names the sending session and previews
+  its message. Open it to read or copy the full text. This also applies to saved conversations and to Peers channel
+  messages received while Claude was working.
 - **Moving the mouse over a session's terminal no longer types text into it.** In some Codex sessions each move typed
   characters such as `CO!CL!CI!` into Codex's input box. A program in the session had turned off a way of reporting the
   mouse that Windows' console can't read; Cloyd's terminal took that for turning off them all, and fell back to an older

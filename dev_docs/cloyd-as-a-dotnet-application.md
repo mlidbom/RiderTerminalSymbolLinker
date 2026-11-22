@@ -695,6 +695,12 @@ Codex session when that capability is present. Older hubs can still open Codex t
   supplies the full text. Also, if Terminal starts a turn just as Chat submits an idle Send, Codex can steer that
   new turn with the submitted text. The tooling's `dev_docs/the-hubs-local-api.md` records both behaviors.
 
+Both chats show incoming peer messages as expandable rows with the sender and a first-line preview.
+Codex records a Peers delivery as a text prompt wrapped in `<peer-message>`. Claude Code records its own
+peer sender, or receives Peers through `<channel source="plugin:peers:peers" …>`. Cloyd reads only the opening
+tag for attribution and displays the body as plain text. Claude prompts recorded as human keep their authorship.
+A verbatim copy of the complete Codex envelope has the same representation in Codex history as a Peers delivery.
+
 ## What's still open
 
 - **The TUI needs a host. Settled by the spike: Iciclecreek.Avalonia.Terminal** (see "What the spike found"). Slash
