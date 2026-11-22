@@ -42,7 +42,7 @@ public class When_Codex_updates_its_configured_status_line
    [XF] public void native_item_names_and_their_older_spellings_use_the_same_readings()
    {
       var footer = new CodexStatusLineItems(After with { ConfiguredItems = ["session-id", "model", "context-usage", "approval"], Model = "GPT-6.2-Astra", ApprovalPolicy = "on-request", ApprovalsReviewer = "user" });
-      footer.InOrder().Select(it => it.Text).Must().SequenceEqual(["session", "GPT-6.2-Astra", "Context 64% used", "Ask for approval"]);
+      footer.InOrder().Select(it => it.Text).Must().SequenceEqual(["GPT-6.2-Astra", "Context 64% used", "Ask for approval"]);
       footer.PermissionsLine.Must().Be("");
    }
 }

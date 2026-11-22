@@ -26,12 +26,10 @@ sealed class CodexStatusLineItems(CodexChatFooter footer)
 
    (string? Text, string Colour) ValueOf(string id) => id switch
    {
-      "thread-id" or "session-id" => (_footer.SessionId, "blue"),
       "model" or "model-name" => (_footer.Model, "yellow"),
       "model-with-reasoning" => (_footer.Model is null ? null : string.Join(" ", new[] { _footer.Model, _footer.ReasoningEffort, _footer.ServiceTier }.Where(it => !string.IsNullOrWhiteSpace(it))), "yellow"),
       "reasoning" => (_footer.ReasoningEffort, "yellow"),
       "current-dir" => (DirectoryAsDisplayed(_footer.CurrentDirectory), "green"),
-      "thread-name" => (_footer.ThreadName, "cyan"),
       "context-used" or "context-usage" when _footer.ContextUsedPercent is {} used => ($"Context {used}% used", "yellow"),
       "context-remaining" when _footer.ContextUsedPercent is {} used => ($"Context {100 - used}% left", "yellow"),
       "weekly-limit" when _footer.WeeklyRemainingPercent is {} left => ($"weekly {left}% left", "magenta"),

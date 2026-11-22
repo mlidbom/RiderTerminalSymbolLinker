@@ -12,10 +12,10 @@ namespace Cloyd.Specifications.Chat.Codex;
 /// and rate-limit notifications. Even the last field fits, by wrapping in the chat.</summary>
 public class When_the_Codex_terminal_updates_the_footer_in_a_narrow_tab : SpecificationOpeningWindows
 {
-   readonly ChatOfACodexSession _chat;
-   readonly string _id;
+   readonly SessionTab _tab;
+   ChatOfACodexSession Chat => _tab.CodexChat!;
 
-   public When_the_Codex_terminal_updates_the_footer_in_a_narrow_tab() => (_chat, _id) = Once(() =>
+   public When_the_Codex_terminal_updates_the_footer_in_a_narrow_tab() => _tab = Once(() =>
    {
       string[] items = ["thread-id", "model-with-reasoning", "current-dir", "thread-name", "context-used", "weekly-limit", "used-tokens", "total-input-tokens", "total-output-tokens"];
       var home = Sandbox.HubOfTheSandbox.CodexFolder;
@@ -35,15 +35,19 @@ public class When_the_Codex_terminal_updates_the_footer_in_a_narrow_tab : Specif
       WaitUntil(() => chat.StatusLine.TextShown.EndsWith("1K out", StringComparison.Ordinal) && chat.Shown.LastOrDefault() is EndOfACodexTurn,
                 "the rate limit and token counters arrived from the hub", () => chat.StatusLine.TextShown);
       Render(window, "Codex-status-after-the-turn-in-a-narrow-tab");
-      return (chat, OnTheUIThread(() => tab.SessionRunningInIt!.Session.Id.Value));
+      return tab;
    });
 
-   [XF] public void the_configured_items_start_with_the_current_session_and_model() =>
-      OnTheUIThread(() => _chat.StatusLine.TextShown).Must().Satisfy(it => it.StartsWith(_id + " · Sandbox Model xhigh fast · ", StringComparison.Ordinal));
+   [XF] public void Chat_starts_with_the_model_and_the_session_name_stays_in_the_tab() =>
+      OnTheUIThread(() => _tab.Title == "Footer check" && Chat.StatusLine.TextShown.StartsWith("Sandbox Model xhigh fast · ", StringComparison.Ordinal)
+                                                      && !Chat.StatusLine.TextShown.Split(" · ").Contains(_tab.Title)).Must().BeTrue();
+
+   [XF] public void the_terminal_still_exposes_the_session_id_for_Peers() =>
+      OnTheUIThread(() => _tab.Terminal.TextShown.Contains(_tab.SessionRunningInIt!.Session.Id.Value, StringComparison.Ordinal)).Must().BeTrue();
 
    [XF] public void the_native_usage_figures_arrive_with_their_distinct_meanings() =>
-      OnTheUIThread(() => _chat.StatusLine.TextShown).Must().Satisfy(it => it.EndsWith("Footer check · Context 10% used · weekly 99% left · 5K used · 20K in · 1K out", StringComparison.Ordinal));
+      OnTheUIThread(() => Chat.StatusLine.TextShown).Must().Satisfy(it => it.EndsWith("Context 10% used · weekly 99% left · 5K used · 20K in · 1K out", StringComparison.Ordinal));
 
    [XF] public void the_status_line_keeps_the_reported_permission_settings() =>
-      OnTheUIThread(() => _chat.StatusLine.PermissionsShown).Must().Be("Workspace · Ask for approval");
+      OnTheUIThread(() => Chat.StatusLine.PermissionsShown).Must().Be("Workspace · Ask for approval");
 }
