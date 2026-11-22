@@ -5,8 +5,8 @@ using ClaudeTooling.SessionHost.Protocol;
 namespace Cloyd.LocalApi;
 
 /// <summary>The two irreversible steps of a coordinator's launch are recorded before their requests leave
-/// Cloyd. After a restart it can find the original host, start the CLI if no launch line was attempted, or
-/// observe an already submitted line. A completed receipt keeps the original address.</summary>
+/// Cloyd. After a restart it can find the original host and start the CLI if no launch line was attempted.
+/// Only a persisted session ID proves the recipient after a launch line was submitted.</summary>
 sealed class PeerSessionLaunchReceipt
 {
    readonly FileWrittenWhole _file;

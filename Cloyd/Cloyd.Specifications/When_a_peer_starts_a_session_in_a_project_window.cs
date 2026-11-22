@@ -62,12 +62,32 @@ public class When_a_peer_starts_a_session_in_a_project_window : SpecificationRun
       tab.Host.Id.Must().Be(original.Id);
       address.Must().Be($"claude:{OnTheUIThread(() => tab.SessionRunningInIt!.Session.Id.Value)}");
 
-      // Recover again as if the CLI had started and Cloyd had exited before publishing the address.
-      receipt.RecordCliRequest(original.Id);
+      // The native ID was persisted, but its HTTP reply was lost. Reopening still returns that ID.
       var window = OnTheUIThread(() => Windows.Open.Single());
       Close(window);
       Start(request).Must().Be(address);
       OnTheUIThread(() => Windows.Open.Single().Tabs.Single().Host.Id).Must().Be(original.Id);
+   }
+
+   [XF] public void a_replacement_Codex_session_cannot_inherit_an_unidentified_launch()
+   {
+      var request = new SessionToStartForAPeer(Guid.NewGuid(), new string('E', 64), _project.Project.Folder, _worktree.Project.Folder, "codex", "Original assignment");
+      var receipt = new PeerSessionLaunchReceipt(CloydsFolder, request);
+      receipt.RecordHostRequest();
+      var host = _worktree.StartASessionHost(SessionHostLabel.ForAPeer(_project.Project, request.RequestId));
+      receipt.RecordCliRequest(host.Id);
+      DoneOnTheUIThread(() => AgentCli.Codex.CommandOfANewSession(null).HaveTheHubTypeItInto(host, Sandbox.HubOfTheSandbox.Hub, CancellationToken.None));
+      HandedOver(_project);
+      var tab = OnTheUIThread(() => Windows.Open.Single().Tabs.Single());
+      WaitUntil(() => tab.SessionRunningInIt is not null, "the initial Codex session appeared");
+      var initial = OnTheUIThread(() => tab.SessionRunningInIt!.Session.Id.Value);
+      DoneOnTheUIThread(() => tab.Terminal.SendInputAsync("/new\r"));
+      WaitUntil(() => tab.SessionRunningInIt?.Session.Id.Value is {} id && id != initial, "the same host showed a replacement session");
+      using var retry = Posted("sessions/start", JsonContent.Create(request));
+      retry.StatusCode.Must().Be(HttpStatusCode.Conflict);
+      retry.Content.ReadAsStringAsync().GetAwaiter().GetResult().Must().Contain(host.Id.Value);
+      OnTheUIThread(() => tab.SessionRunningInIt!.Session.Name).Must().BeNull();
+      new PeerSessionLaunchReceipt(CloydsFolder, request).Session.Must().BeNull();
    }
 
    [XF] public void an_incompatible_hub_can_be_upgraded_then_the_same_launch_can_be_retried()

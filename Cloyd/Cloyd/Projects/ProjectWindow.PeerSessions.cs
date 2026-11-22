@@ -29,11 +29,10 @@ sealed partial class ProjectWindow
          tab = ShowPeerHost(host);
       }
 
-      if(receipt.HostWhereCliWasRequested is null)
+      if(receipt.Session is null)
       {
          receipt.RecordCliRequest(tab.Host.Id);
-         // Peers names the exact Codex ID before briefing it. A background naming task in this hub
-         // would disappear if the hub restarted after typing the launch line.
+         // Peers names the exact Codex ID before briefing it.
          var command = session.AgentCli == AgentCli.Codex ? AgentCli.Codex.CommandOfANewSession(null) : session.Command;
          try { await command.HaveTheHubTypeItInto(tab.Host, launchHub, deadline.Token); }
          catch(RefusedByTheHub)
@@ -42,14 +41,14 @@ sealed partial class ProjectWindow
             throw;
          }
       }
-      else if(receipt.HostWhereCliWasRequested != tab.Host.Id.Value)
-         throw new InvalidOperationException("The tab's host changed after the CLI was started. Inspect the original session.");
 
       while(true)
       {
-         if(tab.SessionRunningInIt?.Session is {} running && running.AgentCli == session.AgentCli)
+         if(tab.SessionRunningInIt?.Session is {} running)
          {
-            if(running.AgentCli == AgentCli.Codex || running.Name == session.Name) return running;
+            if(running.AgentCli != session.AgentCli || (receipt.Session is {} known && known.Address != $"{request.AgentCli}:{running.Id.Value}"))
+               throw new InvalidOperationException($"The original helper {receipt.Session?.Address ?? session.Name} is no longer in host {tab.Host.Id}. Inspect the tab and history.");
+            if(receipt.Session is not null || running.AgentCli == AgentCli.Codex || running.Name == session.Name) return running;
             if(!string.IsNullOrEmpty(running.Name))
                throw new InvalidOperationException($"The helper's host now shows {running.Name} ({running.Id.Value}), expected {session.Name}. Inspect the tab before sending the brief.");
          }

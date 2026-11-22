@@ -147,6 +147,10 @@ sealed class CloydsLocalApi
          PeerSessionStarted result = await Dispatcher.UIThread.InvokeAsync(() => starts.Start(request));
          await Reply(exchange, 200, result);
       }
+      catch(UnconfirmedPeerSessionIdentity uncertain)
+      {
+         await Reply(exchange, 409, new ErrorAnswer(uncertain.Message));
+      }
       catch(PeerSessionRequestConflict conflict)
       {
          await Reply(exchange, 409, new ErrorAnswer(conflict.Message));

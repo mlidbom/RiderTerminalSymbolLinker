@@ -16,7 +16,8 @@ sealed class SessionStartsForPeers(CloydsFolder folder, ProjectWindows windows)
          receipt.RequireSameRequest(inProgress.Request);
          return await inProgress.Result;
       }
-      if(receipt.Session is {} session) return session;
+      if(receipt.Session is null && receipt.HostWhereCliWasRequested is {} host)
+         throw new UnconfirmedPeerSessionIdentity(host);
       var starting = Open();
       _starting.Add(request.RequestId, (request, starting));
       try { return await starting; }
@@ -25,7 +26,8 @@ sealed class SessionStartsForPeers(CloydsFolder folder, ProjectWindows windows)
       async Task<PeerSessionStarted> Open()
       {
          var window = windows.ForAPeer(new Project(request.Project));
-         return receipt.RecordSession(await window.SessionForAPeer(receipt));
+         var observed = await window.SessionForAPeer(receipt);
+         return receipt.Session ?? receipt.RecordSession(observed);
       }
    }
 }
