@@ -483,7 +483,8 @@ manage` after the permission mode, and after a turn `✻ Sautéed for 21s · don
   (`BackgroundWork.Listed`), in place of the TUI's list that `↓ to manage` opens.
 - **In the tab's header,** `MarkerOfBackgroundWork`: Claude Code's ✻, still and grey, in the place the spinner turns in
   while Claude works, as high and wide, while Claude doesn't work and background work runs; its tip says what runs.
-- **After each turn, a grey line** (`ShownInTheChat.EndOfATurn`): "Worked for 21s · done 14:37", from the hub's
+- **After each turn, a bold timing line and a divider** (`ShownInTheChat.EndOfATurn`, drawn with the same
+  `TurnEndLine` as Codex Chat): "Worked for 21s · done 14:37", from the hub's
   `endOfATurn` messages, which the tooling owner published on 2026-11-21 from the `turn_duration` entries Claude Code
   writes in the transcript at each turn's end. An interrupted turn has none, in the transcript and so in the chat. As
   Claude Code's TUI writes it, read from its bundle (2026-11-21): `${verb} for ${duration} · done ${doneAt}`, then

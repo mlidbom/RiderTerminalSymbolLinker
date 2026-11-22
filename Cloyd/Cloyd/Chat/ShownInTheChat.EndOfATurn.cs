@@ -7,7 +7,7 @@ namespace Cloyd.Chat;
 partial record ShownInTheChat
 {
    /// <summary>
-   /// One of Claude's turns ended: a grey line after its last message, as Claude Code's TUI writes one after each turn,
+   /// One of Claude's turns ended: a timing line after its last message, as Claude Code's TUI writes one after each turn,
    /// <c>Worked for 21s · done 14:37</c>. After the conversation's last turn, it tells what that turn left running in the
    /// background, as the TUI does: <c>· 1 shell still running</c>. A turn that was interrupted has none.
    /// </summary>

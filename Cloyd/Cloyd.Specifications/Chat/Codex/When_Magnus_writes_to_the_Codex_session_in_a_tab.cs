@@ -1,9 +1,13 @@
 using Avalonia;
+using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Input.Platform;
+using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform;
+using Avalonia.VisualTree;
 using Cloyd.Chat;
+using Cloyd.Chat.Views;
 using Cloyd.Codex;
 using Cloyd.Codex.Chat;
 using Cloyd.Codex.Chat.Status;
@@ -11,6 +15,7 @@ using Cloyd.Projects;
 using Cloyd.Sessions;
 using Compze.Must;
 using Compze.xUnitBDD;
+using LiveMarkdown.Avalonia;
 
 namespace Cloyd.Specifications.Chat.Codex;
 
@@ -138,6 +143,21 @@ public class When_Magnus_writes_to_the_Codex_session_in_a_tab : SpecificationOpe
 
       [XF] public void the_turn_finishes_with_its_recorded_duration_and_local_end_time() =>
          OnTheUIThread(() => Chat.Shown.Last().TextShown).Must().Satisfy(it => it.StartsWith("Worked for ") && it.Contains(" · done "));
+
+      [XF] public void the_bold_timing_and_its_divider_sit_together_beneath_the_reply() => OnTheUIThread(() =>
+      {
+         var end = Chat.GetVisualDescendants().OfType<TurnEndLine>().Last();
+         var reply = Chat.GetVisualDescendants().OfType<Border>().Last(it => it.Child is MarkdownRenderer);
+         var label = end.Children.OfType<MarkdownTextBlock>().Single();
+         var divider = end.Children.OfType<Border>().Single();
+         var colour = ColoursOfTheChat.Text.In(end.ActualThemeVariant);
+         label.FontWeight.Must().Be(FontWeight.Bold);
+         ((ISolidColorBrush)label.Foreground!).Color.Must().Be(colour);
+         ((ISolidColorBrush)divider.Background!).Color.Must().Be(colour);
+         divider.Bounds.Height.Must().Be(2d);
+         (divider.Bounds.Y - label.Bounds.Bottom).Must().Be(1d);
+         (end.TranslatePoint(default, reply)!.Value.Y - reply.Bounds.Height).Must().Satisfy(gap => Math.Abs(gap - 4) <= 1);
+      });
    }
 
    public class and_Terminal_changes_to_another_session : When_Magnus_writes_to_the_Codex_session_in_a_tab

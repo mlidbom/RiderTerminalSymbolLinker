@@ -242,7 +242,7 @@ sealed class ChatOfAClaudeCodeSession : SessionChat
       ShownInTheChat.Clearing => Grey(ShownInTheChat.Clearing.Line),
       ShownInTheChat.PromptFromElsewhere prompt => Grey(prompt.Line),
       ShownInTheChat.PeerMessage peer => peer.Draw(_opened.PeerMessages),
-      ShownInTheChat.EndOfATurn end => Grey(end.Line),
+      ShownInTheChat.EndOfATurn end => new TurnEndLine(end.Line),
       _ => throw new ArgumentOutOfRangeException(nameof(shown), shown, "The chat has no view of it.")
    };
 }

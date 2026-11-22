@@ -92,9 +92,10 @@ All notable changes to Cloyd are documented here. The format follows
   grey lines and the lines of tool calls, though not what is folded under them, such as a tool call's output. Each match
   is marked in yellow, the one shown in orange and scrolled to the middle of the view, which keeps it there until you
   scroll.
-- **A grey line after each of Claude's turns in the chat, as Claude Code writes one in the terminal:** how long the turn
-  took and when it ended, such as "Worked for 21s · done 14:37": the time alone today, with the weekday in the last week,
-  with the date before that, as Windows formats them. A turn interrupted has none, as in the terminal.
+- **Both chats mark the end of a turn with bold text and a matching divider.** The timing sits close to the reply,
+  with the divider just beneath it. Both are near-black in the light theme and light in the dark theme. A line such
+  as “Worked for 21s · done 14:37” uses the time alone today, the weekday in the last week and the date before that.
+  Claude Code omits the timing line for interrupted turns.
 - **Over the chat's input box while Claude works, what it does, as Claude Code's own UI shows it:**
   - **The tool call under way,** as Claude described it, and how long it has run, such as
     `Finding the repositories that use it · 5s`, with the first three lines of the command under it, as
@@ -148,6 +149,8 @@ All notable changes to Cloyd are documented here. The format follows
     the session, as after it was archived. Windows saved before read their sessions as Claude Code's.
 
 ### Fixed
+- **Screenshot links in replies open with one click.** Both chats open local images in the Windows image viewer
+  and web links in the browser. A link to a missing image shows its path in the chat.
 - **Opening a transcript row keeps its heading in place, even at the bottom of the chat.** Tool calls and peer
   messages open beneath the heading you clicked. A scrollbar drag can reach the bottom and move back up in
   one gesture. Release at the bottom to follow new replies, or release higher up to keep reading there.

@@ -22,6 +22,9 @@ abstract class SessionChat : UserControl
    /// <summary>The width of the column, as the app's narrow transcript width has it, in logical pixels.</summary>
    protected const double WidthOfTheColumn = 770;
 
+   /// <summary>The portion of the gap between rows that a turn-ending line omits to sit close to the reply.</summary>
+   const double SpaceAboveAnOrdinaryRow = 10;
+
    /// <summary>How near the top of what is drawn Magnus scrolls before more is drawn above it, in logical pixels.</summary>
    const double NearTheTop = 400;
 
@@ -51,7 +54,7 @@ abstract class SessionChat : UserControl
          ItemsSource = _drawn.Drawn,
          ItemTemplate = new FuncDataTemplate<ShownInTheChat?>((shown, _) => ViewOf(shown)),
          MaxWidth = WidthOfTheColumn,
-         Margin = new Thickness(16, 12),
+         Margin = new Thickness(16, 12 - SpaceAboveAnOrdinaryRow, 16, 12 + SpaceAboveAnOrdinaryRow),
          HorizontalAlignment = HorizontalAlignment.Stretch
       };
       _scroller = new ScrollViewer { Content = _column, HorizontalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Disabled, Focusable = true };
@@ -179,7 +182,9 @@ abstract class SessionChat : UserControl
    {
       if(shown is null) return new Panel();
       var view = DrawRow(shown);
-      view.Margin = new Thickness(0, 0, 0, shown is ShownInTheChat.Prompt or ShownInTheChat.SlashCommand ? 24 : 14);
+      var above = view is TurnEndLine ? 0 : SpaceAboveAnOrdinaryRow;
+      var below = shown is ShownInTheChat.Prompt or ShownInTheChat.SlashCommand ? 14 : 4;
+      view.Margin = new Thickness(0, above, 0, below);
       if(_found is {} found) MatchesPainted.In(view, found.Pattern);
       return view;
    }
@@ -300,16 +305,32 @@ abstract class SessionChat : UserControl
       Resources["FontSizeXl"] = 14.0;
    }
 
-   protected static Control ReplyBubble(string markdown)
+   protected Control ReplyBubble(string markdown)
    {
       var text = new ObservableStringBuilder();
       text.Append(markdown);
       var renderer = ColoursOfTheChat.Text.AsTheForegroundOf(new MarkdownRenderer { MarkdownBuilder = text });
+      renderer.LinkClick += OpenReplyLink;
       renderer.AttachedToVisualTree += (_, _) => ColourTheCode();
       renderer.ActualThemeVariantChanged += (_, _) => ColourTheCode();
       return LinesOfTheChat.AgentBubble(renderer, ColoursOfTheChat.ReplyBubble);
 
       void ColourTheCode() => renderer.CodeBlockColorTheme = ColoursOfTheChat.OfCodeIn(renderer.ActualThemeVariant);
+   }
+
+   async void OpenReplyLink(object? sender, LinkClickedEventArgs click)
+   {
+      if(click.HRef is not {} target) return;
+      try
+      {
+         if(ReplyLinks.Open(target, TopLevel.GetTopLevel(this)!.Launcher) is not {} opening) return;
+         click.Handled = true;
+         if(!await opening) Tell($"Couldn't open {target.OriginalString}.");
+      }
+      catch(Exception failure)
+      {
+         Tell($"Couldn't open {target.OriginalString}. {failure.Message}");
+      }
    }
 
    /// <summary>The chat's rows, top to bottom: <paramref name="notice"/>, <paramref name="conversation"/> taking what the others leave, and those <paramref name="under"/> it, each as tall as it is.</summary>

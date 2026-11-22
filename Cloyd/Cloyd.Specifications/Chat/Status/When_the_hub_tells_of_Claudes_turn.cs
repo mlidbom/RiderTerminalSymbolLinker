@@ -1,6 +1,8 @@
 using System.Globalization;
 using System.Text.RegularExpressions;
+using Avalonia.VisualTree;
 using Cloyd.Chat;
+using Cloyd.Chat.Views;
 using Cloyd.Chat.Writing;
 using Cloyd.Sessions;
 using Cloyd.Specifications.Chat.Writing;
@@ -76,6 +78,9 @@ public class When_the_hub_tells_of_Claudes_turn : SpecificationWritingInAChat
          _turn.ClaudesTextAtTheEnd.Must().Satisfy(it => it.Count >= 2 && it[^1] == TheReply && it.Zip(it.Skip(1)).All(pair => pair.Second.Length > pair.First.Length && pair.Second.StartsWith(pair.First, StringComparison.Ordinal)));
 
       [XF] public void the_chat_shows_the_reply_once() => RepliesIn(_tab).Must().Satisfy(it => it.SequenceEqual([TheReply]));
+
+      [XF] public void the_finished_turn_has_the_shared_turn_divider() =>
+         OnTheUIThread(() => _tab.ClaudeCodeChat.GetVisualDescendants().OfType<TurnEndLine>().Any()).Must().BeTrue();
 
       [XF] public void the_working_line_goes() => OnTheUIThread(() => _tab.ClaudeCodeChat.WorkingLine.Says).Must().BeNull();
    }

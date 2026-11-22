@@ -161,7 +161,7 @@ sealed class ChatOfACodexSession : SessionChat
       CodexReply reply => ReplyBubble(reply.Markdown),
       CodexToolCalls calls => calls.Draw(_opened),
       CodexChatNotice notice => Grey(notice.Line),
-      EndOfACodexTurn end => Grey(end.TextShown),
+      EndOfACodexTurn end => new TurnEndLine(end.TextShown),
       _ => throw new ArgumentOutOfRangeException(nameof(shown), shown, "Unknown Codex conversation row.")
    };
 }
