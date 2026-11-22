@@ -69,7 +69,7 @@ sealed class SandboxProject
    {
       using var cancellation = new CancellationTokenSource();
       await foreach(var runningSessions in Hub.RunningSessionsAsTheyChange(cancellation.Token))
-         return runningSessions.SingleOrDefault(it => it.SessionHost == id);
+         return runningSessions.Sessions.SingleOrDefault(it => it.SessionHost == id);
       return null;
    });
 

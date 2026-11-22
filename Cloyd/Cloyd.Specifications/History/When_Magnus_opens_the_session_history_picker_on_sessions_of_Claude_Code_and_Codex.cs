@@ -108,6 +108,6 @@ public class When_Magnus_opens_the_session_history_picker_on_sessions_of_Claude_
 
       [XF] public void the_tab_is_titled_with_the_sessions_name() => OnTheUIThread(() => _tab.Title).Must().Be("Porting the parser");
 
-      [XF] public void the_tab_offers_no_chat() => OnTheUIThread(() => _tab.OffersTheChat).Must().BeFalse();
+      [XF] public void the_tab_opens_in_Chat() => OnTheUIThread(() => _tab.ShowsTheChat && _tab.OffersTheChat).Must().BeTrue();
    }
 }

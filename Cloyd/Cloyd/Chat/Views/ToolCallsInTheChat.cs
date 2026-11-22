@@ -17,7 +17,7 @@ static class ToolCallsInTheChat
    public static Control Of(ShownInTheChat.RunOfToolCalls run, OpenedInTheChat opened) =>
       run.IsOneCall
          ? RowOf(run.Calls[0], opened)
-         : Opening([Coloured(run.Counted, ColoursOfTheChat.Grey), .. LinesAddedBy(run.LinesAdded)], () => BoxOfTheRowsOf(run, opened), opened.IsOpen(run), isOpen => opened.Toggled(run, isOpen));
+         : Opening([Coloured(run.Counted, ColoursOfTheChat.Grey), .. LinesAddedBy(run.LinesAdded)], () => BoxOfTheRowsOf(run, opened), opened.Runs.IsOpen(run.Id), isOpen => opened.Runs.SetOpen(run.Id, isOpen));
 
    static Control BoxOfTheRowsOf(ShownInTheChat.RunOfToolCalls run, OpenedInTheChat opened)
    {
@@ -34,7 +34,7 @@ static class ToolCallsInTheChat
    /// <summary>The row of <paramref name="call"/>: its verb grey, what it acted on, the lines it added, how it failed, and a chevron.</summary>
    static Control RowOf(ToolCallInTheChat call, OpenedInTheChat opened) =>
       Opening([Coloured(call.Verb + " ", ColoursOfTheChat.Grey), Coloured(call.Target, ColoursOfTheChat.Text), .. LinesAddedBy(call.Outcome == OutcomeOfAToolCall.Done ? call.LinesAdded : 0), .. HowItEnded(call)],
-              () => WhatWasGivenAndGivenBack(call), opened.IsOpen(call), isOpen => opened.Toggled(call, isOpen));
+              () => WhatWasGivenAndGivenBack(call), opened.Calls.IsOpen(call.Id), isOpen => opened.Calls.SetOpen(call.Id, isOpen));
 
    static Inline[] LinesAddedBy(int lines) => lines > 0 ? [Coloured($"  +{lines}", ColoursOfTheChat.Added)] : [];
 

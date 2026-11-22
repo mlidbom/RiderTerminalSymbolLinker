@@ -13,7 +13,7 @@ sealed record RunningCodex(CodexSessionId SessionId, string? Name, SessionHostId
 {
    /// <summary>The Codex as the hub's answer <paramref name="session"/> lists it.</summary>
    public static RunningCodex InThe(RunningSessionInTheAnswer session) =>
-      new(new CodexSessionId(session.SessionId), session.Name, session.SessionHost is {} host ? new SessionHostId(host) : null, new StatusOfACodex(session.Status));
+      new(new CodexSessionId(session.SessionId), session.Name, session.SessionHost is {} host ? new SessionHostId(host) : null, new StatusOfACodex(session.Status, session.WaitingFor));
 
    public override CodexSession Session => new(SessionId, Name);
 

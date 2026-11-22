@@ -13,18 +13,16 @@ namespace Cloyd.Sessions;
 /// </remarks>
 sealed class AgentCli
 {
-   public static AgentCli ClaudeCode { get; } = new("Claude Code", titleOfASessionWithNoName: "Claude", hasAChat: true, ignoresTheShiftOnEnter: true, ClaudeCodeCommand.OfANewSession);
+   public static AgentCli ClaudeCode { get; } = new("Claude Code", titleOfASessionWithNoName: "Claude", ignoresTheShiftOnEnter: true, ClaudeCodeCommand.OfANewSession);
 
-   /// <summary>Codex, whose tab shows its terminal only: Cloyd has no chat of a Codex session yet.</summary>
-   public static AgentCli Codex { get; } = new("Codex", titleOfASessionWithNoName: "Codex", hasAChat: false, ignoresTheShiftOnEnter: false, CodexCommand.OfANewSession);
+   public static AgentCli Codex { get; } = new("Codex", titleOfASessionWithNoName: "Codex", ignoresTheShiftOnEnter: false, CodexCommand.OfANewSession);
 
    readonly Func<string?, AgentCliCommand> _commandOfANewSession;
 
-   AgentCli(string name, string titleOfASessionWithNoName, bool hasAChat, bool ignoresTheShiftOnEnter, Func<string?, AgentCliCommand> commandOfANewSession)
+   AgentCli(string name, string titleOfASessionWithNoName, bool ignoresTheShiftOnEnter, Func<string?, AgentCliCommand> commandOfANewSession)
    {
       Name = name;
       TitleOfASessionWithNoName = titleOfASessionWithNoName;
-      HasAChat = hasAChat;
       IgnoresTheShiftOnEnter = ignoresTheShiftOnEnter;
       _commandOfANewSession = commandOfANewSession;
    }
@@ -34,9 +32,6 @@ sealed class AgentCli
 
    /// <summary>The title of a tab whose session of it has no name, such as "Claude".</summary>
    public string TitleOfASessionWithNoName { get; }
-
-   /// <summary>Whether a tab of its session has a chat, beside the terminal its TUI draws in: else the terminal only.</summary>
-   public bool HasAChat { get; }
 
    /// <summary>
    /// Whether its TUI, in a Windows console, takes Shift+Enter for Enter, and sends the message. Claude Code ignores the

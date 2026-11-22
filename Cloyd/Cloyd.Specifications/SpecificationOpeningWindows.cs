@@ -159,13 +159,13 @@ public abstract class SpecificationOpeningWindows : IDisposable
       var toTheChat = !OnTheUIThread(() => tab.ShowsTheChat);
       Press(window, Key.H, PhysicalKey.H, RawInputModifiers.Control);
       WaitUntil(() => TopLevel.GetTopLevel(window)!.FocusManager!.GetFocusedElement() is Control focused
-                      && (toTheChat ? focused.FindAncestorOfType<InputBoxOfTheChat>() is not null : focused == tab.Terminal || tab.Terminal.IsVisualAncestorOf(focused)),
+                      && (toTheChat ? focused.FindAncestorOfType<ChatComposer>() is not null : focused == tab.Terminal || tab.Terminal.IsVisualAncestorOf(focused)),
                 toTheChat ? "the chat's input box had the keyboard" : "the terminal had the keyboard");
    }
 
    /// <summary>Waits until the chat's input box of <paramref name="tab"/> in <paramref name="window"/> has the keyboard, as a tab's selection gives it, the tab showing its chat.</summary>
    private protected void WaitUntilTheInputBoxHasTheKeyboard(Window window, SessionTab tab) =>
-      WaitUntil(() => TopLevel.GetTopLevel(window)!.FocusManager!.GetFocusedElement() is Control focused && focused.FindAncestorOfType<InputBoxOfTheChat>() is {} box && box == tab.ClaudeCodeChat.InputBox,
+      WaitUntil(() => TopLevel.GetTopLevel(window)!.FocusManager!.GetFocusedElement() is Control focused && focused.FindAncestorOfType<ChatComposer>() is {} box && box == tab.Chat?.InputBox,
                 "the chat's input box had the keyboard");
 
    /// <summary>The one button in <paramref name="within"/> that says <paramref name="text"/>, as Magnus reads it.</summary>

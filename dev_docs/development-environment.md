@@ -123,6 +123,11 @@ process, whose Avalonia UI thread and keyboard focus take its specifications one
 sandbox of its own, its hub included, so the runs share nothing else (`Cloyd.Specifications/TheSandbox`). On
 2026-11-20, with each sandbox started ahead and ended in the background: 124-128 s in one run, 31-41 s in six.
 
+To test Cloyd with a staged tooling build, set `CLOYD_SPECIFICATIONS_TOOLING_EXE` to that build's
+`ClaudeTooling.exe` and `TheHubsContract` to the matching `ClaudeTooling.Hub.LocalApi.Contract` source
+directory in the shell that runs the specifications. Each scenario starts its own hub and stand-ins from that
+build. With neither variable set, Cloyd compiles and tests against the installed tooling.
+
 **Where a specification's time goes: NCrunch's MCP** (`ncrunch`, Magnus's suggestion, 2026-11-20): the NCrunch Console
 Tool's server in its headless mode, whose `StartSession` runs an engine of its own, apart from Rider's NCrunch, so it
 needs no IDE; it runs only once started, which nothing does at logon yet. The user-level skill `profiling-dotnet` has

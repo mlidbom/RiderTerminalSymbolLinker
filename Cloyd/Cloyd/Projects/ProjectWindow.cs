@@ -278,7 +278,7 @@ sealed class ProjectWindow : Window
    async Task<SessionTab?> BringBack(SavedSessionTab saved, SessionHostOfTheHub? host, ResumableSessions resumable)
    {
       var tab = await TheTabBroughtBack();
-      tab?.ClaudeCodeChat.InputBox.BringBack(saved.Draft ?? []);
+      tab?.BringBackDrafts(saved);
       return tab;
 
       async Task<SessionTab?> TheTabBroughtBack()
@@ -310,7 +310,7 @@ sealed class ProjectWindow : Window
 
    SessionTab Show(SessionHostOfTheHub host, Session? latestSession, NewSession? newSession)
    {
-      var tab = new SessionTab(host, latestSession, newSession, SizeOfTheTerminals, _hub, _pastedImages);
+      var tab = new SessionTab(host, latestSession, newSession, SizeOfTheTerminals, _hub, _pastedImages, _hub.SupportsCodexChat ? _hub : null);
       tab.ClosedByMagnus += it => _ = TellingOfFailure(() => EndTheSessionOf(it));
       tab.EndedByItself += (it, _) => Remove(it);
       _tabs.Items.Add(tab);
@@ -363,9 +363,14 @@ sealed class ProjectWindow : Window
       {
          await TellingOfFailure(async () =>
          {
-            await foreach(var runningSessions in _hub.RunningSessionsAsTheyChange(_closed.Token))
+            await foreach(var (hub, runningSessions) in _hub.RunningSessionsAsTheyChange(_closed.Token))
+            {
                foreach(var tab in Tabs)
+               {
+                  tab.OfferCodexChat(hub.Says.SupportsCodexChat ? _hub : null);
                   tab.SessionRunningInIt = runningSessions.FirstOrDefault(it => it.SessionHost == tab.Host.Id);
+               }
+            }
          });
          await Task.Delay(BeforeFollowingTheRunningSessionsAgain, CancellationToken.None);
       }

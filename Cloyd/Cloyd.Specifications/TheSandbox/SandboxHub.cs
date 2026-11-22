@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
 using ClaudeTooling.Hub.LocalApi.Contract;
 using ClaudeTooling.Hub.LocalApi.Contract.Sandboxes;
@@ -47,6 +48,15 @@ sealed class SandboxHub
    public void Stop() => StopIn(_started.Folder);
 
    public TheHub Hub => TheHub.AnnouncedIn(new DirectoryInfo(_started.AnnouncementFolder));
+
+   /// <summary>Makes this sandbox advertise the capabilities of a hub built before Codex Chat.</summary>
+   public void AnnounceWithoutCodexChat()
+   {
+      var file = new FileWrittenWhole(Path.Combine(_started.AnnouncementFolder, WhatTheAnnouncementSays.FileName));
+      var announcement = JsonNode.Parse(file.Text()!)!.AsObject();
+      announcement.Remove("supportsCodexChat");
+      file.Write(announcement.ToJsonString());
+   }
 
    /// <summary>
    /// The sessions the hub has transcripts of, as it lists them now: asked on the thread pool, so that it may be asked on

@@ -17,7 +17,7 @@ namespace Cloyd.Chat.Writing;
 abstract class ChatComposer : UserControl
 {
    /// <summary>The tip of the button that sends: the key that does too.</summary>
-   public const string TipOfTheSendButton = "Send: Ctrl+Enter";
+   const string TipOfTheSendButton = "Send: Ctrl+Enter";
 
    /// <summary>The height of an image's thumbnail over the box, in logical pixels.</summary>
    const int HeightOfAThumbnail = 64;
@@ -41,6 +41,7 @@ abstract class ChatComposer : UserControl
       _editor = new TextEditor
       {
          Document = Draft.Document,
+         Options = { AllowScrollBelowDocument = false },
          WordWrap = true,
          ShowLineNumbers = false,
          Watermark = watermark,
@@ -51,7 +52,6 @@ abstract class ChatComposer : UserControl
          Padding = new Thickness(12, 10, 4, 10),
          MinHeight = 40
       };
-      _editor.Options.AllowScrollBelowDocument = false;
       Draft.Changed += ShowTheThumbnailsOfTheImagesHeld;
       _send.Background = ClaudesOrange;
       _send.Foreground = Brushes.White;
@@ -63,12 +63,31 @@ abstract class ChatComposer : UserControl
    }
 
    /// <summary>What Magnus writes, until he sends it.</summary>
-   public DraftOfAMessage Draft { get; } = new();
+   public DraftOfAMessage Draft { get; private set; } = new();
+
+   /// <summary>Shows the draft of the session now in the terminal, including the images pasted into it.</summary>
+   protected void Edit(DraftOfAMessage draft)
+   {
+      if(Draft == draft) return;
+      Draft.Changed -= ShowTheThumbnailsOfTheImagesHeld;
+      Draft = draft;
+      _editor.Document = draft.Document;
+      _editor.CaretOffset = draft.Document.TextLength;
+      Draft.Changed += ShowTheThumbnailsOfTheImagesHeld;
+      ShowTheThumbnailsOfTheImagesHeld();
+   }
 
    public bool ShowsTheStopButton
    {
       get => _stop.IsVisible;
       protected set => _stop.IsVisible = value;
+   }
+
+   /// <summary>Whether the Send button can submit now. The editor remains available while the connection is starting.</summary>
+   public bool CanSend
+   {
+      get => _send.IsEnabled;
+      protected set => _send.IsEnabled = value;
    }
 
    /// <summary>What the box tells over it, as why Claude Code didn't get a message: null while it tells nothing.</summary>
@@ -83,16 +102,13 @@ abstract class ChatComposer : UserControl
       set => _editor.MaxHeight = value;
    }
 
-   /// <summary>What to bring back in the composer when the window reopens.</summary>
-   public virtual IReadOnlyList<PartOfAMessage> AsSaved => Draft.Parts;
-
    /// <summary>Brings back what the box saved, <paramref name="saved"/>, as its window opens.</summary>
    public void BringBack(IReadOnlyList<PartOfAMessage> saved) => Draft.PutBackAhead(saved);
 
    /// <summary>Gives the box the keyboard, for Magnus to write.</summary>
    public void TakeTheKeyboard() => _editor.TextArea.Focus();
 
-   public abstract void Send();
+   protected abstract void Send();
    protected abstract Task Stop();
 
    /// <summary>

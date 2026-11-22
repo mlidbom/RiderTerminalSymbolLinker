@@ -76,6 +76,12 @@ sealed class DraftOfAMessage
       if(at > 0 && at < Document.TextLength) Document.Insert(at, BetweenMessages);
    }
 
+   /// <summary>Includes a submission whose acknowledgement is pending when the window is saved. It comes back
+   /// in the editor for Magnus to decide whether to send it.</summary>
+   public IReadOnlyList<PartOfAMessage> WithMessageAhead(MessageFromTheChat message) => Document.TextLength == 0
+      ? message.Parts
+      : [.. message.Parts, new PartOfAMessage.TypedText(BetweenMessages), .. Parts];
+
    void Clear()
    {
       _pasted.Clear();

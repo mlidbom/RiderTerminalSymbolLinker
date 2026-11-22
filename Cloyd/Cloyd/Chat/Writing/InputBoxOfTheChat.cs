@@ -67,7 +67,7 @@ sealed class InputBoxOfTheChat : ChatComposer
    /// What the box saves with its window: the messages that waited to be given to Claude Code, a blank line apart, then
    /// what Magnus was writing. All of it comes back into the box with the window, as the draft, to be sent again by him.
    /// </summary>
-   public override IReadOnlyList<PartOfAMessage> AsSaved => [.. TheParts(_sending.Waiting), .. Draft.Parts];
+   public IReadOnlyList<PartOfAMessage> AsSaved => [.. TheParts(_sending.Waiting), .. Draft.Parts];
 
    /// <summary>Raised when Magnus has sent a slash command, such as <c>/compact</c>, which shows what it does in Claude Code's own UI.</summary>
    public event Action? SentASlashCommand;
@@ -77,7 +77,7 @@ sealed class InputBoxOfTheChat : ChatComposer
    /// the box empty for the next message at once. Nothing when it holds nothing; told over the box, and kept in it, while
    /// no Claude Code runs.
    /// </summary>
-   public override void Send()
+   protected override void Send()
    {
       if(Draft.IsEmpty) return;
       if(ClaudeCode is not {} claudeCode)

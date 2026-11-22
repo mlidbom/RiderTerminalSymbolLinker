@@ -7,6 +7,13 @@ All notable changes to Cloyd are documented here. The format follows
 ## [0.1.0]
 
 ### Added
+- **Codex sessions open in Chat with a hub that supports it.** Chat and Terminal show the same session.
+  Use **Ctrl+H** to switch between them. Chat shows your prompts, Codex’s replies as they arrive, and tool calls
+  you can expand. **Enter** starts a new line. **Ctrl+Enter** sends a prompt or adds an instruction to the turn
+  already running. **Stop** interrupts that turn. When Codex asks for an approval, Chat offers **Show the terminal**
+  so you can answer there. If Cloyd loses the acknowledgement of a message, it puts the text back in the editor
+  and tells you to check the conversation before sending again. If Terminal changes sessions, each Codex draft
+  stays with the session it was written for, including when you close and reopen the project window.
 - **A window for each project, beside its IDE, whose tabs are the project's Claude Code sessions.** As a project opens
   in an IDE, Claude Sessions 0.2.0 has Cloyd show its window. Each tab shows a session in its terminal: the terminal of
   the session's host, which runs outside both Cloyd and the IDE, so the session runs on as either exits. The **+**
@@ -115,8 +122,8 @@ All notable changes to Cloyd are documented here. The format follows
 - **Codex sessions in the tabs,** on a machine where Codex is installed. The **+** offers Claude Code or Codex, Claude
   Code chosen, with the name box under them. It offers Codex once Claude tooling's hub can start Codex sessions, as
   from the tooling that hosts Codex on a machine where npm installed Codex, whether any Codex session runs or not; else
-  Claude Code alone, with no choice to make. A Codex session's tab shows its terminal only, as Cloyd has no chat of a
-  Codex session yet: no switch to a chat, and Ctrl+H keeps to the terminal. It is titled with the session's name, else
+  Claude Code alone, with no choice to make. With an older hub that offers Codex terminals only, the tab keeps its
+  terminal and Ctrl+H leaves it there. It is titled with the session's name, else
   "Codex", with the spinner while Codex works. A tab whose host runs Claude Code and then Codex, or the other way round,
   follows the one that runs.
   - **The history picker lists Codex sessions too,** in one list with Claude Code's, most recently used first, each

@@ -21,6 +21,7 @@ public class When_Magnus_presses_Shift_Enter_in_a_Codex_sessions_terminal : Spec
       DoneOnTheUIThread(() => window.StartANewSession(new NewSession(AgentCli.Codex, Name: null)));
       _tab = OnTheUIThread(() => window.Tabs.Single());
       WaitUntil(() => _tab.Terminal.TextShown.Contains("New session"), "the tab's terminal showed the stand-in for Codex's start");
+      SwitchWithCtrlH(window, _tab);
       Type(window, "first");
       Press(window, Key.Enter, PhysicalKey.Enter, RawInputModifiers.Shift);
       Type(window, "second");

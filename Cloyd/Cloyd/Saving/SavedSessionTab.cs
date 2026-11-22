@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 using ClaudeTooling.SessionHost.Protocol;
 using Cloyd.Chat.Writing;
 using Cloyd.Sessions;
@@ -16,7 +17,9 @@ namespace Cloyd.Saving;
 /// session.
 /// </param>
 /// <param name="Draft">
-/// What the tab's chat's input box held, which comes back into it: null in what a Cloyd saved before its chat had an
+/// What the Claude Code chat's input box held, which comes back into it: null in what a Cloyd saved before its chat had an
 /// input box.
 /// </param>
-sealed record SavedSessionTab(SessionHostId SessionHost, string Directory, Session? Session, IReadOnlyList<PartOfAMessage>? Draft = null);
+/// <param name="CodexDrafts">Each Codex session's own unsent draft, including uncertain submissions.</param>
+sealed record SavedSessionTab(SessionHostId SessionHost, string Directory, Session? Session, IReadOnlyList<PartOfAMessage>? Draft = null,
+                              [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] IReadOnlyList<SavedCodexDraft>? CodexDrafts = null);

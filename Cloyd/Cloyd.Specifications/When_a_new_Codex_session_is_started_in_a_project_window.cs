@@ -41,7 +41,7 @@ public class When_a_new_Codex_session_is_started_in_a_project_window : Specifica
 
    [XF] public void the_tab_is_titled_with_the_sessions_name() => OnTheUIThread(() => _tab.Title).Must().Be(NameGiven);
 
-   [XF] public void the_tab_offers_no_chat() => OnTheUIThread(() => _tab.OffersTheChat).Must().BeFalse();
+   [XF] public void the_tab_opens_in_Chat() => OnTheUIThread(() => _tab.ShowsTheChat && _tab.OffersTheChat).Must().BeTrue();
 
    [XF] public void the_tabs_spinner_is_still() => OnTheUIThread(() => _tab.ShowsThatItsSessionWorks).Must().BeFalse();
 

@@ -7,6 +7,8 @@ using Avalonia.Threading;
 using ClaudeTooling.SessionHost.Protocol;
 using Cloyd.Chat;
 using Cloyd.Chat.Status;
+using Cloyd.Codex;
+using Cloyd.Codex.Chat;
 using Cloyd.ClaudeCode;
 using Cloyd.Hub;
 using Cloyd.Hub.RunningSessions;
@@ -20,13 +22,13 @@ namespace Cloyd.Sessions;
 
 /// <summary>
 /// A tab of a <see cref="Projects.ProjectWindow"/>: the terminal of one session host, showing its shell, and the agent
-/// CLI in the shell as it draws its TUI; and, for a Claude Code session, the chat of the session that runs in it, or ran
+/// CLI in the shell as it draws its TUI; and the chat of the session that runs in it, or ran
 /// in it last. A switch at its top shows the one or the other, as Ctrl+H does: the chat at first, the terminal staying
 /// the backup, and where Claude Code's own dialogs show, as its permission prompts. Titled with the name of that session.
 /// </summary>
 /// <remarks>
 /// Its look follows its <see cref="AgentCli"/>, as a host's shell may run one agent CLI and then another: a Codex
-/// session's tab has no chat, and shows its terminal only.
+/// session has a chat when the hub advertises support for it.
 /// </remarks>
 sealed class SessionTab : TabItem
 {
@@ -38,6 +40,11 @@ sealed class SessionTab : TabItem
    readonly ToggleButton _showTheChat = SwitchTo("Chat", TipOfTheChatsSwitch);
    readonly ToggleButton _showTheTerminal = SwitchTo("Terminal", TipOfTheTerminalsSwitch);
    readonly StackPanel _switch;
+   readonly ContentControl _chatView = new();
+   readonly PastedImages _pastedImages;
+   ICodexChatInTheHub? _codexChatInTheHub;
+   readonly CodexDraftsOfATab _codexDrafts = new();
+   bool _prefersChat = true;
 
    /// <summary>The agent CLI of the tab's session until one runs in it or ran in it: <see cref="AgentCli"/> tells.</summary>
    readonly AgentCli _agentCliBeforeASessionRuns;
@@ -49,8 +56,10 @@ sealed class SessionTab : TabItem
    /// for that. Its chat follows the session's conversation through <paramref name="hub"/>. The images pasted into it are
    /// saved in <paramref name="pastedImages"/>.
    /// </summary>
-   public SessionTab(SessionHostOfTheHub host, Session? latestSession, NewSession? newSession, ConsoleSize size, TheHub hub, PastedImages pastedImages)
+   public SessionTab(SessionHostOfTheHub host, Session? latestSession, NewSession? newSession, ConsoleSize size, TheHub hub, PastedImages pastedImages, ICodexChatInTheHub? codexChat = null)
    {
+      _pastedImages = pastedImages;
+      _codexChatInTheHub = codexChat;
       Host = host;
       LatestSession = latestSession;
       _agentCliBeforeASessionRuns = newSession?.AgentCli ?? AgentCli.ClaudeCode;
@@ -67,9 +76,8 @@ sealed class SessionTab : TabItem
       _showTheChat.Click += (_, _) => Show(chat: true);
       _showTheTerminal.Click += (_, _) => Show(chat: false);
       _switch = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, Spacing = 2, Margin = new Thickness(4, 2), Children = { _showTheChat, _showTheTerminal } };
-      ShowTheChat(true);
       FollowItsAgentCli();
-      Content = LookOfTheTabs.Ground.AsTheBackgroundOf(new Border { Child = new DockPanel { Children = { Docked(_notice, Dock.Top), Docked(_switch, Dock.Top), new Panel { Children = { Terminal, ClaudeCodeChat } } } } });
+      Content = LookOfTheTabs.Ground.AsTheBackgroundOf(new Border { Child = new DockPanel { Children = { Docked(_notice, Dock.Top), Docked(_switch, Dock.Top), new Panel { Children = { Terminal, _chatView } } } } });
    }
 
    protected override Type StyleKeyOverride => typeof(TabItem);
@@ -86,6 +94,21 @@ sealed class SessionTab : TabItem
 
    /// <summary>The chat of the session that runs in the tab's host, or ran in it last: shown only while that is Claude Code's.</summary>
    public ChatOfAClaudeCodeSession ClaudeCodeChat { get; }
+
+   /// <summary>The Codex view once the hub has offered Chat in this Codex tab.</summary>
+   public ChatOfACodexSession? CodexChat { get; private set; }
+
+   /// <summary>The conversation belonging to the agent CLI that this tab shows.</summary>
+   public SessionChat? Chat => AgentCli == AgentCli.Codex ? CodexChat : ClaudeCodeChat;
+
+   /// <summary>Reconsiders the views available to this tab after the hub's announcement changes.</summary>
+   public void OfferCodexChat(ICodexChatInTheHub? available)
+   {
+      if(_codexChatInTheHub == available) return;
+      if(AgentCli == AgentCli.Codex && !ShowsTheChat) _prefersChat = false;
+      _codexChatInTheHub = available;
+      FollowItsAgentCli();
+   }
 
    /// <summary>
    /// The agent CLI of the session that runs in the tab's host, or ran in it last, or of the new session the tab was opened
@@ -127,14 +150,14 @@ sealed class SessionTab : TabItem
       set
       {
          field = value;
-         //wip: the chat and the marker of background work are Claude Code's; a tab of a Codex session is to have neither.
          ClaudeCodeChat.ClaudeCode = value as RunningClaudeCode;
          _backgroundWork.Show(value as RunningClaudeCode);
          _spinner.IsTurning = value?.IsBusy == true;
-         if(value is null) return;
-         LatestSession = value.Session;
+         if(value is not null) LatestSession = value.Session;
+         CodexChat?.Show((LatestSession as CodexSession)?.Id, value as RunningCodex);
          FollowItsAgentCli();
-         ClaudeCodeChat.Show((value.Session as ClaudeCodeSession)?.Id);
+         ClaudeCodeChat.Show((LatestSession as ClaudeCodeSession)?.Id);
+         if(value is null) return;
          _title.Text = value.Session.Name ?? AgentCli.TitleOfASessionWithNoName;
       }
    }
@@ -152,7 +175,13 @@ sealed class SessionTab : TabItem
    public bool RunsOrRanLast(SessionId session) => LatestSession?.Id == session;
 
    /// <summary>The tab, as its window saves it: with what its chat's input box holds.</summary>
-   public SavedSessionTab AsSaved => new(Host.Id, Host.Directory, LatestSession, ClaudeCodeChat.InputBox.AsSaved);
+   public SavedSessionTab AsSaved => new(Host.Id, Host.Directory, LatestSession, ClaudeCodeChat.InputBox.AsSaved, _codexDrafts.AsSaved);
+
+   public void BringBackDrafts(SavedSessionTab saved)
+   {
+      ClaudeCodeChat.InputBox.BringBack(saved.Draft ?? []);
+      _codexDrafts.Restore(saved.CodexDrafts ?? []);
+   }
 
    /// <summary>Shows <paramref name="notice"/> above the terminal, as why the hub didn't start Claude Code in it, or why a paste failed.</summary>
    public void Tell(string notice)
@@ -162,7 +191,7 @@ sealed class SessionTab : TabItem
    }
 
    /// <summary>Whether the tab shows its chat: else its terminal.</summary>
-   public bool ShowsTheChat => ClaudeCodeChat.IsVisible;
+   public bool ShowsTheChat => _chatView.IsVisible;
 
    /// <summary>
    /// Shows the chat when the terminal is shown, else the terminal, as Ctrl+H does, and gives it the keyboard: while it
@@ -176,7 +205,7 @@ sealed class SessionTab : TabItem
    /// <summary>Gives the keyboard to what the tab shows: the terminal, which types into the session, or the chat.</summary>
    public void FocusWhatItShows()
    {
-      if(ShowsTheChat) ClaudeCodeChat.TakeTheKeyboard();
+      if(ShowsTheChat) Chat!.TakeTheKeyboard();
       else Terminal.Focus();
    }
 
@@ -189,6 +218,7 @@ sealed class SessionTab : TabItem
    /// </summary>
    void Show(bool chat)
    {
+      _prefersChat = chat;
       ShowTheChat(chat);
       Dispatcher.UIThread.Post(FocusWhatItShows, DispatcherPriority.Loaded);
    }
@@ -200,7 +230,11 @@ sealed class SessionTab : TabItem
    /// </summary>
    void ShowTheChat(bool chat)
    {
-      ClaudeCodeChat.IsVisible = chat;
+      var active = Chat;
+      _chatView.Content = active;
+      _chatView.IsVisible = chat;
+      ClaudeCodeChat.IsVisible = chat && active == ClaudeCodeChat;
+      if(CodexChat is {} codex) codex.IsVisible = chat && active == codex;
       _showTheChat.IsChecked = chat;
       Terminal.Opacity = chat ? 0 : 1;
       Terminal.IsHitTestVisible = !chat;
@@ -213,8 +247,14 @@ sealed class SessionTab : TabItem
    /// </summary>
    void FollowItsAgentCli()
    {
-      _switch.IsVisible = AgentCli.HasAChat;
-      if(!AgentCli.HasAChat) ShowTheChat(false);
+      if(AgentCli == AgentCli.Codex && _codexChatInTheHub is {} hub && CodexChat is null)
+      {
+         CodexChat = new ChatOfACodexSession(hub, _pastedImages, _codexDrafts) { IsVisible = false };
+         CodexChat.WaitingForMagnusInTheTerminal.AsksForTheTerminal += () => Show(chat: false);
+         CodexChat.Show((LatestSession as CodexSession)?.Id, SessionRunningInIt as RunningCodex);
+      }
+      _switch.IsVisible = AgentCli == AgentCli.ClaudeCode || _codexChatInTheHub is not null;
+      ShowTheChat(_prefersChat && OffersTheChat);
    }
 
    static ToggleButton SwitchTo(string view, string tip)

@@ -58,6 +58,9 @@ sealed partial class TheHub
    /// <summary>The hub that announces itself in <paramref name="folder"/>: one tried out apart from the published one, which whoever tries it starts.</summary>
    public static TheHub AnnouncedIn(DirectoryInfo folder) => new(folder, isThePublishedHub: false);
 
+   /// <summary>What the hub currently offers a newly opened tab, before the window sees another running-session update.</summary>
+   public bool SupportsCodexChat => AnnouncementOfTheHub.In(_folderOfTheAnnouncement)?.Says.SupportsCodexChat == true;
+
    /// <summary>The Claude Code folder the hub serves: where the sessions of its hosts keep their transcripts.</summary>
    public async Task<ClaudeCodeFolder> ClaudeCodeFolderItServes(CancellationToken cancellation = default) =>
       (await TheAnnouncement(new TimeToAnswer(_folderOfTheAnnouncement), cancellation)).ClaudeCodeFolderItServes;
@@ -179,12 +182,12 @@ sealed partial class TheHub
    /// <c>GET /running-sessions/stream</c>, and from the next hub's when a publish ends it, until
    /// <paramref name="cancellation"/>.
    /// </summary>
-   public async IAsyncEnumerable<IReadOnlyList<RunningSession>> RunningSessionsAsTheyChange([EnumeratorCancellation] CancellationToken cancellation)
+   public async IAsyncEnumerable<(AnnouncementOfTheHub Hub, IReadOnlyList<RunningSession> Sessions)> RunningSessionsAsTheyChange([EnumeratorCancellation] CancellationToken cancellation)
    {
       await foreach(var stream in EachStreamAt("running-sessions/stream", cancellation))
-         await foreach(var sent in stream)
+         await foreach(var sent in stream.Events)
             if(sent.Name == RunningSessionsStreamEventNames.RunningSessions)
-               yield return RunningSession.EachIn(JsonSerializer.Deserialize<RunningSessionsAnswer>(sent.Data, LocalApiProtocol.Json)!);
+               yield return (stream.Hub, RunningSession.EachIn(JsonSerializer.Deserialize<RunningSessionsAnswer>(sent.Data, LocalApiProtocol.Json)!));
    }
 
    /// <summary>
@@ -199,7 +202,7 @@ sealed partial class TheHub
       await foreach(var stream in EachStreamAt($"sessions/{session}/conversation/stream", cancellation))
       {
          var conversation = new ConversationAsStreamed();
-         await foreach(var sent in stream)
+         await foreach(var sent in stream.Events)
             switch(sent.Name)
             {
                case ConversationStreamEventNames.Message:
@@ -230,7 +233,7 @@ sealed partial class TheHub
       await foreach(var stream in EachStreamAt($"running-sessions/{claudeCode}/turn/stream", cancellation))
       {
          var turn = new TurnAsStreamed();
-         await foreach(var sent in stream)
+         await foreach(var sent in stream.Events)
             if(turn.Read(sent))
                yield return turn.Block;
       }
@@ -242,11 +245,12 @@ sealed partial class TheHub
    /// <paramref name="cancellation"/>. Each stream is read to its end before the next is asked for.
    /// </summary>
    /// <exception cref="RefusedByTheHub">The hub doesn't know what the stream would be of: it answered 404.</exception>
-   async IAsyncEnumerable<IAsyncEnumerable<ServerSentEvent>> EachStreamAt(string path, [EnumeratorCancellation] CancellationToken cancellation)
+   async IAsyncEnumerable<(AnnouncementOfTheHub Hub, IAsyncEnumerable<ServerSentEvent> Events)> EachStreamAt(string path, [EnumeratorCancellation] CancellationToken cancellation)
    {
       while(!cancellation.IsCancellationRequested)
       {
-         using var answer = await Send(it => new HttpRequestMessage(HttpMethod.Get, it.AddressOf(path)), cancellation, HttpCompletionOption.ResponseHeadersRead);
+         var (source, response) = await SendToTheAnnouncedHub(it => new HttpRequestMessage(HttpMethod.Get, it.AddressOf(path)), cancellation, HttpCompletionOption.ResponseHeadersRead);
+         using var answer = response;
          if(answer.StatusCode == HttpStatusCode.ServiceUnavailable) // Asked for while the hub stops, as at a publish.
          {
             await Task.Delay(BetweenTries, cancellation);
@@ -256,7 +260,8 @@ sealed partial class TheHub
 
          answer.EnsureSuccessStatusCode();
          using var events = new StreamReader(await answer.Content.ReadAsStreamAsync(cancellation));
-         yield return ServerSentEvent.ReadFrom(events, cancellation);
+         yield return (source, ServerSentEvent.ReadFrom(events, cancellation));
+
       }
    }
 
@@ -264,25 +269,26 @@ sealed partial class TheHub
    /// Sends the request <paramref name="request"/> makes for the hub announced now, and again for the next hub announced
    /// while the hub announced doesn't answer, as at a publish, for <see cref="HowLongANewHubMayTakeToAnswer"/>.
    /// </summary>
-   async Task<HttpResponseMessage> Send(Func<AnnouncementOfTheHub, HttpRequestMessage> request, CancellationToken cancellation, HttpCompletionOption completion = HttpCompletionOption.ResponseContentRead)
+   async Task<HttpResponseMessage> Send(Func<AnnouncementOfTheHub, HttpRequestMessage> request, CancellationToken cancellation) =>
+      (await SendToTheAnnouncedHub(request, cancellation, HttpCompletionOption.ResponseContentRead)).Response;
+
+   /// <summary>Returns the announcement of the hub that actually answered, including after a publish during a retry.</summary>
+   async Task<(AnnouncementOfTheHub Hub, HttpResponseMessage Response)> SendToTheAnnouncedHub(Func<AnnouncementOfTheHub, HttpRequestMessage> request,
+                                                                                              CancellationToken cancellation, HttpCompletionOption completion)
    {
       var time = new TimeToAnswer(_folderOfTheAnnouncement);
       while(true)
       {
-         if(await Answer(await TheAnnouncement(time, cancellation)) is {} answer) return answer;
+         var announced = await TheAnnouncement(time, cancellation);
+         if(await Answer(announced) is {} answer) return (announced, answer);
          await time.WaitBeforeTryingAgain(cancellation);
       }
 
       async Task<HttpResponseMessage?> Answer(AnnouncementOfTheHub announcement)
       {
-         if(announcement.Protocol != LocalApiProtocol.Version)
-            throw new InvalidOperationException($"The hub speaks protocol {announcement.Protocol}, and this Cloyd protocol {LocalApiProtocol.Version}: Cloyd needs updating.");
-
-         var asked = request(announcement);
-         asked.Headers.Authorization = new AuthenticationHeaderValue("Bearer", announcement.Token);
          try
          {
-            var answer = await _http.SendAsync(asked, completion, cancellation);
+            var answer = await SendOnce(announcement, request, completion, cancellation);
             if(answer.StatusCode != HttpStatusCode.Unauthorized) return answer;
 
             answer.Dispose(); // A new hub, with a token of its own, may have taken the port.
@@ -293,6 +299,18 @@ sealed partial class TheHub
             return null; // The hub announced has stopped, as at a publish, or crashed and left its announcement.
          }
       }
+   }
+
+   /// <summary>Sends one authenticated request to this particular hub. A command with an uncertain outcome must
+   /// never be submitted again merely because the hub stopped answering.</summary>
+   async Task<HttpResponseMessage> SendOnce(AnnouncementOfTheHub announcement, Func<AnnouncementOfTheHub, HttpRequestMessage> request,
+                                            HttpCompletionOption completion, CancellationToken cancellation)
+   {
+      if(announcement.Protocol != LocalApiProtocol.Version)
+         throw new InvalidOperationException($"The hub speaks protocol {announcement.Protocol}, and this Cloyd protocol {LocalApiProtocol.Version}: Cloyd needs updating.");
+      using var asked = request(announcement);
+      asked.Headers.Authorization = new AuthenticationHeaderValue("Bearer", announcement.Token);
+      return await _http.SendAsync(asked, completion, cancellation);
    }
 
    /// <summary>

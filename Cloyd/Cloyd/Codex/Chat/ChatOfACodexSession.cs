@@ -1,0 +1,150 @@
+using Avalonia;
+using Avalonia.Controls;
+using Avalonia.Threading;
+using Cloyd.Chat;
+using Cloyd.Chat.Status;
+using Cloyd.Chat.Views;
+using Cloyd.Hub.RunningSessions;
+using Cloyd.Pasting;
+using static Cloyd.Chat.Views.LinesOfTheChat;
+
+namespace Cloyd.Codex.Chat;
+
+/// <summary>The conversation of the Codex session the terminal in this tab shows. Opening it follows the same
+/// session from the hub; the terminal remains the place to answer approvals and other interactive questions.</summary>
+sealed class ChatOfACodexSession : SessionChat
+{
+   readonly ICodexChatInTheHub _hub;
+   OpenedInTheChat _opened = new();
+   readonly TextBlock _working = new() { MaxWidth = WidthOfTheColumn, Margin = new Thickness(16, 4), Text = "Codex is working…", IsVisible = false };
+   CodexSessionId? _session;
+   RunningCodex? _running;
+   CodexChatReading? _reading;
+   CancellationTokenSource? _following;
+
+   public ChatOfACodexSession(ICodexChatInTheHub hub, PastedImages pastedImages, CodexDraftsOfATab drafts)
+   {
+      _hub = hub;
+      InputBox = new CodexChatComposer(hub, pastedImages, drafts) { MaxWidth = WidthOfTheColumn + 32 };
+      ColoursOfTheChat.Grey.AsTheForegroundOf(_working);
+      ArrangeRows(WaitingForMagnusInTheTerminal, _working, InputBox);
+   }
+
+   public override CodexChatComposer InputBox { get; }
+   public WaitingForMagnusInTheTerminal WaitingForMagnusInTheTerminal { get; } = new("Codex waits for you in the terminal") { MaxWidth = WidthOfTheColumn + 32 };
+
+   /// <summary>Follows the last session in the tab, including its saved history after exit. Only a running session can take input.</summary>
+   public void Show(CodexSessionId? session, RunningCodex? running)
+   {
+      var wasRunning = _running is not null;
+      _running = running;
+      if(session != _session)
+      {
+         _session = session;
+         _opened = new OpenedInTheChat();
+         Tell(null);
+         ShowConversation([]);
+         FollowWhileShown();
+      }
+      else if(wasRunning != (running is not null)) FollowWhileShown();
+      UpdateControls();
+   }
+
+   protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
+   {
+      base.OnAttachedToVisualTree(e);
+      FollowWhileShown();
+   }
+
+   protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
+   {
+      base.OnDetachedFromVisualTree(e);
+      StopFollowing();
+   }
+
+   protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
+   {
+      base.OnPropertyChanged(change);
+      if(change.Property == IsVisibleProperty && InputBox is not null) FollowWhileShown();
+   }
+
+   void StopFollowing()
+   {
+      _following?.Cancel();
+      _following = null;
+      _reading = null;
+      UpdateControls();
+   }
+
+   void FollowWhileShown()
+   {
+      StopFollowing();
+      if(!IsShown || _session is not {} session) return;
+      var subscription = _following = new CancellationTokenSource();
+      _ = Follow(session, subscription);
+   }
+
+   async Task Follow(CodexSessionId session, CancellationTokenSource subscription)
+   {
+      try
+      {
+         await Task.Run(async () =>
+         {
+            await foreach(var reading in _hub.Follow(session, subscription.Token))
+               await Dispatcher.UIThread.InvokeAsync(() => DrawIfStillFollowing(reading));
+         });
+
+      }
+      catch(OperationCanceledException) when(subscription.IsCancellationRequested) {}
+      catch(Exception failure)
+      {
+         if(!subscription.IsCancellationRequested) Tell($"The Codex conversation is unavailable. {failure.Message}");
+      }
+      finally
+      {
+         if(_following == subscription)
+         {
+            _following = null;
+            _reading = null;
+            UpdateControls();
+         }
+         subscription.Dispose();
+      }
+
+      void DrawIfStillFollowing(CodexChatReading? reading)
+      {
+         if(subscription.IsCancellationRequested) return;
+         var first = Shown.Count == 0;
+         _reading = reading;
+         UpdateControls();
+         if(reading is null)
+            Tell("Reconnecting to the Codex conversation…");
+         else
+         {
+            Tell(null);
+            ShowConversation(reading.Rows);
+            if(first) ScrollToTheEnd();
+         }
+      }
+   }
+
+   void UpdateControls()
+   {
+      var waiting = _running?.Status.IsWaiting == true;
+      WaitingForMagnusInTheTerminal.Show(waiting, _running?.Status.WaitingFor == "approval"
+                                                     ? "Review the approval request in the terminal."
+                                                     : "Answer the prompt in the terminal.");
+      var turn = _reading?.TurnUnderWay;
+      _working.IsVisible = turn is not null && !waiting;
+      InputBox.Target(_session, _reading is not null && _running?.SessionId == _session, turn);
+   }
+
+   protected override Control DrawRow(ShownInTheChat shown) => shown switch
+   {
+      ShownInTheChat.Prompt prompt => Bubble(Coloured(prompt.Text, ColoursOfTheChat.Text)),
+      CodexReply reply => MarkdownOf(reply.Markdown),
+      CodexToolCalls calls => calls.Draw(_opened),
+      CodexChatNotice notice => Grey(notice.Line),
+      _ => throw new ArgumentOutOfRangeException(nameof(shown), shown, "Unknown Codex conversation row.")
+   };
+}

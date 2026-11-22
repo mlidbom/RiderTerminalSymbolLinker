@@ -10,8 +10,7 @@ namespace Cloyd.Specifications;
 
 /// <summary>
 /// A project window opens with a saved tab whose session was Codex's, its host still running, at its shell's prompt, as
-/// after Codex exits to it: the tab looks as a Codex session's does, with its terminal and no chat. Cloyd has no chat of
-/// a Codex session.
+/// after Codex exits to it. An older hub announces no Codex Chat capability, so this tab offers only Terminal.
 /// </summary>
 public class When_a_project_window_brings_back_a_tab_of_a_Codex_session : SpecificationOpeningWindows
 {
@@ -23,6 +22,7 @@ public class When_a_project_window_brings_back_a_tab_of_a_Codex_session : Specif
    public When_a_project_window_brings_back_a_tab_of_a_Codex_session() => (_window, _tab) = Once(() =>
    {
       var project = Sandbox.Project("the-project");
+      Sandbox.HubOfTheSandbox.AnnounceWithoutCodexChat();
       var host = project.StartASessionHost(project.LabelOfCloydsHosts);
       project.SaveTheWindowAs(new SavedProjectWindow([new SavedSessionTab(host.Id, project.Project.Folder, TheSession)], host.Id, Desktop: null));
       var window = Open(project.Window);

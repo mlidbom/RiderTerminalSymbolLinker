@@ -455,7 +455,7 @@ input box") ported, with Magnus's calls above:
   `⏵⏵` and its `shownAs`; under that, what runs in the background (see "What a session runs in the background" below).
   "No Claude Code runs in this tab" while none runs. What Claude does isn't told there: first a
   left side said it, and Magnus, of its "Idle": "This is not needed with progress clearly shown above the input." The
-  tab tells the chat its running session (`ChatOfASession.ClaudeCode`), which hands it to the box and the lines.
+  tab tells the chat its running session (`ChatOfAClaudeCodeSession.ClaudeCode`), which hands it to the box and the lines.
   Specified with running sessions made in the specification, as the stand-in shows the hub no status line yet.
 - **Specified** with the stand-in through the sandbox's hub (`Cloyd.Specifications/Chat/Writing`): a message of two
   lines sent; text and an image pasted, kept apart, and sent; Escape and a message sent while Claude works, which
@@ -673,8 +673,26 @@ word for every agent CLI's; "thread" only in code that speaks Codex's app-server
   change before its publish. A protocol bump still needs a Cloyd deploy, and `everyday reload Cloyd` on Magnus's go:
   until then his running Cloyd refuses the new hub.
 
-**Still to come:** a chat of a Codex session, when Magnus asks for it; Cloyd has none. A named new Codex session's tab
-is titled "Codex" from the hub's first listing of it until the hub has named it, a second or two later.
+A named new Codex session's tab is titled "Codex" from the hub's first listing of it until the hub has named it,
+a second or two later.
+
+### Chat in a Codex terminal tab
+
+The hub advertises `supportsCodexChat` in its protocol 2 announcement. Cloyd offers Chat and Terminal for the same
+Codex session when that capability is present. Older hubs can still open Codex terminal tabs.
+
+- `SessionChat` owns the conversation column, Markdown, scrolling and search. `ChatComposer` owns the editor, paste
+  handling and keyboard shortcuts. `ChatOfAClaudeCodeSession` and `ChatOfACodexSession` each interpret their own
+  session's conversation and decide how to submit input.
+- Opening Codex Chat follows `GET /codex-chat/{sessionId}/stream`. Its first event supplies a snapshot. Each
+  subsequent turn replaces the turn with that ID. Item text is cumulative. After a reconnect the new snapshot
+  supplies everything that happened while Cloyd was disconnected.
+- Ctrl+Enter submits input to the displayed session. While a turn runs it steers that turn. Stop names the same
+  observed turn. Terminal owns approvals, including one that was pending when Chat opened. The hub can explicitly
+  refuse a stale command. If an acknowledgement is lost, Cloyd puts the message back in the editor for Magnus.
+- Codex 0.171.0 can omit the beginning of an in-progress reply on the first attachment. Its completed item
+  supplies the full text. Also, if Terminal starts a turn just as Chat submits an idle Send, Codex can steer that
+  new turn with the submitted text. The tooling's `dev_docs/the-hubs-local-api.md` records both behaviors.
 
 ## What's still open
 
