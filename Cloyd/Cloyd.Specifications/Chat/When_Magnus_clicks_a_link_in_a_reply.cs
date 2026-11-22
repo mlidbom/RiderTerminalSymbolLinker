@@ -27,7 +27,7 @@ public class When_Magnus_clicks_a_link_in_a_reply : SpecificationOpeningWindows
       var session = new CodexSessionId(Guid.NewGuid().ToString());
       var hub = Sandbox.HubOfTheSandbox;
       new CodexSessionOfASpecification(session, project.Project.Folder, "screenshot") { RecordedItems = JsonSerializer.SerializeToNode(items)!.AsArray() }.WriteItsRecordFor(hub);
-      var window = Open(() => new Window { Width = 720, Height = 320, Content = new ChatOfACodexSession(hub.Hub, Sandbox.CloydsFolder.PastedImages, new CodexDraftsOfATab()) });
+      var window = Open(() => new Window { Width = 720, Height = 320, Content = new ChatOfACodexSession(hub.Hub, Sandbox.CloydsFolder.PastedImages, new CodexSessionDrafts()) });
       var chat = OnTheUIThread(() => (ChatOfACodexSession)window.Content!);
       OnTheUIThread(() => chat.Show(session, null));
       WaitUntil(() => chat.GetVisualDescendants().OfType<MarkdownTextBlock>().Any(it => it.LayoutText == label), "the reply link appeared");

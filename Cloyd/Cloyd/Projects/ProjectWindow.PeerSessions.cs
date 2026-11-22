@@ -25,7 +25,7 @@ sealed partial class ProjectWindow
          if(!(await launchHub.AgentClisItServes(deadline.Token)).Contains(session.AgentCli))
             throw new InvalidOperationException($"The hub does not serve {session.AgentCli}.");
          receipt.RecordHostRequest();
-         var host = await launchHub.StartASessionHost(_shellOfNewSessions, request.Worktree, SessionHostLabel.ForAPeer(Project, request.RequestId), deadline.Token);
+         var host = await Sessions.StartPeerHost(launchHub, Project, request.Worktree, request.RequestId, deadline.Token);
          tab = ShowPeerHost(host);
       }
 
@@ -66,7 +66,7 @@ sealed partial class ProjectWindow
       {
          if(Tabs.SingleOrDefault(it => Matches(it.Host)) is {} shown) return shown;
          var hosts = await launchHub.SessionHosts(deadline.Token);
-         if(hosts.SingleOrDefault(Matches) is { Attached: false } original) return ShowPeerHost(original);
+         if(hosts.SingleOrDefault(Matches) is {} original && Sessions.CanRestore(original)) return ShowPeerHost(original);
          throw new InvalidOperationException("The original launch has no available host. Inspect the project before starting another helper.");
       }
 

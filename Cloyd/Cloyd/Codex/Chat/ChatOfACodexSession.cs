@@ -23,7 +23,7 @@ sealed class ChatOfACodexSession : SessionChat
    CodexChatReading? _reading;
    CancellationTokenSource? _following;
 
-   public ChatOfACodexSession(ICodexChatInTheHub hub, PastedImages pastedImages, CodexDraftsOfATab drafts)
+   public ChatOfACodexSession(ICodexChatInTheHub hub, PastedImages pastedImages, CodexSessionDrafts drafts)
    {
       _hub = hub;
       InputBox = new CodexChatComposer(hub, pastedImages, drafts) { MaxWidth = WidthOfTheColumn + 32 };

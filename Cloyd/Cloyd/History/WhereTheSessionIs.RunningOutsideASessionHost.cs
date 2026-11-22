@@ -14,9 +14,9 @@ abstract partial class WhereTheSessionIs
 
       public override bool IsRunning => true;
 
-      public override string AsToldIn(ProjectWindow pickedIn) => "running outside Cloyd";
+      public override string AsToldIn(ProjectWindow? pickedIn) => "running outside Cloyd";
 
-      public override Task Choose(Session session, ProjectWindow pickedIn) =>
+      public override Task Choose(Session session, ISessionHistoryTarget pickedIn) =>
          throw new InvalidOperationException($"A session that runs in no session host can't be chosen: {session.Id} runs outside Cloyd.");
    }
 }

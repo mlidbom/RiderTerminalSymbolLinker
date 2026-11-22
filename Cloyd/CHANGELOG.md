@@ -9,6 +9,12 @@ All notable changes to Cloyd are documented here. The format follows
 ### Added
 - **Coordinators can start a named Claude Code or Codex helper in a Cloyd tab.** The helper runs in the requested
   worktree and the existing tab stays selected. A repeated launch returns the original session's address.
+- **Projects Dashboard shows the sessions of every project in one window.** Open it at the far right of a
+  project window's tab strip. Select a session to read its chat, write or send a message, or bring its
+  terminal here with its scrollback. The project tab and dashboard share the same draft, including
+  pasted text and images. The tree marks projects and sessions waiting for you and includes projects
+  whose windows are closed. Start sessions with a project's **+**, end them with **×**, and open the session
+  history with **Ctrl+Alt+Shift+Y**. Sessions running outside a host can be read when their chat is available.
 - **Drag a tab header to rearrange sessions in a project window.** A marker shows where the tab will land,
   including on a wrapped row. Release to move it or press Escape to cancel. The window remembers the new
   order when it reopens, and Ctrl+Tab follows that order.
@@ -154,6 +160,8 @@ All notable changes to Cloyd are documented here. The format follows
     the session, as after it was archived. Windows saved before read their sessions as Claude Code's.
 
 ### Fixed
+- **Busy sessions keep running after Cloyd restores their tabs.** A restored tab first attaches when its
+  terminal is laid out. Previously, output from a never-selected tab could fill its pipe and stall the session.
 - **Moving a tab keeps its terminal connected to the same session.** You can continue typing at the same
   prompt after a drag or a tab switch. Previously a Windows command prompt could appear over the session
   and take keyboard input.

@@ -10,7 +10,7 @@ namespace Cloyd.Codex.Chat;
 sealed class CodexChatComposer : ChatComposer
 {
    readonly ICodexChatInTheHub _hub;
-   readonly CodexDraftsOfATab _drafts;
+   readonly CodexSessionDrafts _drafts;
    readonly Button _copyUnconfirmed = new() { Content = "Copy unconfirmed input to editor", IsVisible = false };
    CodexSessionDraft _input;
    CodexSessionId? _session;
@@ -18,7 +18,7 @@ sealed class CodexChatComposer : ChatComposer
    bool _ready;
    bool _stopping;
 
-   public CodexChatComposer(ICodexChatInTheHub hub, PastedImages pastedImages, CodexDraftsOfATab drafts) : base(pastedImages, "Reply to Codex.", "Stop Codex")
+   public CodexChatComposer(ICodexChatInTheHub hub, PastedImages pastedImages, CodexSessionDrafts drafts) : base(pastedImages, "Reply to Codex.", "Stop Codex")
    {
       _hub = hub;
       _drafts = drafts;
@@ -45,6 +45,12 @@ sealed class CodexChatComposer : ChatComposer
          Edit(input.Draft);
       }
       Refresh();
+   }
+
+   public override void Release()
+   {
+      _input.Changed -= Refresh;
+      base.Release();
    }
 
    void Refresh()

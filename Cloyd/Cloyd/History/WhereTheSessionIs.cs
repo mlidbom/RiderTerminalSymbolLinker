@@ -20,11 +20,11 @@ abstract partial class WhereTheSessionIs
    public abstract bool IsRunning { get; }
 
    /// <summary>What the picker of <paramref name="pickedIn"/> tells of where the session is: null for nothing, as for one that runs nowhere.</summary>
-   public abstract string? AsToldIn(ProjectWindow pickedIn);
+   public abstract string? AsToldIn(ProjectWindow? pickedIn);
 
    /// <summary>Does what choosing <paramref name="session"/> in the picker of <paramref name="pickedIn"/> does.</summary>
-   public abstract Task Choose(Session session, ProjectWindow pickedIn);
+   public abstract Task Choose(Session session, ISessionHistoryTarget pickedIn);
 
    /// <summary>Where <paramref name="window"/> is told to be from the picker of <paramref name="pickedIn"/>: nothing when it's the same window.</summary>
-   static string OfAnotherProject(ProjectWindow window, ProjectWindow pickedIn) => window == pickedIn ? "" : $" of {window.Project.Name}";
+   static string OfAnotherProject(ProjectWindow window, ProjectWindow? pickedIn) => window == pickedIn ? "" : $" of {window.Project.Name}";
 }

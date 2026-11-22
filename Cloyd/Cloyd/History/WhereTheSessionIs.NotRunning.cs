@@ -17,8 +17,8 @@ abstract partial class WhereTheSessionIs
 
       public override bool IsRunning => false;
 
-      public override string? AsToldIn(ProjectWindow pickedIn) => null;
+      public override string? AsToldIn(ProjectWindow? pickedIn) => null;
 
-      public override Task Choose(Session session, ProjectWindow pickedIn) => pickedIn.ResumeInANewTab(session);
+      public override Task Choose(Session session, ISessionHistoryTarget pickedIn) => pickedIn.ResumeInANewTab(session);
    }
 }

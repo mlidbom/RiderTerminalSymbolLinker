@@ -3,6 +3,7 @@ using Cloyd.LocalApi;
 using Cloyd.LocalApi.Contract;
 using Cloyd.Projects;
 using Cloyd.Specifications.TheSandbox;
+using Cloyd.Sessions;
 
 namespace Cloyd.Specifications;
 
@@ -20,10 +21,11 @@ public abstract class SpecificationRunningTheCloydApplication : SpecificationOpe
    readonly CloydsLocalApi _localApi;
 
    /// <summary>Runs the application, with the <see cref="TheSandbox.Sandbox.CloydsFolder"/> of the fact's sandbox.</summary>
-   private protected SpecificationRunningTheCloydApplication()
+   private protected SpecificationRunningTheCloydApplication(bool withPeersChannel = false)
    {
       CloydsFolder = Sandbox.CloydsFolder;
-      Windows = OnTheUIThread(() => new ProjectWindows((project, windowsOfCloyd) => Projects.Single(it => it.Project.Equals(project)).Window(windowsOfCloyd)));
+      Windows = OnTheUIThread(() => new ProjectWindows((project, windowsOfCloyd) => Projects.Single(it => it.Project.Equals(project)).Window(windowsOfCloyd),
+         withPeersChannel ? new SessionsOfCloyd(Sandbox.HubOfTheSandbox.Hub, CloydsFolder, Sandbox.ShellWithPeersChannel) : Sandbox.WindowsOfCloyd.Sessions));
       _localApi = CloydsLocalApi.Start(Windows, CloydsFolder);
       Application = new TheCloydApplication(CloydsFolder);
    }

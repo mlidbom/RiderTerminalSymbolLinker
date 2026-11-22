@@ -22,7 +22,7 @@ public class When_the_hub_loses_a_Codex_send_acknowledgement : SpecificationOpen
    public When_the_hub_loses_a_Codex_send_acknowledgement() => (_box, _hub) = Once(() =>
    {
       var hub = new HubThatLosesTheAcknowledgement();
-      var window = Open(() => new Window { Content = new CodexChatComposer(hub, new PastedImages(new DirectoryInfo(Path.GetTempPath())), new CodexDraftsOfATab()) });
+      var window = Open(() => new Window { Content = new CodexChatComposer(hub, new PastedImages(new DirectoryInfo(Path.GetTempPath())), new CodexSessionDrafts()) });
       var box = OnTheUIThread(() => (CodexChatComposer)window.Content!);
       OnTheUIThread(() =>
       {

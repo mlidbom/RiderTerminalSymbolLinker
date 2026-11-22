@@ -125,7 +125,7 @@ sealed class CloydsLocalApi
          return;
       }
 
-      var shown = await Dispatcher.UIThread.InvokeAsync(() => windows.ShowTheTabOf(session, claudeCode) is {} window ? InTheAnswer(window) : null);
+      var shown = await Dispatcher.UIThread.InvokeAsync(() => windows.ShowTheTabOf(session, claudeCode) is {} window ? InTheAnswer(window) : windows.Dashboard?.ShowSession(session, claudeCode));
       if(shown is not null)
          await Reply(exchange, StatusCodes.Status200OK, shown);
       else

@@ -1,6 +1,5 @@
 using System.Globalization;
 using Cloyd.Hub;
-using Cloyd.Projects;
 using Cloyd.Sessions;
 
 namespace Cloyd.History;
@@ -80,5 +79,5 @@ sealed class SessionHistoryEntry
    }
 
    /// <summary>Does what choosing the entry in the picker of <paramref name="pickedIn"/> does, as <see cref="Where"/> it is decides.</summary>
-   public Task Choose(ProjectWindow pickedIn) => Where.Choose(Session, pickedIn);
+   public Task Choose(ISessionHistoryTarget pickedIn) => Where.Choose(Session, pickedIn);
 }

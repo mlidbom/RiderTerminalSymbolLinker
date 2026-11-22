@@ -47,7 +47,7 @@ public class When_chats_show_messages_from_peers : SpecificationOpeningWindows
       recorded.Add(JsonNode.Parse("""{"type":"mcpToolCall","id":"send","server":"peers","tool":"send_to_peer","arguments":{"to":"codex:cloyd-gpt","message":"Please check the build."},"status":"completed","result":{"content":[{"type":"text","text":"Queued for cloyd-gpt."}]}}"""));
       recorded.Add(JsonNode.Parse("""{"type":"agentMessage","id":"reply","text":"The build passed."}"""));
       new CodexSessionOfASpecification(codexSession, directory, "peer-chat") { RecordedItems = recorded }.WriteItsRecordFor(sandbox);
-      var codexWindow = Open(() => new Window { Width = 840, Height = 650, Content = new ChatOfACodexSession(sandbox.Hub, Sandbox.CloydsFolder.PastedImages, new CodexDraftsOfATab()) });
+      var codexWindow = Open(() => new Window { Width = 840, Height = 650, Content = new ChatOfACodexSession(sandbox.Hub, Sandbox.CloydsFolder.PastedImages, new CodexSessionDrafts()) });
       var codex = OnTheUIThread(() => (ChatOfACodexSession)codexWindow.Content!);
       OnTheUIThread(() => codex.Show(codexSession, null));
       WaitUntil(() => codex.Shown.Count == 7, "the saved Codex conversation appeared");

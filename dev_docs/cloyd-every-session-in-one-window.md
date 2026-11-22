@@ -1,10 +1,40 @@
-# Cloyd: every session of every project in one window
+# Cloyd Projects Dashboard
 
-## Status
+## Projects Dashboard as built
 
-**Discussed with Magnus on 2026-11-21 and 22, in the session new-view, and handed over to codex-new-view on 2026-11-22.**
-Nothing is built. No code changes until Magnus gives the go-ahead (question 7 below). The window's name is still open
-(question 8): this document calls it **the new window**.
+Magnus named the window **Projects Dashboard** on 2026-11-22. The button at the far right of a project window's
+tab strip opens the dashboard or brings its existing window forward. A project window can close while the
+dashboard stays open. The dashboard saves its selected session and virtual desktop in `projects-dashboard.json`.
+
+- **The tree** lists hosted Claude Code and Codex sessions, including shells left running after the agent exits.
+  It uses the project in the host label, or the shell's directory for an unlabeled host. A busy session has a
+  spinner. A waiting session and its project are orange even when the project is collapsed. The second line
+  shows the current activity. Sessions running outside a host have a separate, dimmed group. Select one to read
+  its conversation when the hub offers chat for that agent. The editor and terminal actions belong to hosted sessions.
+- **The selected session** uses the same `SessionView` as the project tab. Each view has its own editor,
+  selection, search and scroll position. `HostedSession` owns the shared `SessionChatState`. Claude Code's
+  draft, ordered sends and delivery notices are shared, as are Codex drafts and steer receipts. Both editors of
+  a draft use the same AvaloniaEdit document and pasted segments. Closing the project window leaves the
+  dashboard's draft available. Cloyd reads older drafts from saved project tabs and keeps per-host snapshots
+  under `hosted-sessions`.
+- **The terminal** has one attach client, emulator, screen and scrollback per host. Merely listing a host
+  opens no connection. The first layout of its terminal starts the reader. Asking for Terminal in the other
+  window reparents the existing control there. The previous view shows Chat, or a button to bring Terminal
+  back when the hub offers no chat. An explicit terminal request can take over an external attach client.
+- **Session actions** include starting a Claude Code or Codex session from a project's **+**, ending a session
+  with **×**, switching Chat/Terminal with Ctrl+H, and navigating sessions with Ctrl+Tab or Ctrl+Shift+Tab.
+  Ctrl+Alt+Shift+Y opens the history picker with **All projects** selected. A notification still prefers an open
+  project tab and otherwise selects the hosted session in Projects Dashboard.
+- **Hub subscriptions** belong to `SessionsOfCloyd`. One running-session stream serves all windows. Host
+  discovery also checks the inventory because a shell can start or exit without changing the running agents.
+  Claude Code's visible chats share an ordered conversation stream for delivery tracking.
+- **View models** hold the dashboard rows, Claude Code turn status, history picker scope and filter, and the
+  shared chat input. The shared catalog now gives its view-model guidance to code-built views too.
+
+## Original request and design discussion
+
+The following records the November 21–22 discussion in new-view. Its estimates, proposed names, open questions
+and descriptions of the code are from before implementation.
 
 ## What Magnus asked for
 
@@ -121,9 +151,9 @@ of specifications in about two days. About two days in all.
   for each new attach client. Its cost: the scrollback, the 5,000 lines the old control kept, doesn't come along.
 - **Whether the hub can send to a Claude Code that runs in no session host.** Until known, those sessions are read-only.
 
-## Open questions for Magnus
+## Questions resolved on November 22
 
-They were items 6 to 9 of new-view's unanswered list, to be adopted by codex-new-view.
+Magnus delegated items 6 to 9 and named the window Projects Dashboard. The original alternatives follow.
 
 - **6. The views rule:** move the shared catalog's section "When a view gets a ViewModel" (in
   `.claude-shared/rules/path-scoped/avalonia-axaml-views.md`) into a universal code standard for UI code, keeping the

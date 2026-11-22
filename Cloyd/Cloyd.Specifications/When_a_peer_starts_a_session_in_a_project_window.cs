@@ -69,6 +69,42 @@ public class When_a_peer_starts_a_session_in_a_project_window : SpecificationRun
       OnTheUIThread(() => Windows.Open.Single().Tabs.Single().Host.Id).Must().Be(original.Id);
    }
 
+   [XF] public void an_incomplete_launch_can_use_the_host_already_shown_by_Projects_Dashboard()
+   {
+      HandedOver(_project);
+      var window = OnTheUIThread(() => Windows.Open.Single());
+      DoneOnTheUIThread(() => window.StartANewSession(new NewSession(AgentCli.ClaudeCode, "Current project tab")));
+      var selected = OnTheUIThread(() => window.SelectedTab!.Host.Id);
+      var dashboard = OnTheUIThread(() => Windows.ShowDashboard(_project.Project));
+      try
+      {
+         var request = new SessionToStartForAPeer(Guid.NewGuid(), new string('F', 64), _project.Project.Folder, _worktree.Project.Folder, "claude", "Helper on the dashboard");
+         new PeerSessionLaunchReceipt(CloydsFolder, request).RecordHostRequest();
+         var original = _worktree.StartASessionHost(SessionHostLabel.ForAPeer(_project.Project, request.RequestId));
+         WaitUntil(() => dashboard.Tree.Sessions.Any(it => it.Host?.Id == original.Id), "the dashboard discovered the reserved host");
+         OnTheUIThread(() => dashboard.Select(dashboard.Tree.Sessions.Single(it => it.Host?.Id == original.Id)));
+         WaitUntil(() => dashboard.View?.Session.HasAttachment == true && _worktree.SessionHost(original.Id)?.Attached == true,
+                   "the dashboard owned the original host attachment");
+
+         var address = Start(request);
+         WaitUntil(() => dashboard.View?.Session.Running is not null, "the helper appeared in the dashboard's existing session");
+         var helper = OnTheUIThread(() => window.Tabs.Single(it => it.Host.Id == original.Id));
+         OnTheUIThread(() => helper.Session).Must().ReferenceEqual(OnTheUIThread(() => dashboard.View!.Session));
+         address.Must().Be($"claude:{OnTheUIThread(() => helper.Session.Running!.Session.Id.Value)}");
+         OnTheUIThread(() => window.SelectedTab!.Host.Id).Must().Be(selected);
+
+         Close(window);
+         Start(request).Must().Be(address);
+         var reopened = OnTheUIThread(() => Windows.Open.Single());
+         OnTheUIThread(() => reopened.SelectedTab!.Host.Id).Must().Be(selected);
+         OnTheUIThread(() => reopened.Tabs.Single(it => it.Host.Id == original.Id).Session)
+           .Must().ReferenceEqual(OnTheUIThread(() => dashboard.View!.Session));
+         var hosts = Answered(() => Sandbox.HubOfTheSandbox.Hub.SessionHosts().GetAwaiter().GetResult(), "the hub listed the hosts");
+         hosts.Count(it => SessionHostLabel.IdentifiesPeerRequest(it.Label, request.RequestId)).Must().Be(1);
+      }
+      finally { Close(dashboard); }
+   }
+
    [XF] public void a_replacement_Codex_session_cannot_inherit_an_unidentified_launch()
    {
       var request = new SessionToStartForAPeer(Guid.NewGuid(), new string('E', 64), _project.Project.Folder, _worktree.Project.Folder, "codex", "Original assignment");

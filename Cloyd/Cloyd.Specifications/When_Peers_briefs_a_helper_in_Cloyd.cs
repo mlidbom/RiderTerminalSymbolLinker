@@ -16,7 +16,7 @@ public class When_Peers_briefs_a_helper_in_Cloyd : SpecificationRunningTheCloydA
 
    public static bool HasPeersTrial => Environment.GetEnvironmentVariable("CLOYD_PEERS_LAUNCH_TRIAL") is { Length: > 0 };
 
-   public When_Peers_briefs_a_helper_in_Cloyd()
+   public When_Peers_briefs_a_helper_in_Cloyd() : base(withPeersChannel: true)
    {
       _project = Sandbox.Project("project");
       _worktree = Sandbox.Project("checkout");
@@ -35,7 +35,6 @@ public class When_Peers_briefs_a_helper_in_Cloyd : SpecificationRunningTheCloydA
       var bin = CloydsFolder.Folder.CreateSubdirectory("bin");
       foreach(var file in new DirectoryInfo(AppContext.BaseDirectory).EnumerateFiles().Where(it => it.Extension == ".dll" || it.Name.StartsWith("Cloyd.", StringComparison.Ordinal)))
          file.CopyTo(Path.Combine(bin.FullName, file.Name), overwrite: true);
-      Sandbox.StartClaudeWithThePeersChannel();
       HandedOver(_project);
       var window = OnTheUIThread(() => Windows.Open.Single());
       DoneOnTheUIThread(() => window.StartANewSession(new NewSession(AgentCli.ClaudeCode, "private-coordinator")));

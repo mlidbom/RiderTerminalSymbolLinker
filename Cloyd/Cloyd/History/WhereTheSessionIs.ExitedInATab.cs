@@ -18,8 +18,8 @@ abstract partial class WhereTheSessionIs
 
       public override bool IsRunning => false;
 
-      public override string AsToldIn(ProjectWindow pickedIn) => $"open in a tab{OfAnotherProject(Window, pickedIn)}";
+      public override string AsToldIn(ProjectWindow? pickedIn) => $"open in a tab{OfAnotherProject(Window, pickedIn)}";
 
-      public override Task Choose(Session session, ProjectWindow pickedIn) => Window.ResumeIn(Tab, session);
+      public override Task Choose(Session session, ISessionHistoryTarget pickedIn) => pickedIn.ChooseExistingTab(Window, Tab, session, resume: true);
    }
 }

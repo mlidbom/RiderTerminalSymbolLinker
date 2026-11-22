@@ -32,11 +32,12 @@ public class When_a_chats_working_line_shows_a_command_under_way : Specification
 
    public When_a_chats_working_line_shows_a_command_under_way() => _shown = Once(() =>
    {
+      var status = OnTheUIThread(() => new ClaudeCodeTurnStatus());
       var window = Open(() => new Window
       {
          Width = 840,
          Height = 120,
-         Content = new StackPanel { Children = { new CallUnderWayOfTheChat(), new WorkingLineOfTheChat() } },
+         Content = new StackPanel { Children = { new CallUnderWayOfTheChat(status), new WorkingLineOfTheChat(status) } },
          Resources = { MergedDictionaries = { ColoursOfTheChat.AsResources() } }
       });
       var shown = OnTheUIThread(() => ((StackPanel)window.Content!).Children switch { [CallUnderWayOfTheChat call, WorkingLineOfTheChat line] => (call, line), _ => throw new InvalidOperationException() });
@@ -46,10 +47,8 @@ public class When_a_chats_working_line_shows_a_command_under_way : Specification
                                              new StatusOfAClaudeCode("busy", WaitingFor: null), StatusLine: null, TurnUnderWay: null, BackgroundWork: null);
          IReadOnlyList<ShownInTheChat> conversation = [new ShownInTheChat.Prompt("prompt", "Which repositories use it?"),
                                                        new ShownInTheChat.RunOfToolCalls([ACall("call-1", "Bash", new { command = "cd /c/Dev && ls" }, done: true), ACall("call-2", "Bash", new { command = Command, description = Description }, done: false)])];
-         shown.call.Show(claudeCode);
-         shown.call.Show(conversation);
-         shown.line.Show(claudeCode);
-         shown.line.Show(conversation);
+         status.Show(claudeCode);
+         status.Show(conversation);
       });
       Render(window, "a-chats-working-line");
       return shown;

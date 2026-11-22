@@ -1,4 +1,3 @@
-using System.Collections.Immutable;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
@@ -13,9 +12,7 @@ using Cloyd.Hub;
 using Cloyd.Hub.Commands;
 using Cloyd.Ides;
 using Cloyd.Links;
-using Cloyd.Pasting;
 using Cloyd.Saving;
-using Cloyd.SessionHosts;
 using Cloyd.Theming;
 using Cloyd.Sessions;
 using Cloyd.VirtualDesktops;
@@ -41,9 +38,8 @@ namespace Cloyd.Projects;
 /// A window with no desktop saved, as on its first opening, goes to the desktop of the project's window in an IDE, once
 /// an IDE shows the project. It follows neither afterwards: where Magnus moves it, it stays.
 /// </remarks>
-sealed partial class ProjectWindow : Window
+sealed partial class ProjectWindow : Window, ISessionHistoryTarget
 {
-   static readonly TimeSpan BeforeFollowingTheRunningSessionsAgain = TimeSpan.FromSeconds(1);
    static readonly TimeSpan BetweenSaves = TimeSpan.FromSeconds(2);
    static readonly TimeSpan BetweenLooksForItsIdesWindow = TimeSpan.FromSeconds(2);
    static readonly TimeSpan BetweenReadingsOfItsFiles = TimeSpan.FromSeconds(5);
@@ -57,11 +53,8 @@ sealed partial class ProjectWindow : Window
    readonly ProjectWindows _windowsOfCloyd;
    readonly TheHub _hub;
    readonly TheIdes _ides;
-   readonly ShellOfNewSessions _shellOfNewSessions;
    readonly SavedProjectWindows _savedWindows;
-   readonly PastedImages _pastedImages;
-   ImmutableDictionary<string, string> _peerNames = ImmutableDictionary.Create<string, string>(StringComparer.OrdinalIgnoreCase);
-   bool _requestedArchivedPeerNames;
+   SessionsOfCloyd Sessions => _windowsOfCloyd.Sessions;
    /// <summary>The glyph of the button that opens the history picker: Windows' icon font's History, a clock with an arrow back.</summary>
    static readonly string HistoryIcon = char.ConvertFromUtf32(0xE81C);
 
@@ -86,10 +79,9 @@ sealed partial class ProjectWindow : Window
 
    /// <summary>
    /// The window of <paramref name="project"/>, one of <paramref name="windowsOfCloyd"/> from when it opens until it
-   /// closes: its history picker tells which of their tabs runs what. The images pasted into its tabs are saved in
-   /// <paramref name="pastedImages"/>.
+   /// closes: its history picker tells which of their tabs runs what.
    /// </summary>
-   public ProjectWindow(Project project, ProjectWindows windowsOfCloyd, TheHub hub, TheIdes ides, DotNetAnalysisAndRefactoringMcp dotNetAnalysisAndRefactoringMcp, ShellOfNewSessions shellOfNewSessions, SavedProjectWindows savedWindows, PastedImages pastedImages)
+   public ProjectWindow(Project project, ProjectWindows windowsOfCloyd, TheHub hub, TheIdes ides, DotNetAnalysisAndRefactoringMcp dotNetAnalysisAndRefactoringMcp, SavedProjectWindows savedWindows)
    {
       Project = project;
       FilesAndSymbols = new FilesAndSymbolsOfAProject(project, dotNetAnalysisAndRefactoringMcp);
@@ -97,9 +89,7 @@ sealed partial class ProjectWindow : Window
       _hub = hub;
       _historyPicker = new SessionHistoryPicker(this);
       _ides = ides;
-      _shellOfNewSessions = shellOfNewSessions;
       _savedWindows = savedWindows;
-      _pastedImages = pastedImages;
       Title = $"Cloyd: {project.Name}";
       Width = 1400;
       Height = 900;
@@ -154,6 +144,8 @@ sealed partial class ProjectWindow : Window
    protected override void OnOpened(EventArgs e)
    {
       base.OnOpened(e);
+      Sessions.Changed += UpdatePeerNames;
+      Sessions.Failed += Tell;
       _windowsOfCloyd.Opened(this);
       var saved = _savedWindows.Of(Project);
       _ = GoToItsDesktop(saved.Desktop);
@@ -162,7 +154,6 @@ sealed partial class ProjectWindow : Window
          await BringBackTheTabs(saved);
          _ = KeepItSaved();
       });
-      _ = FollowTheRunningSessions();
       _ = KeepItsFilesCurrent();
       _ = KeepItsSymbolsCurrent();
    }
@@ -172,7 +163,9 @@ sealed partial class ProjectWindow : Window
       _closed.Cancel();
       if(_savesItself) TellingOfFailure(Save);
 
-      foreach(var tab in Tabs) tab.LetGo();
+      Sessions.Failed -= Tell;
+      Sessions.Changed -= UpdatePeerNames;
+      foreach(var tab in Tabs) Release(tab);
       base.OnClosed(e);
    }
 
@@ -238,11 +231,21 @@ sealed partial class ProjectWindow : Window
       await StartIn(tab, session.CommandThatResumesIt);
    }
 
+   public Task ChooseExistingTab(ProjectWindow owner, SessionTab tab, Session session, bool resume)
+   {
+      if(resume) return owner.ResumeIn(tab, session);
+      owner.ShowTheTab(tab);
+      return Task.CompletedTask;
+   }
+
+   public Task ChooseDashboardHost(SessionHostOfTheHub host, Session session, bool resume) =>
+      _windowsOfCloyd.ShowDashboard(Project).ChooseDashboardHost(host, session, resume);
+
    /// <summary>
    /// Shows <paramref name="host"/>, which runs <paramref name="session"/> and which no tab shows, in a tab of its own, which
    /// it selects: attaching takes the session over from a console that shows it.
    /// </summary>
-   public void ShowInATab(SessionHostOfTheHub host, Session session) => _tabs.SelectedItem = Show(host, session, newSession: null);
+   public void ShowInATab(SessionHostOfTheHub host, Session session) => _tabs.SelectedItem = Show(host, session, newSession: null, takeOver: true);
 
    /// <summary>
    /// Starts <paramref name="session"/> in the project's folder, in a tab of its own, which it selects. When the hub
@@ -269,7 +272,7 @@ sealed partial class ProjectWindow : Window
          if(await BringBack(savedTab, hosts.SingleOrDefault(it => it.Id == savedTab.SessionHost), resumable) is {} tab && savedTab.SessionHost == saved.SelectedTab)
             selected = tab;
 
-      foreach(var host in hosts.Where(it => Project.Equals(it.Project) && !it.Attached && !IsShown(it.Id)))
+      foreach(var host in hosts.Where(it => Project.Equals(it.Project) && Sessions.CanRestore(it) && !IsShown(it.Id)))
          Show(host, latestSession: null, newSession: null);
       _tabs.SelectedItem = selected ?? Tabs.FirstOrDefault();
    }
@@ -281,81 +284,67 @@ sealed partial class ProjectWindow : Window
    /// </summary>
    async Task<SessionTab?> BringBack(SavedSessionTab saved, SessionHostOfTheHub? host, ResumableSessions resumable)
    {
-      var tab = await TheTabBroughtBack();
-      tab?.BringBackDrafts(saved);
-      return tab;
+      if(Sessions.Ending(saved.SessionHost)) return null;
+      if(host is not null) return Sessions.CanRestore(host) ? Show(host, saved.Session, newSession: null, saved) : null;
+      if(saved.Session is not {} session || !await resumable.Include(session) || Sessions.Ending(saved.SessionHost)) return null;
 
-      async Task<SessionTab?> TheTabBroughtBack()
-      {
-         if(host is not null) return host.Attached ? null : Show(host, saved.Session, newSession: null);
-         if(saved.Session is not {} session || !await resumable.Include(session)) return null;
-
-         var resumed = await ShowANewHost(saved.Directory, session, newSession: null);
-         await StartIn(resumed, session.CommandThatResumesIt);
-         return resumed;
-      }
+      var resumed = await ShowANewHost(saved.Directory, session, newSession: null, saved);
+      await StartIn(resumed, session.CommandThatResumesIt);
+      return resumed;
    }
 
-   async Task<SessionTab> ShowANewHost(string directory, Session? latestSession, NewSession? newSession) =>
-      Show(await _hub.StartASessionHost(_shellOfNewSessions, directory, SessionHostLabel.OfANewHostOf(Project), _closed.Token), latestSession, newSession);
+   async Task<SessionTab> ShowANewHost(string directory, Session? latestSession, NewSession? newSession, SavedSessionTab? saved = null) =>
+      Show(await Sessions.StartHost(Project, directory, _closed.Token), latestSession, newSession, saved);
 
-   /// <summary>Has the hub start <paramref name="command"/> in the host of <paramref name="tab"/>: when it doesn't, the tab says why, and shows the shell at its prompt.</summary>
-   async Task StartIn(SessionTab tab, AgentCliCommand command)
-   {
-      try
-      {
-         await command.HaveTheHubTypeItInto(tab.Host, _hub, _closed.Token);
-      }
-      catch(RefusedByTheHub refusal)
-      {
-         tab.Tell($"The hub didn't type {command}: {refusal.Message}");
-      }
-   }
+   Task StartIn(SessionTab tab, AgentCliCommand command) => Sessions.StartIn(tab.View, command, _closed.Token);
 
-   SessionTab Show(SessionHostOfTheHub host, Session? latestSession, NewSession? newSession)
+   SessionTab Show(SessionHostOfTheHub host, Session? latestSession, NewSession? newSession, SavedSessionTab? saved = null, bool takeOver = false)
    {
-      var tab = new SessionTab(host, latestSession, newSession, SizeOfTheTerminals, _hub, _pastedImages, _hub.SupportsCodexChat ? _hub : null);
+      if(Tabs.FirstOrDefault(it => it.Host.Id == host.Id) is {} existing) return existing;
+      var session = Sessions.Open(host, latestSession, newSession, SizeOfTheTerminals, saved);
+      var tab = new SessionTab(session, takeOver);
       tab.ClosedByMagnus += it => _ = TellingOfFailure(() => EndTheSessionOf(it));
-      tab.EndedByItself += (it, _) => Remove(it);
+      tab.EndedByItself += Remove;
       _tabs.Add(tab);
-      ShowPeerNames(tab);
+      Sessions.Include(host);
+      Sessions.ShowPeerNames(tab.View);
       return tab;
    }
 
    bool IsShown(SessionHostId host) => Tabs.Any(it => it.Host.Id == host);
 
-   void ShowPeerNames(SessionTab tab) => tab.Chat?.ShowPeerNames(_peerNames, RequestArchivedPeerNames);
+   /// <summary>Adds the tab for a host just started in Projects Dashboard while keeping the project's current selection.</summary>
+   public void Include(HostedSession session) => Show(session.Host, session.LatestSession, newSession: null);
 
-   /// <summary>Read saved names on the first ID the running sessions cannot identify. A live name takes precedence.</summary>
-   void RequestArchivedPeerNames()
+   void UpdatePeerNames()
    {
-      if(_requestedArchivedPeerNames) return;
-      _requestedArchivedPeerNames = true;
-      _ = TellingOfFailure(async () =>
-      {
-         var archived = await _hub.SessionsOnDisk(_closed.Token);
-         foreach(var entry in archived)
-            if(entry.Session is { Name: { Length: > 0 } name } session && !_peerNames.ContainsKey(session.Id.Value))
-               _peerNames = _peerNames.Add(session.Id.Value, name);
-         foreach(var tab in Tabs) ShowPeerNames(tab);
-      });
+      foreach(var tab in Tabs) Sessions.ShowPeerNames(tab.View);
+   }
+
+   void Release(SessionTab tab)
+   {
+      tab.EndedByItself -= Remove;
+      tab.Release(Sessions);
    }
 
    /// <summary>Ends the session of <paramref name="tab"/>, as Magnus asked by closing it: whether or not the window closes meanwhile.</summary>
    async Task EndTheSessionOf(SessionTab tab)
    {
       Remove(tab);
-      await _hub.End(tab.Host.Id, CancellationToken.None);
+      await Sessions.End(tab.Host.Id);
    }
 
    void Remove(SessionTab tab)
    {
-      tab.LetGo();
+      Release(tab);
       _tabs.Remove(tab);
    }
 
    /// <summary>Saves the window, on the <see cref="Desktop"/> it was on as it last looked: as it closes, Windows no longer knows it.</summary>
-   void Save() => _savedWindows.Save(Project, new SavedProjectWindow([.. Tabs.Select(it => it.AsSaved)], SelectedTab?.Host.Id, Desktop));
+   void Save()
+   {
+      _savedWindows.Save(Project, new SavedProjectWindow([.. Tabs.Select(it => it.AsSaved)], SelectedTab?.Host.Id, Desktop));
+   }
 
    /// <summary>Saves the window as it is now, on the desktop Windows says it is on.</summary>
    void SaveAsItIsNow()
@@ -375,30 +364,6 @@ sealed partial class ProjectWindow : Window
       {
          TellingOfFailure(SaveAsItIsNow);
          await Task.Delay(BetweenSaves, CancellationToken.None);
-      }
-   }
-
-   /// <summary>Tells each tab which Claude Code runs in its host, each time the hub's list of them changes, until the window closes.</summary>
-   async Task FollowTheRunningSessions()
-   {
-      while(!_closed.IsCancellationRequested)
-      {
-         await TellingOfFailure(async () =>
-         {
-            await foreach(var (hub, runningSessions) in _hub.RunningSessionsAsTheyChange(_closed.Token))
-            {
-               foreach(var running in runningSessions)
-                  if(running.Session is { Name: { Length: > 0 } name } session)
-                     _peerNames = _peerNames.SetItem(session.Id.Value, name);
-               foreach(var tab in Tabs)
-               {
-                  tab.OfferCodexChat(hub.Says.SupportsCodexChat ? _hub : null);
-                  tab.SessionRunningInIt = runningSessions.FirstOrDefault(it => it.SessionHost == tab.Host.Id);
-                  ShowPeerNames(tab);
-               }
-            }
-         });
-         await Task.Delay(BeforeFollowingTheRunningSessionsAgain, CancellationToken.None);
       }
    }
 
@@ -477,10 +442,15 @@ sealed partial class ProjectWindow : Window
       }
       catch(Exception failure)
       {
-         Failure = failure;
-         _failure.Text = failure.Message;
-         _failure.IsVisible = true;
+         Tell(failure);
       }
+   }
+
+   void Tell(Exception failure)
+   {
+      Failure = failure;
+      _failure.Text = failure.Message;
+      _failure.IsVisible = true;
    }
 
    /// <summary>Does <paramref name="doing"/> as <see cref="TellingOfFailure(Func{Task})"/> does, at once.</summary>
@@ -550,11 +520,15 @@ sealed partial class ProjectWindow : Window
          VerticalAlignment = VerticalAlignment.Top,
          Children = { AsAButtonBeforeTheTabs(_newSession, AddIcon), AsAButtonBeforeTheTabs(_openTheHistory, HistoryIcon) }
       };
-      Resources.MergedDictionaries.Add(LookOfTheTabs.AsResources(roomBeforeTheTabs: 4 + 2 * SizeOfAButtonBeforeTheTabs + spacing + 8));
+      var dashboard = new Button { Content = ProjectsDashboard.ProjectsDashboardWindow.WindowTitle, HorizontalAlignment = HorizontalAlignment.Right,
+                                  VerticalAlignment = VerticalAlignment.Top, Height = LookOfTheTabs.HowHighATabIs, Margin = new Thickness(0, LookOfTheTabs.RoomAboveTheTabs, 4, 0) };
+      dashboard.Click += (_, _) => _windowsOfCloyd.ShowDashboard(Project);
+      Resources.MergedDictionaries.Add(LookOfTheTabs.AsResources(roomBeforeTheTabs: 4 + 2 * SizeOfAButtonBeforeTheTabs + spacing + 8,
+                                                                 roomAfterTheTabs: 145));
       LookOfTheTabs.Ground.AsTheBackgroundOf(this);
       LookOfTheTabs.Strip.AsTheBackgroundOf(_tabs);
       DockPanel.SetDock(_failure, Dock.Bottom);
-      return new Panel { Children = { new DockPanel { Children = { _failure, new Panel { Children = { _tabs, buttons } } } }, _historyPicker } };
+      return new Panel { Children = { new DockPanel { Children = { _failure, new Panel { Children = { _tabs, buttons, dashboard } } } }, _historyPicker } };
    }
 
    /// <summary><paramref name="button"/> as a button before the tabs: <paramref name="icon"/> of Windows' icon font, square, on the strip's ground.</summary>
