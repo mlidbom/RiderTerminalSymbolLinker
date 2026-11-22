@@ -14,6 +14,9 @@ sealed class Project : IEquatable<Project>
    /// <summary>The name of the project's folder, as its window's title shows it.</summary>
    public string Name => Path.GetFileName(Folder);
 
+   /// <summary>Whether the other folder is this folder or one below it, on a directory boundary.</summary>
+   public bool Contains(Project other) => Equals(other) || other.Folder.StartsWith(Path.EndsInDirectorySeparator(Folder) ? Folder : Folder + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase);
+
    /// <summary>Whether <paramref name="other"/> is the same folder: Windows' paths are compared ignoring case.</summary>
    public bool Equals(Project? other) => other is not null && string.Equals(Folder, other.Folder, StringComparison.OrdinalIgnoreCase);
 

@@ -24,8 +24,7 @@ namespace Cloyd.Sessions;
 /// </remarks>
 sealed class SessionTab : TabItem
 {
-   readonly TextBlock _title = new() { VerticalAlignment = VerticalAlignment.Center };
-   readonly IndicatorOfASessionTab _indicator = new();
+   readonly SessionTabHeader _header = new();
    public HostedSession Session { get; }
    public SessionView View { get; }
 
@@ -35,23 +34,20 @@ sealed class SessionTab : TabItem
       View = new SessionView(session, inProjectWindow: true, showTerminal: true);
       if(takeOver) session.ShowTerminalIn(View, takeOver: true);
       Content = View;
-      Header = TheHeader();
+      Header = _header;
+      _header.EndRequested += (_, _) => ClosedByMagnus?.Invoke(this);
       session.Changed += ShowHeader;
       session.Ended += Ended;
       ShowHeader();
    }
 
-   void ShowHeader()
-   {
-      _indicator.Show(Session.KnownAgentCli, Session.Running);
-      _title.Text = Session.Title;
-   }
+   void ShowHeader() => _header.Heading = new SessionTabHeading(Session.Title, Session.KnownAgentCli, Session.Running);
 
    public void Release(SessionsOfCloyd sessions)
    {
       Session.Changed -= ShowHeader;
       Session.Ended -= Ended;
-      _indicator.Show(null, null);
+      _header.Heading = null;
       sessions.Release(View);
    }
 
@@ -68,8 +64,8 @@ sealed class SessionTab : TabItem
    public AgentCli AgentCli => Session.AgentCli;
    public bool OffersTheChat => View.OffersTheChat;
    public string Title => Session.Title;
-   public bool ShowsThatItsSessionWorks => _indicator.ShowsThatItsSessionWorks;
-   public string? BackgroundWorkMarked => _indicator.BackgroundWorkMarked;
+   public bool ShowsThatItsSessionWorks => _header.Indicator.ShowsThatItsSessionWorks;
+   public string? BackgroundWorkMarked => _header.Indicator.BackgroundWorkMarked;
    public string? Notice => View.Notice;
    public event Action<SessionTab>? ClosedByMagnus;
    public event Action<SessionTab>? EndedByItself;
@@ -82,13 +78,5 @@ sealed class SessionTab : TabItem
    public bool ShowsTheChat => View.ShowsTheChat;
    public void SwitchBetweenTheTerminalAndTheChat() => View.SwitchBetweenTheTerminalAndTheChat();
    public void FocusWhatItShows() => View.FocusWhatItShows();
-
-   Control TheHeader()
-   {
-      var close = new Button { Content = "×", Padding = new Thickness(6, 0), Background = Brushes.Transparent, VerticalAlignment = VerticalAlignment.Center };
-      ToolTip.SetTip(close, "End the session");
-      close.Click += (_, _) => ClosedByMagnus?.Invoke(this);
-      return new StackPanel { Orientation = Orientation.Horizontal, Spacing = 2, Children = { _indicator, _title, close } };
-   }
 
 }

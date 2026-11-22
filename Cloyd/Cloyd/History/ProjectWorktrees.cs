@@ -1,5 +1,5 @@
-using System.Diagnostics;
 using Cloyd.Projects;
+using Cloyd.Projects.Git;
 
 namespace Cloyd.History;
 
@@ -10,9 +10,6 @@ namespace Cloyd.History;
 /// </summary>
 sealed class ProjectWorktrees
 {
-   /// <summary>What git says, in English, as it fails in a folder that no repository holds.</summary>
-   const string WhatGitSaysOutsideARepository = "not a git repository";
-
    ProjectWorktrees(string thisWorktree, IReadOnlyList<string>? allWorktrees)
    {
       ThisWorktree = thisWorktree;
@@ -49,32 +46,8 @@ sealed class ProjectWorktrees
    /// <summary>The worktrees of <paramref name="project"/>, as git tells them.</summary>
    public static async Task<ProjectWorktrees> Of(Project project, CancellationToken cancellation)
    {
-      if(await Git(project, cancellation, "rev-parse", "--show-toplevel") is not [var worktree]) return new ProjectWorktrees(project.Folder, null);
-
-      var worktrees = (await Git(project, cancellation, "worktree", "list", "--porcelain"))!
-                     .Where(it => it.StartsWith("worktree ", StringComparison.Ordinal))
-                     .Select(it => FullPathOf(it["worktree ".Length..]));
-      return new ProjectWorktrees(FullPathOf(worktree), [.. worktrees]);
-   }
-
-   /// <summary><paramref name="path"/> as git prints it, with <c>/</c>, as a full path of Windows', with no separator at its end.</summary>
-   static string FullPathOf(string path) => Path.TrimEndingDirectorySeparator(Path.GetFullPath(path));
-
-   /// <summary>What git prints, run with <paramref name="arguments"/> in <paramref name="project"/>'s folder, a line each: null outside a repository.</summary>
-   static async Task<IReadOnlyList<string>?> Git(Project project, CancellationToken cancellation, params string[] arguments)
-   {
-      using var git = Process.Start(new ProcessStartInfo("git", arguments)
-      {
-         WorkingDirectory = project.Folder,
-         RedirectStandardOutput = true,
-         RedirectStandardError = true,
-         CreateNoWindow = true
-      })!;
-      var printed = git.StandardOutput.ReadToEndAsync(cancellation);
-      var complaint = git.StandardError.ReadToEndAsync(cancellation);
-      await Task.WhenAll(printed, complaint, git.WaitForExitAsync(cancellation));
-      if(git.ExitCode == 0) return printed.Result.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-      if(complaint.Result.Contains(WhatGitSaysOutsideARepository)) return null;
-      throw new InvalidOperationException($"git {string.Join(' ', arguments)} failed in {project}, exiting with {git.ExitCode}: {complaint.Result}");
+      var repository = await GitWorktrees.Read(project, cancellation);
+      return repository is null ? new ProjectWorktrees(project.Folder, null)
+         : new ProjectWorktrees(repository.Containing(project)?.Root.Folder ?? project.Folder, [.. repository.Checkouts.Select(it => it.Root.Folder)]);
    }
 }
