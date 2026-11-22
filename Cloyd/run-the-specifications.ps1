@@ -1,7 +1,8 @@
 <#
 .SYNOPSIS
 Runs Cloyd's specifications in several runs at once, each a dotnet test of its own with a share of the specification
-classes, and says what passed, what failed, and where the time went.
+classes, and says what passed, what was skipped and why, what failed, and where the time went. A skipped fact fails
+nothing: the rule on when work is done allows one that names the known bug it waits for.
 
 .DESCRIPTION
 Avalonia's headless platform has one UI thread a process, whose keyboard focus is one for the process, so a run takes
@@ -82,6 +83,7 @@ $runsTook = $clock.Elapsed - $runsStarted
 
 $perClass = @{}
 $failures = [Collections.Generic.List[string]]::new()
+$skipped = [Collections.Generic.List[string]]::new()
 $passed = 0
 $failed = 0
 foreach ($it in $started) {
@@ -97,6 +99,10 @@ foreach ($it in $started) {
    $classOf = @{}
    foreach ($test in $trx.TestRun.TestDefinitions.UnitTest) { $classOf[$test.id] = $test.TestMethod.className }
    foreach ($result in $trx.TestRun.Results.UnitTestResult) {
+      if ($result.outcome -eq 'NotExecuted') {
+         $skipped.Add("$($result.testName): $($result.Output.ErrorInfo.Message)$($result.Output.StdOut)".TrimEnd())
+         continue
+      }
       $class = $classOf[$result.testId]
       if (-not $perClass.ContainsKey($class)) { $perClass[$class] = [pscustomobject]@{ Class = $class; Seconds = 0.0; Facts = 0; Longest = 0.0; AllPassed = $true } }
       $timed = $perClass[$class]
@@ -129,7 +135,8 @@ New-Item -ItemType Directory -Force (Split-Path $timesFile) | Out-Null
 $measured | ConvertTo-Json | Set-Content $timesFile
 
 foreach ($failure in $failures) { "$failure`n" }
-"{0} passed, {1} failed, in {2:0} s: built in {3:0} s, {4} run(s) at once in {5:0} s" -f $passed, $failed, $clock.Elapsed.TotalSeconds, $buildTook.TotalSeconds, $dealt.Count, $runsTook.TotalSeconds
+foreach ($skip in $skipped) { "Skipped: $skip" }
+"{0} passed, {1} skipped, {2} failed, in {3:0} s: built in {4:0} s, {5} run(s) at once in {6:0} s" -f $passed, $skipped.Count, $failed, $clock.Elapsed.TotalSeconds, $buildTook.TotalSeconds, $dealt.Count, $runsTook.TotalSeconds
 foreach ($run in $dealt) {
    "  run {0}: {1,2} classes, expected {2,5:0.0} s, its facts took {3,5:0.0} s, the run {4,5:0.0} s" -f $run.Number, $run.Classes.Count, $run.Expected, ($run.Classes | ForEach-Object { if ($perClass.ContainsKey($_)) { $perClass[$_].Seconds } } | Measure-Object -Sum).Sum, $run.Took
 }
