@@ -307,22 +307,20 @@ own: end this one now." It shows in `list_peers` once it has had a turn. Told on
 helpers slept a minute at a time, for up to four minutes, before ending the turn, and a brief runs only after the turn
 under way.
 
-**Handing it a task,** the coordinating session, the one that hands the work:
+**Handing it a task,** the coordinating session, the one that hands the work. What briefing and reviewing a helper
+takes anywhere, learned on `~/.claude`'s C#, is in `~/.claude/dev_docs/working-with-codex-helpers.md`: read it before
+the first brief. Here:
 
 1. Bring its branch up to `main` while it has nothing unmerged: `git -C <its checkout> merge --ff-only main`.
-2. Brief it with `send_to_peer`, addressed to `codex:<its id>` from `list_peers`: a send by name fails if the session
-   was renamed in between. A brief that stands alone, with its points numbered, since messages queue and arrive together
-   after the turn under way, and a later one may have to correct a point. It gives the goal, what is ruled out, the
-   documents and code to read, and the limits in so many words, such as what not to touch: helpers keep to the limits
-   they are given. Then what is done: committed on its branch, the changelog entry where one is due, and its
-   specifications passing. Ask for permanent specifications in the specification projects in so many words: left
-   alone, helpers verify with throwaway harnesses in `%TEMP%`. And what to send back: its commits, the specifications it
-   ran and their result, what it verified and what it inferred, and what it noticed and left. Have it verify facts such
-   as a status value in the source or the binary: one helper guessed one, and the binary disproved it.
-3. Review its commits once it replies: `git log main..codex-helper-1`, `git diff main...codex-helper-1`, and read its
-   line on what it verified and what it inferred. What review finds is mostly design and the code standards, not
-   correctness: a catch with no observed failure behind it, a rename that missed a sibling, doc comments without their
-   `<see cref>` links. Ask for changes with `send_to_peer`, or make them.
+2. Brief it with `send_to_peer` to `codex:<its id>`, a brief that stands alone, its points numbered, as that document
+   says. The limits in so many words, though the rule on working in a checkout other than the main one has them too:
+   deploy and reload nothing, use none of Rider's or ReSharper's editing tools, and what not to touch, such as code
+   another session is changing. What is done: committed on its branch, the changelog entry where one is due, and
+   permanent specifications in `Cloyd/Cloyd.Specifications` or `tests/RiderTerminalSymbolLinker.Specifications`,
+   asked for in so many words, passing with the rest. What to send back: its commits, the specifications it ran and
+   their result, what it verified and what it inferred, and what it noticed and left.
+3. Review its commits once it replies, `git log main..codex-helper-1` and `git diff main...codex-helper-1`, for design
+   and the code standards above all. Ask for changes with `send_to_peer`, or make them.
 4. Merge: rebase its branch onto `main` if `main` has moved, then `git merge --ff-only codex-helper-1` in the main
    checkout. Run the full specifications there, deploy, and push.
 
@@ -332,7 +330,3 @@ named by its run's process (`Sandbox`). One-shot Codex agents, for a question th
 continued. Both use the model and effort in `~/.codex/config.toml` (`gpt-6.2-astra` at `xhigh` on 2026-11-22), which
 `-m` and `-c model_reasoning_effort=<level>` override. The peers server's own traps, such as a renamed session listed
 under its old name, are in `~/.claude/dev_docs/peers-and-codex-backlog.md`.
-
-**What helpers have proved good at** (gpt-collaborators, after a day with three, 2026-11-22): research in source that
-isn't ours, reproducing faults, finding root causes, careful trials. Untried: refactorings across many files, UI, and
-work that is mostly specifications.
