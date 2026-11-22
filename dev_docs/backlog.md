@@ -16,6 +16,21 @@ a tool call's command and output.
 open, in the order the view draws it, so that a match's occurrence lands on its line (`MatchesPainted.AsTheOneShown`);
 and tool output drawn in `MarkdownTextBlock`s, to be painted.
 
+## Handed to the Codex helpers
+
+Which helper has what, so that two strands don't touch the same code (`dev_docs/development-environment.md`, "Codex
+helpers, in checkouts of their own"). Remove an entry once its work is merged.
+
+### codex-helper-1 (`cloyd-codex-1`, `codex:01a2009c-1d49-7f32-8ab7-ed623493aef1`): Shift+Enter in a Codex session's terminal tab
+
+**Handed by .NET-cloyd, 2026-11-22.** Magnus: "shift+enter does not produce a newline in a codex session", in a terminal
+tab of Cloyd. `TerminalOfASessionHost.TypeANewLineOnShiftEnter` types a line feed, Claude Code's Ctrl+J. Its brief
+keeps the change to `TerminalOfASessionHost`, plus the least that hands it the tab's `AgentCli`. new-view's
+refactoring of each session's state will move where the terminal is made, and builds on this once it's merged.
+
+**Then:** review, merge, run the full specifications, deploy. If the specification needs the stand-in for Codex to take
+Codex's key for a new line, ask the stand-in's owner, gpt-collaborators.
+
 ## Waiting for Compze
 
 ### Compze.xUnitBDD: a class's scenario run once for all its facts, opted into
