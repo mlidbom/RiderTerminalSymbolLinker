@@ -56,7 +56,7 @@ sealed class SessionTab : TabItem
       _agentCliBeforeASessionRuns = newSession?.AgentCli ?? AgentCli.ClaudeCode;
       _attachment = AttachmentToASessionHost.To(host.Id, size);
       _attachment.Ended += why => Dispatcher.UIThread.Post(() => EndedByItself?.Invoke(this, why));
-      Terminal = new TerminalOfASessionHost(_attachment, pastedImages);
+      Terminal = new TerminalOfASessionHost(_attachment, pastedImages, () => AgentCli);
       Terminal.PasteFailed += failure => Tell($"Cloyd couldn't paste: {failure.Message}");
       Chat = new ChatOfASession(hub, pastedImages) { IsVisible = false };
       Chat.Show((latestSession as ClaudeCodeSession)?.Id);
