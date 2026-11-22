@@ -1,10 +1,9 @@
-using System.Globalization;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Documents;
+using Avalonia.Data;
 using Avalonia.Layout;
 using Avalonia.Media;
-using Avalonia.Threading;
 using Cloyd.Chat.Views;
 using Cloyd.Hub.RunningSessions;
 
@@ -23,80 +22,33 @@ namespace Cloyd.Chat.Status;
 /// and include the time and tokens like they do". Over the box, rather than at the conversation's end, so that it shows
 /// however the conversation is scrolled, as the TUI's does.<br/>
 /// The turn's time is counted from its start, or, while the hub tells of no turn under way, as in a session that doesn't
-/// load the <c>tooling-commands</c> mod, from when the line saw Claude Code turn busy.
+/// load the <c>tooling-commands</c> mod, from when the shared <see cref="ClaudeCodeTurnStatus"/> first saw Claude Code turn busy.
 /// </remarks>
 sealed class WorkingLineOfTheChat : UserControl
 {
-   /// <summary>What the line says Claude does while the hub tells of no turn under way.</summary>
-   public const string Working = "Working…";
+   public const string Working = ClaudeCodeTurnStatus.Working;
 
    readonly TextBlock _says = new() { FontSize = 13, TextTrimming = TextTrimming.CharacterEllipsis, VerticalAlignment = VerticalAlignment.Center };
 
-   /// <summary>Counts the time the turn has taken, a second at a time.</summary>
-   readonly DispatcherTimer _ticking = new() { Interval = TimeSpan.FromSeconds(1) };
-
-   RunningClaudeCode? _claudeCode;
-   ToolCallsOfTheLastTurn _callsOfTheTurn = new([]);
-
-   /// <summary>When the line saw Claude Code turn busy: null while it isn't.</summary>
-   DateTime? _busySince;
-
-   public WorkingLineOfTheChat()
+   public WorkingLineOfTheChat(ClaudeCodeTurnStatus status)
    {
-      _ticking.Tick += (_, _) => Update();
-      IsVisible = false;
-      Content = new DockPanel { Margin = new Thickness(28, 2, 28, 2), Children = { Docked(Spinner), _says } };
+      var activity = ColoursOfTheChat.ClaudeActivity.AsTheForegroundOf(new Run { FontWeight = FontWeight.SemiBold });
+      var details = ColoursOfTheChat.Grey.AsTheForegroundOf(new Run());
+      activity.Bind(Run.TextProperty, CompiledBinding.Create((ClaudeCodeTurnStatus it) => it.Activity, status));
+      details.Bind(Run.TextProperty, CompiledBinding.Create((ClaudeCodeTurnStatus it) => it.TurnDetails, status));
+      _says.Inlines!.Add(activity);
+      _says.Inlines.Add(details);
+      DockPanel.SetDock(Spinner, Dock.Left);
+      Content = new DockPanel { Margin = new Thickness(28, 2, 28, 2), Children = { Spinner, _says } };
+      Bind(IsVisibleProperty, CompiledBinding.Create((ClaudeCodeTurnStatus it) => it.IsBusy, status));
+      Spinner.Bind(SpinnerOfClaudeCode.IsTurningProperty, CompiledBinding.Create((ClaudeCodeTurnStatus it) => it.IsBusy, status));
+      Loaded += (_, _) => status.RowLoaded();
+      Unloaded += (_, _) => status.RowUnloaded();
    }
 
-   /// <summary>The spinner at the start of the line, which turns while the line shows.</summary>
+   /// <summary>The spinner at the start of this row.</summary>
    public SpinnerOfClaudeCode Spinner { get; } = new();
 
-   /// <summary>What the line says, as Claude Code's own spinner line, such as <c>Thinking… (12s · ↓ 1.2k tokens)</c>: null while it doesn't show.</summary>
+   /// <summary>The text of this row as drawn, including its elapsed time.</summary>
    public string? Says => IsVisible ? LinesOfTheChat.TextIn(_says) : null;
-
-   /// <summary>Shows what <paramref name="claudeCode"/>, the Claude Code that runs in the tab, does: the line shows while it is busy. Null while none runs.</summary>
-   public void Show(RunningClaudeCode? claudeCode)
-   {
-      _claudeCode = claudeCode;
-      var isBusy = claudeCode?.Status.IsBusy == true;
-      if(isBusy && _busySince is null) _busySince = DateTime.UtcNow;
-      if(!isBusy) _busySince = null;
-      _ticking.IsEnabled = isBusy;
-      Spinner.IsTurning = isBusy;
-      Update();
-   }
-
-   /// <summary>Shows what the conversation, <paramref name="conversation"/> as the chat shows it, has of the turn: the commands it ran.</summary>
-   public void Show(IReadOnlyList<ShownInTheChat> conversation)
-   {
-      _callsOfTheTurn = ToolCallsOfTheLastTurn.In(conversation);
-      Update();
-   }
-
-   void Update()
-   {
-      IsVisible = _busySince is not null;
-      if(_busySince is not {} busySince) return;
-
-      var turn = _claudeCode?.TurnUnderWay;
-      _says.Inlines!.Clear();
-      _says.Inlines.Add(ColoursOfTheChat.ClaudeActivity.AsTheForegroundOf(new Run(turn?.Activity.AsShown ?? Working) { FontWeight = FontWeight.SemiBold }));
-      _says.Inlines.Add(ColoursOfTheChat.Grey.AsTheForegroundOf(new Run($" ({string.Join(" · ", HowTheTurnGoes())})")));
-
-      IEnumerable<string> HowTheTurnGoes()
-      {
-         yield return TimeTaken.Since(turn?.StartedAt ?? busySince).ToString();
-         if(turn?.OutputTokensSoFar is long tokens and > 0) yield return $"↓ {InThousands(tokens)} tokens";
-         if(_callsOfTheTurn.Commands is var commands and > 0) yield return commands == 1 ? "1 command" : $"{commands} commands";
-      }
-   }
-
-   /// <summary><paramref name="tokens"/>, as Claude Code's spinner counts them: <c>228</c>, <c>1.2k</c>.</summary>
-   static string InThousands(long tokens) => tokens < 1000 ? $"{tokens}" : (tokens / 1000.0).ToString("0.0", CultureInfo.InvariantCulture) + "k";
-
-   static Control Docked(Control control)
-   {
-      DockPanel.SetDock(control, Dock.Left);
-      return control;
-   }
 }

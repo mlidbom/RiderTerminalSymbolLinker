@@ -30,7 +30,8 @@ sealed class ChatOfAClaudeCodeSession : SessionChat
    readonly TheHub _hub;
    readonly OpenedInTheChat _opened = new();
 
-   CancellationTokenSource? _following;
+   readonly ClaudeCodeConversation _sharedConversation;
+   readonly ClaudeCodeTurnStatus _turnStatus;
    CancellationTokenSource? _followingTheTurn;
 
    /// <summary>The Claude Code that runs in the tab, as the hub last told: null while none runs.</summary>
@@ -46,15 +47,19 @@ sealed class ChatOfAClaudeCodeSession : SessionChat
    BlockBeingWritten? _blockBeingWritten;
 
    /// <summary>A chat that follows its conversation through <paramref name="hub"/>, and sends through it: the images pasted into its input box are saved in <paramref name="pastedImages"/>.</summary>
-   public ChatOfAClaudeCodeSession(TheHub hub, PastedImages pastedImages)
+   public ChatOfAClaudeCodeSession(TheHub hub, PastedImages pastedImages, ClaudeCodeChatInput? input = null, ClaudeCodeConversation? conversation = null, ClaudeCodeTurnStatus? turnStatus = null)
    {
       _hub = hub;
-      InputBox = new InputBoxOfTheChat(hub, pastedImages) { MaxWidth = WidthOfTheColumn + 32 };
+      input ??= new ClaudeCodeChatInput(hub);
+      _turnStatus = turnStatus ?? new ClaudeCodeTurnStatus();
+      _sharedConversation = conversation ?? new ClaudeCodeConversation(hub, input, _turnStatus);
+      InputBox = new InputBoxOfTheChat(input, pastedImages) { MaxWidth = WidthOfTheColumn + 32 };
       StatusLine = new StatusLineOfTheChat { MaxWidth = WidthOfTheColumn + 32 };
-      WorkingLine = new WorkingLineOfTheChat { MaxWidth = WidthOfTheColumn + 32 };
-      CallUnderWay = new CallUnderWayOfTheChat { MaxWidth = WidthOfTheColumn + 32 };
+      WorkingLine = new WorkingLineOfTheChat(_turnStatus) { MaxWidth = WidthOfTheColumn + 32 };
+      CallUnderWay = new CallUnderWayOfTheChat(_turnStatus) { MaxWidth = WidthOfTheColumn + 32 };
       MessagesOnTheirWay = new MessagesOnTheirWayOfTheChat { MaxWidth = WidthOfTheColumn + 32 };
       InputBox.MessagesOnTheirWayChanged += () => MessagesOnTheirWay.Show(InputBox.MessagesOnTheirWay);
+      MessagesOnTheirWay.Show(InputBox.MessagesOnTheirWay);
       WaitingForMagnusInTheTerminal = new WaitingForMagnusInTheTerminal { MaxWidth = WidthOfTheColumn + 32 };
       ArrangeRows(WaitingForMagnusInTheTerminal, CallUnderWay, MessagesOnTheirWay, WorkingLine, InputBox, StatusLine);
    }
@@ -92,8 +97,7 @@ sealed class ChatOfAClaudeCodeSession : SessionChat
          if(otherTasksRun) DrawWhatIsShown();
          InputBox.ClaudeCode = value;
          StatusLine.Show(value);
-         WorkingLine.Show(value);
-         CallUnderWay.Show(value);
+         _turnStatus.Show(value);
          WaitingForMagnusInTheTerminal.Show(value);
          if(anotherRuns) FollowTheTurnWhileShown();
       }
@@ -138,27 +142,8 @@ sealed class ChatOfAClaudeCodeSession : SessionChat
    /// <summary>Follows the conversation of <see cref="Session"/> while the chat is shown, and stops following it otherwise.</summary>
    void FollowWhileShown()
    {
-      _following?.Cancel();
-      _following = null;
-      if(Session is not {} session || !IsShown) return;
-
-      var following = _following = new CancellationTokenSource();
-      _ = Task.Run(async () =>
-      {
-         try
-         {
-            await foreach(var conversation in _hub.ConversationAsWritten(session, following.Token))
-            {
-               var shown = ShownInTheChat.AllOf(conversation);
-               Dispatcher.UIThread.Post(() => { if(!following.IsCancellationRequested) Draw(shown); });
-            }
-         }
-         catch(OperationCanceledException) when(following.IsCancellationRequested) {}
-         catch(Exception failure)
-         {
-            Dispatcher.UIThread.Post(() => Tell($"The chat can't follow the conversation of {session}: {failure.Message}"));
-         }
-      });
+      _sharedConversation.Unfollow(Draw, Tell);
+      if(Session is {} session && IsShown) _sharedConversation.Follow(session, Draw, Tell);
    }
 
    /// <summary>
@@ -200,9 +185,6 @@ sealed class ChatOfAClaudeCodeSession : SessionChat
       var isTheFirst = _conversation.Count == 0;
       _conversation = conversation;
       if(_blockBeingWritten is { HasEnded: true }) _blockBeingWritten = null;
-      InputBox.Seen(conversation);
-      WorkingLine.Show(conversation);
-      CallUnderWay.Show(conversation);
       DrawWhatIsShown();
       if(isTheFirst) ScrollToTheEnd();
    }
