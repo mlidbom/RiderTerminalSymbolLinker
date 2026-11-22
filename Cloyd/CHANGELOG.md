@@ -129,6 +129,11 @@ All notable changes to Cloyd are documented here. The format follows
     the session, as after it was archived. Windows saved before read their sessions as Claude Code's.
 
 ### Fixed
+- **Moving the mouse over a session's terminal no longer types text into it.** In some Codex sessions each move typed
+  characters such as `CO!CL!CI!` into Codex's input box. A program in the session had turned off a way of reporting the
+  mouse that Windows' console can't read; Cloyd's terminal took that for turning off them all, and fell back to an older
+  one the console can't read either, which it then typed in as text. Cloyd's terminal now ignores what a program asks of
+  the ways the console can't read, and the mouse reaches Codex as the mouse, also in a tab shown for the first time.
 - **Shift+Enter types a new line in Codex's input box,** as in Claude Code's: it typed nothing there, and what you
   typed next ran on in the same line. Codex starts a new line on Shift+Enter itself, so Cloyd now passes the key to it
   as pressed, and types Ctrl+J for Claude Code alone.

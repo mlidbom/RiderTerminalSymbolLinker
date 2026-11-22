@@ -16,7 +16,8 @@ namespace Cloyd.Terminals;
 /// The terminal of a session host: Iciclecreek's terminal control, on XTerm.NET, drawing what the host's pseudo console
 /// draws and typing into it, as a terminal does for a pseudo console of its own. It speaks the console's win32 input
 /// mode, which the host's console asks for, so that each key reaches the agent CLI in the host exactly, with its modifiers,
-/// Escape included.
+/// Escape included. It reports the mouse in the one encoding the console reads, ignoring the
+/// <see cref="MouseEncodingsConhostCantRead"/>.
 /// </summary>
 sealed class TerminalOfASessionHost : TerminalControl
 {
@@ -62,6 +63,7 @@ sealed class TerminalOfASessionHost : TerminalControl
       {
          if(_attached) return;
          _attached = true;
+         MouseEncodingsConhostCantRead.IgnoreIn(Terminal);
          AttachConnection(new SessionHostAsAPseudoConsole(attachment));
       };
       AddHandler(KeyDownEvent, TypeANewLineOnAShiftEnterThatWouldSend, RoutingStrategies.Tunnel);

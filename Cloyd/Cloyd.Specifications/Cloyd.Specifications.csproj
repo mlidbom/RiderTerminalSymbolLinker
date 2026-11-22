@@ -23,5 +23,7 @@
    <ItemGroup>
       <!-- The session the desktop app's pictures show, which the chat's specifications draw: see TheSampleSession. -->
       <None Include="..\..\dev_docs\cloyd-chat-specification\the-sample-session.jsonl" Link="TheSampleSession\the-sample-session.jsonl" CopyToOutputDirectory="PreserveNewest" />
+      <!-- The program a specification runs in a session's shell: see ProgramTakingTheMouse. -->
+      <None Update="TheSandbox\ProgramTakingTheMouse.ps1" CopyToOutputDirectory="PreserveNewest" />
    </ItemGroup>
 </Project>
