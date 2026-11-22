@@ -35,7 +35,9 @@ public class When_Claude_works_in_a_chats_tab : SpecificationWritingInAChat
       }
 
       [XF] public void the_working_line_says_what_Claude_does_and_how_long_the_turn_has_taken() =>
-         WorkingLineSays.Must().Satisfy(it => it is not null && Regex.IsMatch(it, @"^[^(]+… \(\d+s"));
+         WaitUntil(() => _tab.ClaudeCodeChat.WorkingLine.Says is {} line && Regex.IsMatch(line, @"^[^(]+… \(\d+s"),
+                   "the working line showed the turn activity and elapsed time reported after the busy status",
+                   () => _tab.ClaudeCodeChat.WorkingLine.Says ?? "hidden");
 
       /// <summary>Magnus, 2026-11-21: "get the progress animation icon into the tabs so that I can see which tabs have a working session in them".</summary>
       [XF] public void the_tabs_header_shows_that_it_works_with_the_spinner() => OnTheUIThread(() => _tab.ShowsThatItsSessionWorks).Must().BeTrue();
