@@ -111,19 +111,43 @@ public class When_a_peer_starts_a_session_in_a_project_window : SpecificationRun
       var receipt = new PeerSessionLaunchReceipt(CloydsFolder, request);
       receipt.RecordHostRequest();
       var host = _worktree.StartASessionHost(SessionHostLabel.ForAPeer(_project.Project, request.RequestId));
-      receipt.RecordCliRequest(host.Id);
-      DoneOnTheUIThread(() => AgentCli.Codex.CommandOfANewSession(null).HaveTheHubTypeItInto(host, Sandbox.HubOfTheSandbox.Hub, CancellationToken.None));
       HandedOver(_project);
       var tab = OnTheUIThread(() => Windows.Open.Single().Tabs.Single());
+      using var observation = OnTheUIThread(() => new FirstSessionOfAPeerLaunch(tab.Session, request, recorded: null));
+      receipt.RecordCliRequest(host.Id);
+      DoneOnTheUIThread(() => AgentCli.Codex.CommandOfANewSession(null).HaveTheHubTypeItInto(host, Sandbox.HubOfTheSandbox.Hub, CancellationToken.None));
       WaitUntil(() => tab.SessionRunningInIt is not null, "the initial Codex session appeared");
       var initial = OnTheUIThread(() => tab.SessionRunningInIt!.Session.Id.Value);
       DoneOnTheUIThread(() => tab.Terminal.SendInputAsync("/new\r"));
       WaitUntil(() => tab.SessionRunningInIt?.Session.Id.Value is {} id && id != initial, "the same host showed a replacement session");
+      // Both real identities have been observed before the waiting launch is allowed to confirm its command.
+      var confirmation = OnTheUIThread(() => observation.Confirm(CancellationToken.None));
+      confirmation.IsFaulted.Must().BeTrue();
+      confirmation.Exception!.GetBaseException().Message.Must().Contain(initial);
       using var retry = Posted("sessions/start", JsonContent.Create(request));
       retry.StatusCode.Must().Be(HttpStatusCode.Conflict);
       retry.Content.ReadAsStringAsync().GetAwaiter().GetResult().Must().Contain(host.Id.Value);
       OnTheUIThread(() => tab.SessionRunningInIt!.Session.Name).Must().BeNull();
       new PeerSessionLaunchReceipt(CloydsFolder, request).Session.Must().BeNull();
+   }
+
+   [XF] public void closing_a_window_during_host_creation_leaves_the_CLI_undispatched()
+   {
+      HandedOver(_project);
+      var window = OnTheUIThread(() => Windows.Open.Single());
+      var request = new SessionToStartForAPeer(Guid.NewGuid(), new string('7', 64), _project.Project.Folder, _worktree.Project.Folder, "codex", "After reopening");
+      var receipt = new PeerSessionLaunchReceipt(CloydsFolder, request);
+      var launch = OnTheUIThread(() =>
+      {
+         var starting = window.SessionForAPeer(receipt);
+         receipt.HostWasRequested.Must().BeTrue();
+         window.Close(); // The HTTP continuation cannot run on the UI thread until this dispatch returns.
+         return starting;
+      });
+      WaitUntil(() => launch.IsCompleted, "the closed window released the pending launch");
+      launch.IsCanceled.Must().BeTrue();
+      receipt.HostWhereCliWasRequested.Must().BeNull();
+      OnTheUIThread(() => window.Tabs.Count).Must().Be(0);
    }
 
    [XF] public void an_incompatible_hub_can_be_upgraded_then_the_same_launch_can_be_retried()

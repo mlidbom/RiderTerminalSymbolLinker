@@ -14,6 +14,7 @@ sealed partial class ProjectWindow
       await BringingBackTheTabs;
       using var deadline = CancellationTokenSource.CreateLinkedTokenSource(_closed.Token);
       deadline.CancelAfter(TimeSpan.FromSeconds(90));
+      deadline.Token.ThrowIfCancellationRequested();
       var request = receipt.Request;
       var session = request.Session;
       var launchHub = await _hub.ForOnePeerLaunch(deadline.Token);
@@ -24,13 +25,18 @@ sealed partial class ProjectWindow
       {
          if(!(await launchHub.AgentClisItServes(deadline.Token)).Contains(session.AgentCli))
             throw new InvalidOperationException($"The hub does not serve {session.AgentCli}.");
+         deadline.Token.ThrowIfCancellationRequested();
          receipt.RecordHostRequest();
          var host = await Sessions.StartPeerHost(launchHub, Project, request.Worktree, request.RequestId, deadline.Token);
          tab = ShowPeerHost(host);
       }
 
+      deadline.Token.ThrowIfCancellationRequested();
+      using var identity = new FirstSessionOfAPeerLaunch(tab.Session, request, receipt.Session);
       if(receipt.Session is null)
       {
+         if(tab.Session.Running is not null) throw new InvalidOperationException($"Host {tab.Host.Id} already runs a session. No CLI was started.");
+         deadline.Token.ThrowIfCancellationRequested();
          receipt.RecordCliRequest(tab.Host.Id);
          // Peers names the exact Codex ID before briefing it.
          var command = session.AgentCli == AgentCli.Codex ? AgentCli.Codex.CommandOfANewSession(null) : session.Command;
@@ -42,21 +48,11 @@ sealed partial class ProjectWindow
          }
       }
 
-      while(true)
-      {
-         if(tab.SessionRunningInIt?.Session is {} running)
-         {
-            if(running.AgentCli != session.AgentCli || (receipt.Session is {} known && known.Address != $"{request.AgentCli}:{running.Id.Value}"))
-               throw new InvalidOperationException($"The original helper {receipt.Session?.Address ?? session.Name} is no longer in host {tab.Host.Id}. Inspect the tab and history.");
-            if(receipt.Session is not null || running.AgentCli == AgentCli.Codex || running.Name == session.Name) return running;
-            if(!string.IsNullOrEmpty(running.Name))
-               throw new InvalidOperationException($"The helper's host now shows {running.Name} ({running.Id.Value}), expected {session.Name}. Inspect the tab before sending the brief.");
-         }
-         await Task.Delay(150, deadline.Token);
-      }
+      return await identity.Confirm(deadline.Token);
 
       SessionTab ShowPeerHost(SessionHostOfTheHub host)
       {
+         deadline.Token.ThrowIfCancellationRequested();
          var shown = Show(host, latestSession: null, session);
          _tabs.SelectedItem ??= shown;
          return shown;
@@ -66,6 +62,7 @@ sealed partial class ProjectWindow
       {
          if(Tabs.SingleOrDefault(it => Matches(it.Host)) is {} shown) return shown;
          var hosts = await launchHub.SessionHosts(deadline.Token);
+         deadline.Token.ThrowIfCancellationRequested();
          if(hosts.SingleOrDefault(Matches) is {} original && Sessions.CanRestore(original)) return ShowPeerHost(original);
          throw new InvalidOperationException("The original launch has no available host. Inspect the project before starting another helper.");
       }
