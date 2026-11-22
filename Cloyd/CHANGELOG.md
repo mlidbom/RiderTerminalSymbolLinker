@@ -202,6 +202,8 @@ All notable changes to Cloyd are documented here. The format follows
     the session, as after it was archived. Windows saved before read their sessions as Claude Code's.
 
 ### Fixed
+- **Tabbing out of Projects Dashboard search keeps Cloyd running.** An empty search now closes after
+  keyboard focus finishes moving. Reopening search, typing, and using Tab or Shift+Tab keeps the query.
 - **The worktree context menu is visible when you right-click.** Open **Git Extensions** to reach
   **Browse** and **Commit** for the clicked checkout.
 - **The dashboard keeps the selected session when another terminal takes over its host.** Chat stays open

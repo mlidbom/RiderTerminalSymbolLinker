@@ -61,8 +61,8 @@ sealed partial class ProjectsDashboardWindow : Window, ISessionHistoryTarget
       };
       _history.Closed += () => View?.FocusWhatItShows();
       AddHandler(KeyDownEvent, TakeShortcut, RoutingStrategies.Tunnel);
-      TreeSearchBox.LostFocus += (_, _) => { if(_dismissSearchOnRelease is null) HideEmptyTreeSearch(); };
-      Deactivated += (_, _) => { _dismissSearchOnRelease = null; HideEmptyTreeSearch(); };
+      TreeSearchBox.LostFocus += (_, _) => DismissEmptySearchAfterFocusMoves();
+      Deactivated += (_, _) => { _dismissSearchOnRelease = null; DismissEmptySearchAfterFocusMoves(); };
       AddHandler(PointerPressedEvent, OnSearchClickOutside, RoutingStrategies.Tunnel, handledEventsToo: true);
       AddHandler(PointerReleasedEvent, FinishSearchClickOutside, RoutingStrategies.Bubble, handledEventsToo: true);
       _save.Tick += (_, _) => Save();
@@ -286,6 +286,17 @@ sealed partial class ProjectsDashboardWindow : Window, ISessionHistoryTarget
    }
 
    bool TreeSearchIsEmpty => TreeSearchPanel.IsVisible && string.IsNullOrWhiteSpace(TreeSearchBox.Text);
+
+   /// <summary>The close button is inside the search panel. Hiding it during a Tab focus transfer
+   /// can leave its keyboard-focus border attached when the search opens again.</summary>
+   void DismissEmptySearchAfterFocusMoves()
+   {
+      if(!TreeSearchIsEmpty || _dismissSearchOnRelease is not null) return;
+      Dispatcher.UIThread.Post(() =>
+      {
+         if(_dismissSearchOnRelease is null && (!IsActive || !TreeSearchBox.IsKeyboardFocusWithin)) HideEmptyTreeSearch();
+      }, DispatcherPriority.Input);
+   }
 
    void HideEmptyTreeSearch()
    {

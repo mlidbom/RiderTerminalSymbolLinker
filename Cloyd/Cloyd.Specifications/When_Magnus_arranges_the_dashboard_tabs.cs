@@ -220,6 +220,26 @@ public class When_Magnus_arranges_the_dashboard_tabs : SpecificationOpeningWindo
       WaitUntil(() => !search.IsEffectivelyVisible && _alphaGroup.Expanded, "clicking the collapsed heading hid the empty box and expanded the heading under the pointer");
    }
 
+   [XF] public void tabbing_out_of_a_nonempty_tree_search_keeps_the_query_and_moves_keyboard_focus()
+   {
+      var search = OnTheUIThread(() => _dashboard.FindControl<TextBox>("TreeSearchBox")!);
+      var close = OnTheUIThread(() => _dashboard.GetVisualDescendants().OfType<Button>().Single(it => AutomationProperties.GetName(it) == "Close tree search"));
+      Press(_dashboard, Key.F, PhysicalKey.F, RawInputModifiers.Control | RawInputModifiers.Shift);
+      WaitUntil(() => search.IsKeyboardFocusWithin, "the tree search received the keyboard");
+      Press(_dashboard, Key.Tab, PhysicalKey.Tab, RawInputModifiers.None);
+      WaitUntil(() => !search.IsEffectivelyVisible, "the empty search closed on Tab");
+      Press(_dashboard, Key.F, PhysicalKey.F, RawInputModifiers.Control | RawInputModifiers.Shift);
+      WaitUntil(() => search.IsKeyboardFocusWithin, "the tree search took focus again");
+      Type(_dashboard, "shell");
+      for(var visit = 0; visit < 2; visit++)
+      {
+         Press(_dashboard, Key.Tab, PhysicalKey.Tab, RawInputModifiers.None);
+         WaitUntil(() => close.IsKeyboardFocusWithin && _dashboard.Tree.SearchText == "shell", "Tab reached the close button and kept the query");
+         Press(_dashboard, Key.Tab, PhysicalKey.Tab, RawInputModifiers.Shift);
+         WaitUntil(() => search.IsKeyboardFocusWithin, "Shift+Tab returned to search");
+      }
+   }
+
    [XF] public void the_worktree_context_menu_opens_Git_Extensions_for_the_clicked_checkout()
    {
       var active = OnTheUIThread(() => _dashboard.Tree.ActiveSession);
