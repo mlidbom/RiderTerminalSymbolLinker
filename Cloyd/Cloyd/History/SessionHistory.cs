@@ -53,6 +53,7 @@ sealed class SessionHistory
       var worktrees = ProjectWorktrees.Of(project, cancellation);
       await Task.WhenAll(onDisk, running, hosts, agentClis, worktrees);
       var tabs = windows.Open.SelectMany(window => window.Tabs.Select(tab => (Window: window, Tab: tab))).ToList();
+      var dashboardRows = windows.Dashboard?.Tree.Sessions.Where(it => it.Host is not null).ToArray() ?? [];
 
       var entries = onDisk.Result
                           .Where(it => it is { HasAConversationToResume: true, RunByAProgram: false })
@@ -63,12 +64,16 @@ sealed class SessionHistory
       {
          if(running.Result.FirstOrDefault(it => it.Session.Id == session) is {} runningIt) return WhereTheRunning(runningIt);
          if(tabs.FirstOrDefault(it => it.Tab.RunsOrRanLast(session)) is ({} window, {} tab)) return new WhereTheSessionIs.ExitedInATab(window, tab);
+         if(dashboardRows.FirstOrDefault(it => it.Latest?.Id == session && it.Running is null)?.Host is {} host && hosts.Result.Any(it => it.Id == host.Id))
+            return new WhereTheSessionIs.InProjectsDashboard(host, running: false);
          return WhereTheSessionIs.NotRunning.Anywhere;
       }
 
       WhereTheSessionIs WhereTheRunning(RunningSession session)
       {
          if(tabs.FirstOrDefault(it => it.Tab.Host.Id == session.SessionHost) is ({} window, {} tab)) return new WhereTheSessionIs.RunningInATab(window, tab);
+         if(dashboardRows.FirstOrDefault(it => it.Host?.Id == session.SessionHost)?.Host is {} listed)
+            return new WhereTheSessionIs.InProjectsDashboard(listed, running: true);
          if(hosts.Result.FirstOrDefault(it => it.Id == session.SessionHost) is {} host) return new WhereTheSessionIs.RunningInAHostNoTabShows(host);
          return new WhereTheSessionIs.RunningOutsideASessionHost();
       }

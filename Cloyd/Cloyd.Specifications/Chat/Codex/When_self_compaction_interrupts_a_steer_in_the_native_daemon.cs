@@ -30,7 +30,7 @@ public class When_self_compaction_interrupts_a_steer_in_the_native_daemon : Spec
       var original = File.ReadAllText(FileIn("cloyd-text"));
       var picture = new FileInfo(FileIn("cloyd-image.png"));
       const string newer = "typing after the acknowledgement";
-      var drafts = OnTheUIThread(() => new CodexDraftsOfATab());
+      var drafts = OnTheUIThread(() => new CodexSessionDrafts());
       var hub = TheHub.AnnouncedIn(new DirectoryInfo(FileIn("api")));
       var (window, chat) = OpenChat();
       WaitUntil(() => chat.InputBox.CanSend, "Chat connected to the private Codex session");
@@ -96,7 +96,7 @@ public class When_self_compaction_interrupts_a_steer_in_the_native_daemon : Spec
 
       void Reopen(string json)
       {
-         drafts = OnTheUIThread(() => new CodexDraftsOfATab());
+         drafts = OnTheUIThread(() => new CodexSessionDrafts());
          OnTheUIThread(() => drafts.Restore(JsonSerializer.Deserialize<SavedCodexDraft[]>(json)!));
          (window, chat) = OpenChat();
       }

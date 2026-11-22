@@ -26,6 +26,9 @@ sealed class CloydsFolder(DirectoryInfo folder)
    /// <summary>Where Cloyd's project windows save themselves, a file for each project.</summary>
    public SavedProjectWindows SavedProjectWindows => new(new DirectoryInfo(Path.Combine(Folder.FullName, "project-windows")));
 
+   public SavedHostedSessions SavedHostedSessions => new(new DirectoryInfo(Path.Combine(Folder.FullName, "hosted-sessions")));
+   public FileWrittenWhole ProjectsDashboard => new(Path.Combine(Folder.FullName, "projects-dashboard.json"));
+
    /// <summary>Where the images Magnus pastes into the sessions are saved, to be handed to Claude Code.</summary>
    public PastedImages PastedImages => new(new DirectoryInfo(Path.Combine(Folder.FullName, "pasted-images")));
 

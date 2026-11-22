@@ -35,7 +35,7 @@ public class When_Magnus_inspects_the_bottom_of_a_chat : SpecificationOpeningWin
       items.Add(JsonSerializer.SerializeToNode(new { id = "tail", type = "userMessage", content = new[] { new { type = "text", text = string.Join('\n', Enumerable.Repeat("A following row", 8)) } } }));
       new CodexSessionOfASpecification(session, Sandbox.Project("reading-the-bottom").Project.Folder, "scrolling")
          { RecordedItems = items }.WriteItsRecordFor(sandbox);
-      _window = Open(() => new Window { Width = 640, Height = 480, Content = new ChatOfACodexSession(sandbox.Hub, Sandbox.CloydsFolder.PastedImages, new CodexDraftsOfATab()) });
+      _window = Open(() => new Window { Width = 640, Height = 480, Content = new ChatOfACodexSession(sandbox.Hub, Sandbox.CloydsFolder.PastedImages, new CodexSessionDrafts()) });
       _chat = OnTheUIThread(() => (ChatOfACodexSession)_window.Content!);
       _scroller = OnTheUIThread(() => _chat.FindDescendantOfType<ScrollViewer>()!);
       OnTheUIThread(() => { _scroller.AllowAutoHide = false; _chat.Show(session, null); });

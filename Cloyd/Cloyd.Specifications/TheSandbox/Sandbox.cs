@@ -57,7 +57,7 @@ sealed class Sandbox : IDisposable
       //   Once it does, the sessions' shell needs no PATH of its own.
       ShellOfItsSessions = (ShellOfNewSessions.OnThisMachine() with { CommandLine = "pwsh.exe -NoLogo -NoProfile" })
         .With("PATH", string.Join(Path.PathSeparator, HubOfTheSandbox.FolderOfTheStandInForClaudeCode, HubOfTheSandbox.FolderOfTheStandInForCodex, Environment.GetEnvironmentVariable("PATH")));
-      WindowsOfCloyd = new ProjectWindows((project, _) => throw new InvalidOperationException($"The specifications open their windows themselves, through their SandboxProject, not {project}'s through the sandbox's WindowsOfCloyd."));
+      WindowsOfCloyd = new ProjectWindows((project, _) => throw new InvalidOperationException($"The specifications open their windows themselves, through their SandboxProject, not {project}'s through the sandbox's WindowsOfCloyd."), new SessionsOfCloyd(HubOfTheSandbox.Hub, CloydsFolder, ShellOfItsSessions));
    }
 
    /// <summary>A fresh sandbox, once its hub runs: the one <see cref="SandboxesOfThisRun"/> started ahead.</summary>
@@ -95,9 +95,6 @@ sealed class Sandbox : IDisposable
    /// does when handed a project.
    /// </summary>
    public ProjectWindows WindowsOfCloyd { get; }
-
-   /// <summary>The folder where the sandbox's projects save their windows.</summary>
-   public string SavedProjectWindowsFolder => Path.Combine(_folder.FullName, "project-windows");
 
    /// <summary>The <see cref="Cloyd.CloydsFolder"/> of the Cloyd application that serves the sandbox's projects, as the scenario runs one.</summary>
    public CloydsFolder CloydsFolder => new(new DirectoryInfo(Path.Combine(_folder.FullName, "cloyd")));

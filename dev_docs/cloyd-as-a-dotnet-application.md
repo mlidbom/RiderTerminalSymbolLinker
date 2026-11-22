@@ -1,5 +1,8 @@
 # Cloyd as a .NET application, in Avalonia, beside the IDEs
 
+[Projects Dashboard](cloyd-every-session-in-one-window.md) describes the application-wide session state, how
+both windows edit one draft, and how a terminal moves between a project tab and the dashboard.
+
 ## Status
 
 **Magnus's direction, 2026-11-20. The spike is run, and step one is built and deployed** (see "Step one, as it's

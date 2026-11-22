@@ -1,0 +1,66 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:dashboard="using:Cloyd.ProjectsDashboard"
+        xmlns:sessions="using:Cloyd.Sessions"
+        xmlns:status="using:Cloyd.Chat.Status"
+        xmlns:agents="using:Cloyd.Hub.RunningSessions"
+        xmlns:codex="using:Cloyd.Codex"
+        x:Class="Cloyd.ProjectsDashboard.ProjectsDashboardWindow"
+        x:ClassModifier="internal" x:DataType="dashboard:DashboardTree"
+        Title="Projects Dashboard" Width="1400" Height="900">
+  <Window.Styles>
+    <Style Selector="TreeViewItem" x:DataType="dashboard:DashboardRow">
+      <Setter Property="IsExpanded" Value="True"/>
+    </Style>
+    <Style Selector="TextBlock.waiting">
+      <Setter Property="Foreground" Value="#D97737"/>
+      <Setter Property="FontWeight" Value="Bold"/>
+    </Style>
+  </Window.Styles>
+  <Panel x:Name="Overlays">
+    <DockPanel>
+      <TextBlock x:Name="FailureText" DockPanel.Dock="Bottom" IsVisible="False"
+                 Foreground="DarkOrange" Margin="8" TextWrapping="Wrap"/>
+      <Grid ColumnDefinitions="330,5,*">
+        <DockPanel Grid.Column="0" Margin="6">
+          <Button DockPanel.Dock="Top" Content="Resume a session" ToolTip.Tip="Resume a session: Ctrl+Alt+Shift+Y"
+                  HorizontalAlignment="Stretch" Margin="2,2,2,6" Click="OpenHistory"/>
+          <TreeView x:Name="ProjectTree" ItemsSource="{Binding Projects}" SelectionChanged="SelectionChanged">
+            <TreeView.DataTemplates>
+              <TreeDataTemplate DataType="dashboard:DashboardProject" x:DataType="dashboard:DashboardProject" ItemsSource="{Binding Sessions}">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                  <TextBlock Text="{Binding Name}" FontWeight="SemiBold" Classes.waiting="{Binding IsWaiting}"
+                             ToolTip.Tip="{Binding Project.Folder}" VerticalAlignment="Center"/>
+                  <sessions:NewSessionButton Content="+" IsVisible="{Binding CanStartSession}" Padding="6,0"
+                                             Loaded="PrepareNewSessionButton"/>
+                </StackPanel>
+              </TreeDataTemplate>
+              <DataTemplate DataType="dashboard:DashboardSession" x:DataType="dashboard:DashboardSession">
+                <StackPanel Margin="0,2" Opacity="{Binding Opacity}">
+                  <StackPanel Orientation="Horizontal" Spacing="5">
+                    <ContentControl Content="{Binding WorkingSession}"
+                                    IsVisible="{Binding WorkingSession, Converter={x:Static ObjectConverters.IsNotNull}}">
+                      <ContentControl.DataTemplates>
+                        <DataTemplate DataType="agents:RunningClaudeCode">
+                          <status:SpinnerOfClaudeCode IsTurning="True"/>
+                        </DataTemplate>
+                        <DataTemplate DataType="agents:RunningCodex">
+                          <codex:CodexProgressDot IsPulsing="True"/>
+                        </DataTemplate>
+                      </ContentControl.DataTemplates>
+                    </ContentControl>
+                    <TextBlock Text="{Binding Name}" Classes.waiting="{Binding IsWaiting}" VerticalAlignment="Center"/>
+                    <Button Content="×" ToolTip.Tip="End the session" IsVisible="{Binding HasHost}" Padding="4,0" Click="EndSession"/>
+                  </StackPanel>
+                  <TextBlock Text="{Binding Activity}" Opacity="0.7" FontSize="12" Classes.waiting="{Binding IsWaiting}"/>
+                </StackPanel>
+              </DataTemplate>
+            </TreeView.DataTemplates>
+          </TreeView>
+        </DockPanel>
+        <GridSplitter Grid.Column="1" ResizeDirection="Columns" HorizontalAlignment="Stretch"/>
+        <ContentControl Grid.Column="2" x:Name="SelectedSession"/>
+      </Grid>
+    </DockPanel>
+  </Panel>
+</Window>

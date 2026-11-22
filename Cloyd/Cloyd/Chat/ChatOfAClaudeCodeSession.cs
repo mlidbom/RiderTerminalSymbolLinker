@@ -47,13 +47,14 @@ sealed class ChatOfAClaudeCodeSession : SessionChat
    BlockBeingWritten? _blockBeingWritten;
 
    /// <summary>A chat that follows its conversation through <paramref name="hub"/>, and sends through it: the images pasted into its input box are saved in <paramref name="pastedImages"/>.</summary>
-   public ChatOfAClaudeCodeSession(TheHub hub, PastedImages pastedImages, ClaudeCodeChatInput? input = null, ClaudeCodeConversation? conversation = null, ClaudeCodeTurnStatus? turnStatus = null)
+   public ChatOfAClaudeCodeSession(TheHub hub, PastedImages pastedImages) : this(new ClaudeCodeChatState(hub), pastedImages) {}
+
+   public ChatOfAClaudeCodeSession(ClaudeCodeChatState state, PastedImages pastedImages)
    {
-      _hub = hub;
-      input ??= new ClaudeCodeChatInput(hub);
-      _turnStatus = turnStatus ?? new ClaudeCodeTurnStatus();
-      _sharedConversation = conversation ?? new ClaudeCodeConversation(hub, input, _turnStatus);
-      InputBox = new InputBoxOfTheChat(input, pastedImages) { MaxWidth = WidthOfTheColumn + 32 };
+      _hub = state.Hub;
+      _turnStatus = state.Turn;
+      _sharedConversation = state.Conversation;
+      InputBox = new InputBoxOfTheChat(state.Input, pastedImages) { MaxWidth = WidthOfTheColumn + 32 };
       StatusLine = new StatusLineOfTheChat { MaxWidth = WidthOfTheColumn + 32 };
       WorkingLine = new WorkingLineOfTheChat(_turnStatus) { MaxWidth = WidthOfTheColumn + 32 };
       CallUnderWay = new CallUnderWayOfTheChat(_turnStatus) { MaxWidth = WidthOfTheColumn + 32 };

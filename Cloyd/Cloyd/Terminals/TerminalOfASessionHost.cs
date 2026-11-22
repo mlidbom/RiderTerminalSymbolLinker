@@ -53,7 +53,7 @@ sealed class TerminalOfASessionHost : TerminalControl
    /// <paramref name="pastedImages"/>. <paramref name="agentCliInTheHost"/> says which agent CLI the host runs now,
    /// which can change while the terminal shows it.
    /// </summary>
-   public TerminalOfASessionHost(Func<AttachmentToASessionHost?> attachment, PastedImages pastedImages, Func<AgentCli> agentCliInTheHost)
+   public TerminalOfASessionHost(Func<Task<AttachmentToASessionHost?>> attachment, PastedImages pastedImages, Func<AgentCli> agentCliInTheHost)
    {
       _pastedImages = pastedImages;
       _agentCliInTheHost = agentCliInTheHost;
@@ -61,13 +61,22 @@ sealed class TerminalOfASessionHost : TerminalControl
       FontSize = 14;
       BufferSize = LinesItKeeps;
       Process = string.Empty; // Only the session host starts a shell for this terminal.
-      TemplateApplied += (_, _) =>
+      TemplateApplied += async (_, _) =>
       {
-         if(_attached) return;
-         if(attachment() is not {} host) return;
-         _attached = true;
-         MouseEncodingsConhostCantRead.IgnoreIn(Terminal);
-         AttachConnection(new SessionHostAsAPseudoConsole(host));
+         if(_connectionRequested) return;
+         _connectionRequested = true;
+         try
+         {
+            if(await attachment() is not {} host) return;
+            MouseEncodingsConhostCantRead.IgnoreIn(Terminal);
+            AttachConnection(new SessionHostAsAPseudoConsole(host));
+            _attached = true;
+            if(Size is {} size) host.Resize(size);
+         }
+         catch(Exception failure)
+         {
+            AttachmentFailed?.Invoke(failure);
+         }
       };
       AddHandler(KeyDownEvent, TypeANewLineOnAShiftEnterThatWouldSend, RoutingStrategies.Tunnel);
       AddHandler(KeyDownEvent, PasteOnCtrlV, RoutingStrategies.Tunnel);
@@ -78,10 +87,13 @@ sealed class TerminalOfASessionHost : TerminalControl
    /// <summary>Raised on the UI thread when what Magnus pasted with Ctrl+V couldn't be pasted, with why.</summary>
    public event Action<Exception>? PasteFailed;
 
+   public event Action<Exception>? AttachmentFailed;
+   bool _connectionRequested;
+
    protected override Type StyleKeyOverride => typeof(TerminalControl);
 
    /// <summary>Keep reading the host when Avalonia temporarily removes the terminal to switch or reorder tabs.
-   /// The owning <see cref="SessionTab"/> disposes the terminal when the tab actually closes.</summary>
+   /// The owning <see cref="TerminalInCloyd"/> disposes it when Cloyd lets the host go.</summary>
    protected override void OnDetachedFromLogicalTree(LogicalTreeAttachmentEventArgs e)
    {
       BeginReparent();
@@ -228,7 +240,7 @@ sealed class TerminalOfASessionHost : TerminalControl
          return Task.CompletedTask;
       }
 
-      /// <summary>Nothing: the <see cref="Sessions.SessionTab"/> that shows the host lets go of it.</summary>
+      /// <summary>The owning <see cref="TerminalInCloyd"/> lets the host go.</summary>
       public void Dispose() {}
    }
 }

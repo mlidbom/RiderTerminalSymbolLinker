@@ -1,4 +1,5 @@
 using Cloyd.ClaudeCode;
+using Cloyd.ProjectsDashboard;
 using Cloyd.Sessions;
 
 namespace Cloyd.Projects;
@@ -8,10 +9,34 @@ namespace Cloyd.Projects;
 /// of them from when it opens until it closes, and the project's next one opens anew.
 /// </summary>
 /// <param name="newWindowOf">Makes a new window of a project, one of these windows once it opens, not yet shown.</param>
-sealed class ProjectWindows(Func<Project, ProjectWindows, ProjectWindow> newWindowOf)
+/// <param name="sessions">The application’s shared sessions.</param>
+sealed class ProjectWindows(Func<Project, ProjectWindows, ProjectWindow> newWindowOf, SessionsOfCloyd sessions)
 {
    readonly Func<Project, ProjectWindows, ProjectWindow> _newWindowOf = newWindowOf;
    readonly List<ProjectWindow> _open = [];
+   public SessionsOfCloyd Sessions { get; } = sessions;
+   public ProjectsDashboardWindow? Dashboard { get; private set; }
+
+   public ProjectsDashboardWindow ShowDashboard(Project openedFrom)
+   {
+      if(Dashboard is {} open)
+      {
+         open.BringForward();
+         return open;
+      }
+
+      var dashboard = new ProjectsDashboardWindow(this, openedFrom);
+      Dashboard = dashboard;
+      Sessions.WindowOpened();
+      dashboard.Closed += (_, _) =>
+      {
+         Dashboard = null;
+         Sessions.WindowClosed();
+      };
+      dashboard.Show();
+      return dashboard;
+   }
+
 
    /// <summary>The windows open, in the order they opened.</summary>
    public IReadOnlyList<ProjectWindow> Open => _open;
@@ -39,7 +64,8 @@ sealed class ProjectWindows(Func<Project, ProjectWindows, ProjectWindow> newWind
    public void Opened(ProjectWindow window)
    {
       _open.Add(window);
-      window.Closed += (_, _) => _open.Remove(window);
+      Sessions.WindowOpened();
+      window.Closed += (_, _) => { _open.Remove(window); Sessions.WindowClosed(); };
    }
 
    /// <summary>

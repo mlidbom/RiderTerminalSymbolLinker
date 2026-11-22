@@ -167,7 +167,7 @@ public class When_a_Codex_turn_ends_with_accepted_steers : SpecificationOpeningW
    [XF] public void the_recovery_action_puts_missing_input_in_the_editor_without_sending_it()
    {
       var hub = new SteerReceipts();
-      var window = Open(() => new Window { Content = new CodexChatComposer(hub, new PastedImages(new DirectoryInfo(Path.GetTempPath())), new CodexDraftsOfATab()) });
+      var window = Open(() => new Window { Content = new CodexChatComposer(hub, new PastedImages(new DirectoryInfo(Path.GetTempPath())), new CodexSessionDrafts()) });
       var box = OnTheUIThread(() => (CodexChatComposer)window.Content!);
       OnTheUIThread(() => { box.Target(Session, true, Turn); box.TakeTheKeyboard(); });
       Type(window, "missing from the snapshot");
