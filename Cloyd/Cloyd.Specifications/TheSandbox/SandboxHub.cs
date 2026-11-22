@@ -21,7 +21,9 @@ sealed class SandboxHub
 {
    static readonly TimeSpan HowLongACommandMayTake = TimeSpan.FromSeconds(40);
 
-   static readonly string Client = Path.Combine(System.Environment.GetFolderPath(System.Environment.SpecialFolder.UserProfile), ".claude", "bin", "ClaudeTooling.exe");
+   /// <summary>The tooling build under test. An isolated build can be exercised before it is published to Magnus's hub.</summary>
+   static readonly string Client = System.Environment.GetEnvironmentVariable("CLOYD_SPECIFICATIONS_TOOLING_EXE")
+                                ?? Path.Combine(System.Environment.GetFolderPath(System.Environment.SpecialFolder.UserProfile), ".claude", "bin", "ClaudeTooling.exe");
 
    readonly SandboxHubStarted _started;
 
