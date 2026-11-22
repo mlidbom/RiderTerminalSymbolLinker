@@ -68,8 +68,8 @@ public class When_a_Codex_chat_reopens_during_a_turn : SpecificationOpeningWindo
       OnTheUIThread(() => _chat.Progress.IsVisible).Must().BeFalse();
    }
 
-   [XF] public void the_entire_configured_footer_stays_after_the_turn() =>
-      OnTheUIThread(() => _chat.StatusLine.TextShown).Must().Be(@"01a202a3-9da9-7380-96c9-8ec53a92bf48 · GPT-6.2-Astra xhigh · C:\Dev\ClaudeSymbolLinker · codex-codex-chat-ui · Context 64% used · weekly 89% left · 1.13M used · 141M in · 172K out");
+   [XF] public void the_chat_footer_stays_after_the_turn() =>
+      OnTheUIThread(() => _chat.StatusLine.TextShown).Must().Be(@"GPT-6.2-Astra xhigh · C:\Dev\ClaudeSymbolLinker · Context 64% used · weekly 89% left · 1.13M used · 141M in · 172K out");
 
    [XF] public void it_shows_the_permissions_below_and_the_background_command_on_hover()
    {

@@ -707,7 +707,8 @@ duration and local time formats as Claude Code Chat. An older history can lack t
 
 The hub supplies the Codex footer in the first live snapshot and replaces it with `footer` events as session
 settings, token usage and account limits arrive. Cloyd renders the supported configured items below the composer
-in their native order, with wrapping and theme-aware colours. A missing reading leaves the item out. The
+in their native order, with wrapping and theme-aware colours. Chat omits the session ID that Peers reads in Terminal
+and the session name already shown by the tab. A missing reading leaves the item out. The
 background-terminal line uses the live session's `/background-terminals` endpoint on opening, at turn boundaries
 and every five seconds while a turn or background terminal runs. The tooltip lists the commands. Saved
 conversations show their recorded turns and do not query live terminals or account limits.
