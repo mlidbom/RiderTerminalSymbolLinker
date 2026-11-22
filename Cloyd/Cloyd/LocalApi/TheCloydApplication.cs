@@ -35,23 +35,30 @@ sealed class TheCloydApplication(CloydsFolder folder)
    /// The window comes in front of the others when this process may bring a window there (<see cref="TheForeground"/>).
    /// Returns the window once it shows.
    /// </summary>
-   public WindowInTheAnswer ShowTheWindowOf(Project project)
+   public WindowInTheAnswer ShowTheWindowOf(Project project) => ShowWindow<WindowInTheAnswer>("windows/show", () =>
+      JsonContent.Create(new WindowToShowInTheRequest(project.Folder), options: CloydsLocalApiProtocol.Json));
+
+   public void ShowDashboard() => ShowWindow<string>("dashboard/show");
+
+   T ShowWindow<T>(string route, Func<HttpContent>? content = null) where T : class
    {
       var clock = Stopwatch.StartNew();
       while(true)
       {
          var announcement = TheOneThatRunsOrStarted();
          TheForeground.MayBeTakenBy(announcement.ProcessId);
-         using var request = new HttpRequestMessage(HttpMethod.Post, announcement.AddressOf("windows/show"));
-         request.Content = JsonContent.Create(new WindowToShowInTheRequest(project.Folder), options: CloydsLocalApiProtocol.Json);
-         if(Answer<WindowInTheAnswer>(announcement, request) is {} shown) return shown;
-         if(clock.Elapsed > HowLongStartingMayTake) throw new TimeoutException($"No Cloyd application showed the window of {project} within {HowLongStartingMayTake.TotalSeconds:0} s, at the announcement in {_folder}.");
+         using var request = new HttpRequestMessage(HttpMethod.Post, announcement.AddressOf(route));
+         request.Content = content?.Invoke();
+         if(Answer<T>(announcement, request) is {} shown) return shown;
+         if(clock.Elapsed > HowLongStartingMayTake) throw new TimeoutException($"No Cloyd application answered {route} within {HowLongStartingMayTake.TotalSeconds:0} s, at the announcement in {_folder}.");
          Thread.Sleep(BetweenTries); // The application announced stopped, as when its last window closed: the next is started.
       }
    }
 
    /// <summary>The windows the application shows: null when none runs.</summary>
-   public IReadOnlyList<WindowInTheAnswer>? Windows() => TheOneThatRuns() is {} running ? WindowsOf(running) : null;
+   public IReadOnlyList<WindowInTheAnswer>? Windows() => WindowInventory()?.Windows;
+
+   public WindowsAnswer? WindowInventory() => AnnouncementOfCloydsLocalApi.In(_folder) is {} announcement ? WindowsOf(announcement) : null;
 
    /// <summary>Starts Cloyd if necessary and obtains the address of the named helper in its project window.</summary>
    public PeerSessionStarted StartPeerSession(SessionToStartForAPeer session)
@@ -90,10 +97,10 @@ sealed class TheCloydApplication(CloydsFolder folder)
    AnnouncementOfCloydsLocalApi? TheOneThatRuns() =>
       AnnouncementOfCloydsLocalApi.In(_folder) is {} announcement && WindowsOf(announcement) is not null ? announcement : null;
 
-   IReadOnlyList<WindowInTheAnswer>? WindowsOf(AnnouncementOfCloydsLocalApi announcement)
+   WindowsAnswer? WindowsOf(AnnouncementOfCloydsLocalApi announcement)
    {
       using var request = new HttpRequestMessage(HttpMethod.Get, announcement.AddressOf("windows"));
-      return Answer<WindowsAnswer>(announcement, request)?.Windows;
+      return Answer<WindowsAnswer>(announcement, request);
    }
 
    /// <summary>

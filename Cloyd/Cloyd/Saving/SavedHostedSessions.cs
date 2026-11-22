@@ -8,7 +8,11 @@ namespace Cloyd.Saving;
 sealed class SavedHostedSessions(DirectoryInfo folder)
 {
    static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web) { WriteIndented = true };
-   readonly Dictionary<SessionHostId, string> _lastWritten = [];
+   readonly Dictionary<SessionHostId, (string Json, SavedTabRestoration Restoration)> _lastWritten = [];
+   long _restorationRevision;
+
+   /// <summary>Changes when a save changes a session's identity or restore folder.</summary>
+   public long RestorationRevision => Interlocked.Read(ref _restorationRevision);
 
    FileWrittenWhole FileOf(SessionHostId host) => new(Path.Combine(folder.FullName, $"{host}.json"));
 
@@ -18,9 +22,12 @@ sealed class SavedHostedSessions(DirectoryInfo folder)
    public void Save(SavedSessionTab session)
    {
       var json = JsonSerializer.Serialize(session, Json);
-      if(_lastWritten.GetValueOrDefault(session.SessionHost) == json) return;
+      var known = _lastWritten.TryGetValue(session.SessionHost, out var previous);
+      if(known && previous.Json == json) return;
       FileOf(session.SessionHost).Write(json);
-      _lastWritten[session.SessionHost] = json;
+      var restoration = SavedTabRestoration.Of(session);
+      _lastWritten[session.SessionHost] = (json, restoration);
+      if(!known || previous.Restoration != restoration) Interlocked.Increment(ref _restorationRevision);
    }
 
    public void ForgetInMemory(SessionHostId host) => _lastWritten.Remove(host);

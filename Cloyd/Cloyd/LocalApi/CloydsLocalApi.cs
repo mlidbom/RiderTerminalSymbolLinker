@@ -18,6 +18,8 @@ namespace Cloyd.LocalApi;
 /// address only, announced in its <see cref="AnnouncementOfCloydsLocalApi"/> once it listens. Its requests:
 /// <list type="bullet">
 /// <item><c>GET /windows</c>: the project windows the application shows, as a <see cref="WindowsAnswer"/>.</item>
+/// <item><c>POST /dashboard/show</c>: opens Projects Dashboard or brings the existing dashboard forward.
+/// Answers with its title once it is shown.</item>
 /// <item>
 /// <c>POST /windows/show</c> with a <see cref="WindowToShowInTheRequest"/>: shows the project's window, bringing it forward
 /// when it is open, else opening it, and answers with it, a <see cref="WindowInTheAnswer"/>, once it shows.
@@ -67,6 +69,11 @@ sealed class CloydsLocalApi
       web.Use((exchange, next) => Guard(exchange, next, token));
       web.MapGet("/windows", exchange => AnswerWithTheWindows(exchange, windows));
       web.MapPost("/windows/show", exchange => Show(exchange, windows));
+      web.MapPost("/dashboard/show", async exchange =>
+      {
+         var title = await Dispatcher.UIThread.InvokeAsync(() => windows.ShowDashboard().Title);
+         await Reply(exchange, StatusCodes.Status200OK, title!);
+      });
       var starts = new SessionStartsForPeers(folder, windows);
       web.MapPost("/sessions/start", exchange => StartForAPeer(exchange, starts));
       web.MapPost("/sessions/show", exchange => ShowTheTabOfASession(exchange, windows));
@@ -97,8 +104,8 @@ sealed class CloydsLocalApi
 
    static async Task AnswerWithTheWindows(HttpContext exchange, ProjectWindows windows)
    {
-      var open = await Dispatcher.UIThread.InvokeAsync(() => windows.Open.Select(InTheAnswer).ToList());
-      await Reply(exchange, StatusCodes.Status200OK, new WindowsAnswer(open));
+      var inventory = await Dispatcher.UIThread.InvokeAsync(() => new WindowsAnswer(windows.Open.Select(InTheAnswer).ToList(), windows.Dashboard is not null));
+      await Reply(exchange, StatusCodes.Status200OK, inventory);
    }
 
    static async Task Show(HttpContext exchange, ProjectWindows windows)

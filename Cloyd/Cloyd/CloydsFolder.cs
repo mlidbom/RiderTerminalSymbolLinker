@@ -25,9 +25,9 @@ sealed class CloydsFolder(DirectoryInfo folder)
                                : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Cloyd")));
 
    /// <summary>Where Cloyd's project windows save themselves, a file for each project.</summary>
-   public SavedProjectWindows SavedProjectWindows => new(new DirectoryInfo(Path.Combine(Folder.FullName, "project-windows")));
+   public SavedProjectWindows SavedProjectWindows { get; } = new(new DirectoryInfo(Path.Combine(folder.FullName, "project-windows")));
 
-   public SavedHostedSessions SavedHostedSessions => new(new DirectoryInfo(Path.Combine(Folder.FullName, "hosted-sessions")));
+   public SavedHostedSessions SavedHostedSessions { get; } = new(new DirectoryInfo(Path.Combine(folder.FullName, "hosted-sessions")));
    public FileWrittenWhole ProjectsDashboard => new(Path.Combine(Folder.FullName, "projects-dashboard.json"));
    public CrashReports CrashReports => new(new DirectoryInfo(Path.Combine(Folder.FullName, "crashes")));
 

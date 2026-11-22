@@ -7,6 +7,12 @@ All notable changes to Cloyd are documented here. The format follows
 ## [0.1.0]
 
 ### Added
+- **Launching Cloyd from the Start menu opens Projects Dashboard.** Running the executable without
+  arguments also brings an existing dashboard forward. Right-click a project heading and choose
+  **Open project** to open or activate its project window.
+- **Open tabs includes the tabs a closed project window would restore.** The dashboard shows eligible
+  live hosts and saved tabs whose sessions can still resume. Filtering leaves those sessions stopped
+  until you explicitly resume one or open its project window.
 - **Your sent messages render as Markdown in Claude and Codex chats.** Lists, emphasis, links and code
   use the same formatting as replies, inside your right-aligned prompt bubble. This also applies when
   reading a saved conversation.

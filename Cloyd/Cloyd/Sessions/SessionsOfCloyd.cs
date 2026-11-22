@@ -88,6 +88,7 @@ sealed class SessionsOfCloyd(TheHub hub, CloydsFolder folder, ShellOfNewSessions
    }
    public bool CanRestore(SessionHostOfTheHub host) => !host.Attached || Known(host.Id)?.HasAttachment == true;
    public bool Ending(SessionHostId id) => _ending.Contains(id);
+   public bool HasProjectTabFor(SessionId id) => _sessions.Values.Any(it => it.HasProjectTab && it.LatestSession?.Id == id);
 
    public async Task End(SessionHostId id)
    {

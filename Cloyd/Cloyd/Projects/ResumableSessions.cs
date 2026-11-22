@@ -1,6 +1,6 @@
 using Cloyd.ClaudeCode;
 using Cloyd.Codex;
-using Cloyd.Hub;
+using Cloyd.Hub.RunningSessions;
 using Cloyd.Sessions;
 
 namespace Cloyd.Projects;
@@ -12,19 +12,30 @@ namespace Cloyd.Projects;
 /// resume it.
 /// </summary>
 /// <remarks>
-/// It asks <paramref name="hub"/> once for each agent CLI, as the first tab of that agent CLI needs it, so that a window
-/// whose hosts all run asks nothing.
+/// The running inventory, Claude folder and shared Codex catalogue are read only if a missing host needs them.
 /// </remarks>
-sealed class ResumableSessions(TheHub hub, CancellationToken cancellation)
+sealed class ResumableSessions(SessionsOfCloyd sessions, CancellationToken cancellation, bool freshRecordings)
 {
-   readonly Lazy<Task<ClaudeCodeFolder>> _claudeCodeFolder = new(() => hub.ClaudeCodeFolderItServes(cancellation));
-   readonly Lazy<Task<IReadOnlyList<SessionOnDisk>>> _onDisk = new(() => hub.SessionsOnDisk(cancellation));
+   readonly Lazy<Task<ClaudeCodeFolder>> _claudeCodeFolder = new(() => sessions.Hub.ClaudeCodeFolderItServes(cancellation));
+   readonly Lazy<Task> _recordings = new(() => sessions.Catalogue.Read(cancellation, force: freshRecordings));
+   readonly Lazy<Task<IReadOnlyList<RunningSession>>> _running = new(() => sessions.Hub.RunningSessions(cancellation));
 
    /// <summary>Whether <paramref name="session"/> can be resumed.</summary>
-   public async Task<bool> Include(Session session) => session switch
+   public async Task<bool> Include(Session session)
    {
-      ClaudeCodeSession claudeCodes => (await _claudeCodeFolder.Value).HoldsTheTranscriptOf(claudeCodes.Id),
-      CodexSession codexs => (await _onDisk.Value).Any(it => it.Session.Id == codexs.Id),
-      _ => throw new ArgumentOutOfRangeException(nameof(session), session, "A session of an agent CLI that Cloyd doesn't resume.")
-   };
+      var running = await _running.Value;
+      cancellation.ThrowIfCancellationRequested();
+      if(running.Any(it => it.IsLiveAgentOf(session.Id)) || sessions.HasProjectTabFor(session.Id)) return false;
+      switch(session)
+      {
+         case ClaudeCodeSession claude:
+            var folder = await _claudeCodeFolder.Value;
+            return await Task.Run(() => folder.HoldsTheTranscriptOf(claude.Id), cancellation);
+         case CodexSession:
+            await _recordings.Value;
+            cancellation.ThrowIfCancellationRequested();
+            return sessions.Catalogue.HasRecording(session.Id);
+         default: throw new ArgumentOutOfRangeException(nameof(session), session, "A session of an agent CLI that Cloyd doesn't resume.");
+      }
+   }
 }

@@ -7,4 +7,6 @@ namespace Cloyd.LocalApi.Contract;
 /// that fields can be added beside it.
 /// </summary>
 /// <param name="Windows">Each window, in the order they opened.</param>
-sealed record WindowsAnswer([property: JsonPropertyName("windows")] IReadOnlyList<WindowInTheAnswer> Windows);
+/// <param name="DashboardOpen">Whether Projects Dashboard is also open.</param>
+sealed record WindowsAnswer([property: JsonPropertyName("windows")] IReadOnlyList<WindowInTheAnswer> Windows,
+                            [property: JsonPropertyName("dashboardOpen")] bool DashboardOpen = false);

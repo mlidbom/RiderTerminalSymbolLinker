@@ -16,8 +16,24 @@ sealed class ProjectWindows(Func<Project, ProjectWindows, ProjectWindow> newWind
    readonly List<ProjectWindow> _open = [];
    public SessionsOfCloyd Sessions { get; } = sessions;
    public ProjectsDashboardWindow? Dashboard { get; private set; }
+   readonly HashSet<SessionId> _beingResumed = [];
 
-   public ProjectsDashboardWindow ShowDashboard(Project openedFrom)
+   /// <summary>Two windows can restore concurrently. Check the live agent again at launch and
+   /// keep the session reserved until its new project tab exists and its command has been sent.</summary>
+   public async Task<SessionTab?> ResumeSavedTab(ProjectTabToRestore.Resume stopped, Func<Task<SessionTab>> resume, CancellationToken cancellation)
+   {
+      var id = stopped.Session.Id;
+      if(!_beingResumed.Add(id)) return null;
+      try
+      {
+         var running = await Sessions.Hub.RunningSessions(cancellation);
+         if(Sessions.Ending(stopped.OriginalHost) || Sessions.HasProjectTabFor(id) || running.Any(it => it.IsLiveAgentOf(id))) return null;
+         return await resume();
+      }
+      finally { _beingResumed.Remove(id); }
+   }
+
+   public ProjectsDashboardWindow ShowDashboard(Project? openedFrom = null)
    {
       if(Dashboard is {} open)
       {
@@ -34,6 +50,7 @@ sealed class ProjectWindows(Func<Project, ProjectWindows, ProjectWindow> newWind
          Sessions.WindowClosed();
       };
       dashboard.Show();
+      dashboard.BringForward();
       return dashboard;
    }
 
@@ -68,6 +85,15 @@ sealed class ProjectWindows(Func<Project, ProjectWindows, ProjectWindow> newWind
       var window = _newWindowOf(project, this);
       window.Show();
       return window;
+   }
+
+   /// <summary>An explicit choice in Projects Dashboard brings the project window forward even
+   /// when it lives on another virtual desktop.</summary>
+   public void OpenFromDashboard(Project project)
+   {
+      if(_open.SingleOrDefault(it => it.Project.Equals(project)) is {} window) window.BringForward();
+      else if(Directory.Exists(project.Folder)) Show(project).BringForward();
+      else throw new DirectoryNotFoundException($"The project folder no longer exists: {project.Folder}");
    }
 
    /// <summary>Takes <paramref name="window"/>, which has just opened, as one of the windows open, until it closes.</summary>

@@ -255,31 +255,27 @@ sealed partial class ProjectWindow : Window, ISessionHistoryTarget
    async Task BringBackTheTabs(SavedProjectWindow saved)
    {
       var hosts = await _hub.SessionHosts(_closed.Token);
-      var resumable = new ResumableSessions(_hub, _closed.Token);
       SessionTab? selected = null;
-      foreach(var savedTab in saved.Tabs)
-         if(await BringBack(savedTab, hosts.SingleOrDefault(it => it.Id == savedTab.SessionHost), resumable) is {} tab && savedTab.SessionHost == saved.SelectedTab)
-            selected = tab;
-
-      foreach(var host in hosts.Where(it => Project.Equals(it.Project) && Sessions.CanRestore(it) && !IsShown(it.Id)))
-         Show(host, latestSession: null, newSession: null);
+      await foreach(var choice in ProjectTabToRestore.FromSavedTabs(Sessions, hosts, saved.Tabs, _closed.Token, freshRecordings: true))
+      {
+         var tab = choice switch
+         {
+            ProjectTabToRestore.Reattach existing => Show(existing.Host, existing.Saved.Session, newSession: null, existing.Saved),
+            ProjectTabToRestore.Resume stopped => await _windowsOfCloyd.ResumeSavedTab(stopped, () => Resume(stopped), _closed.Token),
+            _ => throw new ArgumentOutOfRangeException(nameof(choice))
+         };
+         if(choice.OriginalHost == saved.SelectedTab) selected = tab;
+      }
+      foreach(var host in hosts)
+         if(ProjectTabToRestore.CanShowLabelledHost(Sessions, host, Project.Equals) && !Tabs.Any(it => it.Host.Id == host.Id))
+            Show(host, latestSession: null, newSession: null);
       _tabs.SelectedItem = selected ?? Tabs.FirstOrDefault();
    }
 
-   /// <summary>
-   /// Brings back <paramref name="saved"/>: attached to its <paramref name="host"/> while the host runs, unless an attach
-   /// client shows it; once the host is gone, its session resumed in a new host, while it is one of the
-   /// <paramref name="resumable"/> sessions. Null when the tab doesn't come back.
-   /// </summary>
-   async Task<SessionTab?> BringBack(SavedSessionTab saved, SessionHostOfTheHub? host, ResumableSessions resumable)
+   async Task<SessionTab> Resume(ProjectTabToRestore.Resume stopped)
    {
-      if(Sessions.Ending(saved.SessionHost)) return null;
-      if(host is not null) return Sessions.CanRestore(host) ? Show(host, saved.Session, newSession: null, saved) : null;
-      var last = Sessions.SavedForResume(saved);
-      if(last.Session is not {} session || !await resumable.Include(session) || Sessions.Ending(saved.SessionHost)) return null;
-      var directory = Directory.Exists(last.SessionDirectory) ? last.SessionDirectory! : saved.Directory;
-      var resumed = await ShowANewHost(directory, session, newSession: null, last);
-      await StartIn(resumed, session.CommandThatResumesIt);
+      var resumed = await ShowANewHost(stopped.Directory, stopped.Session, newSession: null, stopped.Saved);
+      await StartIn(resumed, stopped.Session.CommandThatResumesIt);
       return resumed;
    }
 
@@ -300,8 +296,6 @@ sealed partial class ProjectWindow : Window, ISessionHistoryTarget
       Sessions.ShowPeerNames(tab.View);
       return tab;
    }
-
-   bool IsShown(SessionHostId host) => Tabs.Any(it => it.Host.Id == host);
 
    /// <summary>Adds the tab for a host just started in Projects Dashboard while keeping the project's current selection.</summary>
    public void Include(HostedSession session) => Show(session.Host, session.LatestSession, newSession: null);

@@ -38,10 +38,10 @@ sealed class DashboardSession(string key) : DashboardRow(key)
    public bool HasActivity => Activity.Length != 0;
 
    public void Update(SessionHostOfTheHub? host, RunningSession? running, Session? latest, AgentCli? knownAgent, Project? workingFolder,
-                      SessionListing? listing = null, bool open = false)
+                      SessionListing? listing = null, bool open = false, bool restorable = false)
    {
       OpenInProjectTab = open;
-      ReadyToResume = listing is { Running: null, Recorded.HasAConversationToResume: true };
+      ReadyToResume = running is null && (restorable || listing?.Recorded?.HasAConversationToResume == true);
       Host = host;
       WorkingFolder = workingFolder;
       Running = running;

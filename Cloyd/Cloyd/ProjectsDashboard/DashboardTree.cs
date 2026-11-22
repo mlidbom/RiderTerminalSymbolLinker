@@ -15,6 +15,7 @@ sealed class DashboardTree : ObservableObject
    readonly ProjectWindows _windows;
    readonly DashboardWorktrees _worktrees = new();
    readonly DashboardHierarchy _hierarchy;
+   readonly ClosedProjectTabs _closedTabs;
    readonly DashboardArrangement _arrangement = new();
    readonly DashboardGitStatuses _gitStatuses = new();
    DashboardSearch _search = new("");
@@ -23,7 +24,8 @@ sealed class DashboardTree : ObservableObject
    {
       _windows = windows;
       Filters = new DashboardSessionFilters(_arrangement.Saved);
-      _hierarchy = new DashboardHierarchy(windows, _worktrees);
+      _closedTabs = new ClosedProjectTabs(windows);
+      _hierarchy = new DashboardHierarchy(windows, _worktrees, _closedTabs);
    }
 
    public IEnumerable<DashboardProject> Projects => _hierarchy.Projects;
@@ -92,6 +94,8 @@ sealed class DashboardTree : ObservableObject
    }
 
    public Task ReadGitStatus(CancellationToken cancellation) => _gitStatuses.Refresh(_worktrees.Repositories, ShowGitStatus, cancellation);
+
+   public Task ReadClosedProjectTabs(Action refreshed, CancellationToken cancellation) => _closedTabs.Read(refreshed, cancellation);
 
    void ShowGitStatus()
    {

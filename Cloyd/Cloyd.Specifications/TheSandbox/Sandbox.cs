@@ -52,6 +52,7 @@ sealed class Sandbox : IDisposable
    Sandbox(DirectoryInfo folder)
    {
       _folder = folder;
+      CloydsFolder = new CloydsFolder(new DirectoryInfo(Path.Combine(folder.FullName, "cloyd")));
       HubOfTheSandbox = HubStartedIn(folder);
       //todo: The tooling owner, 2026-11-20: the hub is to put the stand-in first on its sandbox sessions' PATH itself.
       //   Once it does, the sessions' shell needs no PATH of its own.
@@ -103,7 +104,7 @@ sealed class Sandbox : IDisposable
    public ProjectWindows WindowsOfCloyd { get; }
 
    /// <summary>The <see cref="Cloyd.CloydsFolder"/> of the Cloyd application that serves the sandbox's projects, as the scenario runs one.</summary>
-   public CloydsFolder CloydsFolder => new(new DirectoryInfo(Path.Combine(_folder.FullName, "cloyd")));
+   public CloydsFolder CloydsFolder { get; }
 
    /// <summary>The project of the folder <paramref name="name"/> in the sandbox's <see cref="ProjectsFolder"/>, with no window saved.</summary>
    public SandboxProject Project(string name) => new(this, name);

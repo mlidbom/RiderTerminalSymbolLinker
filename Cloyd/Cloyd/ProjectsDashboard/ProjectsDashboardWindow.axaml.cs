@@ -20,11 +20,11 @@ namespace Cloyd.ProjectsDashboard;
 
 /// <summary>The application's Projects Dashboard, with every project and session in a tree and an independent
 /// view of the selected session beside it.</summary>
-sealed partial class ProjectsDashboardWindow : Window, ISessionHistoryTarget
+sealed partial class ProjectsDashboardWindow : Window
 {
    public const string WindowTitle = "Projects Dashboard";
    readonly ProjectWindows _windows;
-   readonly Project _openedFrom;
+   readonly Project? _openedFrom;
    readonly SessionHistoryPicker _history = new();
    readonly CancellationTokenSource _closed = new();
    readonly DispatcherTimer _save = new() { Interval = TimeSpan.FromSeconds(2) };
@@ -39,9 +39,7 @@ sealed partial class ProjectsDashboardWindow : Window, ISessionHistoryTarget
    public DashboardTree Tree { get; }
    public SessionView? View => SelectedSession.Content as SessionView;
    public SessionHistoryPicker HistoryPicker => _history;
-   Project SelectedProject => Tree.ActiveSession?.Parent?.StartFolder ?? _openedFrom;
-
-   public ProjectsDashboardWindow(ProjectWindows windows, Project openedFrom)
+   public ProjectsDashboardWindow(ProjectWindows windows, Project? openedFrom)
    {
       _windows = windows;
       _openedFrom = openedFrom;
@@ -51,8 +49,12 @@ sealed partial class ProjectsDashboardWindow : Window, ISessionHistoryTarget
       Tree.ActiveSessionChanged += ShowActiveSession;
       Tabs.TabChosen += Select;
       Tabs.ContainerPrepared += (_, prepared) =>
-         prepared.Container.ContextMenu = Tabs.Items[prepared.Index] is DashboardWorktree worktree
-            ? new WorktreeContextMenu(worktree.StartFolder, Tell) : null;
+         prepared.Container.ContextMenu = Tabs.Items[prepared.Index] switch
+         {
+            DashboardWorktree worktree => new WorktreeContextMenu(worktree.StartFolder, Tell),
+            DashboardProject { Project: {} project } => ProjectMenu(project),
+            _ => null
+         };
       Overlays.Children.Add(_history);
       _history.Chosen += entry =>
       {
@@ -116,10 +118,22 @@ sealed partial class ProjectsDashboardWindow : Window, ISessionHistoryTarget
       Activate();
    }
 
+   ContextMenu ProjectMenu(Project project)
+   {
+      var open = new MenuItem { Header = "Open project" };
+      open.Click += (_, _) =>
+      {
+         try { _windows.OpenFromDashboard(project); }
+         catch(Exception failure) { Tell(failure); }
+      };
+      return new ContextMenu { Items = { open } };
+   }
+
    void Refresh()
    {
       _ = ReportFailure(() => Sessions.Catalogue.Read(_closed.Token));
       RefreshRows();
+      _ = ReportFailure(() => Tree.ReadClosedProjectTabs(RefreshRows, _closed.Token));
       _ = ReportFailure(() => Tree.DiscoverWorktrees(RefreshRows, Tell, _closed.Token));
    }
 
@@ -239,10 +253,6 @@ sealed partial class ProjectsDashboardWindow : Window, ISessionHistoryTarget
       Select(Tree.Sessions.Single(it => it.Host?.Id == host.Id));
    }
 
-   public void ShowInATab(SessionHostOfTheHub host, Session session) => ShowHost(host, session, null);
-
-   public Task ResumeInANewTab(Session session) => StartInNewHost(Tree.ActiveSession?.Host?.Project ?? SelectedProject, SelectedProject, session, null, session.CommandThatResumesIt);
-
    async Task StartInNewHost(Project project, Project worktree, Session? latest, NewSession? startedAs, AgentCliCommand command)
    {
       var host = await Sessions.StartHost(project, worktree.Folder, _closed.Token);
@@ -252,12 +262,9 @@ sealed partial class ProjectsDashboardWindow : Window, ISessionHistoryTarget
       await Sessions.StartIn(view, command, _closed.Token);
    }
 
-   public Task ChooseExistingTab(ProjectWindow owner, SessionTab tab, Session session, bool resume) =>
-      ChooseDashboardHost(tab.Host, session, resume);
-
    public async Task ChooseDashboardHost(SessionHostOfTheHub host, Session session, bool resume)
    {
-      ShowInATab(host, session);
+      ShowHost(host, session, null);
       if(resume) await Sessions.StartIn(View!, session.CommandThatResumesIt, _closed.Token);
    }
 

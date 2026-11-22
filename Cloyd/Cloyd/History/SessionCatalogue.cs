@@ -19,7 +19,12 @@ sealed class SessionCatalogue(Func<CancellationToken, Task<IReadOnlyList<Session
    public SessionCatalogue(TheHub hub, CancellationToken lifetime) : this(hub.SessionsOnDisk, lifetime) {}
 
    public bool HasRead { get; private set; }
+   public long RecordingRevision { get; private set; }
    public event Action? Changed;
+
+   /// <summary>Saved project tabs can resume any recorded Codex thread, including one whose
+   /// history entry is omitted from the interactive conversation list.</summary>
+   public bool HasRecording(SessionId id) => _recorded.ContainsKey(id) || _programSessions.Contains(id);
 
    /// <summary>Reads the sessions on disk when due, or on request by a history picker. Canceling
    /// <paramref name="cancellation"/> leaves the reading available to the other windows.</summary>
@@ -50,6 +55,8 @@ sealed class SessionCatalogue(Func<CancellationToken, Task<IReadOnlyList<Session
             if(record.RunByAProgram) programs.Add(record.Session.Id);
             else interactive.Add(record.Session.Id, SessionListing.FromDisk(record));
          }
+         if(interactive.Count + programs.Count != _recorded.Count + _programSessions.Count ||
+            interactive.Keys.Concat(programs).Any(id => !HasRecording(id))) RecordingRevision++;
          _recorded = interactive;
          _programSessions = programs;
          _lastRunning = null;

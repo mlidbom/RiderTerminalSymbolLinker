@@ -246,7 +246,7 @@ public class When_Magnus_arranges_the_dashboard_tabs : SpecificationOpeningWindo
       var menu = OnTheUIThread(() =>
       {
          var rows = _dashboard.GetVisualDescendants().OfType<ListBoxItem>().ToArray();
-         rows.Where(it => it.DataContext is DashboardProject or DashboardSession).All(it => it.ContextMenu is null).Must().BeTrue();
+         rows.Where(it => it.DataContext is DashboardSession).All(it => it.ContextMenu is null).Must().BeTrue();
          var at = PointOf(_emptyGroup, .5);
          _dashboard.MouseDown(at, MouseButton.Right);
          _dashboard.MouseUp(at, MouseButton.Right);

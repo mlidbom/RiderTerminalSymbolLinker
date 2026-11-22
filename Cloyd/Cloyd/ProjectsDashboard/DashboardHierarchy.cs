@@ -9,7 +9,7 @@ namespace Cloyd.ProjectsDashboard;
 
 /// <summary>Which project and worktree own each dashboard session. Reading the hub and Git again
 /// reuses each surviving row, even when discovery gives its session a different parent.</summary>
-sealed class DashboardHierarchy(ProjectWindows windows, DashboardWorktrees worktrees)
+sealed class DashboardHierarchy(ProjectWindows windows, DashboardWorktrees worktrees, ClosedProjectTabs closedTabs)
 {
    readonly ProjectWindows _windows = windows;
    readonly DashboardWorktrees _worktrees = worktrees;
@@ -27,10 +27,16 @@ sealed class DashboardHierarchy(ProjectWindows windows, DashboardWorktrees workt
       Roots.Clear();
       var listings = _windows.Sessions.Catalogue.WithRunning(_windows.Sessions.Running);
       var openTabs = _windows.Open.SelectMany(it => it.Tabs).Select(it => it.Host.Id).ToHashSet();
+      var openProjects = _windows.Open.Select(it => it.Project).ToHashSet();
       foreach(var repository in _worktrees.Repositories) IncludeRepository(repository);
       foreach(var project in _worktrees.TrustedProjects) GroupFor(project, project);
       foreach(var window in _windows.Open) GroupFor(window.Project, window.Project);
-      foreach(var host in _windows.Sessions.Hosts) IncludeHost(host, listings, openTabs.Contains(host.Id));
+      foreach(var host in _windows.Sessions.Hosts)
+      {
+         var isTab = openTabs.Contains(host.Id) || ProjectTabToRestore.CanShowLabelledHost(_windows.Sessions, host, project => !openProjects.Contains(project))
+                     || closedTabs.Hosts.Contains(host.Id) && ProjectTabToRestore.CanReattach(_windows.Sessions, host);
+         IncludeHost(host, listings, isTab);
+      }
       foreach(var running in _windows.Sessions.Running.Where(it => it.SessionHost is null))
          if(listings.TryGetValue(running.Session.Id, out var listing)) IncludeOutsideHost(running, listing);
       IncludeRecordedSessions(listings);
@@ -43,11 +49,19 @@ sealed class DashboardHierarchy(ProjectWindows windows, DashboardWorktrees workt
       var represented = _present.OfType<DashboardSession>().Select(it => it.Latest?.Id).OfType<SessionId>().ToHashSet();
       foreach(var listing in listings.Values.Where(it => !represented.Contains(it.Session.Id)))
       {
-         var folder = FolderOf(listing);
-         var group = RecordedGroup(folder);
-         var row = SessionIn(group, $"recorded:{listing.Session.AgentCli.NameInTheHub}:{listing.Session.Id}");
-         row.Update(null, listing.Running, listing.Session, listing.Session.AgentCli, folder, listing);
+         var stopped = closedTabs.ToResume.GetValueOrDefault(listing.Session.Id);
+         IncludeRecording(listing.Session, listing, stopped);
       }
+      foreach(var stopped in closedTabs.ToResume.Values)
+         if(!listings.ContainsKey(stopped.Session.Id) && !represented.Contains(stopped.Session.Id))
+            IncludeRecording(stopped.Session, null, stopped);
+   }
+
+   void IncludeRecording(Session session, SessionListing? listing, ProjectTabToRestore.Resume? stopped)
+   {
+      var folder = FolderOf(listing) ?? (stopped is null ? null : new Project(stopped.Directory));
+      var row = SessionIn(RecordedGroup(folder), $"recorded:{session.AgentCli.NameInTheHub}:{session.Id}");
+      row.Update(null, listing?.Running, session, session.AgentCli, folder, listing, open: stopped is not null, restorable: stopped is not null);
    }
 
    static Project? FolderOf(SessionListing? listing) =>
@@ -84,7 +98,8 @@ sealed class DashboardHierarchy(ProjectWindows windows, DashboardWorktrees workt
       var lastFolder = running is null || running.Session.Id == previous?.Latest?.Id ? previous?.WorkingFolder : null;
       var folder = running?.WorkingFolder ?? known?.LastSessionFolder ?? FolderOf(listing) ?? lastFolder ?? new Project(saved?.SessionDirectory ?? host.Directory);
       var row = SessionIn(GroupFor(folder, host.Project ?? folder), key);
-      row.Update(host, running, latest, latest is null ? null : known?.KnownAgentCli, folder, listing, open);
+      row.Update(host, running, latest, latest is null ? null : known?.KnownAgentCli, folder, listing,
+                 open || latest is not null && closedTabs.ToResume.ContainsKey(latest.Id));
    }
 
    void IncludeOutsideHost(RunningSession running, SessionListing listing)
@@ -92,7 +107,7 @@ sealed class DashboardHierarchy(ProjectWindows windows, DashboardWorktrees workt
       var folder = running.WorkingFolder ?? FolderOf(listing);
       var group = RecordedGroup(folder);
       var row = SessionIn(group, $"external:{running.Session.AgentCli.Name}:{running.Session.Id}");
-      row.Update(null, running, running.Session, running.Session.AgentCli, folder, listing);
+      row.Update(null, running, running.Session, running.Session.AgentCli, folder, listing, open: closedTabs.ToResume.ContainsKey(running.Session.Id));
    }
 
    /// <summary>The host's working folder determines its worktree. A label can identify its project

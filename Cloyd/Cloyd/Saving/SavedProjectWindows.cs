@@ -13,19 +13,47 @@ sealed class SavedProjectWindows(DirectoryInfo folder)
    static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web) { WriteIndented = true };
 
    readonly DirectoryInfo _folder = folder;
+   readonly Dictionary<string, SavedTabRestoration[]> _lastTabs = new(StringComparer.OrdinalIgnoreCase);
+   long _restorationRevision;
+
+   /// <summary>Changes on writes that affect the tabs a project window would restore. Routine saves
+   /// of the desktop, selected tab or drafts leave an in-flight membership reading valid.</summary>
+   public long RestorationRevision => Interlocked.Read(ref _restorationRevision);
 
    /// <summary>What was saved last of <paramref name="project"/>'s window: <see cref="SavedProjectWindow.NothingSaved"/> when nothing was.</summary>
    public SavedProjectWindow Of(Project project) =>
       FileOf(project).Text() is {} json ? JsonSerializer.Deserialize<SavedProjectWindow>(json, Json)! : SavedProjectWindow.NothingSaved;
 
    /// <summary>Replaces what is saved of <paramref name="project"/>'s window with <paramref name="window"/>, at once: a reader never finds half of it.</summary>
-   public void Save(Project project, SavedProjectWindow window) => FileOf(project).Write(JsonSerializer.Serialize(window, Json));
+   public void Save(Project project, SavedProjectWindow window) => Write(FileNameOf(project), window);
+
+   void Write(string fileName, SavedProjectWindow window)
+   {
+      new FileWrittenWhole(Path.Combine(_folder.FullName, fileName)).Write(JsonSerializer.Serialize(window, Json));
+      var tabs = window.Tabs.Select(SavedTabRestoration.Of).ToArray();
+      if(_lastTabs.TryGetValue(fileName, out var previous) && previous.SequenceEqual(tabs)) return;
+      _lastTabs[fileName] = tabs;
+      Interlocked.Increment(ref _restorationRevision);
+   }
+
+   /// <summary>Tabs of project windows that are closed. Compare the existing saved filenames
+   /// directly so previous versions' files work even though the encoded paths are not reversible.</summary>
+   public IEnumerable<SavedSessionTab> TabsOfClosedWindows(IEnumerable<Project> open)
+   {
+      if(!Directory.Exists(_folder.FullName)) yield break;
+      var openFiles = open.Select(FileNameOf).ToHashSet(StringComparer.OrdinalIgnoreCase);
+      foreach(var file in _folder.EnumerateFiles("*.json"))
+      {
+         if(openFiles.Contains(file.Name) || new FileWrittenWhole(file.FullName).Text() is not {} json) continue;
+         foreach(var tab in JsonSerializer.Deserialize<SavedProjectWindow>(json, Json)!.Tabs) yield return tab;
+      }
+   }
 
    /// <summary>Ending a host in Projects Dashboard also removes its tab from closed project windows.
    /// A saved tab left there would resume the session in a new host when its project next opens.</summary>
    public void Forget(SessionHostId ended)
    {
-      if(!_folder.Exists) return;
+      if(!Directory.Exists(_folder.FullName)) return;
       foreach(var entry in _folder.EnumerateFiles("*.json"))
       {
          var file = new FileWrittenWhole(entry.FullName);
@@ -33,7 +61,7 @@ sealed class SavedProjectWindows(DirectoryInfo folder)
          if(!saved.Tabs.Any(it => it.SessionHost == ended)) continue;
          var tabs = saved.Tabs.Where(it => it.SessionHost != ended).ToArray();
          var updated = saved with { Tabs = tabs, SelectedTab = saved.SelectedTab == ended ? tabs.FirstOrDefault()?.SessionHost : saved.SelectedTab };
-         file.Write(JsonSerializer.Serialize(updated, Json));
+         Write(entry.Name, updated);
       }
    }
 
@@ -42,6 +70,7 @@ sealed class SavedProjectWindows(DirectoryInfo folder)
    /// character of its folder that is neither a letter nor a digit made a <c>-</c>. In lower case, since Windows' paths
    /// ignore case, as a <see cref="Project"/>'s equality does.
    /// </summary>
-   FileWrittenWhole FileOf(Project project) =>
-      new(Path.Combine(_folder.FullName, $"{new string([.. project.Folder.ToLowerInvariant().Select(it => char.IsAsciiLetterOrDigit(it) ? it : '-')])}.json"));
+   FileWrittenWhole FileOf(Project project) => new(Path.Combine(_folder.FullName, FileNameOf(project)));
+
+   static string FileNameOf(Project project) => $"{new string([.. project.Folder.ToLowerInvariant().Select(it => char.IsAsciiLetterOrDigit(it) ? it : '-')])}.json";
 }

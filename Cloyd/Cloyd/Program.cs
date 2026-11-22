@@ -10,6 +10,7 @@ namespace Cloyd;
 /// <summary>
 /// The Cloyd application and its commands:
 /// <list type="bullet">
+/// <item><c>Cloyd.exe</c> opens Projects Dashboard or brings the existing dashboard forward.</item>
 /// <item>
 /// <c>Cloyd.exe --project &lt;folder&gt;</c>, the command, as an IDE runs it for a project it opens: has the Cloyd
 /// application show the project's window, starting the application when none runs, and exits once the window shows.
@@ -44,7 +45,8 @@ static class Program
          [ArgumentThatMakesItTheApplication, _] => BuildAvaloniaApp().StartWithClassicDesktopLifetime(arguments),
          [ArgumentThatAsksWhatLinks, var folder, var line] => TellWhatLinksIn(line, new Project(folder)),
          ["--start-peer-session"] => StartPeerSession(),
-         _ => ShowTheWindowOf(ProjectNamedBy(arguments))
+         [] => ShowWindow(null),
+         _ => ShowWindow(ProjectNamedBy(arguments))
       };
    }
 
@@ -75,14 +77,16 @@ static class Program
    public static CloydsFolder FolderOfTheApplication(string[] arguments) => new(new DirectoryInfo(arguments[1]));
 
    /// <summary>
-   /// The command: has the Cloyd application show <paramref name="project"/>'s window. Exits with 0 once it shows, else
+   /// Shows <paramref name="project"/>'s window, or Projects Dashboard when no project was requested. Exits with 0 once it shows, else
    /// with 1, telling why on the standard error, which whoever ran it may read.
    /// </summary>
-   static int ShowTheWindowOf(Project project)
+   static int ShowWindow(Project? project)
    {
       try
       {
-         TheCloydApplication.OfCloydsEnvironment().ShowTheWindowOf(project);
+         var application = TheCloydApplication.OfCloydsEnvironment();
+         if(project is null) application.ShowDashboard();
+         else application.ShowTheWindowOf(project);
          return 0;
       }
       catch(Exception failure) // The command's boundary, which tells whoever ran it why it failed.

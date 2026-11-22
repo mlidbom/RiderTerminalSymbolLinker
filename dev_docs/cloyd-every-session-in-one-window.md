@@ -4,7 +4,9 @@
 
 Magnus named the window **Projects Dashboard** on 2026-11-22. The button at the far right of a project window's
 tab strip opens the dashboard or brings its existing window forward. A project window can close while the
-dashboard stays open. The dashboard saves its selected session and virtual desktop in `projects-dashboard.json`.
+dashboard stays open. Launching `Cloyd.exe` with no arguments opens or activates the dashboard directly.
+`Cloyd.exe --project <folder>` opens the named project window. The dashboard saves its selected
+session and virtual desktop in `projects-dashboard.json`.
 
 - **The vertical tab strip** groups sessions under their project and then their worktree. It discovers
   projects from Claude Code's global config, open project windows and session hosts. Recorded projects
@@ -21,7 +23,10 @@ dashboard stays open. The dashboard saves its selected session and virtual deskt
   The root, project and worktree clocks open the same history picker, scoped to the clicked heading's full
   membership independently of sidebar filters. Session rows open their conversations directly.
 - **Inclusion switches** at the root, project and worktree match pins, open project tabs, and sessions in
-  no project tab. A match on any enabled switch includes the session. The nearest manually set value for
+  no project tab. Open tabs uses the tabs in open project windows and the restoration rules for closed
+  windows. This includes eligible project-labelled hosts and saved sessions that would resume in a new
+  host. Reading those choices never launches an agent. A match on any enabled switch includes the
+  session. The nearest manually set value for
   each switch wins. A context-menu action or Delete on a local switch restores inheritance. **AG** shows
   hidden group headings so their switches remain reachable. A second strip above the tree includes any
   of the selected statuses. The **A** at the right of each strip bypasses that strip's individual settings
@@ -35,6 +40,7 @@ dashboard stays open. The dashboard saves its selected session and virtual deskt
   branch and session names within the active filters. Search temporarily expands matching headings.
   An empty box closes on focus loss or a click elsewhere. Escape in the box clears it and restores
   the saved expansion. Ctrl+F remains available in the transcript.
+- **Project headings** offer **Open project** to open the project window or bring the existing one forward.
 - **Worktree context menus** have a Git Extensions submenu. Browse opens its revision graph and Commit
   opens the interactive commit dialog in that worktree's directory.
 - **Branch icons** compare checkout commits against local main (otherwise the available integration branch).
