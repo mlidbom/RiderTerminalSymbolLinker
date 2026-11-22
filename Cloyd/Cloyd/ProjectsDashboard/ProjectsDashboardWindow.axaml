@@ -75,9 +75,6 @@
     <Style Selector="ToggleButton.sessionPin:checked, ToggleButton.sessionPin:pointerover">
       <Setter Property="Opacity" Value="1"/>
     </Style>
-    <Style Selector="ToggleButton.sessionPin:checked PathIcon">
-      <Setter Property="Foreground" Value="{DynamicResource SystemControlHighlightAccentBrush}"/>
-    </Style>
   </Window.Styles>
   <Panel x:Name="Overlays">
     <DockPanel>
