@@ -46,7 +46,7 @@ public class When_the_Codex_terminal_updates_the_footer_in_a_narrow_tab : Specif
       OnTheUIThread(() => _tab.Terminal.TextShown.Contains(_tab.SessionRunningInIt!.Session.Id.Value, StringComparison.Ordinal)).Must().BeTrue();
 
    [XF] public void the_native_usage_figures_arrive_with_their_distinct_meanings() =>
-      OnTheUIThread(() => Chat.StatusLine.TextShown).Must().Satisfy(it => it.EndsWith("Context 10% used · weekly 99% left · 5K used · 20K in · 1K out", StringComparison.Ordinal));
+      OnTheUIThread(() => Chat.StatusLine.TextShown).Must().Satisfy(it => it.EndsWith("Context 10% used · week 1% · 5K used · 20K in · 1K out", StringComparison.Ordinal));
 
    [XF] public void the_status_line_keeps_the_reported_permission_settings() =>
       OnTheUIThread(() => Chat.StatusLine.PermissionsShown).Must().Be("Workspace · Ask for approval");

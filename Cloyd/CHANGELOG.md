@@ -12,8 +12,9 @@ All notable changes to Cloyd are documented here. The format follows
   with its input and elapsed time. Completed turns show how long they took and when they finished, including
   in saved conversations when Codex recorded the times.
   The footer wraps to fit the window. It shows the model and effort, directory, context used,
-  weekly allowance left and token counters in the order selected in Codex. Available permission settings and
-  running background terminals appear beneath it. Hover over the terminal count to see their commands. The tab
+  weekly allowance used and token counters in the order selected in Codex. As in Claude Chat, weekly usage
+  turns yellow above 75% and bold red at 85%. The label reads `week ?` while a reading is unavailable.
+  Available permission settings and running background terminals appear beneath it. Hover over the terminal count to see their commands. The tab
   identifies the session by name, and Peers can read its ID in Terminal.
 - **Codex sessions open in Chat with a hub that supports it.** Chat and Terminal show the same session.
   Use **Ctrl+H** to switch between them. Chat shows your prompts, Codex’s replies as they arrive, and tool calls

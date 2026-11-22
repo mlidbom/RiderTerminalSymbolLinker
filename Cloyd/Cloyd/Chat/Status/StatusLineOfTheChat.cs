@@ -57,19 +57,12 @@ sealed class StatusLineOfTheChat : UserControl
    {
       _claudeCodesStatusLine.Inlines!.Clear();
       if(claudeCode is null) _claudeCodesStatusLine.Inlines.Add(new Run(NoClaudeCodeRuns));
-      foreach(var stretch in claudeCode?.StatusLine?.Stretches ?? []) _claudeCodesStatusLine.Inlines.Add(RunOf(stretch));
+      foreach(var stretch in claudeCode?.StatusLine?.Stretches ?? []) _claudeCodesStatusLine.Inlines.Add(stretch.AsRun());
       _permissionMode.Text = claudeCode?.StatusLine?.PermissionModeLine;
       _permissionMode.IsVisible = _permissionMode.Text is not null;
       _backgroundWork.Text = claudeCode?.BackgroundWorkCounted;
       _backgroundWork.IsVisible = _backgroundWork.Text is not null;
       ToolTip.SetTip(_backgroundWork, claudeCode?.BackgroundWork is { IsAny: true } work ? work.Listed : null);
-   }
-
-   /// <summary><paramref name="stretch"/> as a run of text in its style: its colour's shade (<see cref="ColoursOfTheTerminal"/>), else the line's grey.</summary>
-   static Run RunOf(StretchOfTheStatusLine stretch)
-   {
-      var run = new Run(stretch.Text) { FontWeight = stretch.IsBold ? FontWeight.Bold : FontWeight.Normal };
-      return stretch.Colour is {} name && ColoursOfTheTerminal.Named(name) is {} colour ? colour.AsTheForegroundOf(run) : run;
    }
 
    static TextBlock Grey() => ColoursOfTheChat.Grey.AsTheForegroundOf(new TextBlock { FontSize = 12, HorizontalAlignment = HorizontalAlignment.Left, TextTrimming = TextTrimming.CharacterEllipsis });

@@ -1,7 +1,11 @@
 using System.Threading.Channels;
 using Avalonia.Controls;
+using Avalonia.Controls.Documents;
+using Avalonia.Media;
+using Avalonia.VisualTree;
 using ClaudeTooling.Hub.LocalApi.Contract.CodexChat;
 using Cloyd.Chat;
+using Cloyd.Chat.Status;
 using Cloyd.Chat.Writing;
 using Cloyd.Codex;
 using Cloyd.Codex.Chat;
@@ -31,7 +35,7 @@ public class When_a_Codex_chat_reopens_during_a_turn : SpecificationOpeningWindo
       var footer = new CodexChatFooter(session.Value, ["thread-id", "model-with-reasoning", "current-dir", "thread-name", "context-used", "weekly-limit", "used-tokens", "total-input-tokens", "total-output-tokens"], true)
       {
          Model = "GPT-6.2-Astra", ReasoningEffort = "xhigh", CurrentDirectory = @"C:\Dev\ClaudeSymbolLinker", ThreadName = "codex-codex-chat-ui",
-         ContextUsedPercent = 64, WeeklyRemainingPercent = 89, UsedTokens = 1_130_000, TotalInputTokens = 141_000_000, TotalOutputTokens = 172_000,
+         ContextUsedPercent = 64, WeeklyRemainingPercent = 15, UsedTokens = 1_130_000, TotalInputTokens = 141_000_000, TotalOutputTokens = 172_000,
          PermissionProfile = ":workspace", ApprovalPolicy = "on-request", ApprovalsReviewer = "user"
       };
       var window = Open(() => new Window { Width = 650, Height = 530, Content = new ChatOfACodexSession(hub, new PastedImages(new DirectoryInfo(Path.GetTempPath())), new CodexDraftsOfATab()) });
@@ -69,7 +73,15 @@ public class When_a_Codex_chat_reopens_during_a_turn : SpecificationOpeningWindo
    }
 
    [XF] public void the_chat_footer_stays_after_the_turn() =>
-      OnTheUIThread(() => _chat.StatusLine.TextShown).Must().Be(@"GPT-6.2-Astra xhigh · C:\Dev\ClaudeSymbolLinker · Context 64% used · weekly 89% left · 1.13M used · 141M in · 172K out");
+      OnTheUIThread(() => _chat.StatusLine.TextShown).Must().Be(@"GPT-6.2-Astra xhigh · C:\Dev\ClaudeSymbolLinker · Context 64% used · week 85% · 1.13M used · 141M in · 172K out");
+
+   [XF] public void the_reopened_footer_draws_the_entire_weekly_warning_in_bold_red() => OnTheUIThread(() =>
+   {
+      var week = _chat.StatusLine.GetVisualDescendants().OfType<TextBlock>()
+                      .SelectMany(it => it.Inlines!.OfType<Run>()).Single(it => it.Text == "week 85%");
+      week.FontWeight.Must().Be(FontWeight.Bold);
+      ((ISolidColorBrush)week.Foreground!).Color.Must().Be(ColoursOfTheTerminal.Named("red")!.In(_chat.ActualThemeVariant));
+   });
 
    [XF] public void it_shows_the_permissions_below_and_the_background_command_on_hover()
    {

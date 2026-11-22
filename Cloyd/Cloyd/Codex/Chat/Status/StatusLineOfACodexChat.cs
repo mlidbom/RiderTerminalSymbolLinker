@@ -37,12 +37,10 @@ sealed class StatusLineOfACodexChat : UserControl
       if(footer is not null)
       {
          var line = new CodexStatusLineItems(footer);
-         foreach(var (text, colour) in line.InOrder())
+         foreach(var stretch in line.InOrder())
          {
             if(_items.Inlines.Count > 0) _items.Inlines.Add(new Run(" · "));
-            var run = new Run(text);
-            if(footer.UseColors) ColoursOfTheTerminal.Named(colour)?.AsTheForegroundOf(run);
-            _items.Inlines.Add(run);
+            _items.Inlines.Add(stretch.AsRun());
          }
          _permissions.Text = line.PermissionsLine is {Length: > 0} permissions ? permissions : null;
       }

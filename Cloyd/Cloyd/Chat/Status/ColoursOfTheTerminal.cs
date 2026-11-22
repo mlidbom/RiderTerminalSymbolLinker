@@ -1,5 +1,4 @@
 using Avalonia.Controls;
-using Cloyd.Hub.RunningSessions;
 using Cloyd.Theming;
 
 namespace Cloyd.Chat.Status;

@@ -1,4 +1,5 @@
 using ClaudeTooling.Hub.LocalApi.Contract.RunningSessions;
+using Cloyd.Chat.Status;
 
 namespace Cloyd.Hub.RunningSessions;
 
@@ -17,7 +18,7 @@ sealed record ClaudeCodesStatusLine(string Text, IReadOnlyList<StretchOfTheStatu
 {
    /// <summary>The status line as the hub's answer <paramref name="statusLine"/> has it.</summary>
    public static ClaudeCodesStatusLine InThe(StatusLineInTheAnswer statusLine) =>
-      new(statusLine.Text, [.. statusLine.StyledStretches.Select(StretchOfTheStatusLine.InThe)], statusLine.PermissionMode?.ShownAs);
+      new(statusLine.Text, [.. statusLine.StyledStretches.Select(it => new StretchOfTheStatusLine(it.Text, it.Foreground, it.Bold))], statusLine.PermissionMode?.ShownAs);
 
    /// <summary>The line under the status line, as Claude Code shows the permission mode, such as "⏵⏵ bypass permissions on": null while it isn't known.</summary>
    public string? PermissionModeLine => PermissionModeShownAs is {} mode ? $"⏵⏵ {mode}" : null;
