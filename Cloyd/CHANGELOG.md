@@ -10,6 +10,7 @@ All notable changes to Cloyd are documented here. The format follows
 - **A warm star marks Claude Code tabs and a blue dot marks Codex tabs, even when idle.** During a turn,
   Claude’s star spins and the Codex dot slowly grows and shrinks. Codex Chat shows the same pulse above its input box.
   The title and close button stay in place. A grey star still marks a Claude Code session with background work.
+  A tab adopted at a plain shell prompt leaves the mark empty until Cloyd identifies its agent.
 - **Drag a tab header to rearrange sessions in a project window.** A marker shows where the tab will land,
   including on a wrapped row. Release to move it or press Escape to cancel. The window remembers the new
   order when it reopens, and Ctrl+Tab follows that order.

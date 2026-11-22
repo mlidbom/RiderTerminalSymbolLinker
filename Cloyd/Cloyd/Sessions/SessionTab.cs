@@ -44,8 +44,8 @@ sealed class SessionTab : TabItem
    readonly CodexDraftsOfATab _codexDrafts = new();
    bool _prefersChat = true;
 
-   /// <summary>The agent CLI of the tab's session until one runs in it or ran in it: <see cref="AgentCli"/> tells.</summary>
-   readonly AgentCli _agentCliBeforeASessionRuns;
+   /// <summary>The <see cref="NewSession.AgentCli"/> this tab was opened for, if any.</summary>
+   readonly AgentCli? _agentCliOfTheNewSession;
 
    /// <summary>
    /// Attaches to <paramref name="host"/> at <paramref name="size"/>, which its terminal then resizes it from. Until the
@@ -60,7 +60,7 @@ sealed class SessionTab : TabItem
       _codexChatInTheHub = codexChat;
       Host = host;
       LatestSession = latestSession;
-      _agentCliBeforeASessionRuns = newSession?.AgentCli ?? AgentCli.ClaudeCode;
+      _agentCliOfTheNewSession = newSession?.AgentCli;
       Terminal = new TerminalOfASessionHost(Attach, pastedImages, () => AgentCli);
       Terminal.PasteFailed += failure => Tell($"Cloyd couldn't paste: {failure.Message}");
       ClaudeCodeChat = new ChatOfAClaudeCodeSession(hub, pastedImages) { IsVisible = false };
@@ -119,7 +119,11 @@ sealed class SessionTab : TabItem
    /// The agent CLI of the session that runs in the tab's host, or ran in it last, or of the new session the tab was opened
    /// for: Claude Code for a host whose session Cloyd doesn't know, until the hub tells of one.
    /// </summary>
-   public AgentCli AgentCli => LatestSession?.AgentCli ?? _agentCliBeforeASessionRuns;
+   public AgentCli AgentCli => KnownAgentCli ?? AgentCli.ClaudeCode;
+
+   /// <summary>The <see cref="Sessions.AgentCli"/> identified by the latest or requested session.
+   /// A tab adopted at a shell prompt can have neither.</summary>
+   AgentCli? KnownAgentCli => LatestSession?.AgentCli ?? _agentCliOfTheNewSession;
 
    /// <summary>Whether the tab shows its switch between the terminal and the chat: while its <see cref="AgentCli"/>'s sessions have a chat.</summary>
    public bool OffersTheChat => _switch.IsVisible;
@@ -254,7 +258,7 @@ sealed class SessionTab : TabItem
    /// </summary>
    void FollowItsAgentCli()
    {
-      _indicator.Show(AgentCli, SessionRunningInIt);
+      _indicator.Show(KnownAgentCli, SessionRunningInIt);
       if(AgentCli == AgentCli.Codex && _codexChatInTheHub is {} hub && CodexChat is null)
       {
          CodexChat = new ChatOfACodexSession(hub, _pastedImages, _codexDrafts) { IsVisible = false };

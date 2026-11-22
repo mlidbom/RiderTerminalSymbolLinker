@@ -27,14 +27,13 @@ sealed class IndicatorOfASessionTab : Decorator
    public string? BackgroundWorkMarked => _backgroundWork.Tip;
 
    /// <summary>Shows the <paramref name="agentCli"/> the tab belongs to, including after its session exits.
-   /// Only a busy <paramref name="session"/> animates its mark.</summary>
-   public void Show(AgentCli agentCli, RunningSession? session)
+   /// The slot stays empty until the agent is known. Only a busy <paramref name="session"/> animates its mark.</summary>
+   public void Show(AgentCli? agentCli, RunningSession? session)
    {
       _claude.IsTurning = session is RunningClaudeCode { IsBusy: true };
       _codex.IsPulsing = session is RunningCodex { IsBusy: true };
       _backgroundWork.Show(session as RunningClaudeCode);
-      Child = agentCli == AgentCli.Codex ? _codex : ClaudeCodeMark();
-
-      Control ClaudeCodeMark() => _backgroundWork.IsVisible ? _backgroundWork : _claude;
+      if(agentCli == AgentCli.ClaudeCode) Child = _backgroundWork.IsVisible ? _backgroundWork : _claude;
+      else Child = agentCli == AgentCli.Codex ? _codex : null;
    }
 }
