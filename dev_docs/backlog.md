@@ -28,10 +28,13 @@ tab of Cloyd. `TerminalOfASessionHost.TypeANewLineOnShiftEnter` types a line fee
 keeps the change to `TerminalOfASessionHost`, plus the least that hands it the tab's `AgentCli`. new-view's
 refactoring of each session's state will move where the terminal is made, and builds on this once it's merged.
 
-**Then:** review, merge, run the full specifications, deploy. Codex takes Shift+Enter itself (crossterm keeps the Shift;
-`keymap.rs` binds it to `editor.insert_newline`). The stand-in for Codex doesn't yet: gpt-collaborators' helper adds it,
-and the tooling owner publishes it. Until then the helper's specification is skipped. Tell the helper to unskip it
-once gpt-collaborators says it's published.
+**Merged and deployed** (42ac8f6, reviewed in f9cd574). What's left: Codex takes Shift+Enter itself (crossterm keeps the
+Shift; `keymap.rs` binds it to `editor.insert_newline`), and the stand-in for Codex doesn't yet. gpt-collaborators' helper
+adds it, and the tooling owner publishes it. Until then
+`When_Magnus_presses_Shift_Enter_in_a_Codex_sessions_terminal` is skipped. Unskipped on 2026-11-22, it failed as it
+should: the stand-in sent "first", and its box held "› second".
+
+**Then,** once gpt-collaborators says it's published: unskip the specification, run it, and remove this entry.
 
 ## Waiting for Compze
 
