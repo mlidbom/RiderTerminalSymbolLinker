@@ -28,8 +28,7 @@ public class When_Magnus_presses_Shift_Enter_in_a_Codex_sessions_terminal : Spec
       Render(window, "Shift-Enter-pressed-between-two-lines-in-Codex");
    }
 
-   [XF(Skip = "The stand-in for Codex sends the prompt on Shift+Enter, where Codex starts a new line: gpt-collaborators is adding it (2026-11-22).")]
-   public void codexs_input_box_holds_what_was_typed_on_two_lines() => LinesOfTheInputBox.Must().Be("› first\nsecond");
+   [XF] public void codexs_input_box_holds_what_was_typed_on_two_lines() => LinesOfTheInputBox.Must().Be("› first\nsecond");
 
    string LinesOfTheInputBox => OnTheUIThread(() => InputBoxOfTheStandInForCodex.LinesShownIn(_tab.Terminal));
 }

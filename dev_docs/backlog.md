@@ -19,22 +19,7 @@ and tool output drawn in `MarkdownTextBlock`s, to be painted.
 ## Handed to the Codex helpers
 
 Which helper has what, so that two strands don't touch the same code (`dev_docs/development-environment.md`, "Codex
-helpers, in checkouts of their own"). Remove an entry once its work is merged.
-
-### codex-helper-1 (`cloyd-codex-1`, `codex:01a2009c-1d49-7f32-8ab7-ed623493aef1`): Shift+Enter in a Codex session's terminal tab
-
-**Handed by .NET-cloyd, 2026-11-22.** Magnus: "shift+enter does not produce a newline in a codex session", in a terminal
-tab of Cloyd. `TerminalOfASessionHost.TypeANewLineOnShiftEnter` types a line feed, Claude Code's Ctrl+J. Its brief
-keeps the change to `TerminalOfASessionHost`, plus the least that hands it the tab's `AgentCli`. new-view's
-refactoring of each session's state will move where the terminal is made, and builds on this once it's merged.
-
-**Merged and deployed** (42ac8f6, reviewed in f9cd574). What's left: Codex takes Shift+Enter itself (crossterm keeps the
-Shift; `keymap.rs` binds it to `editor.insert_newline`), and the stand-in for Codex doesn't yet. gpt-collaborators' helper
-adds it, and the tooling owner publishes it. Until then
-`When_Magnus_presses_Shift_Enter_in_a_Codex_sessions_terminal` is skipped. Unskipped on 2026-11-22, it failed as it
-should: the stand-in sent "first", and its box held "› second".
-
-**Then,** once gpt-collaborators says it's published: unskip the specification, run it, and remove this entry.
+helpers, in checkouts of their own"). Remove an entry once its work is merged. None is handed now.
 
 ## Waiting for Compze
 
