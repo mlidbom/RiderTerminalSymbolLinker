@@ -163,6 +163,24 @@ sealed class Sandbox : IDisposable
    {
       if(Directory.Exists(FolderOfTheHub(folder))) SandboxHub.StopIn(FolderOfTheHub(folder));
       foreach(var file in folder.EnumerateFiles("*", SearchOption.AllDirectories)) file.Attributes = FileAttributes.Normal;
+      DeleteTheStoppedHubsExecutable(folder);
       folder.Delete(recursive: true);
+   }
+
+   /// <summary>Windows can still deny deletion of the sandbox copy of ClaudeTooling.Hub.exe briefly after
+   /// sandbox stop returns. Two suite runs left just this file behind. A persistent denial still fails the run.</summary>
+   static void DeleteTheStoppedHubsExecutable(DirectoryInfo folder)
+   {
+      var executable = Path.Combine(FolderOfTheHub(folder), "bin", "ClaudeTooling.Hub.exe");
+      if(!File.Exists(executable)) return;
+      var waited = Stopwatch.StartNew();
+      while(true)
+      {
+         try { File.Delete(executable); return; }
+         catch(UnauthorizedAccessException failure) when(failure.HResult == unchecked((int)0x80070005) && waited.Elapsed < TimeSpan.FromSeconds(5))
+         {
+            Thread.Sleep(100);
+         }
+      }
    }
 }
