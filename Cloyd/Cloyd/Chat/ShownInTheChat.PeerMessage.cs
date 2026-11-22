@@ -1,4 +1,3 @@
-using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Documents;
 using Avalonia.Media;
@@ -36,17 +35,16 @@ partial record ShownInTheChat
          {
             var arrow = Coloured(DirectionMark, accent);
             arrow.FontFamily = new FontFamily("Segoe UI Symbol");
+            arrow.FontSize = 11;
             header.Add(arrow);
          }
          header.Add(name);
          header.Add(Coloured($" · {Protocol}", ColoursOfTheChat.Grey));
          if(Status.Length > 0) header.Add(Coloured(Status, DeliveryOutcome == OutcomeOfAToolCall.Failed ? ColoursOfTheChat.Failed : ColoursOfTheChat.Grey));
          var direction = IsOutgoing ? "to" : "from";
-         var row = Opening([.. header], Expanded, opened.IsOpen(Id), open => opened.SetOpen(Id, open), $"Message {direction} {Peer}, {Protocol}{Status}");
-         var bubble = AgentBubble(row, IsOutgoing ? ColoursOfTheChat.OutgoingPeerBubble : ColoursOfTheChat.IncomingPeerBubble);
-         bubble.BorderThickness = IsOutgoing ? new Thickness(0, 0, 4, 0) : new Thickness(4, 0, 0, 0);
-         bubble.CornerRadius = IsOutgoing ? new CornerRadius(12, 4, 4, 12) : new CornerRadius(4, 12, 12, 4);
-         return accent.AsTheBorderOf(bubble);
+         var row = Opening([.. header], Expanded, opened.IsOpen(Id), open => opened.SetOpen(Id, open),
+                           $"Message {direction} {Peer}, {Protocol}{Status}", singleLineWhenFolded: true);
+         return AgentBubble(row, IsOutgoing ? ColoursOfTheChat.OutgoingPeerBubble : ColoursOfTheChat.IncomingPeerBubble);
       }
 
       Control Expanded()

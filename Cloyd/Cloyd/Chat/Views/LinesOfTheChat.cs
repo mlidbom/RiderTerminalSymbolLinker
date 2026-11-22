@@ -64,9 +64,10 @@ static class LinesOfTheChat
    /// <summary>
    /// A line made of <paramref name="inlines"/>, followed by a chevron, that opens what <paramref name="opened"/> makes
    /// under it when clicked, and closes it when clicked again: <paramref name="isOpen"/> at first, and
-   /// <paramref name="toggled"/> told each time.
+   /// <paramref name="toggled"/> told each time. With <paramref name="singleLineWhenFolded"/>, only the first
+   /// line of the header takes space until the row opens.
    /// </summary>
-   public static Control Opening(Inline[] inlines, Func<Control> opened, bool isOpen, Action<bool> toggled, string? accessibleName = null)
+   public static Control Opening(Inline[] inlines, Func<Control> opened, bool isOpen, Action<bool> toggled, string? accessibleName = null, bool singleLineWhenFolded = false)
    {
       var text = ColoursOfTheChat.Grey.AsTheForegroundOf(new MarkdownTextBlock { TextWrapping = TextWrapping.Wrap, IsHitTestVisible = false });
       var chevron = Coloured("", ColoursOfTheChat.Grey);
@@ -82,6 +83,12 @@ static class LinesOfTheChat
          Cursor = new Avalonia.Input.Cursor(Avalonia.Input.StandardCursorType.Hand)
       };
       if(accessibleName is not null) AutomationProperties.SetName(line, accessibleName);
+      if(singleLineWhenFolded)
+      {
+         line.MinHeight = 0;
+         ToolTip.SetTip(line, accessibleName);
+         text.TextTrimming = TextTrimming.CharacterEllipsis;
+      }
       foreach(var key in new[] { "ButtonBackgroundPointerOver", "ButtonBackgroundPressed" }) line.Resources[key] = Brushes.Transparent;
       var under = new ContentControl();
       Show(isOpen);
@@ -95,6 +102,11 @@ static class LinesOfTheChat
       void Show(bool open)
       {
          under.Content = open ? opened() : null;
+         if(singleLineWhenFolded)
+         {
+            under.IsVisible = open;
+            text.MaxLines = open ? int.MaxValue : 1;
+         }
          chevron.Text = open ? "  ⌄" : "  ›";
       }
    }

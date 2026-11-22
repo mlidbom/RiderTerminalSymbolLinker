@@ -704,8 +704,8 @@ Codex session when that capability is present. Older hubs can still open Codex t
 
 Both chats show Magnus's prompts in gray bubbles on the right and the session's Markdown replies in blue
 bubbles on the left. Peer messages in either direction start folded, with just the peer name and protocol.
-Received messages are violet with a band on the left edge. Sent messages are teal with a band on the right
-edge and an outgoing arrow. Opening a peer message reveals its body and any recorded delivery details.
+Received messages are violet. Sent messages are teal with an outgoing arrow. Both folded bubbles are
+borderless and one message line high. Opening a peer message reveals its body and any recorded delivery details.
 Cloyd resolves session IDs using the hub's running session names and looks up saved names for exited peers.
 If neither source has a name, the recorded address identifies the peer.
 Codex records a Peers delivery as a text prompt wrapped in `<peer-message>`. Claude Code records its own

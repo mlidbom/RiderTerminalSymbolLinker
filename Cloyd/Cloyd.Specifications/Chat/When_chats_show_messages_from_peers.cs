@@ -3,6 +3,7 @@ using System.Text.Json.Nodes;
 using Avalonia;
 using Avalonia.Automation;
 using Avalonia.Controls;
+using Avalonia.Controls.Documents;
 using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Styling;
@@ -84,9 +85,29 @@ public class When_chats_show_messages_from_peers : SpecificationOpeningWindows
    [XF] public void Claude_keeps_the_recorded_sender_when_a_native_peer_quotes_another_peers_delivery() =>
       OnTheUIThread(() => _claude.Shown.OfType<ShownInTheChat.PeerMessage>().Single(it => it.Peer == "native-claude-peer" && !it.IsOutgoing).Body).Must().Be(ClaudeEnvelope);
 
-   [XF] public void the_folded_bubbles_show_direction_by_colour_and_edge_in_the_light_theme() => CheckBubbles(ThemeVariant.Light);
+   [XF] public void folded_peer_bubbles_are_borderless_and_one_message_line_high_in_the_light_theme() => CheckBubbles(ThemeVariant.Light);
 
-   [XF] public void the_folded_bubbles_show_direction_by_colour_and_edge_in_the_dark_theme() => CheckBubbles(ThemeVariant.Dark);
+   [XF] public void folded_peer_bubbles_are_borderless_and_one_message_line_high_in_the_dark_theme() => CheckBubbles(ThemeVariant.Dark);
+
+   [XF] public void a_long_peer_name_stays_on_one_line_until_opened_in_a_narrow_window()
+   {
+      var peer = new ShownInTheChat.PeerMessage("narrow", "A session name long enough to wrap several times in this window", "Peers", "Body on line one.\nAnd line two.");
+      var window = Open(() => new Window { Width = 230, Height = 260, Content = new StackPanel
+      {
+         Children = { peer.Draw(new OpenedChatRows()), LinesOfTheChat.Bubble(new Run("One line.")) }
+      } });
+      var rows = OnTheUIThread(() => (StackPanel)window.Content!);
+      WaitUntil(() => rows.Children.All(it => it.Bounds.Height > 0), "both bubbles were laid out");
+      var (foldedHeight, singleLineHeight) = OnTheUIThread(() => (rows.Children[0].Bounds.Height, rows.Children[1].Bounds.Height));
+      foldedHeight.Must().Satisfy(it => it <= singleLineHeight);
+      var header = OnTheUIThread(() => rows.GetVisualDescendants().OfType<Button>().Single());
+      Click(header);
+      WaitUntil(() => rows.Children[0].Bounds.Height > foldedHeight && BodyIsVisible(), "the full message opened");
+      Click(header);
+      WaitUntil(() => rows.Children[0].Bounds.Height <= singleLineHeight && !BodyIsVisible(), "the bubble returned to one line");
+
+      bool BodyIsVisible() => rows.GetVisualDescendants().OfType<SelectableTextBlock>().Any(it => it.Text == peer.Body);
+   }
 
    [XF] public void a_sent_message_opens_to_its_body_and_receipt_and_folds_away_again()
    {
@@ -112,14 +133,18 @@ public class When_chats_show_messages_from_peers : SpecificationOpeningWindows
          OnTheUIThread(() =>
          {
             var borders = chat.GetVisualDescendants().OfType<Border>().ToArray();
-            var incoming = borders.Single(it => it.Child is StackPanel && it.BorderThickness == new Thickness(4, 0, 0, 0)
-                                   && it.GetVisualDescendants().OfType<Button>().Any(button => AutomationProperties.GetName(button) == $"Message from {Sender}, Peers"));
+            var foldedSender = chat == _claude ? "R&D" : "Claude & Co";
+            var incoming = borders.Single(it => it.Child is StackPanel && it.GetVisualDescendants().OfType<Button>().Any(button => AutomationProperties.GetName(button) == $"Message from {foldedSender}, Peers"));
             var outgoing = borders.Single(it => it.Child is StackPanel && it.GetVisualDescendants().OfType<Button>().Any(button => AutomationProperties.GetName(button) == "Message to cloyd-gpt, Peers"));
-            outgoing.BorderThickness.Must().Be(new Thickness(0, 0, 4, 0));
+            incoming.BorderThickness.Must().Be(new Thickness(0));
+            outgoing.BorderThickness.Must().Be(new Thickness(0));
             ((ISolidColorBrush)incoming.Background!).Color.Must().Be(ColoursOfTheChat.IncomingPeerBubble.In(theme));
             ((ISolidColorBrush)outgoing.Background!).Color.Must().Be(ColoursOfTheChat.OutgoingPeerBubble.In(theme));
             outgoing.GetVisualDescendants().OfType<SelectableTextBlock>().Any(it => it.Text == "Please check the build.").Must().BeFalse();
             var reply = borders.Single(it => it.Child is MarkdownRenderer);
+            reply.Bounds.Height.Must().Satisfy(it => it > 0);
+            incoming.Bounds.Height.Must().Satisfy(it => it > 0 && it <= reply.Bounds.Height);
+            outgoing.Bounds.Height.Must().Satisfy(it => it > 0 && it <= reply.Bounds.Height);
             reply.HorizontalAlignment.Must().Be(HorizontalAlignment.Left);
             ((ISolidColorBrush)reply.Background!).Color.Must().Be(ColoursOfTheChat.ReplyBubble.In(theme));
             borders.Any(it => it.HorizontalAlignment == HorizontalAlignment.Right
