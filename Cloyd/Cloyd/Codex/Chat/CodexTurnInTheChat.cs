@@ -7,6 +7,8 @@ namespace Cloyd.Codex.Chat;
 /// rebuilds just this turn, keeping the already drawn rows of earlier turns.</summary>
 sealed record CodexTurnInTheChat(string Id, bool IsUnderWay, IReadOnlyList<ShownInTheChat> Rows)
 {
+   /// <summary>Client-assigned IDs of the user messages Codex has recorded in this turn.</summary>
+   public IReadOnlySet<string> RecordedClientMessageIds { get; private init; } = new HashSet<string>();
    public static CodexTurnInTheChat From(CodexChatTurn turn)
    {
       var rows = new List<ShownInTheChat>();
@@ -35,7 +37,11 @@ sealed record CodexTurnInTheChat(string Id, bool IsUnderWay, IReadOnlyList<Shown
       if(turn.Status == "interrupted") rows.Add(new CodexChatNotice(turn.Id, "Turn interrupted"));
       if(turn.Status == "failed") rows.Add(new CodexChatNotice(turn.Id, "Turn failed"));
 
-      return new CodexTurnInTheChat(turn.Id, turn.Status == "inProgress", rows);
+      return new CodexTurnInTheChat(turn.Id, turn.Status == "inProgress", rows)
+      {
+         RecordedClientMessageIds = turn.Items.Where(it => it.Kind == "userMessage")
+                                        .Select(it => it.ClientUserMessageId).OfType<string>().ToHashSet(StringComparer.Ordinal)
+      };
 
       void EndRunOfCalls()
       {

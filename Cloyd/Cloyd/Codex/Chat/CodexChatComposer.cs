@@ -50,6 +50,8 @@ sealed class CodexChatComposer : ChatComposer
       Tell(_input.Notice);
    }
 
+   public void Observe(CodexSessionId session, CodexChatReading reading) => _drafts.For(session).Observe(reading);
+
    protected override void Send()
    {
       if(Draft.IsEmpty || _input.IsSending) return;

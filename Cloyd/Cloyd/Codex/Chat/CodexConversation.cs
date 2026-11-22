@@ -8,6 +8,7 @@ namespace Cloyd.Codex.Chat;
 sealed class CodexConversation(CodexChatSnapshot snapshot)
 {
    readonly List<CodexTurnInTheChat> _turns = [.. snapshot.Turns.Select(CodexTurnInTheChat.From)];
+   readonly bool _supportsSteerReceipts = snapshot.SupportsCodexSteerReceipts;
 
    public void Update(CodexChatTurn turn)
    {
@@ -18,5 +19,6 @@ sealed class CodexConversation(CodexChatSnapshot snapshot)
    }
 
    public CodexChatReading AsShown() =>
-      new([.. _turns.SelectMany(it => it.Rows)], _turns.LastOrDefault(it => it.IsUnderWay) is {} active ? new CodexTurnId(active.Id) : null);
+      new([.. _turns.SelectMany(it => it.Rows)], _turns.LastOrDefault(it => it.IsUnderWay) is {} active ? new CodexTurnId(active.Id) : null)
+      { Turns = _turns.ToArray(), SupportsCodexSteerReceipts = _supportsSteerReceipts };
 }

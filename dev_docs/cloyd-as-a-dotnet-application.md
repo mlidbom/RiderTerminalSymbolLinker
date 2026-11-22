@@ -691,6 +691,9 @@ Codex session when that capability is present. Older hubs can still open Codex t
 - Ctrl+Enter submits input to the displayed session. While a turn runs it steers that turn. Stop names the same
   observed turn. Terminal owns approvals, including one that was pending when Chat opened. The hub can explicitly
   refuse a stale command. If an acknowledgement is lost, Cloyd puts the message back in the editor for Magnus.
+  A steer has its own client message ID. Cloyd retains its parts after acknowledgement until that ID appears in
+  the conversation. When the turn ends without it, the steer returns ahead of newer typing. Pending steers are
+  saved with their own session's draft when the window closes. Resending is always explicit.
 - Codex 0.171.0 can omit the beginning of an in-progress reply on the first attachment. Its completed item
   supplies the full text. Also, if Terminal starts a turn just as Chat submits an idle Send, Codex can steer that
   new turn with the submitted text. The tooling's `dev_docs/the-hubs-local-api.md` records both behaviors.

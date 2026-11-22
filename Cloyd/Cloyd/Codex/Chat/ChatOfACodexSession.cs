@@ -120,6 +120,7 @@ sealed class ChatOfACodexSession : SessionChat
       {
          if(subscription.IsCancellationRequested) return;
          var first = Shown.Count == 0;
+         if(reading is not null) InputBox.Observe(session, reading);
          _reading = reading;
          UpdateControls();
          if(reading is null)

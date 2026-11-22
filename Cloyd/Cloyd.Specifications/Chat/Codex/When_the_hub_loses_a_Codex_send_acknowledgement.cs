@@ -56,9 +56,10 @@ public class When_the_hub_loses_a_Codex_send_acknowledgement : SpecificationOpen
       readonly TaskCompletionSource _acknowledgement = new(TaskCreationOptions.RunContinuationsAsynchronously);
       public List<(CodexSessionId, CodexTurnId?, string)> Submissions { get; } = [];
 
-      public Task Send(CodexSessionId session, MessageFromTheChat message, CodexTurnId? steerInto)
+      public Task Send(CodexSessionId session, MessageFromTheChat message) => throw new NotSupportedException();
+      public Task Steer(CodexSessionId session, SubmittedCodexSteer steer)
       {
-         Submissions.Add((session, steerInto, message.AsShownInTheChat));
+         Submissions.Add((session, steer.Turn, steer.Message.AsShownInTheChat));
          return _acknowledgement.Task;
       }
 

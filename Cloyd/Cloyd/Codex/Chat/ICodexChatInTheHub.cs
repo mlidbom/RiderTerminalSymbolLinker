@@ -8,6 +8,7 @@ interface ICodexChatInTheHub
 {
    IAsyncEnumerable<CodexChatReading?> Follow(CodexSessionId session, CancellationToken cancellation);
    Task<CodexChatReading> SavedConversation(CodexSessionId session, CancellationToken cancellation);
-   Task Send(CodexSessionId session, MessageFromTheChat message, CodexTurnId? steerInto);
+   Task Send(CodexSessionId session, MessageFromTheChat message);
+   Task Steer(CodexSessionId session, SubmittedCodexSteer steer);
    Task Interrupt(CodexSessionId session, CodexTurnId turn);
 }

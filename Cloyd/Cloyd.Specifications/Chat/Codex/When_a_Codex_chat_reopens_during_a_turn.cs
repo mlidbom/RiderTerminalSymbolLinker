@@ -57,7 +57,8 @@ public class When_a_Codex_chat_reopens_during_a_turn : SpecificationOpeningWindo
 
       public ChannelWriter<CodexChatReading> NextSubscription() =>
          _subscriptions.Reader.ReadAsync().AsTask().WaitAsync(TimeSpan.FromSeconds(10)).GetAwaiter().GetResult();
-      public Task Send(CodexSessionId session, MessageFromTheChat message, CodexTurnId? steerInto) => throw new NotSupportedException();
+      public Task Send(CodexSessionId session, MessageFromTheChat message) => throw new NotSupportedException();
+      public Task Steer(CodexSessionId session, SubmittedCodexSteer steer) => throw new NotSupportedException();
       public Task<CodexChatReading> SavedConversation(CodexSessionId session, CancellationToken cancellation) => throw new NotSupportedException();
       public Task Interrupt(CodexSessionId session, CodexTurnId turn) => throw new NotSupportedException();
    }

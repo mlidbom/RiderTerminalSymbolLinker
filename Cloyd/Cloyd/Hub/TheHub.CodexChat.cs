@@ -60,26 +60,33 @@ partial class TheHub : ICodexChatInTheHub
       catch(IOException failure) when(failure.InnerException is SocketException { SocketErrorCode: SocketError.ConnectionReset }) { return false; }
    }
 
-   public Task Send(CodexSessionId session, MessageFromTheChat message, CodexTurnId? steerInto)
+   public Task Send(CodexSessionId session, MessageFromTheChat message) => Submit(session, message, null);
+   public Task Steer(CodexSessionId session, SubmittedCodexSteer steer) => Submit(session, steer.Message, steer);
+
+   Task Submit(CodexSessionId session, MessageFromTheChat message, SubmittedCodexSteer? steer)
    {
       var images = message.Parts.OfType<PartOfAMessage.PastedImage>().Select(it => it.File.FullName).ToArray();
       var imagePaths = images.Length == 0 ? null : images;
       var text = images.Length == message.Parts.Count ? "" : message.AsShownInTheChat;
-      return steerInto is null
+      return steer is null
                 ? CodexChatCommand(session, "send", new SendToCodexChat(text) { ImagePaths = imagePaths })
-                : CodexChatCommand(session, "steer", new SteerCodexChat(steerInto.Value, text) { ImagePaths = imagePaths }, steerInto);
+                : CodexChatCommand(session, "steer", new SteerCodexChat(steer.Turn.Value, text)
+                   { ImagePaths = imagePaths, ClientUserMessageId = steer.ClientUserMessageId }, steer.Turn, steer.ClientUserMessageId);
    }
 
    public Task Interrupt(CodexSessionId session, CodexTurnId turn) => CodexChatCommand(session, "stop", new StopCodexChat(turn.Value), turn);
 
    /// <summary>Submits exactly once, even when a hub restarts partway through its answer. Only an explicit
    /// refusal establishes that Codex did not take the command.</summary>
-   async Task CodexChatCommand<TRequest>(CodexSessionId session, string command, TRequest body, CodexTurnId? expected = null)
+   async Task CodexChatCommand<TRequest>(CodexSessionId session, string command, TRequest body, CodexTurnId? expected = null,
+                                         string? expectedClientMessageId = null)
    {
       if(AnnouncementOfTheHub.In(_folderOfTheAnnouncement) is not {} hub)
          throw new RefusedByTheHub("The hub is unavailable. The command was not sent.");
       if(hub.Protocol != LocalApiProtocol.Version || !hub.Says.SupportsCodexChat)
          throw new RefusedByTheHub("The current hub does not offer Codex Chat to this version of Cloyd.");
+      if(expectedClientMessageId is not null && !hub.Says.SupportsCodexSteerReceipts)
+         throw new RefusedByTheHub("This hub cannot confirm individual steering messages. Use Terminal to steer until the hub is updated.");
       using var deadline = new CancellationTokenSource(HowLongANewHubMayTakeToAnswer);
       using var answer = await SendOnce(hub, it => new HttpRequestMessage(HttpMethod.Post, it.AddressOf($"codex-chat/{session}/{command}"))
       {
@@ -89,8 +96,17 @@ partial class TheHub : ICodexChatInTheHub
          throw new RefusedByTheHub((await Read<RefusalAnswer>(answer, CancellationToken.None)).Error);
       if(answer.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden or HttpStatusCode.BadRequest)
          throw new RefusedByTheHub($"The hub rejected the {command} request (HTTP {(int)answer.StatusCode}).");
-      var receipt = await Read<CodexChatCommandAccepted>(answer, deadline.Token);
-      if(string.IsNullOrWhiteSpace(receipt.TurnId) || expected is not null && receipt.TurnId != expected.Value)
+      var turnId = await AcceptedTurn();
+      if(string.IsNullOrWhiteSpace(turnId) || expected is not null && turnId != expected.Value)
          throw new InvalidDataException("The hub did not acknowledge the expected Codex turn.");
+
+      async Task<string> AcceptedTurn()
+      {
+         if(expectedClientMessageId is null) return (await Read<CodexChatCommandAccepted>(answer, deadline.Token)).TurnId;
+         var receipt = await Read<CodexChatSteerAccepted>(answer, deadline.Token);
+         if(receipt.ClientUserMessageId != expectedClientMessageId)
+            throw new InvalidDataException("The hub did not acknowledge this Codex steering message ID.");
+         return receipt.TurnId;
+      }
    }
 }
