@@ -126,7 +126,9 @@ sandbox of its own, its hub included, so the runs share nothing else (`Cloyd.Spe
 To test Cloyd with a staged tooling build, set `CLOYD_SPECIFICATIONS_TOOLING_EXE` to that build's
 `ClaudeTooling.exe` and `TheHubsContract` to the matching `ClaudeTooling.Hub.LocalApi.Contract` source
 directory in the shell that runs the specifications. Each scenario starts its own hub and stand-ins from that
-build. With neither variable set, Cloyd compiles and tests against the installed tooling.
+build. By default the specifications launch the installed tooling. The build prefers its contract and uses the
+tooling checkout's contract if the installed copy predates Codex Chat. The Codex Chat integration specifications
+exercise a hub that offers the feature.
 
 **Where a specification's time goes: NCrunch's MCP** (`ncrunch`, Magnus's suggestion, 2026-11-20): the NCrunch Console
 Tool's server in its headless mode, whose `StartSession` runs an engine of its own, apart from Rider's NCrunch, so it
