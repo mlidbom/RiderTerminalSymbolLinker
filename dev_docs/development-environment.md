@@ -233,6 +233,12 @@ project it showed, which starts it again with the same windows, their tabs broug
 hosts. On Magnus's go, as it closes the windows he works in. `everyday cloyd` reads where its windows are, changing
 nothing: each one's virtual desktop, and its project's IDE window's, which it is to keep to (`CloydBesideTheIdes`).
 
+**Checking the tabs through a Cloyd restart.** Run `pwsh Cloyd/check-restored-tabs.ps1 -Record <temporary-file>`
+before the restart, then `pwsh Cloyd/check-restored-tabs.ps1 -Compare <temporary-file>`. The comparison waits
+for the new process to save its restored tabs and checks project windows, ordered hosts, selections and
+draft fingerprints. The temporary record contains no draft text. A difference can also reflect Magnus editing
+or sending a message between the readings. Delete the temporary file after checking.
+
 **What links in a line of a terminal's output,** with a project's files as git lists them now and its C# symbols as
 Magnus's Rider has them now, with no window: `Cloyd.exe --links-in <the project's folder> "<line>"`, from Cloyd's
 `bin`, Debug or the installed one. It prints how long reading each took, and each file reference and symbol reference,
