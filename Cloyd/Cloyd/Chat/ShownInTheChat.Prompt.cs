@@ -5,7 +5,7 @@ namespace Cloyd.Chat;
 
 partial record ShownInTheChat
 {
-   /// <summary>A prompt Magnus gave, in a bubble at the right, as plain text.</summary>
+   /// <summary>A prompt Magnus gave, rendered as Markdown in a bubble at the right.</summary>
    /// <param name="Id">The message's <see cref="MessageInTheAnswer.Id"/>.</param>
    /// <param name="Text">What he typed and pasted, in order, and each image he pasted as its placeholder, such as <c>[Image #1]</c>.</param>
    public sealed record Prompt(string Id, string Text) : ShownInTheChat

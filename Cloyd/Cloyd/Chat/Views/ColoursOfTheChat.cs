@@ -63,7 +63,7 @@ static class ColoursOfTheChat
    /// <summary>The thin border of an opened run of tool calls, a command, a code block, and the lines between the rows.</summary>
    public static readonly ColourOfTheTheme Border = new("#E5E4E1", "#3A3936");
 
-   /// <summary>The ground of a code block in Claude's markdown.</summary>
+   /// <summary>The ground of a code block in the chat's Markdown.</summary>
    public static readonly ColourOfTheTheme GroundOfACodeBlock = new("#FBFBFA", "#1F1F1E");
 
    /// <summary>The ground of a match a search of the chat found, as a browser paints it.</summary>
@@ -77,11 +77,11 @@ static class ColoursOfTheChat
                                               GroundOfAnAddedLine, GroundOfARemovedLine, Border, GroundOfACodeBlock, AMatch, TheMatchShown];
 
    /// <summary>
-   /// The colours LiveMarkdown.Avalonia draws Claude's markdown in, by the keys of its <c>Defaults.axaml</c>, which are
+   /// The colours LiveMarkdown.Avalonia draws prompts and replies in, by the keys of its <c>Defaults.axaml</c>, which are
    /// those of a dark theme: its text, inline code and quotes in the chat's text colour, its borders in the chat's, and
    /// a code block's ground.
    /// </summary>
-   static readonly (string Key, ColourOfTheTheme Colour)[] ColoursOfClaudesMarkdown =
+   static readonly (string Key, ColourOfTheTheme Colour)[] MarkdownColours =
    [
       ("ForegroundColor", Text),
       ("CodeInlineColor", Text),
@@ -90,7 +90,7 @@ static class ColoursOfTheChat
       ("SecondaryCardBackgroundColor", GroundOfACodeBlock)
    ];
 
-   /// <summary>The colours of the code in Claude's markdown, as Visual Studio Code's default theme has them in <paramref name="theme"/>.</summary>
+   /// <summary>The colours of code in the chat, as Visual Studio Code's default theme has them in <paramref name="theme"/>.</summary>
    public static ThemeName OfCodeIn(ThemeVariant theme) => theme == ThemeVariant.Dark ? ThemeName.DarkPlus : ThemeName.LightPlus;
 
    /// <summary>The chat's colours as resources: a dictionary for each of Windows' themes, from which what the chat draws takes its colours.</summary>
@@ -98,7 +98,7 @@ static class ColoursOfTheChat
    {
       var resources = ColourOfTheTheme.AsResources(All);
       foreach(var (theme, inTheTheme) in resources.ThemeDictionaries)
-         foreach(var (key, colour) in ColoursOfClaudesMarkdown)
+         foreach(var (key, colour) in MarkdownColours)
             ((ResourceDictionary)inTheTheme)[key] = colour.In(theme);
       return resources;
    }

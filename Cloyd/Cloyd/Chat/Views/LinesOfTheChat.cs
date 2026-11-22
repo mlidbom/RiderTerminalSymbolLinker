@@ -30,15 +30,17 @@ static class LinesOfTheChat
    {
       var text = ColoursOfTheChat.Text.AsTheForegroundOf(new MarkdownTextBlock { TextWrapping = TextWrapping.Wrap, MaxLines = mostLines, TextTrimming = TextTrimming.CharacterEllipsis });
       text.Inlines!.AddRange(inlines);
-      return ColoursOfTheChat.BubbleOfAPrompt.AsTheBackgroundOf(new Border
-      {
-         CornerRadius = new CornerRadius(12),
-         Padding = new Thickness(14, 10),
-         HorizontalAlignment = HorizontalAlignment.Right,
-         MaxWidth = WidestBubble,
-         Child = text
-      });
+      return PromptBubble(text);
    }
+
+   public static Border PromptBubble(Control message) => ColoursOfTheChat.BubbleOfAPrompt.AsTheBackgroundOf(new Border
+   {
+      CornerRadius = new CornerRadius(12),
+      Padding = new Thickness(14, 10),
+      HorizontalAlignment = HorizontalAlignment.Right,
+      MaxWidth = WidestBubble,
+      Child = message
+   });
 
    /// <summary>A grey line, such as <c>Compacted session</c>.</summary>
    public static Control Grey(string line) => ColoursOfTheChat.Grey.AsTheForegroundOf(new MarkdownTextBlock { Text = line, TextWrapping = TextWrapping.Wrap });

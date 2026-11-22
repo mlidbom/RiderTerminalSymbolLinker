@@ -32,7 +32,8 @@ Pictures: `04-turn-done.png`, `09-markdown.png`.
 - **A column in the middle of the window,** about 770 logical pixels wide, which moves left when a side panel opens.
   Above the first message, in small grey: `Started on this computer · sample-shop · Save as environment`.
 - **What the user wrote:** at the right, in a light grey bubble with round corners, as wide as its text up to about three
-  quarters of the column. Plain text; a link in it is blue.
+  quarters of the column. The reference app shows plain text with blue links. Cloyd renders these
+  messages as Markdown in both Claude and Codex chats, including when opening a saved transcript.
 - **What Claude wrote:** the reference app uses the column's full width with no bubble. In Cloyd, Magnus
   chose a left-aligned blue reply bubble for both chats. Folded peer messages occupy one line in a borderless
   bubble, violet for incoming messages and teal with an arrow for outgoing messages.

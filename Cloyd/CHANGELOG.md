@@ -7,6 +7,9 @@ All notable changes to Cloyd are documented here. The format follows
 ## [0.1.0]
 
 ### Added
+- **Your sent messages render as Markdown in Claude and Codex chats.** Lists, emphasis, links and code
+  use the same formatting as replies, inside your right-aligned prompt bubble. This also applies when
+  reading a saved conversation.
 - **Cloyd records unhandled managed exceptions before it exits.** Each failure gets its own file in
   `%LOCALAPPDATA%\Cloyd\crashes`, with the UTC timestamp, build, process and managed thread IDs,
   and the full exception and stack trace. A sandbox writes reports inside its own Cloyd folder.

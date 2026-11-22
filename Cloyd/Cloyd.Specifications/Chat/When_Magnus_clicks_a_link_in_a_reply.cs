@@ -52,7 +52,7 @@ public class When_Magnus_clicks_a_link_in_a_reply : SpecificationOpeningWindows
       var launcher = new RecordingLauncher();
       foreach(var href in new[] { drivePath, drivePath.Replace(" ", "%20").Replace("#", "%23"), new Uri(file.FullName).AbsoluteUri })
       {
-         (await ReplyLinks.Open(new Uri(href), launcher)!).Must().BeTrue();
+         (await ChatLinks.Open(new Uri(href), launcher)!).Must().BeTrue();
          launcher.LastFile!.Must().Be(file.FullName);
       }
    }
@@ -61,10 +61,10 @@ public class When_Magnus_clicks_a_link_in_a_reply : SpecificationOpeningWindows
    {
       var launcher = new RecordingLauncher();
       var url = new Uri("https://example.org/preview");
-      (await ReplyLinks.Open(url, launcher)!).Must().BeTrue();
+      (await ChatLinks.Open(url, launcher)!).Must().BeTrue();
       launcher.LastUri.Must().Be(url);
-      ReplyLinks.Open(new Uri("ms-settings:display"), launcher).Must().BeNull();
-      ReplyLinks.Open(new Uri("file:///C:/example.exe"), launcher).Must().BeNull();
+      ChatLinks.Open(new Uri("ms-settings:display"), launcher).Must().BeNull();
+      ChatLinks.Open(new Uri("file:///C:/example.exe"), launcher).Must().BeNull();
       launcher.LastFile.Must().BeNull();
    }
 

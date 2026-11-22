@@ -217,7 +217,6 @@ sealed class ChatOfAClaudeCodeSession : SessionChat
 
    protected override Control DrawRow(ShownInTheChat shown) => shown switch
    {
-      ShownInTheChat.Prompt prompt => Bubble(Coloured(prompt.Text, ColoursOfTheChat.Text)),
       ShownInTheChat.SlashCommand command => Bubble(Coloured(command.Command, ColoursOfTheChat.SlashCommand), Coloured(command.Arguments, ColoursOfTheChat.Text)),
       ShownInTheChat.ClaudesText text => ReplyBubble(text.Markdown),
       ShownInTheChat.RunOfToolCalls run => ToolCallsInTheChat.Of(run, _opened),

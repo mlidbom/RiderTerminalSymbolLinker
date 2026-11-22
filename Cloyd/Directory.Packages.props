@@ -21,10 +21,10 @@
       <PackageVersion Include="Iciclecreek.Avalonia.Terminal" Version="4.1.4" />
    </ItemGroup>
 
-   <!-- The chat's markdown: Claude's text, rendered as it streams in (dev_docs/cloyd-as-a-dotnet-application.md, "What
-        the spike found"). -->
+   <!-- Render Markdown in prompts and replies, and search their displayed text using the same parser. -->
    <ItemGroup>
       <PackageVersion Include="LiveMarkdown.Avalonia" Version="2.7.0" />
+      <PackageVersion Include="Markdig" Version="1.1.2" />
    </ItemGroup>
 
    <!-- Compze: Magnus's own libraries. Compze.Threading also locks the session host protocol's sources, compiled in from

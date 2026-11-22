@@ -181,7 +181,7 @@ abstract class SessionChat : UserControl
    Control ViewOf(ShownInTheChat? shown)
    {
       if(shown is null) return new Panel();
-      var view = DrawRow(shown);
+      var view = shown is ShownInTheChat.Prompt prompt ? LinesOfTheChat.PromptBubble(RenderMarkdown(prompt.Text)) : DrawRow(shown);
       var above = view is TurnEndLine ? 0 : SpaceAboveAnOrdinaryRow;
       var below = shown is ShownInTheChat.Prompt or ShownInTheChat.SlashCommand ? 14 : 4;
       view.Margin = new Thickness(0, above, 0, below);
@@ -271,7 +271,7 @@ abstract class SessionChat : UserControl
    /// <summary>
    /// Paints <paramref name="match"/> as the one shown and has the view follow it once the chat is laid out, unless another
    /// search or match is shown by then: what was drawn above it grows as its markdown is rendered, after it is laid out.
-   /// Claude's markdown that the match is in is too: until it has been, the view follows the view the match is in, and the
+   /// The matching Markdown block also renders after layout. Until then the view follows the row, and the
    /// chat tries again a little later, as many as <paramref name="triesLeft"/> more times.
    /// </summary>
    void ShowOnceLaidOut(FoundInTheChat found, MatchInTheChat match, int triesLeft) =>
@@ -292,7 +292,7 @@ abstract class SessionChat : UserControl
 
    /// <summary>
    /// Has the chat look as the app's does: in the <see cref="ColoursOfTheChat"/> of Windows' theme, and the markdown of
-   /// what Claude wrote in the sizes of the app's, through the resources LiveMarkdown's <c>Defaults.axaml</c> defines: a
+   /// prompts and replies in the sizes of the app's, through the resources LiveMarkdown's <c>Defaults.axaml</c> defines: a
    /// <c>#</c> heading about 1.25 times the text's size, <c>##</c> and <c>###</c> the text's own, bold.
    /// </summary>
    void LookOfTheApp()
@@ -305,25 +305,27 @@ abstract class SessionChat : UserControl
       Resources["FontSizeXl"] = 14.0;
    }
 
-   protected Control ReplyBubble(string markdown)
+   protected Control ReplyBubble(string markdown) => LinesOfTheChat.AgentBubble(RenderMarkdown(markdown), ColoursOfTheChat.ReplyBubble);
+
+   MarkdownRenderer RenderMarkdown(string markdown)
    {
       var text = new ObservableStringBuilder();
       text.Append(markdown);
       var renderer = ColoursOfTheChat.Text.AsTheForegroundOf(new MarkdownRenderer { MarkdownBuilder = text });
-      renderer.LinkClick += OpenReplyLink;
+      renderer.LinkClick += OpenChatLink;
       renderer.AttachedToVisualTree += (_, _) => ColourTheCode();
       renderer.ActualThemeVariantChanged += (_, _) => ColourTheCode();
-      return LinesOfTheChat.AgentBubble(renderer, ColoursOfTheChat.ReplyBubble);
+      return renderer;
 
       void ColourTheCode() => renderer.CodeBlockColorTheme = ColoursOfTheChat.OfCodeIn(renderer.ActualThemeVariant);
    }
 
-   async void OpenReplyLink(object? sender, LinkClickedEventArgs click)
+   async void OpenChatLink(object? sender, LinkClickedEventArgs click)
    {
       if(click.HRef is not {} target) return;
       try
       {
-         if(ReplyLinks.Open(target, TopLevel.GetTopLevel(this)!.Launcher) is not {} opening) return;
+         if(ChatLinks.Open(target, TopLevel.GetTopLevel(this)!.Launcher) is not {} opening) return;
          click.Handled = true;
          if(!await opening) Tell($"Couldn't open {target.OriginalString}.");
       }

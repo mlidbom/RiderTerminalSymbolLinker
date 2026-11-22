@@ -16,8 +16,8 @@ namespace Cloyd.Chat;
 abstract partial record ShownInTheChat
 {
    /// <summary>
-   /// The text the chat shows of it, as drawn closed: what a search of the chat finds in it, drawn or not
-   /// (<see cref="Searching.FoundInTheChat"/>). Of what Claude wrote, its markdown.
+   /// The text of the row as drawn closed. Markdown messages retain their source, including
+   /// formatting and original line breaks.
    /// </summary>
    public abstract string TextShown { get; }
 

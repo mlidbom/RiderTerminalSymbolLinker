@@ -156,7 +156,6 @@ sealed class ChatOfACodexSession : SessionChat
 
    protected override Control DrawRow(ShownInTheChat shown) => shown switch
    {
-      ShownInTheChat.Prompt prompt => Bubble(Coloured(prompt.Text, ColoursOfTheChat.Text)),
       ShownInTheChat.PeerMessage peer => peer.Draw(_opened.PeerMessages),
       CodexReply reply => ReplyBubble(reply.Markdown),
       CodexToolCalls calls => calls.Draw(_opened),

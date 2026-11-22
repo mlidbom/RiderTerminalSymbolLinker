@@ -149,7 +149,7 @@ public class When_chats_show_messages_from_peers : SpecificationOpeningWindows
             ((ISolidColorBrush)incoming.Background!).Color.Must().Be(ColoursOfTheChat.IncomingPeerBubble.In(theme));
             ((ISolidColorBrush)outgoing.Background!).Color.Must().Be(ColoursOfTheChat.OutgoingPeerBubble.In(theme));
             outgoing.GetVisualDescendants().OfType<SelectableTextBlock>().Any(it => it.Text == "Please check the build.").Must().BeFalse();
-            var reply = borders.Single(it => it.Child is MarkdownRenderer);
+            var reply = borders.Single(it => it.Child is MarkdownRenderer && it.HorizontalAlignment == HorizontalAlignment.Left);
             reply.Bounds.Height.Must().Satisfy(it => it > 0);
             incoming.Bounds.Height.Must().Satisfy(it => it > 0 && it <= reply.Bounds.Height);
             outgoing.Bounds.Height.Must().Satisfy(it => it > 0 && it <= reply.Bounds.Height);

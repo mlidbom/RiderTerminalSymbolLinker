@@ -65,7 +65,13 @@ sealed class FoundInTheChat
    FoundInTheChat Showing(int shown) => Matches.Count == 0 ? this : new(Pattern, Matches, (shown + Matches.Count) % Matches.Count);
 
    static IReadOnlyList<MatchInTheChat> MatchesIn(IReadOnlyList<ShownInTheChat> conversation, TextSearchPattern pattern) =>
-      [.. Enumerable.Range(0, conversation.Count).SelectMany(at => Enumerable.Range(0, pattern.FindRanges(conversation[at].TextShown).Count()).Select(occurrence => new MatchInTheChat(at, occurrence)))];
+      [.. Enumerable.Range(0, conversation.Count).SelectMany(at => Enumerable.Range(0, pattern.FindRanges(TextToSearch(conversation[at])).Count()).Select(occurrence => new MatchInTheChat(at, occurrence)))];
+
+   /// <summary>Search Markdown messages using the renderer's parser, including rows above the
+   /// visible conversation. Formatting and invisible link destinations do not contribute matches.</summary>
+   static string TextToSearch(ShownInTheChat row) => row is ShownInTheChat.Prompt or ShownInTheChat.ClaudesText or Codex.Chat.CodexReply
+      ? Markdig.Markdown.ToPlainText(row.TextShown, MarkdownUpdateProducer.DefaultPipeline)
+      : row.TextShown;
 
    static int IndexOf(IReadOnlyList<MatchInTheChat> matches, MatchInTheChat match)
    {

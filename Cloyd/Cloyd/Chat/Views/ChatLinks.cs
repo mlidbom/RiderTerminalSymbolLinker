@@ -3,7 +3,7 @@ using Avalonia.Platform.Storage;
 namespace Cloyd.Chat.Views;
 
 /// <summary>Opens a web link in the browser or a local screenshot in the same viewer used for pasted images.</summary>
-static class ReplyLinks
+static class ChatLinks
 {
    /// <summary>Returns the system launch result, or null for a target this chat doesn't open.</summary>
    public static Task<bool>? Open(Uri target, ILauncher launcher)

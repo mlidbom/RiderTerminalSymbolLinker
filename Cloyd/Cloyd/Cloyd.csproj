@@ -23,6 +23,7 @@
       <PackageReference Include="CommunityToolkit.Mvvm" />
       <PackageReference Include="Iciclecreek.Avalonia.Terminal" />
       <PackageReference Include="LiveMarkdown.Avalonia" />
+      <PackageReference Include="Markdig" />
       <PackageReference Include="Compze.Threading" />
       <PackageReference Include="Compze.Threading.Interprocess" />
    </ItemGroup>
