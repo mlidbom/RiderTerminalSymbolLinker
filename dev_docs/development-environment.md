@@ -302,7 +302,10 @@ Run that again after a rule changes. Codex asks Magnus to trust the folder the f
 the folder's `.codex/config.toml` only once he has.
 
 **Starting a helper** is Magnus's: `cd` into the checkout, `codex`, trust the folder, then `/rename codex-helper-1`, the
-name it is addressed by. It shows in `list_peers` once it has had a turn.
+name it is addressed by, and a first prompt such as "You're a helper for .NET-cloyd. Its briefs come as turns of their
+own: end this one now." It shows in `list_peers` once it has had a turn. Told only to wait for its briefs, the first
+helpers slept a minute at a time, for up to four minutes, before ending the turn, and a brief runs only after the turn
+under way.
 
 **Handing it a task,** the coordinating session, the one that hands the work:
 
