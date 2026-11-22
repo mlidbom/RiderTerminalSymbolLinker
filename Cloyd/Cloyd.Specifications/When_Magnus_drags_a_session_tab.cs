@@ -5,6 +5,7 @@ using Avalonia.Headless;
 using Avalonia.Input;
 using Avalonia.Media;
 using Avalonia.VisualTree;
+using Cloyd.Codex.Chat;
 using Cloyd.Projects;
 using Cloyd.Sessions;
 using Cloyd.Specifications.TheSandbox;
@@ -74,6 +75,41 @@ public class When_Magnus_drags_a_session_tab : SpecificationOpeningWindows
       });
       Press(_window, Key.Tab, PhysicalKey.Tab, RawInputModifiers.Control);
       OnTheUIThread(() => _window.SelectedTab).Must().Be(_second);
+   }
+
+   [XF] public void the_moved_terminal_keeps_its_prompt_and_types_into_the_same_Codex_session()
+   {
+      SwitchWithCtrlH(_window, _third);
+      Type(_window, "before");
+      WaitUntil(() => _third.Terminal.TextShown.Contains("before"), "Codex showed the unfinished prompt");
+      var connection = OnTheUIThread(() => _third.Terminal.SessionId);
+      var cursor = OnTheUIThread(CursorPosition);
+      OnTheUIThread(() =>
+      {
+         var target = HeaderPoint(_first, .25);
+         BeginDrag(_third, target);
+         _window.MouseUp(target, MouseButton.Left);
+         _window.Tabs.Must().SequenceEqual([_third, _first, _second]);
+      });
+      OnTheUIThread(() => _third.Terminal.SessionId).Must().Be(connection);
+      OnTheUIThread(CursorPosition).Must().Be(cursor);
+      Type(_window, " and after");
+      WaitUntil(() => _third.Terminal.TextShown.Contains("before and after"), "typing after the drop continued at the Codex prompt");
+
+      OnTheUIThread(() => _window.Select(_second));
+      WaitUntilTheInputBoxHasTheKeyboard(_window, _second);
+      OnTheUIThread(() => _window.Select(_third));
+      OnTheUIThread(() => _third.Terminal.SessionId).Must().Be(connection);
+      Press(_window, Key.Enter, PhysicalKey.Enter, RawInputModifiers.None);
+      WaitUntil(() => _third.Terminal.TextShown.Contains("Heard: before and after"), "the same Codex session answered in Terminal");
+      SwitchWithCtrlH(_window, _third);
+      WaitUntil(() => _third.CodexChat!.Shown.OfType<CodexReply>().Any(it => it.Markdown == "Heard: before and after"), "Chat showed the same reply");
+
+      (int Column, int Row) CursorPosition()
+      {
+         var buffer = _third.Terminal.Terminal.Buffer;
+         return (buffer.X, buffer.Y);
+      }
    }
 
    [XF] public void Escape_or_releasing_in_the_transcript_cancels_the_move()

@@ -1,6 +1,7 @@
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using Avalonia.LogicalTree;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using ClaudeTooling.SessionHost.Protocol;
@@ -59,6 +60,7 @@ sealed class TerminalOfASessionHost : TerminalControl
       FontFamily = new FontFamily("Cascadia Mono");
       FontSize = 14;
       BufferSize = LinesItKeeps;
+      Process = string.Empty; // Only the session host starts a shell for this terminal.
       TemplateApplied += (_, _) =>
       {
          if(_attached) return;
@@ -76,6 +78,20 @@ sealed class TerminalOfASessionHost : TerminalControl
    public event Action<Exception>? PasteFailed;
 
    protected override Type StyleKeyOverride => typeof(TerminalControl);
+
+   /// <summary>Keep reading the host when Avalonia temporarily removes the terminal to switch or reorder tabs.
+   /// The owning <see cref="SessionTab"/> disposes the terminal when the tab actually closes.</summary>
+   protected override void OnDetachedFromLogicalTree(LogicalTreeAttachmentEventArgs e)
+   {
+      BeginReparent();
+      base.OnDetachedFromLogicalTree(e);
+   }
+
+   protected override void OnAttachedToLogicalTree(LogicalTreeAttachmentEventArgs e)
+   {
+      base.OnAttachedToLogicalTree(e);
+      EndReparent();
+   }
 
    /// <summary>What it shows now, line by line, as text: nothing until it is first laid out.</summary>
    public string TextShown => HasBeenLaidOut ? Terminal.Buffer.PrintViewport() : "";

@@ -23,6 +23,8 @@ The documents:
 - **`dev_docs/cloyd-as-a-dotnet-application.md`:** Magnus's direction since 2026-11-20, its spike's findings, and step one as it's built: Cloyd as a
   .NET application in Avalonia, beside the IDEs, with the plugin shrunk to what needs the IDE. Read it before new work on
   either plugin.
+- **`dev_docs/cloyd-every-session-in-one-window.md`:** a second Cloyd window with every session of every project in a
+  tree, and the selected one beside it: what Magnus decided, the design, and the open questions. Not started.
 - **`dev_docs/development-environment.md`:** building, the sandbox Rider, the observation channels, the specifications,
   deploying to Magnus's IDEs, and the Codex helpers in checkouts of their own.
 - **`dev_docs/releasing.md`:** the symbol linker's versions, which Riders it supports, CI and the Marketplace.
