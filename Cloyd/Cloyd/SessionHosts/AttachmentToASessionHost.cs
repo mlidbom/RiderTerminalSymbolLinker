@@ -63,10 +63,20 @@ sealed class AttachmentToASessionHost : IDisposable
    /// again: an <see cref="InvalidOperationException"/> when no host listens as <paramref name="host"/>.
    /// </summary>
    public static AttachmentToASessionHost To(SessionHostId host, ConsoleSize size)
+      => TryAttach(host, size) ?? throw new InvalidOperationException($"No session host listens as {host}.");
+
+   /// <summary>A host may have exited between discovery and the first layout of its terminal.</summary>
+   public static AttachmentToASessionHost? TryAttach(SessionHostId host, ConsoleSize size, Action<string>? ended = null)
    {
-      var connection = ConnectionToASessionHost.TryConnect(host, HowLongAHostMayTakeToAnswer) ?? throw new InvalidOperationException($"No session host listens as {host}.");
-      connection.Send(SessionHostFrame.Hello(HelloToTheSessionHost.OfAnAttachClient(size)));
+      var connection = ConnectionToASessionHost.TryConnect(host, HowLongAHostMayTakeToAnswer);
+      if(connection is null) return null;
+      if(!connection.TrySend(SessionHostFrame.Hello(HelloToTheSessionHost.OfAnAttachClient(size))))
+      {
+         connection.Dispose();
+         return null;
+      }
       var attachment = new AttachmentToASessionHost(host, connection, size);
+      attachment.Ended += ended;
       attachment._relaying.Start();
       return attachment;
    }

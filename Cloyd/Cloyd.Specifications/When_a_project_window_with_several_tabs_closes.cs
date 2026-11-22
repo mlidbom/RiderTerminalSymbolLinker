@@ -44,6 +44,9 @@ public abstract class When_a_project_window_with_several_tabs_closes : Specifica
       [XF] public void it_selects_the_tab_that_was_selected() => OnTheUIThread(() => _windowAgain.SelectedTab?.Host.Id).Must().Be(_hostsInTheirOrder[1]);
 
       [XF] public void it_starts_no_host() => _project.ItsSessionHosts().Must().HaveCount(3);
+
+      [XF] public void a_restored_tab_whose_terminal_has_never_been_laid_out_has_no_attachment_to_block_its_host() =>
+         _project.SessionHost(_hostsInTheirOrder[2])!.Attached.Must().BeFalse();
    }
 
    public class and_another_host_of_the_project_starts_before_the_window_opens_again : When_a_project_window_with_several_tabs_closes

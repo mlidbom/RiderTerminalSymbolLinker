@@ -53,7 +53,7 @@ sealed class TerminalOfASessionHost : TerminalControl
    /// <paramref name="pastedImages"/>. <paramref name="agentCliInTheHost"/> says which agent CLI the host runs now,
    /// which can change while the terminal shows it.
    /// </summary>
-   public TerminalOfASessionHost(AttachmentToASessionHost attachment, PastedImages pastedImages, Func<AgentCli> agentCliInTheHost)
+   public TerminalOfASessionHost(Func<AttachmentToASessionHost?> attachment, PastedImages pastedImages, Func<AgentCli> agentCliInTheHost)
    {
       _pastedImages = pastedImages;
       _agentCliInTheHost = agentCliInTheHost;
@@ -64,9 +64,10 @@ sealed class TerminalOfASessionHost : TerminalControl
       TemplateApplied += (_, _) =>
       {
          if(_attached) return;
+         if(attachment() is not {} host) return;
          _attached = true;
          MouseEncodingsConhostCantRead.IgnoreIn(Terminal);
-         AttachConnection(new SessionHostAsAPseudoConsole(attachment));
+         AttachConnection(new SessionHostAsAPseudoConsole(host));
       };
       AddHandler(KeyDownEvent, TypeANewLineOnAShiftEnterThatWouldSend, RoutingStrategies.Tunnel);
       AddHandler(KeyDownEvent, PasteOnCtrlV, RoutingStrategies.Tunnel);

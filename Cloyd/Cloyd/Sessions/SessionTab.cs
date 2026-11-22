@@ -32,7 +32,7 @@ namespace Cloyd.Sessions;
 /// </remarks>
 sealed class SessionTab : TabItem
 {
-   readonly AttachmentToASessionHost _attachment;
+   AttachmentToASessionHost? _attachment;
    readonly TextBlock _title;
    readonly SpinnerOfClaudeCode _spinner = new();
    readonly MarkerOfBackgroundWork _backgroundWork = new();
@@ -63,9 +63,7 @@ sealed class SessionTab : TabItem
       Host = host;
       LatestSession = latestSession;
       _agentCliBeforeASessionRuns = newSession?.AgentCli ?? AgentCli.ClaudeCode;
-      _attachment = AttachmentToASessionHost.To(host.Id, size);
-      _attachment.Ended += why => Dispatcher.UIThread.Post(() => EndedByItself?.Invoke(this, why));
-      Terminal = new TerminalOfASessionHost(_attachment, pastedImages, () => AgentCli);
+      Terminal = new TerminalOfASessionHost(Attach, pastedImages, () => AgentCli);
       Terminal.PasteFailed += failure => Tell($"Cloyd couldn't paste: {failure.Message}");
       ClaudeCodeChat = new ChatOfAClaudeCodeSession(hub, pastedImages) { IsVisible = false };
       ClaudeCodeChat.Show((latestSession as ClaudeCodeSession)?.Id);
@@ -78,6 +76,15 @@ sealed class SessionTab : TabItem
       _switch = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, Spacing = 2, Margin = new Thickness(4, 2), Children = { _showTheChat, _showTheTerminal } };
       FollowItsAgentCli();
       Content = LookOfTheTabs.Ground.AsTheBackgroundOf(new Border { Child = new DockPanel { Children = { Docked(_notice, Dock.Top), Docked(_switch, Dock.Top), new Panel { Children = { Terminal, _chatView } } } } });
+
+      AttachmentToASessionHost? Attach()
+      {
+         _attachment = AttachmentToASessionHost.TryAttach(host.Id, size, Ended);
+         if(_attachment is null) Ended("the session host has exited");
+         return _attachment;
+      }
+
+      void Ended(string why) => Dispatcher.UIThread.Post(() => EndedByItself?.Invoke(this, why));
    }
 
    protected override Type StyleKeyOverride => typeof(TabItem);
@@ -213,7 +220,7 @@ sealed class SessionTab : TabItem
    public void LetGo()
    {
       Terminal.Dispose();
-      _attachment.Dispose();
+      _attachment?.Dispose();
    }
 
    /// <summary>

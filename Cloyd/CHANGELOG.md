@@ -152,6 +152,8 @@ All notable changes to Cloyd are documented here. The format follows
     the session, as after it was archived. Windows saved before read their sessions as Claude Code's.
 
 ### Fixed
+- **Busy sessions keep running after Cloyd restores their tabs.** A restored tab first attaches when its
+  terminal is laid out. Previously, output from a never-selected tab could fill its pipe and stall the session.
 - **Moving a tab keeps its terminal connected to the same session.** You can continue typing at the same
   prompt after a drag or a tab switch. Previously a Windows command prompt could appear over the session
   and take keyboard input.
