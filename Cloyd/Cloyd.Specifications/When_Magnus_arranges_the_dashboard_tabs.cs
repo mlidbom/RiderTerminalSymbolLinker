@@ -76,6 +76,15 @@ public class When_Magnus_arranges_the_dashboard_tabs : SpecificationOpeningWindo
       OnTheUIThread(() => window.Tree.NoMatches).Must().BeTrue();
       PressSwitch(window, "All session memberships");
       WaitUntil(() => window.Tree.NavigableSessions.Count() == 2, "both All switches admitted the two unpinned shells");
+      OnTheUIThread(() =>
+      {
+         var selected = Switch(window, "Pinned");
+         var unselected = Switch(window, "Open tabs");
+         selected.IsEnabled.Must().BeTrue();
+         HasVisibleBorder(selected).Must().BeTrue();
+         HasVisibleBorder(unselected).Must().BeFalse();
+      });
+      Render(window, "Projects-Dashboard-switches-while-All-is-on");
       Close(window);
       var reopened = OnTheUIThread(() => Sandbox.WindowsOfCloyd.ShowDashboard(_alpha.Project));
       WaitUntil(() => reopened.Tree.NavigableSessions.Count() == 2, "both temporary All choices survived reopening");
@@ -94,7 +103,26 @@ public class When_Magnus_arranges_the_dashboard_tabs : SpecificationOpeningWindo
          Switch(reopened, "Open tabs").IsChecked.Must().Be(false);
          Switch(reopened, "Sessions outside tabs").IsChecked.Must().Be(false);
       });
+      PressSwitch(reopened, "All statuses");
+      PressSwitch(reopened, "Error");
+      OnTheUIThread(() =>
+      {
+         Switch(reopened, "All statuses").IsChecked.Must().Be(false);
+         Switch(reopened, "Error").IsChecked.Must().Be(false);
+         Switch(reopened, "Waiting for you").IsChecked.Must().Be(true);
+      });
+      PressSwitch(reopened, "Waiting for you");
+      PressSwitch(reopened, "All statuses");
+      OnTheUIThread(() => Switch(reopened, "All statuses").IsChecked).Must().Be(true);
+      PressSwitch(reopened, "Idle");
+      OnTheUIThread(() => Switch(reopened, "All statuses").IsChecked).Must().Be(false);
+      PressSwitch(reopened, "Pinned");
+      OnTheUIThread(() => Switch(reopened, "All session memberships").IsChecked).Must().Be(true);
+      PressSwitch(reopened, "Open tabs");
+      OnTheUIThread(() => Switch(reopened, "All session memberships").IsChecked).Must().Be(false);
 
+      bool HasVisibleBorder(ToggleButton button) => button.GetVisualDescendants().OfType<Avalonia.Controls.Presenters.ContentPresenter>()
+         .Single(it => it.Name == "PART_ContentPresenter") is { BorderThickness.Left: > 0, BorderBrush: Avalonia.Media.ISolidColorBrush { Color.A: > 0 } };
       string[] Names(DashboardFilterStrip strip) => strip.Children.OfType<ToggleButton>().Select(it => AutomationProperties.GetName(it)!).ToArray();
       ToggleButton Switch(ProjectsDashboardWindow dashboard, string name) => dashboard.GetVisualDescendants().OfType<DashboardFilterStrip>().Where(it => it.DataContext == dashboard.Tree)
          .SelectMany(it => it.Children.OfType<ToggleButton>()).Single(it => AutomationProperties.GetName(it) == name);
@@ -103,6 +131,47 @@ public class When_Magnus_arranges_the_dashboard_tabs : SpecificationOpeningWindo
          Focus(OnTheUIThread(() => Switch(dashboard, name)));
          Press(dashboard, Key.Space, PhysicalKey.Space, RawInputModifiers.None);
       }
+   }
+
+   [XF] public void a_worktree_switch_cycles_On_Off_Unset_and_only_overrides_All_in_its_own_worktree()
+   {
+      OnTheUIThread(() =>
+      {
+         var tree = _dashboard.Tree;
+         var filters = tree.Filters;
+         tree.ToggleInclusion(null, IncludedSessions.AllMemberships);
+         tree.EditingFilters = true;
+         Cycle(IncludedSessions.Pinned);
+         filters.LocalSetting(_linkedGroup, IncludedSessions.Pinned).Must().Be(true);
+         filters.Effective(_linkedGroup).HasFlag(IncludedSessions.AllMemberships).Must().BeFalse();
+         filters.Effective(_emptyGroup).HasFlag(IncludedSessions.AllMemberships).Must().BeTrue();
+         Cycle(IncludedSessions.Pinned);
+         filters.LocalSetting(_linkedGroup, IncludedSessions.Pinned).Must().Be(false);
+         tree.ToggleInclusion(_alphaGroup, IncludedSessions.Pinned);
+         filters.Effective(_linkedGroup).HasFlag(IncludedSessions.Pinned).Must().BeFalse();
+         Cycle(IncludedSessions.Pinned);
+         filters.IsInherited(_linkedGroup, IncludedSessions.Pinned).Must().BeTrue();
+         filters.Effective(_linkedGroup).HasFlag(IncludedSessions.Pinned).Must().BeTrue();
+         tree.ToggleInclusion(_alphaGroup, IncludedSessions.Pinned);
+         filters.Effective(_linkedGroup).HasFlag(IncludedSessions.Pinned).Must().BeFalse();
+         Cycle(IncludedSessions.AllMemberships);
+         filters.IsInherited(_linkedGroup, IncludedSessions.AllMemberships).Must().BeTrue();
+         Cycle(IncludedSessions.AllMemberships);
+         filters.LocalSetting(_linkedGroup, IncludedSessions.AllMemberships).Must().Be(true);
+         Cycle(IncludedSessions.AllMemberships);
+         filters.LocalSetting(_linkedGroup, IncludedSessions.AllMemberships).Must().Be(false);
+
+         void Cycle(IncludedSessions kind)
+         {
+            _dashboard.UpdateLayout();
+            var name = kind == IncludedSessions.Pinned ? "Pinned" : "All session memberships";
+            var strip = _dashboard.GetVisualDescendants().OfType<SessionFilterStrip>().Single(it => it.DataContext == _linkedGroup);
+            var button = strip.Children.OfType<ToggleButton>().Single(it => AutomationProperties.GetName(it) == name);
+            var centre = button.TranslatePoint(new Point(button.Bounds.Width / 2, button.Bounds.Height / 2), _dashboard)!.Value;
+            _dashboard.MouseDown(centre, MouseButton.Left);
+            _dashboard.MouseUp(centre, MouseButton.Left);
+         }
+      });
    }
 
    [XF] public void tree_search_reveals_matches_beneath_collapsed_headings_and_restores_the_view_when_dismissed()
@@ -137,21 +206,39 @@ public class When_Magnus_arranges_the_dashboard_tabs : SpecificationOpeningWindo
       WaitUntil(() => search.IsKeyboardFocusWithin, "the search icon focused the box");
       Type(_dashboard, "unused checkout");
       WaitUntil(() => _dashboard.Tree.VisibleRows.SequenceEqual([_alphaGroup, _emptyGroup]), "the search found an empty worktree with its project heading");
+      var allGroups = OnTheUIThread(() => _dashboard.GetVisualDescendants().OfType<ToggleButton>().Single(it => AutomationProperties.GetName(it) == "All groups"));
+      Focus(allGroups);
+      OnTheUIThread(() => search.IsEffectivelyVisible && _dashboard.Tree.SearchText == "unused checkout").Must().BeTrue();
+      Press(_dashboard, Key.F, PhysicalKey.F, RawInputModifiers.Control | RawInputModifiers.Shift);
+      Press(_dashboard, Key.Back, PhysicalKey.Backspace, RawInputModifiers.None);
+      WaitUntil(() => _dashboard.Tree.SearchText == "" && search.IsKeyboardFocusWithin, "clearing the focused query left the box ready for typing");
+      Focus(allGroups);
+      WaitUntil(() => !search.IsEffectivelyVisible && allGroups.IsKeyboardFocusWithin, "leaving the empty box hid it and kept the target's focus");
+      Click(OnTheUIThread(() => _dashboard.FindControl<Button>("SearchTreeButton")!));
+      WaitUntil(() => search.IsKeyboardFocusWithin, "the empty box reopened");
+      ClickRow(_alphaGroup);
+      WaitUntil(() => !search.IsEffectivelyVisible && _alphaGroup.Expanded, "clicking the collapsed heading hid the empty box and expanded the heading under the pointer");
    }
 
    [XF] public void the_worktree_context_menu_opens_Git_Extensions_for_the_clicked_checkout()
    {
-      OnTheUIThread(() =>
+      var active = OnTheUIThread(() => _dashboard.Tree.ActiveSession);
+      var menu = OnTheUIThread(() =>
       {
-         var active = _dashboard.Tree.ActiveSession;
          var rows = _dashboard.GetVisualDescendants().OfType<ListBoxItem>().ToArray();
          rows.Where(it => it.DataContext is DashboardProject or DashboardSession).All(it => it.ContextMenu is null).Must().BeTrue();
-         var menu = rows.Single(it => it.DataContext == _emptyGroup).ContextMenu!;
          var at = PointOf(_emptyGroup, .5);
          _dashboard.MouseDown(at, MouseButton.Right);
          _dashboard.MouseUp(at, MouseButton.Right);
-         menu.IsOpen.Must().BeTrue();
-         var gitExtensions = menu.Items.OfType<MenuItem>().Single();
+         return rows.Single(it => it.DataContext == _emptyGroup).ContextMenu!;
+      });
+      var gitExtensions = OnTheUIThread(() => menu.Items.OfType<MenuItem>().Single());
+      WaitUntil(() => menu.IsOpen && LaidOut(gitExtensions), "right-click showed the Git Extensions menu item",
+                () => $"menu open {menu.IsOpen}, item bounds {gitExtensions.Bounds}", TimeSpan.FromSeconds(4));
+      OnTheUIThread(() => gitExtensions.IsSubMenuOpen = true);
+      WaitUntil(() => gitExtensions.Items.OfType<MenuItem>().All(LaidOut), "both Git Extensions actions were visible");
+      OnTheUIThread(() =>
+      {
          gitExtensions.Header.Must().Be("Git Extensions");
          var actions = gitExtensions.Items.OfType<MenuItem>().ToArray();
          actions.Select(it => it.Header).ToArray().Must().SequenceEqual(["Browse", "Commit"]);
@@ -165,6 +252,9 @@ public class When_Magnus_arranges_the_dashboard_tabs : SpecificationOpeningWindo
          menu.Close();
          _dashboard.Tree.ActiveSession.Must().ReferenceEqual(active!);
       });
+
+      static bool LaidOut(MenuItem item) =>
+         item.IsEffectivelyVisible && TopLevel.GetTopLevel(item) is not null && item.Bounds is { Width: > 0, Height: > 0 };
    }
 
    [XF] public void both_agents_follow_the_worktree_where_they_run_even_when_their_host_was_started_elsewhere()

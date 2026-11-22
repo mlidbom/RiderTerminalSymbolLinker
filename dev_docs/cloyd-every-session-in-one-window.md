@@ -25,12 +25,16 @@ dashboard stays open. The dashboard saves its selected session and virtual deskt
   each switch wins. A context-menu action or Delete on a local switch restores inheritance. **AG** shows
   hidden group headings so their switches remain reachable. A second strip above the tree includes any
   of the selected statuses. The **A** at the right of each strip bypasses that strip's individual settings
-  until switched off. Counts and Ctrl+Tab follow the filters. The current chat or terminal stays in place.
+  until switched off. Its selected individual choices are boxed and remain clickable. Clicking one
+  changes it and exits **A**. A strip with no choices defaults to **A**. Worktree switches, including
+  **A**, cycle through On, Off and Unset. Unset inherits the project value. Counts and Ctrl+Tab follow
+  the filters. The current chat or terminal stays in place.
   Pins belong to the agent session, including across a change of host. Older pinned-only settings migrate
   to the pinned switch alone.
 - **Tree search** opens and takes focus from the magnifier or Ctrl+Shift+F. Words match project, worktree,
   branch and session names within the active filters. Search temporarily expands matching headings.
-  Escape in the box clears it and restores the saved expansion. Ctrl+F remains available in the transcript.
+  An empty box closes on focus loss or a click elsewhere. Escape in the box clears it and restores
+  the saved expansion. Ctrl+F remains available in the transcript.
 - **Worktree context menus** have a Git Extensions submenu. Browse opens its revision graph and Commit
   opens the interactive commit dialog in that worktree's directory.
 - **Branch icons** compare checkout commits against local main (otherwise the available integration branch).

@@ -96,6 +96,17 @@
     <Style Selector="ToggleButton.inherited:pointerover /template/ ContentPresenter#PART_ContentPresenter">
       <Setter Property="Background" Value="{DynamicResource TabUnderPointer}"/>
     </Style>
+    <Style Selector="ToggleButton.whileAll /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="Transparent"/>
+      <Setter Property="BorderBrush" Value="Transparent"/>
+      <Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
+    </Style>
+    <Style Selector="ToggleButton.whileAll:checked /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="BorderThickness" Value="1"/>
+      <Setter Property="BorderBrush" Value="{DynamicResource SystemControlHighlightAccentBrush}"/>
+      <Setter Property="Background" Value="{DynamicResource ActiveTabGround}"/>
+      <Setter Property="Foreground" Value="{DynamicResource SystemControlHighlightAccentBrush}"/>
+    </Style>
   </Window.Styles>
   <Panel x:Name="Overlays">
     <DockPanel>

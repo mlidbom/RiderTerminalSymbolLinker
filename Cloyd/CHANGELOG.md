@@ -9,13 +9,16 @@ All notable changes to Cloyd are documented here. The format follows
 ### Added
 - **Search the Projects Dashboard tree.** Click the magnifier or press Ctrl+Shift+F, then type words
   from a project, worktree, branch or session name. Matching rows appear under their headings, including
-  in collapsed groups. Escape clears the search and brings back the previous expansion. The clock beside
-  the magnifier opens history for all projects.
+  in collapsed groups. An empty search closes when you click elsewhere or move focus away. A nonempty
+  search stays active. Escape clears it and brings back the previous expansion. The clock beside the
+  magnifier opens history for all projects.
 - **Right-click a dashboard worktree to open Git Extensions.** Choose **Browse** for its revision graph
   or **Commit** for its commit dialog. Both open in the checkout you clicked.
 - **Combine dashboard status icons above the tree.** Pinned comes first in the session switches. Each
   strip ends with **A**, which temporarily includes all its sessions or statuses and remembers the
-  individual switches. **AG** shows all group headings, including those with no matching sessions.
+  individual switches. While **A** is on, boxes mark the selected choices. Click an individual switch
+  to change it and leave **A**. An empty strip selects **A** automatically. Worktree switches cycle
+  **On → Off → Unset**. Unset follows the project's choice. **AG** shows all group headings.
 - **History and Projects Dashboard share a session list.** Click a stored conversation to read it and choose
   **Resume session** to run it. The dashboard clock searches all projects; each project and worktree clock
   searches its own sessions, including those the sidebar filters hide.
@@ -199,6 +202,8 @@ All notable changes to Cloyd are documented here. The format follows
     the session, as after it was archived. Windows saved before read their sessions as Claude Code's.
 
 ### Fixed
+- **The worktree context menu is visible when you right-click.** Open **Git Extensions** to reach
+  **Browse** and **Commit** for the clicked checkout.
 - **The dashboard keeps the selected session when another terminal takes over its host.** Chat stays open
   until the host actually exits. The terminal can be brought back on request.
 - **Busy sessions keep running after Cloyd restores their tabs.** A restored tab first attaches when its

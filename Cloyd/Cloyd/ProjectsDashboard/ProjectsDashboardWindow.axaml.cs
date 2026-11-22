@@ -1,7 +1,9 @@
 using Avalonia.Controls;
+using Avalonia;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
+using Avalonia.VisualTree;
 using ClaudeTooling.SessionHost.Protocol;
 using Cloyd.ClaudeCode;
 using Cloyd.History;
@@ -31,6 +33,7 @@ sealed partial class ProjectsDashboardWindow : Window, ISessionHistoryTarget
    ConversationOutsideAHost? _outsideHost;
    bool _restoringSelection = true;
    bool _resuming;
+   IPointer? _dismissSearchOnRelease;
    VirtualDesktop? _desktop;
    SessionsOfCloyd Sessions => _windows.Sessions;
    public DashboardTree Tree { get; }
@@ -58,6 +61,10 @@ sealed partial class ProjectsDashboardWindow : Window, ISessionHistoryTarget
       };
       _history.Closed += () => View?.FocusWhatItShows();
       AddHandler(KeyDownEvent, TakeShortcut, RoutingStrategies.Tunnel);
+      TreeSearchBox.LostFocus += (_, _) => { if(_dismissSearchOnRelease is null) HideEmptyTreeSearch(); };
+      Deactivated += (_, _) => { _dismissSearchOnRelease = null; HideEmptyTreeSearch(); };
+      AddHandler(PointerPressedEvent, OnSearchClickOutside, RoutingStrategies.Tunnel, handledEventsToo: true);
+      AddHandler(PointerReleasedEvent, FinishSearchClickOutside, RoutingStrategies.Bubble, handledEventsToo: true);
       _save.Tick += (_, _) => Save();
    }
 
@@ -146,7 +153,7 @@ sealed partial class ProjectsDashboardWindow : Window, ISessionHistoryTarget
       if(row.Host is not {} host)
       {
          if(row.Latest?.AgentCli == AgentCli.Codex && !Sessions.OffersCodexChat)
-            SelectedSession.Content = new TextBlock { Text = "This hub does not offer Codex chat.", Margin = new Avalonia.Thickness(16) };
+            SelectedSession.Content = new TextBlock { Text = "This hub does not offer Codex chat.", Margin = new Thickness(16) };
          else if(row.Latest is {} latest)
          {
             _outsideHost = new ConversationOutsideAHost(Sessions, latest, row.Running);
@@ -276,6 +283,32 @@ sealed partial class ProjectsDashboardWindow : Window, ISessionHistoryTarget
       Tree.SearchText = "";
       TreeSearchPanel.IsVisible = false;
       SearchTreeButton.Focus();
+   }
+
+   bool TreeSearchIsEmpty => TreeSearchPanel.IsVisible && string.IsNullOrWhiteSpace(TreeSearchBox.Text);
+
+   void HideEmptyTreeSearch()
+   {
+      if(!TreeSearchIsEmpty) return;
+      TreeSearchPanel.IsVisible = false;
+      Tree.SearchText = "";
+   }
+
+   /// <summary>Hiding the search moves the rows up. Let the control under the pointer finish
+   /// its click in the original position, even if pressing it takes focus or leaves focus in the search box.</summary>
+   void OnSearchClickOutside(object? sender, PointerPressedEventArgs e)
+   {
+      if(TreeSearchIsEmpty && e.Source is Visual hit &&
+         hit != TreeSearchBox && !TreeSearchBox.IsVisualAncestorOf(hit) &&
+         hit != SearchTreeButton && !SearchTreeButton.IsVisualAncestorOf(hit))
+         _dismissSearchOnRelease = e.Pointer;
+   }
+
+   void FinishSearchClickOutside(object? sender, PointerReleasedEventArgs e)
+   {
+      if(_dismissSearchOnRelease != e.Pointer) return;
+      _dismissSearchOnRelease = null;
+      HideEmptyTreeSearch();
    }
 
    public Task OpenHistory(DashboardGroup? group = null)

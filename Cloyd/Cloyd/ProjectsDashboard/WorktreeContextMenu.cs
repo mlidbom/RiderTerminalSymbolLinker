@@ -8,6 +8,8 @@ namespace Cloyd.ProjectsDashboard;
 /// <summary>Git Extensions opens its browser or commit dialog in the worktree whose menu Magnus opened.</summary>
 sealed class WorktreeContextMenu : ContextMenu
 {
+   protected override Type StyleKeyOverride => typeof(ContextMenu);
+
    public WorktreeContextMenu(Project checkout, Action<Exception> failed)
    {
       var open = new RelayCommand<ProcessStartInfo>(start =>

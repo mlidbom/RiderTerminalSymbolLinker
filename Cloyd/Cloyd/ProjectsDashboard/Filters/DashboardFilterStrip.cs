@@ -49,7 +49,6 @@ abstract class DashboardFilterStrip : StackPanel
          MinWidth = 22, Height = 23, Padding = new Thickness(4, 2), CornerRadius = new CornerRadius(4)
       };
       AutomationProperties.SetName(button, name);
-      ToolTip.SetShowOnDisabled(button, true);
       button.Click += (_, _) => _tree?.ToggleInclusion(Group, kind);
       button.KeyDown += (_, key) =>
       {
@@ -71,19 +70,34 @@ abstract class DashboardFilterStrip : StackPanel
       {
          var inherited = filters.IsInherited(group, kind);
          button.IsChecked = included.HasFlag(kind);
-         button.IsEnabled = kind == _all || !included.HasFlag(_all);
+         button.Classes.Set("whileAll", kind != _all && included.HasFlag(_all));
          button.Classes.Set("inherited", inherited);
-         var origin = group is null ? "" : inherited ? " · inherited" : " · local override";
-         var help = $"{AutomationProperties.GetName(button)} · {(button.IsChecked == true ? "included" : "off")}{origin}";
-         if(kind == _all) help += button.IsChecked == true ? ". Turn off to restore your choices." : ". Temporarily include all.";
-         else if(!button.IsEnabled) help += ". Turn off A to change this switch.";
-         if(group is not null && !inherited)
-         {
-            help += ". Right-click or press Delete to use the parent setting.";
-            button.ContextMenu ??= ParentSettingMenu(kind);
-         }
+         if(group is not null && !inherited) button.ContextMenu ??= ParentSettingMenu(kind);
          else button.ContextMenu = null;
+         var help = string.Join(" ", DescribeSwitch(kind, AutomationProperties.GetName(button)!, inherited));
+         AutomationProperties.SetHelpText(button, help);
          ToolTip.SetTip(button, help);
+      }
+
+      IEnumerable<string> DescribeSwitch(IncludedSessions kind, string name, bool inherited)
+      {
+         var isOn = included.HasFlag(kind);
+         var value = isOn ? "included" : "off";
+         if(group is DashboardWorktree worktree)
+         {
+            var state = filters.LocalSetting(worktree, kind) switch { true => "On", false => "Off", null => "Unset (use parent)" };
+            yield return $"{name} · {state} · {value}. Click to cycle On, Off, Unset.";
+         }
+         else
+         {
+            var origin = group is null ? "" : inherited ? " · inherited" : " · local override";
+            yield return $"{name} · {value}{origin}.";
+         }
+
+         if(filters.AutomaticallyIncludesAll(group, kind)) yield return "All is selected because no individual switches are on.";
+         else if(kind == _all && group is not DashboardWorktree) yield return isOn ? "Turn off to restore your choices." : "Temporarily include all.";
+         if(kind != _all && included.HasFlag(_all)) yield return "Click to change this choice and release All. An empty strip selects All again.";
+         if(group is not null && !inherited) yield return "Right-click or press Delete to use the parent setting.";
       }
    }
 

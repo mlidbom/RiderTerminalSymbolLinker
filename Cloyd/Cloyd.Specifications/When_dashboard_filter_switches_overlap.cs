@@ -4,6 +4,8 @@ using Cloyd.Codex;
 using Cloyd.History;
 using Cloyd.Hub;
 using Cloyd.Hub.RunningSessions;
+using Cloyd.Projects;
+using Cloyd.Projects.Git;
 using Cloyd.ProjectsDashboard;
 using Cloyd.ProjectsDashboard.Filters;
 using Cloyd.Saving;
@@ -62,9 +64,32 @@ public class When_dashboard_filter_switches_overlap
          var settings = JsonSerializer.Deserialize<SavedDashboardArrangement>(saved, json)!;
          settings.RootMemberships.Must().Be(IncludedSessions.None);
          settings.GlobalStatuses.Must().Be(IncludedSessions.None);
+         new DashboardSessionFilters(settings).Effective(null).Must().Be(IncludedSessions.AllMemberships | IncludedSessions.AllStatuses);
          var reopened = JsonSerializer.Deserialize<SavedDashboardArrangement>(JsonSerializer.Serialize(settings, json), json)!;
          reopened.RootMemberships.Must().Be(IncludedSessions.None);
          reopened.GlobalStatuses.Must().Be(IncludedSessions.None);
       }
+   }
+
+   [XF] public void clicking_an_individual_worktree_switch_under_automatic_All_turns_off_only_that_worktrees_All()
+   {
+      var parent = new DashboardProject(new Project(@"C:\Main"));
+      var worktree = new DashboardWorktree(new GitWorktree(new Project(@"C:\Topic"), "topic", false)) { Parent = parent };
+      var settings = new SavedDashboardArrangement { RootMemberships = IncludedSessions.None };
+      var filters = new DashboardSessionFilters(settings);
+      filters.AutomaticallyIncludesAll(worktree, IncludedSessions.AllMemberships).Must().BeTrue();
+
+      filters.Toggle(worktree, IncludedSessions.Pinned);
+      filters.LocalSetting(worktree, IncludedSessions.Pinned).Must().Be(true);
+      filters.LocalSetting(worktree, IncludedSessions.AllMemberships).Must().Be(false);
+      filters.LocalSetting(worktree, IncludedSessions.OutsideTabs).Must().BeNull();
+
+      var json = new JsonSerializerOptions(JsonSerializerDefaults.Web);
+      var reopened = new DashboardSessionFilters(JsonSerializer.Deserialize<SavedDashboardArrangement>(JsonSerializer.Serialize(settings, json), json)!);
+      reopened.Toggle(null, IncludedSessions.OpenTabs);
+      reopened.Toggle(null, IncludedSessions.AllMemberships);
+      reopened.Effective(parent).HasFlag(IncludedSessions.AllMemberships).Must().BeTrue();
+      reopened.Effective(worktree).HasFlag(IncludedSessions.AllMemberships).Must().BeFalse();
+      reopened.Effective(worktree).HasFlag(IncludedSessions.OpenTabs | IncludedSessions.Pinned).Must().BeTrue();
    }
 }
