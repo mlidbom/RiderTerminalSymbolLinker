@@ -205,6 +205,8 @@ Claude's calls (.NET-cloyd, the session in this repository), which Magnus OK'd o
   Claude Code to read the clipboard itself: that can't be specified, as the headless platform's clipboard is no
   Windows clipboard. Specified with the stand-in, whose input box shows `[Image #1]` only for an image file's path
   pasted alone. Not seen yet: Avalonia reading a real screenshot off Windows' clipboard.
+- **Tab order** (`SessionTabStrip`): dragging a header shows an insertion marker at the nearest tab edge in
+  the row under the pointer. A drop moves the existing tab in the order the window saves.
 - **Ctrl+Tab and Ctrl+Shift+Tab select the next tab and the one before** (`ProjectWindow`), wrapping around, ahead of
   the terminal that has the keyboard (Magnus, 2026-11-21).
 - **The hosts it shows as it opens:** each of the project's hosts that no attach client shows. The project is told by
@@ -483,7 +485,7 @@ manage` after the permission mode, and after a turn `✻ Sautéed for 21s · don
   (`BackgroundWork.Listed`), in place of the TUI's list that `↓ to manage` opens.
 - **In the tab's header,** `MarkerOfBackgroundWork`: Claude Code's ✻, still and grey, in the place the spinner turns in
   while Claude works, as high and wide, while Claude doesn't work and background work runs; its tip says what runs.
-- **After each turn, a bold timing line and a divider** (`ShownInTheChat.EndOfATurn`, drawn with the same
+- **After each turn, a semibold timing line and a thin divider** (`ShownInTheChat.EndOfATurn`, drawn with the same
   `TurnEndLine` as Codex Chat): "Worked for 21s · done 14:37", from the hub's
   `endOfATurn` messages, which the tooling owner published on 2026-11-21 from the `turn_duration` entries Claude Code
   writes in the transcript at each turn's end. An interrupted turn has none, in the transcript and so in the chat. As

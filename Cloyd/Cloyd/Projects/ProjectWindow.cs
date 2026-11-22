@@ -74,7 +74,7 @@ sealed class ProjectWindow : Window
    /// <summary>How wide and high each button before the tabs is, in logical pixels.</summary>
    const double SizeOfAButtonBeforeTheTabs = 30;
 
-   readonly TabControl _tabs = new() { Padding = new Thickness(0) };
+   readonly SessionTabStrip _tabs = new() { Padding = new Thickness(0) };
    readonly NewSessionButton _newSession = new();
    readonly Button _openTheHistory = new();
    readonly SessionHistoryPicker _historyPicker;
@@ -125,7 +125,7 @@ sealed class ProjectWindow : Window
    /// <summary>The project's files and C# symbols, which what its chats show is to link to: the window keeps them current while it's open, from the first time something asks what links.</summary>
    public FilesAndSymbolsOfAProject FilesAndSymbols { get; }
 
-   public IReadOnlyList<SessionTab> Tabs => _tabs.Items.OfType<SessionTab>().ToList();
+   public IReadOnlyList<SessionTab> Tabs => _tabs.InOrder;
 
    public SessionTab? SelectedTab => _tabs.SelectedItem as SessionTab;
 
@@ -316,7 +316,7 @@ sealed class ProjectWindow : Window
       var tab = new SessionTab(host, latestSession, newSession, SizeOfTheTerminals, _hub, _pastedImages, _hub.SupportsCodexChat ? _hub : null);
       tab.ClosedByMagnus += it => _ = TellingOfFailure(() => EndTheSessionOf(it));
       tab.EndedByItself += (it, _) => Remove(it);
-      _tabs.Items.Add(tab);
+      _tabs.Add(tab);
       ShowPeerNames(tab);
       return tab;
    }
@@ -350,7 +350,7 @@ sealed class ProjectWindow : Window
    void Remove(SessionTab tab)
    {
       tab.LetGo();
-      _tabs.Items.Remove(tab);
+      _tabs.Remove(tab);
    }
 
    /// <summary>Saves the window, on the <see cref="Desktop"/> it was on as it last looked: as it closes, Windows no longer knows it.</summary>

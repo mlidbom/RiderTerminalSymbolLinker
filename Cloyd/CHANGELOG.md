@@ -7,6 +7,9 @@ All notable changes to Cloyd are documented here. The format follows
 ## [0.1.0]
 
 ### Added
+- **Drag a tab header to rearrange sessions in a project window.** A marker shows where the tab will land,
+  including on a wrapped row. Release to move it or press Escape to cancel. The window remembers the new
+  order when it reopens, and Ctrl+Tab follows that order.
 - **Codex Chat shows live progress above the input box and the configured status line below it.** While Codex
   works, a spinner shows its activity, elapsed time and command count. The latest active tool has its own line,
   with its input and elapsed time. Completed turns show how long they took and when they finished, including
@@ -92,7 +95,7 @@ All notable changes to Cloyd are documented here. The format follows
   grey lines and the lines of tool calls, though not what is folded under them, such as a tool call's output. Each match
   is marked in yellow, the one shown in orange and scrolled to the middle of the view, which keeps it there until you
   scroll.
-- **Both chats mark the end of a turn with bold text and a matching divider.** The timing sits close to the reply,
+- **Both chats mark the end of a turn with semibold text and a matching thin divider.** The timing sits close to the reply,
   with the divider just beneath it. Both are near-black in the light theme and light in the dark theme. A line such
   as “Worked for 21s · done 14:37” uses the time alone today, the weekday in the last week and the date before that.
   Claude Code omits the timing line for interrupted turns.
