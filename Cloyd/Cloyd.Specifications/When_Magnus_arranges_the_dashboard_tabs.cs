@@ -59,11 +59,14 @@ public class When_Magnus_arranges_the_dashboard_tabs : SpecificationOpeningWindo
       var agents = OnTheUIThread(() => _emptyGroup.Sessions.Select(it => it.Latest!.Id).ToHashSet());
       Close(_dashboard);
       Close(OnTheUIThread(() => Sandbox.WindowsOfCloyd.Open.Single(it => it.Project.Equals(_alpha.Project))));
+      _alpha.SavedWindow.Tabs.Select(it => it.Session?.Id).ToHashSet().SetEquals(agents).Must().BeTrue();
+      _alpha.SavedWindow.Tabs.All(it => it.SessionDirectory == _empty.FullName).Must().BeTrue();
       _alpha.End(_first);
       _alpha.End(_second);
       var restored = Open(_alpha.Window);
       WaitUntil(() => restored.BringingBackTheTabs.IsCompleted && restored.Tabs.Count == 2 && restored.Tabs.All(it => it.SessionRunningInIt is not null),
-                "both sessions resumed in replacement hosts");
+                "both sessions resumed in replacement hosts",
+                () => $"{restored.Tabs.Count} tabs, {restored.Failure?.Message}, {string.Join(", ", restored.Tabs.Select(it => it.Notice ?? it.Title))}");
       OnTheUIThread(() => restored.Tabs.All(it => it.Host.Directory == _empty.FullName && agents.Contains(it.LatestSession!.Id))).Must().BeTrue();
 
       void StartInAnotherCheckout(SessionHostId id, string agent)
@@ -77,6 +80,9 @@ public class When_Magnus_arranges_the_dashboard_tabs : SpecificationOpeningWindo
          WaitUntil(() => _dashboard.View!.Terminal.TextShown.Contains("PS "), "the helper shell was ready");
          DoneOnTheUIThread(() => _dashboard.View!.Terminal.SendInputAsync($"Set-Location -LiteralPath '{_empty.FullName.Replace("'", "''")}'; {agent}\r"));
          WaitUntil(() => row.Running is not null && _emptyGroup.Sessions.Contains(row), "the running agent appeared in its actual checkout");
+         DoneOnTheUIThread(() => _dashboard.View!.Terminal.SendInputAsync("Remember this worktree\r"));
+         WaitUntil(() => Sandbox.HubOfTheSandbox.SessionsOnDisk().Any(it => it.Session.Id == row.Latest!.Id && it.HasAConversationToResume),
+                   "the agent wrote a resumable conversation");
          OnTheUIThread(() => row.Host!.Directory).Must().Be(_linked.FullName);
          OnTheUIThread(() => row.WorkingFolder!.Folder).Must().Be(_empty.FullName);
       }
