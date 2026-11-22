@@ -1,0 +1,20 @@
+# Why: in a checkout other than the main one
+
+**The need, 2026-11-22.** Magnus had the Claude session `.NET-cloyd` (Opus 5.5) set up Codex helpers, each in a git
+worktree of this repository, to hand Cloyd work to: "Please do what you need to do to work with codex helpers and then
+tell me how to get the helpers started in those new checkouts". Two rules every helper reads would otherwise do harm
+from a worktree:
+
+- **The rule on when work is done** says to `everyday deploy`, which deploys the build of the checkout it runs in: a
+  helper's unreviewed build would go into Magnus's IDEs and his Cloyd.
+- **The C# code-intelligence rule** (user-level, `csharp-code-intelligence.md`) says to rename with ReSharper's
+  `rename_symbol`. Rider has only the main checkout's solution open, so the rename would edit the main checkout, where
+  other sessions work, and leave the helper's own files as they were.
+
+Both are facts of the environment that a helper finds out only by doing the damage, so they are written down once.
+
+**Written before it was discussed,** against the rules folder's own guidance, since the helpers were about to start:
+put to Magnus to check the same day.
+
+**Untested:** whether a Codex helper keeps to it. Where to look first if it goes wrong: whether Codex's
+`AGENTS.override.md` in the helper's checkout was regenerated after the rule changed (`ClaudesSetupForCodex project`).

@@ -6,6 +6,9 @@
 - **Stop the sandbox if you started it** with `sandbox start`: it holds about 4.6 GB, and Magnus wants it off when
   it isn't in use. A specification run stops one it started itself.
 - **Record it in the changelog,** as [the changelog rule](changelog.md) says.
+- **In a checkout other than the main one,** such as a Codex helper's, done is committed with its specifications
+  passing, and the session that handed the work deploys it: see the rule on working in a checkout other than the main
+  one.
 - **Deploy it:** `dotnet run --project tools/RiderTerminalSymbolLinker.DevelopmentTools -- everyday deploy`, and tell
   Magnus what it says for each IDE: that it reloads the plugin when he next switches to it, or that he must restart it.
 - **Get his go-ahead first for a deploy that takes a restart, or may disturb his running sessions:** Magnus,

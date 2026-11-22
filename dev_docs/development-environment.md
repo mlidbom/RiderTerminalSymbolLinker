@@ -282,3 +282,43 @@ source itself, so an entry written while it runs survives its exit (tried in the
 from the bytecode of `PluginInstaller.installFromDisk` in Rider 2026.3. Auto-reload and Marketplace updates are the
 routes that reload a running plugin. Auto-reload reacts to every plugin's folder, the MCP plugin's included, which can't
 be reloaded and asks for a restart.
+
+## Codex helpers, in checkouts of their own
+
+A Claude session hands work to Codex sessions, and reviews and merges what they do, as Magnus asked on 2026-11-22: "Please
+do what you need to do to work with codex helpers and then tell me how to get the helpers started in those new
+checkouts". Each helper works in a git worktree of its own, on a branch of its own, since builds of the same projects in
+one checkout collide, and other sessions work in the main one. The rule on working in a checkout other than the main one
+says what a helper's checkout can't do: deploy, or edit through Rider's and ReSharper's tools, which see the main
+checkout.
+
+**The checkouts,** made 2026-11-22 from `main`: `C:\Dev\ClaudeSymbolLinker.worktrees\codex-helper-1` and `-2`, on the
+branches `codex-helper-1` and `-2`. To make another:
+`git worktree add -b codex-helper-3 C:/Dev/ClaudeSymbolLinker.worktrees/codex-helper-3 main`, then in it
+`sh .claude/attach-shared-claude-config.sessionstart-hook.sh`, which gives it the shared catalog, and
+`~/.claude/bin/ClaudesSetupForCodex.exe project <its folder>`, which writes Codex's
+rules, skills and MCP servers there (`AGENTS.override.md`, `.agents/skills`, `.codex/config.toml`, all ignored by git).
+Run that again after a rule changes. Codex asks Magnus to trust the folder the first time he starts it there, and loads
+the folder's `.codex/config.toml` only once he has.
+
+**Starting a helper** is Magnus's: `cd` into the checkout, `codex`, trust the folder, then `/rename codex-helper-1`, the
+name it is addressed by. It shows in `list_peers` once it has had a turn.
+
+**Handing it a task,** the coordinating session, the one that hands the work:
+
+1. Bring its branch up to `main` while it has nothing unmerged: `git -C <its checkout> merge --ff-only main`.
+2. Brief it with `send_to_peer`, a brief that stands alone: the task, the documents and code to read, what is done
+   (committed on its branch, its specifications passing, the changelog entry where one is due), what not to touch, and
+   what to send back: its commits, the specifications it ran and their result, and what it noticed and left.
+3. Review its commits once it replies: `git log main..codex-helper-1`, `git diff main...codex-helper-1`. Ask for changes
+   with `send_to_peer`, or make them.
+4. Merge: rebase its branch onto `main` if `main` has moved, then `git merge --ff-only codex-helper-1` in the main
+   checkout. Run the full specifications there, deploy, and push.
+
+**What helps it:** the specifications run from its checkout, also while another checkout's run, since each sandbox is
+named by its run's process (`Sandbox`). One-shot Codex agents, for a question that needs no checkout of its own, are
+`codex exec --ephemeral -s read-only -C <folder> -o <answer file> - < <prompt file>`, in the background; they can't be
+continued. Both use the model and effort in `~/.codex/config.toml` (`gpt-6.2-astra` at `xhigh` on 2026-11-22), which
+`-m` and `-c model_reasoning_effort=<level>` override. The peers server's own traps, such as a renamed session listed
+under its old name, are in `~/.claude/dev_docs/peers-and-codex-backlog.md`: address a helper by `codex:<its id>` when
+its name fails.

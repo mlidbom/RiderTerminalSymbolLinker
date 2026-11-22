@@ -24,7 +24,7 @@ The documents:
   .NET application in Avalonia, beside the IDEs, with the plugin shrunk to what needs the IDE. Read it before new work on
   either plugin.
 - **`dev_docs/development-environment.md`:** building, the sandbox Rider, the observation channels, the specifications,
-  and deploying to Magnus's IDEs.
+  deploying to Magnus's IDEs, and the Codex helpers in checkouts of their own.
 - **`dev_docs/releasing.md`:** the symbol linker's versions, which Riders it supports, CI and the Marketplace.
 - **`dev_docs/backlog.md`:** work Magnus deferred, and what waits for a time or an event to be passed on to another
   repository, such as a recommendation for Compze: look at it when what an entry waits for comes about.
