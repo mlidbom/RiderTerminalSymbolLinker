@@ -84,6 +84,7 @@ sealed class AttachmentToASessionHost : IDisposable
    public void Dispose()
    {
       _letGo = true;
+      _drawn.Writer.CancelPendingFlush(); // A closed terminal cannot make room for more output.
       _connection.Dispose();
    }
 
@@ -108,7 +109,7 @@ sealed class AttachmentToASessionHost : IDisposable
 
    string RelayUntilLetGo()
    {
-      while(_connection.NextFrame() is {} frame)
+      while(!_letGo && _connection.NextFrame() is {} frame)
       {
          switch(frame.Kind)
          {
