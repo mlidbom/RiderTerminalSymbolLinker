@@ -18,6 +18,12 @@ static class ColoursOfTheChat
    /// <summary>The grey lines: a run of tool calls counted, a call's verb, a compaction.</summary>
    public static readonly ColourOfTheTheme Grey = new("#6B6966", "#9C9A95");
 
+   /// <summary>The orange of the Claude Code star and its turn's activity.</summary>
+   public static readonly ColourOfTheTheme ClaudeActivity = new("#AA4F32", "#E59676");
+
+   /// <summary>The blue of the Codex dot and its turn's activity.</summary>
+   public static readonly ColourOfTheTheme CodexActivity = new("#24639E", "#80BAF2");
+
    /// <summary>The bubble of a prompt of Magnus's.</summary>
    public static readonly ColourOfTheTheme BubbleOfAPrompt = new("#F3F3F2", "#30302E");
 
@@ -57,7 +63,7 @@ static class ColoursOfTheChat
    /// <summary>The ground of the match a search shows, over that of the other matches.</summary>
    public static readonly ColourOfTheTheme TheMatchShown = new("#F7A35C", "#9C5A1C");
 
-   static readonly ColourOfTheTheme[] All = [Text, Grey, BubbleOfAPrompt, ReplyBubble, IncomingPeerBubble, IncomingPeerAccent,
+   static readonly ColourOfTheTheme[] All = [Text, Grey, ClaudeActivity, CodexActivity, BubbleOfAPrompt, ReplyBubble, IncomingPeerBubble, IncomingPeerAccent,
                                               OutgoingPeerBubble, OutgoingPeerAccent, SlashCommand, Failed, Added, Removed,
                                               GroundOfAnAddedLine, GroundOfARemovedLine, Border, GroundOfACodeBlock, AMatch, TheMatchShown];
 

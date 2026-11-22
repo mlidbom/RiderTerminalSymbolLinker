@@ -32,7 +32,9 @@ sealed class HostedSession
    public SessionHostOfTheHub Host { get; }
    public Session? LatestSession { get; private set; }
    public RunningSession? Running { get; private set; }
-   public AgentCli AgentCli => LatestSession?.AgentCli ?? _startedAs?.AgentCli ?? AgentCli.ClaudeCode;
+   /// <summary>The agent identified by a previous or requested session. A shell can have neither.</summary>
+   public AgentCli? KnownAgentCli => LatestSession?.AgentCli ?? _startedAs?.AgentCli;
+   public AgentCli AgentCli => KnownAgentCli ?? AgentCli.ClaudeCode;
    public string Title => LatestSession?.Name ?? _startedAs?.Title ?? AgentCli.TitleOfASessionWithNoName;
    public SessionChatState ChatState { get; }
    public bool HasAttachment => _terminal?.HasAttachment == true;

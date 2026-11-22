@@ -42,6 +42,6 @@ public class When_Claude_works_in_a_chats_tab : SpecificationWritingInAChat
 
       [XF] public void once_Claude_is_done_the_working_line_goes() => WaitUntil(() => _tab.ClaudeCodeChat.WorkingLine.Says is null, "the working line went");
 
-      [XF] public void once_Claude_is_done_the_spinner_in_the_tabs_header_goes() => WaitUntil(() => !_tab.ShowsThatItsSessionWorks, "the spinner in the tab's header went");
+      [XF] public void once_Claude_is_done_the_spinner_in_the_tabs_header_stops() => WaitUntil(() => !_tab.ShowsThatItsSessionWorks, "the spinner in the tab's header stopped");
    }
 }

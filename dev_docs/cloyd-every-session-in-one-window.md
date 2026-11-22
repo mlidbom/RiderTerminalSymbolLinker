@@ -7,8 +7,9 @@ tab strip opens the dashboard or brings its existing window forward. A project w
 dashboard stays open. The dashboard saves its selected session and virtual desktop in `projects-dashboard.json`.
 
 - **The tree** lists hosted Claude Code and Codex sessions, including shells left running after the agent exits.
-  It uses the project in the host label, or the shell's directory for an unlabeled host. A busy session has a
-  spinner. A waiting session and its project are orange even when the project is collapsed. The second line
+  It uses the project in the host label, or the shell's directory for an unlabeled host. During a turn,
+  Claude Code shows its orange spinner and Codex shows a slowly pulsing blue dot. Idle rows have no activity mark.
+  A waiting session and its project are orange even when the project is collapsed. The second line
   shows the current activity. Sessions running outside a host have a separate, dimmed group. Select one to read
   its conversation when the hub offers chat for that agent. The editor and terminal actions belong to hosted sessions.
 - **The selected session** uses the same `SessionView` as the project tab. Each view has its own editor,

@@ -16,7 +16,8 @@ sealed class DashboardSession(DashboardProject group) : DashboardRow
    public double Opacity => HasHost ? 1 : 0.6;
    public string Name { get => field; private set => SetProperty(ref field, value); } = "";
    public string Activity { get => field; private set => SetProperty(ref field, value); } = "";
-   public bool IsBusy { get => field; private set => SetProperty(ref field, value); }
+   /// <summary>The <see cref="RunningSession"/> whose activity mark the row shows during a turn.</summary>
+   public RunningSession? WorkingSession { get => field; private set => SetProperty(ref field, value); }
 
    public void Update(SessionHostOfTheHub? host, RunningSession? running, Session? latest)
    {
@@ -24,7 +25,7 @@ sealed class DashboardSession(DashboardProject group) : DashboardRow
       Running = running;
       Latest = running?.Session ?? latest ?? Latest;
       Name = Latest?.Name ?? Latest?.AgentCli.TitleOfASessionWithNoName ?? "Shell";
-      IsBusy = running?.IsBusy == true;
+      WorkingSession = running is { IsBusy: true } ? running : null;
       IsWaiting = running is RunningClaudeCode { Status.IsWaiting: true } or RunningCodex { Status.IsWaiting: true };
       Activity = running switch
       {

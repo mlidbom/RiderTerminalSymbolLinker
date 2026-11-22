@@ -1,5 +1,6 @@
 using Avalonia.Controls;
 using Avalonia.Layout;
+using Avalonia.Media;
 using Cloyd.Chat.Status;
 using Cloyd.Chat.Views;
 using Cloyd.Hub.RunningSessions;
@@ -24,6 +25,7 @@ sealed class MarkerOfBackgroundWork : TextBlock
       Height = SpinnerOfClaudeCode.HowHighItIs;
       LineHeight = SpinnerOfClaudeCode.HowHighItIs;
       VerticalAlignment = VerticalAlignment.Center;
+      TextAlignment = TextAlignment.Center;
       Text = "✻";
       IsVisible = false;
    }

@@ -1,31 +1,25 @@
-using Avalonia.Controls;
 using Avalonia;
+using Avalonia.Controls;
 using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Threading;
+using Cloyd.Chat.Views;
+using Cloyd.Theming;
 
 namespace Cloyd.Chat.Status;
 
 /// <summary>
 /// The spinner that shows Claude works, as Claude Code's own: its glyphs in Claude's orange, one after another and back,
 /// while it <see cref="IsTurning"/>. At the start of the <see cref="WorkingLineOfTheChat"/>'s turn line, and in the
-/// header of each tab whose Claude works. As high whichever glyph it shows: the glyphs come from fonts of different
-/// heights, and the line jumped up and down with them (Magnus, 2026-11-21).
+/// header of each Claude Code tab, where it rests on a star between turns. The glyphs keep the same line height.
 /// </summary>
 sealed class SpinnerOfClaudeCode : TextBlock
 {
    public static readonly StyledProperty<bool> IsTurningProperty = AvaloniaProperty.Register<SpinnerOfClaudeCode, bool>(nameof(IsTurning));
-   protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
-   {
-      base.OnPropertyChanged(change);
-      if(change.Property == IsTurningProperty)
-      {
-         IsVisible = IsTurning;
-         _turning.IsEnabled = IsLoaded && IsTurning;
-      }
-   }
+
    /// <summary>The glyphs, as Claude Code's spinner shows them: each in turn, then back.</summary>
    const string Glyphs = "·✢✳✶✻✽✻✶✳✢";
+   const string IdleStar = "✶";
 
    /// <summary>How high it is, whichever glyph it shows, in logical pixels: about a line of the working line's text.</summary>
    public const double HowHighItIs = 18;
@@ -46,14 +40,16 @@ sealed class SpinnerOfClaudeCode : TextBlock
 
    public SpinnerOfClaudeCode()
    {
-      Foreground = new SolidColorBrush(Color.Parse("#D97757"));
+      Resources.MergedDictionaries.Add(ColourOfTheTheme.AsResources([ColoursOfTheChat.ClaudeActivity]));
+      ColoursOfTheChat.ClaudeActivity.AsTheForegroundOf(this);
+      FontFamily = new FontFamily("Segoe UI Symbol");
       FontSize = SizeOfItsGlyphs;
       Width = HowWideItIs;
       Height = HowHighItIs;
       LineHeight = HowHighItIs;
       VerticalAlignment = VerticalAlignment.Center;
-      Text = Glyphs[0].ToString();
-      IsVisible = false;
+      TextAlignment = TextAlignment.Center;
+      Text = IdleStar;
       _turning.Tick += (_, _) => Turn();
       Loaded += (_, _) => _turning.IsEnabled = IsTurning;
       Unloaded += (_, _) => _turning.Stop();
@@ -61,11 +57,19 @@ sealed class SpinnerOfClaudeCode : TextBlock
 
    protected override Type StyleKeyOverride => typeof(TextBlock);
 
-   /// <summary>Whether it shows, and turns: while Claude works.</summary>
+   /// <summary>Whether Claude is working. An attached spinner cycles through its glyphs until the turn ends.</summary>
    public bool IsTurning
    {
       get => GetValue(IsTurningProperty);
       set => SetValue(IsTurningProperty, value);
+   }
+
+   protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
+   {
+      base.OnPropertyChanged(change);
+      if(change.Property != IsTurningProperty) return;
+      _turning.IsEnabled = IsLoaded && IsTurning;
+      if(!IsTurning) Text = IdleStar;
    }
 
    /// <summary>Shows the next glyph.</summary>

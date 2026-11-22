@@ -43,20 +43,20 @@ public class When_a_new_Codex_session_is_started_in_a_project_window : Specifica
 
    [XF] public void the_tab_opens_in_Chat() => OnTheUIThread(() => _tab.ShowsTheChat && _tab.OffersTheChat).Must().BeTrue();
 
-   [XF] public void the_tabs_spinner_is_still() => OnTheUIThread(() => _tab.ShowsThatItsSessionWorks).Must().BeFalse();
+   [XF] public void the_tabs_dot_is_still() => OnTheUIThread(() => _tab.ShowsThatItsSessionWorks).Must().BeFalse();
 
    public class and_Codex_works_on_a_prompt : When_a_new_Codex_session_is_started_in_a_project_window
    {
-      readonly bool _spinnerTurnedWhileItWorked;
+      readonly bool _dotPulsedWhileItWorked;
 
-      public and_Codex_works_on_a_prompt() => _spinnerTurnedWhileItWorked = Once(() =>
+      public and_Codex_works_on_a_prompt() => _dotPulsedWhileItWorked = Once(() =>
       {
          DoneOnTheUIThread(() => _tab.Terminal.SendInputAsync("Be busy for 3 seconds\r"));
-         WaitUntil(() => _tab.ShowsThatItsSessionWorks, "the tab's spinner turned while Codex worked");
-         WaitUntil(() => !_tab.ShowsThatItsSessionWorks, "the tab's spinner stopped once Codex was done");
+         WaitUntil(() => _tab.ShowsThatItsSessionWorks, "the tab's dot pulsed while Codex worked");
+         WaitUntil(() => !_tab.ShowsThatItsSessionWorks, "the tab's dot was still once Codex was done");
          return true;
       });
 
-      [XF] public void the_tabs_spinner_turns_while_Codex_works_and_stops_once_it_is_done() => _spinnerTurnedWhileItWorked.Must().BeTrue();
+      [XF] public void the_tabs_dot_pulses_while_Codex_works_and_stops_once_it_is_done() => _dotPulsedWhileItWorked.Must().BeTrue();
    }
 }

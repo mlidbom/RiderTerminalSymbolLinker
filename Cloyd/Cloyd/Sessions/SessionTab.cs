@@ -3,7 +3,6 @@ using Avalonia.Controls;
 using Avalonia.Layout;
 using Avalonia.Media;
 using Cloyd.Chat;
-using Cloyd.Chat.Status;
 using Cloyd.Codex.Chat;
 using Cloyd.ClaudeCode;
 using Cloyd.Hub;
@@ -26,8 +25,7 @@ namespace Cloyd.Sessions;
 sealed class SessionTab : TabItem
 {
    readonly TextBlock _title = new() { VerticalAlignment = VerticalAlignment.Center };
-   readonly SpinnerOfClaudeCode _spinner = new();
-   readonly MarkerOfBackgroundWork _backgroundWork = new();
+   readonly IndicatorOfASessionTab _indicator = new();
    public HostedSession Session { get; }
    public SessionView View { get; }
 
@@ -45,8 +43,7 @@ sealed class SessionTab : TabItem
 
    void ShowHeader()
    {
-      _spinner.IsTurning = Session.Running?.IsBusy == true;
-      _backgroundWork.Show(Session.Running as RunningClaudeCode);
+      _indicator.Show(Session.KnownAgentCli, Session.Running);
       _title.Text = Session.Title;
    }
 
@@ -54,7 +51,7 @@ sealed class SessionTab : TabItem
    {
       Session.Changed -= ShowHeader;
       Session.Ended -= Ended;
-      _spinner.IsTurning = false;
+      _indicator.Show(null, null);
       sessions.Release(View);
    }
 
@@ -71,8 +68,8 @@ sealed class SessionTab : TabItem
    public AgentCli AgentCli => Session.AgentCli;
    public bool OffersTheChat => View.OffersTheChat;
    public string Title => Session.Title;
-   public bool ShowsThatItsSessionWorks => _spinner.IsTurning;
-   public string? BackgroundWorkMarked => _backgroundWork.Tip;
+   public bool ShowsThatItsSessionWorks => _indicator.ShowsThatItsSessionWorks;
+   public string? BackgroundWorkMarked => _indicator.BackgroundWorkMarked;
    public string? Notice => View.Notice;
    public event Action<SessionTab>? ClosedByMagnus;
    public event Action<SessionTab>? EndedByItself;
@@ -91,7 +88,7 @@ sealed class SessionTab : TabItem
       var close = new Button { Content = "×", Padding = new Thickness(6, 0), Background = Brushes.Transparent, VerticalAlignment = VerticalAlignment.Center };
       ToolTip.SetTip(close, "End the session");
       close.Click += (_, _) => ClosedByMagnus?.Invoke(this);
-      return new StackPanel { Orientation = Orientation.Horizontal, Spacing = 2, Children = { _spinner, _backgroundWork, _title, close } };
+      return new StackPanel { Orientation = Orientation.Horizontal, Spacing = 2, Children = { _indicator, _title, close } };
    }
 
 }

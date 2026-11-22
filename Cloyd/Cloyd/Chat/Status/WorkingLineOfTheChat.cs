@@ -32,7 +32,7 @@ sealed class WorkingLineOfTheChat : UserControl
 
    public WorkingLineOfTheChat(ClaudeCodeTurnStatus status)
    {
-      var activity = new Run { FontWeight = FontWeight.SemiBold, Foreground = Spinner.Foreground };
+      var activity = ColoursOfTheChat.ClaudeActivity.AsTheForegroundOf(new Run { FontWeight = FontWeight.SemiBold });
       var details = ColoursOfTheChat.Grey.AsTheForegroundOf(new Run());
       activity.Bind(Run.TextProperty, CompiledBinding.Create((ClaudeCodeTurnStatus it) => it.Activity, status));
       details.Bind(Run.TextProperty, CompiledBinding.Create((ClaudeCodeTurnStatus it) => it.TurnDetails, status));

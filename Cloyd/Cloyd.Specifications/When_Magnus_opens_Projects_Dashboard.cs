@@ -1,6 +1,8 @@
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.VisualTree;
+using Cloyd.Chat.Status;
+using Cloyd.Codex;
 using Cloyd.History;
 using Cloyd.Projects;
 using Cloyd.ProjectsDashboard;
@@ -30,6 +32,30 @@ public class When_Magnus_opens_Projects_Dashboard : SpecificationOpeningWindows
       _dashboard = OnTheUIThread(() => Sandbox.WindowsOfCloyd.Dashboard!);
       WaitUntil(() => _dashboard.View?.Session.Running is not null, "Projects Dashboard selected the project's session",
                 () => $"{_dashboard.Tree.Sessions.Count()} sessions, selected {_dashboard.View?.Host.Id}");
+   }
+
+
+   [XF] public void the_tree_shows_each_busy_agents_own_mark_and_clears_it_at_idle()
+   {
+      DoneOnTheUIThread(() => _projectWindow.StartANewSession(new NewSession(AgentCli.ClaudeCode, "Claude beside Codex")));
+      var claude = OnTheUIThread(() => _projectWindow.SelectedTab!);
+      WaitUntil(() => RowOf(claude) is not null && RowOf(_tab) is not null && claude.SessionRunningInIt is not null && claude.Terminal.TextShown.Contains("New session"),
+                "the dashboard showed both sessions");
+      OnTheUIThread(() => (VisibleMarks(claude), VisibleMarks(_tab))).Must().Be((0, 0));
+
+      foreach(var tab in new[] { claude, _tab })
+         DoneOnTheUIThread(() => tab.Terminal.SendInputAsync("Be busy for 8 seconds\r"));
+      WaitUntil(() => RowOf(claude)!.GetVisualDescendants().OfType<SpinnerOfClaudeCode>().Any(it => it.IsEffectivelyVisible && it.IsTurning)
+                   && RowOf(_tab)!.GetVisualDescendants().OfType<CodexProgressDot>().Any(it => it.IsEffectivelyVisible && it.IsPulsing),
+                "the dashboard showed Claude's spinner and Codex's pulsing dot");
+      OnTheUIThread(() => (VisibleMarks(claude), VisibleMarks(_tab))).Must().Be((1, 1));
+      WaitUntil(() => VisibleMarks(claude) == 0 && VisibleMarks(_tab) == 0, "both dashboard indicators disappeared when the turns ended");
+
+      TreeViewItem? RowOf(SessionTab tab) => _dashboard.GetVisualDescendants().OfType<TreeViewItem>()
+        .SingleOrDefault(it => it.DataContext is DashboardSession row && row.Host?.Id == tab.Host.Id);
+
+      int VisibleMarks(SessionTab tab) => RowOf(tab)!.GetVisualDescendants().OfType<Control>()
+        .Count(it => it.IsEffectivelyVisible && it is SpinnerOfClaudeCode or CodexProgressDot);
    }
 
    [XF] public void a_host_with_no_open_project_window_is_listed_without_attaching_to_it()
