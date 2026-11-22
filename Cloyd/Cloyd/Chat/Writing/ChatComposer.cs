@@ -78,6 +78,9 @@ abstract class ChatComposer : UserControl
       ShowTheThumbnailsOfTheImagesHeld();
    }
 
+   /// <summary>Stops observing the shared draft when its window permanently releases this editor.</summary>
+   public virtual void Release() => Draft.Changed -= ShowTheThumbnailsOfTheImagesHeld;
+
    public bool ShowsTheStopButton
    {
       get => _stop.IsVisible;
