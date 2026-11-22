@@ -11,7 +11,7 @@ namespace Cloyd.Specifications.Chat.Status;
 /// </summary>
 sealed class TheTurnAsTheChatShowedIt(SessionTab tab)
 {
-   readonly ChatOfASession _chat = tab.Chat;
+   readonly ChatOfAClaudeCodeSession _chat = tab.ClaudeCodeChat;
    readonly List<string> _workingLineSaid = [];
    readonly List<string> _claudesTextAtTheEnd = [];
 

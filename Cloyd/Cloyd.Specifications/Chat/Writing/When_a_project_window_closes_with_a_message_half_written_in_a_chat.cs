@@ -31,5 +31,5 @@ public class When_a_project_window_closes_with_a_message_half_written_in_a_chat 
    [XF] public void its_box_holds_what_was_written_again() => TextIn(_tabBroughtBack).Must().Be("Half written, and pasted");
 
    [XF] public void each_part_comes_back_as_it_came_in() =>
-      OnTheUIThread(() => _tabBroughtBack.Chat.InputBox.Draft.Parts).Must().Satisfy(it => it.SequenceEqual([new PartOfAMessage.TypedText("Half written, "), new PartOfAMessage.PastedText("and pasted")]));
+      OnTheUIThread(() => _tabBroughtBack.ClaudeCodeChat.InputBox.Draft.Parts).Must().Satisfy(it => it.SequenceEqual([new PartOfAMessage.TypedText("Half written, "), new PartOfAMessage.PastedText("and pasted")]));
 }

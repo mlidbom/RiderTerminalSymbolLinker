@@ -26,14 +26,14 @@ public class When_Magnus_searches_a_chat : SpecificationOpeningWindows
    const string SearchedFor = "started.";
 
    private protected readonly Window _window;
-   private protected readonly ChatOfASession _chat;
+   private protected readonly ChatOfAClaudeCodeSession _chat;
 
    public When_Magnus_searches_a_chat() => (_window, _chat) = Once(() =>
    {
       var hub = Sandbox.HubOfTheSandbox;
       var session = TheSampleSession.RepeatedFor(hub, TimesOver);
-      var window = Open(() => new Window { Width = 840, Height = 900, Content = new ChatOfASession(hub.Hub, Sandbox.CloydsFolder.PastedImages) });
-      var chat = OnTheUIThread(() => (ChatOfASession)window.Content!);
+      var window = Open(() => new Window { Width = 840, Height = 900, Content = new ChatOfAClaudeCodeSession(hub.Hub, Sandbox.CloydsFolder.PastedImages) });
+      var chat = OnTheUIThread(() => (ChatOfAClaudeCodeSession)window.Content!);
       OnTheUIThread(() => chat.Show(session));
       WaitUntil(() => chat.Shown.Count == TimesOver * 20, "the chat showed the whole conversation");
       OnTheUIThread(chat.TakeTheKeyboard);

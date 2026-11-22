@@ -31,7 +31,7 @@ public class When_Magnus_pastes_into_a_chats_input_box : SpecificationWritingInA
       return ((Window)window, tab);
    });
 
-   IReadOnlyList<PartOfAMessage> Parts => OnTheUIThread(() => _tab.Chat.InputBox.Draft.Parts);
+   IReadOnlyList<PartOfAMessage> Parts => OnTheUIThread(() => _tab.ClaudeCodeChat.InputBox.Draft.Parts);
 
    [XF] public void the_box_shows_the_image_as_its_placeholder() => TextIn(_tab).Must().Be("Look at these words and [Image #1]");
 
@@ -40,7 +40,7 @@ public class When_Magnus_pastes_into_a_chats_input_box : SpecificationWritingInA
 
    [XF] public void the_image_is_saved_as_a_png_file() => Parts.OfType<PartOfAMessage.PastedImage>().Single().File.Must().Satisfy(it => it.Exists && it.Extension == ".png");
 
-   [XF] public void a_thumbnail_of_the_image_shows_over_the_box() => OnTheUIThread(() => _tab.Chat.InputBox.Thumbnails).Must().Satisfy(it => it.SequenceEqual(["[Image #1]"]));
+   [XF] public void a_thumbnail_of_the_image_shows_over_the_box() => OnTheUIThread(() => _tab.ClaudeCodeChat.InputBox.Thumbnails).Must().Satisfy(it => it.SequenceEqual(["[Image #1]"]));
 
    public class and_sends_it : When_Magnus_pastes_into_a_chats_input_box
    {
@@ -52,7 +52,7 @@ public class When_Magnus_pastes_into_a_chats_input_box : SpecificationWritingInA
 
       [XF] public void the_chat_shows_the_message_with_its_image() => PromptsIn(_tab).Must().Satisfy(it => it.SequenceEqual(["Look at these words and [Image #1]"]));
 
-      [XF] public void no_thumbnail_shows_over_the_box() => OnTheUIThread(() => _tab.Chat.InputBox.Thumbnails).Must().BeEmpty();
+      [XF] public void no_thumbnail_shows_over_the_box() => OnTheUIThread(() => _tab.ClaudeCodeChat.InputBox.Thumbnails).Must().BeEmpty();
    }
 
    static Bitmap AnImage() => new WriteableBitmap(new PixelSize(8, 8), new Vector(96, 96), PixelFormat.Bgra8888, AlphaFormat.Premul);

@@ -51,6 +51,6 @@ public class When_Magnus_presses_Ctrl_H_in_a_sessions_tab : SpecificationOpening
 
       [XF] public void the_tab_shows_its_chat_again() => ShowsTheChat.Must().BeTrue();
 
-      [XF] public void the_chats_input_box_has_the_keyboard_again() => WaitUntilItHasTheKeyboard(_tab.Chat.InputBox, "the chat's input box had the keyboard again");
+      [XF] public void the_chats_input_box_has_the_keyboard_again() => WaitUntilItHasTheKeyboard(_tab.ClaudeCodeChat.InputBox, "the chat's input box had the keyboard again");
    }
 }

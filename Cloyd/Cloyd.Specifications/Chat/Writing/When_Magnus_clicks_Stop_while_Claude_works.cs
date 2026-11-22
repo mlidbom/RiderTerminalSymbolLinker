@@ -14,13 +14,13 @@ public class When_Magnus_clicks_Stop_while_Claude_works : SpecificationWritingIn
    {
       var (window, tab) = AChatOfANewSessionIn(Sandbox.Project("the-project"));
       TypeAndSend(window, "Be busy for 60 seconds");
-      WaitUntil(() => tab.Chat.InputBox.ShowsTheStopButton, "the Stop button showed, as Claude worked");
+      WaitUntil(() => tab.ClaudeCodeChat.InputBox.ShowsTheStopButton, "the Stop button showed, as Claude worked");
       Click(TheButtonWithTheTip(tab, InputBoxOfTheChat.TipOfTheStopButton));
-      WaitUntil(() => !tab.Chat.InputBox.ShowsTheStopButton, "the Stop button went, as Claude stopped");
+      WaitUntil(() => !tab.ClaudeCodeChat.InputBox.ShowsTheStopButton, "the Stop button went, as Claude stopped");
       return tab;
    });
 
    [XF] public void Claude_gives_no_reply() => RepliesIn(_tab).Must().BeEmpty();
 
-   [XF] public void the_box_tells_nothing() => OnTheUIThread(() => _tab.Chat.InputBox.Notice).Must().BeNull();
+   [XF] public void the_box_tells_nothing() => OnTheUIThread(() => _tab.ClaudeCodeChat.InputBox.Notice).Must().BeNull();
 }

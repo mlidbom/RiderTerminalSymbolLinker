@@ -29,7 +29,7 @@ public class When_a_chat_shows_a_long_conversation : SpecificationOpeningWindows
    const int FramesLeftAlone = 90;
 
    private protected readonly Window _window;
-   private protected readonly ChatOfASession _chat;
+   private protected readonly ChatOfAClaudeCodeSession _chat;
    readonly int _viewsDrawnAnewWhileLeftAlone;
    readonly bool _showsTheEndOnceLeftAlone;
 
@@ -37,8 +37,8 @@ public class When_a_chat_shows_a_long_conversation : SpecificationOpeningWindows
    {
       var hub = Sandbox.HubOfTheSandbox;
       var session = TheSampleSession.RepeatedFor(hub, TimesOver);
-      var window = Open(() => new Window { Width = 840, Height = 900, Content = new ChatOfASession(hub.Hub, Sandbox.CloydsFolder.PastedImages) });
-      var chat = OnTheUIThread(() => (ChatOfASession)window.Content!);
+      var window = Open(() => new Window { Width = 840, Height = 900, Content = new ChatOfAClaudeCodeSession(hub.Hub, Sandbox.CloydsFolder.PastedImages) });
+      var chat = OnTheUIThread(() => (ChatOfAClaudeCodeSession)window.Content!);
       OnTheUIThread(() => chat.Show(session));
       WaitUntil(() => chat.Shown.Count > 0 && IsAtTheEnd(chat), "the chat showed the end of the conversation");
       var drawnAtFirst = OnTheUIThread(() => ViewsOf(chat).ToHashSet());
@@ -54,12 +54,12 @@ public class When_a_chat_shows_a_long_conversation : SpecificationOpeningWindows
       return (window, chat, viewsDrawnAnewWhileLeftAlone, showsTheEndOnceLeftAlone);
    });
 
-   private protected static ScrollViewer TheScrollerOf(ChatOfASession chat) => chat.FindDescendantOfType<ScrollViewer>()!;
+   private protected static ScrollViewer TheScrollerOf(ChatOfAClaudeCodeSession chat) => chat.FindDescendantOfType<ScrollViewer>()!;
 
-   static bool IsAtTheEnd(ChatOfASession chat) => TheScrollerOf(chat).Offset.Y >= TheScrollerOf(chat).Extent.Height - TheScrollerOf(chat).Viewport.Height - 4;
+   static bool IsAtTheEnd(ChatOfAClaudeCodeSession chat) => TheScrollerOf(chat).Offset.Y >= TheScrollerOf(chat).Extent.Height - TheScrollerOf(chat).Viewport.Height - 4;
 
    /// <summary>The views of what <paramref name="chat"/> draws.</summary>
-   static IEnumerable<Control> ViewsOf(ChatOfASession chat) => chat.FindDescendantOfType<ItemsControl>()!.GetRealizedContainers().OfType<ContentPresenter>().Select(it => it.Child!);
+   static IEnumerable<Control> ViewsOf(ChatOfAClaudeCodeSession chat) => chat.FindDescendantOfType<ItemsControl>()!.GetRealizedContainers().OfType<ContentPresenter>().Select(it => it.Child!);
 
    [XF] public void it_shows_all_of_it() => OnTheUIThread(() => _chat.Shown.Count).Must().Be(20 * TimesOver);
 

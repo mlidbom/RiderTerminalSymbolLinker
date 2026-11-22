@@ -14,14 +14,14 @@ namespace Cloyd.Specifications.Chat;
 /// </summary>
 public class When_a_chat_shows_the_session_the_desktop_apps_pictures_show : SpecificationOpeningWindows
 {
-   readonly ChatOfASession _chat;
+   readonly ChatOfAClaudeCodeSession _chat;
 
    public When_a_chat_shows_the_session_the_desktop_apps_pictures_show() => _chat = Once(() =>
    {
       var hub = Sandbox.HubOfTheSandbox;
       var session = TheSampleSession.For(hub);
-      var window = Open(() => new Window { Width = 840, Height = 7000, Content = new ChatOfASession(hub.Hub, Sandbox.CloydsFolder.PastedImages) });
-      var chat = OnTheUIThread(() => (ChatOfASession)window.Content!);
+      var window = Open(() => new Window { Width = 840, Height = 7000, Content = new ChatOfAClaudeCodeSession(hub.Hub, Sandbox.CloydsFolder.PastedImages) });
+      var chat = OnTheUIThread(() => (ChatOfAClaudeCodeSession)window.Content!);
       OnTheUIThread(() => chat.Show(session));
       WaitUntil(() => chat.Shown.Count > 0, "the chat showed the conversation");
       Render(window, "the-sample-session");

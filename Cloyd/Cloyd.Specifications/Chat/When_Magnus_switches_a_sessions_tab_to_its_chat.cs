@@ -41,7 +41,7 @@ public class When_Magnus_switches_a_sessions_tab_to_its_chat : SpecificationOpen
 
    IReadOnlyList<ShownInTheChat> Shown => ShownIn(_tab);
 
-   static IReadOnlyList<ShownInTheChat> ShownIn(SessionTab tab) => OnTheUIThread(() => tab.Chat.Shown.ToList());
+   static IReadOnlyList<ShownInTheChat> ShownIn(SessionTab tab) => OnTheUIThread(() => tab.ClaudeCodeChat.Shown.ToList());
 
    [XF] public void the_tab_shows_its_chat() => OnTheUIThread(() => _tab.ShowsTheChat).Must().BeTrue();
 

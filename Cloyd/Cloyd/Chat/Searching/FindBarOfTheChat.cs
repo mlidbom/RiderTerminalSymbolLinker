@@ -12,7 +12,7 @@ namespace Cloyd.Chat.Searching;
 /// <summary>
 /// The bar a search of the chat is typed into, at the top right of the conversation, as a browser's: what is searched
 /// for, which match is shown of how many, and buttons to the next match, the one before, and to close it. Ctrl+F opens
-/// it (<see cref="ChatOfASession"/>); Enter goes to the next match, below, as F3 does; Shift+Enter to the one before, above;
+/// it (<see cref="ChatOfAClaudeCodeSession"/>); Enter goes to the next match, below, as F3 does; Shift+Enter to the one before, above;
 /// Escape closes it.
 /// </summary>
 sealed class FindBarOfTheChat : UserControl

@@ -17,14 +17,14 @@ namespace Cloyd.Specifications.Chat;
 /// </summary>
 public class When_Magnus_opens_a_run_of_tool_calls_and_a_command_in_it : SpecificationOpeningWindows
 {
-   readonly ChatOfASession _chat;
+   readonly ChatOfAClaudeCodeSession _chat;
 
    public When_Magnus_opens_a_run_of_tool_calls_and_a_command_in_it() => _chat = Once(() =>
    {
       var hub = Sandbox.HubOfTheSandbox;
       var session = TheSampleSession.For(hub);
-      var window = Open(() => new Window { Width = 840, Height = 1300, Content = new ChatOfASession(hub.Hub, Sandbox.CloydsFolder.PastedImages) });
-      var chat = OnTheUIThread(() => (ChatOfASession)window.Content!);
+      var window = Open(() => new Window { Width = 840, Height = 1300, Content = new ChatOfAClaudeCodeSession(hub.Hub, Sandbox.CloydsFolder.PastedImages) });
+      var chat = OnTheUIThread(() => (ChatOfAClaudeCodeSession)window.Content!);
       OnTheUIThread(() => chat.Show(session));
       WaitUntil(() => OnTheUIThread(() => chat.FindDescendantOfType<ScrollViewer>()!).Offset.Y > 0, "the chat showed the conversation at its end");
       WaitUntil(() =>
@@ -40,12 +40,12 @@ public class When_Magnus_opens_a_run_of_tool_calls_and_a_command_in_it : Specifi
    });
 
    /// <summary>The text of each line that opens what is under it, as <paramref name="chat"/> shows them now: in no particular order, as the virtualizing list keeps its views.</summary>
-   static List<string> LinesThatOpenIn(ChatOfASession chat) => OnTheUIThread(() => LinesIn(chat).Select(TextOf).ToList());
+   static List<string> LinesThatOpenIn(ChatOfAClaudeCodeSession chat) => OnTheUIThread(() => LinesIn(chat).Select(TextOf).ToList());
 
-   static Button LineThatOpensIn(ChatOfASession chat, string beginning) => OnTheUIThread(() => LinesIn(chat).First(it => TextOf(it).StartsWith(beginning, StringComparison.Ordinal)));
+   static Button LineThatOpensIn(ChatOfAClaudeCodeSession chat, string beginning) => OnTheUIThread(() => LinesIn(chat).First(it => TextOf(it).StartsWith(beginning, StringComparison.Ordinal)));
 
    /// <summary>The lines that open what is under them in <paramref name="chat"/>: the buttons whose content is a line of text, not the buttons of a code block.</summary>
-   static IEnumerable<Button> LinesIn(ChatOfASession chat) => chat.GetVisualDescendants().OfType<Button>().Where(it => it.Content is TextBlock);
+   static IEnumerable<Button> LinesIn(ChatOfAClaudeCodeSession chat) => chat.GetVisualDescendants().OfType<Button>().Where(it => it.Content is TextBlock);
 
    static string TextOf(Button line) => ((TextBlock)line.Content!).Inlines!.Text?.Trim() ?? "";
 

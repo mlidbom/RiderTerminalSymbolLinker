@@ -23,17 +23,17 @@ public class When_Claude_runs_a_shell_command_in_the_background : SpecificationW
    {
       var (window, tab) = AChatOfANewSessionIn(Sandbox.Project("the-project"));
       TypeAndSend(window, "Run a background shell for 8 seconds");
-      WaitUntil(() => tab.Chat.StatusLine.BackgroundWork is not null && tab.BackgroundWorkMarked is not null && ShownIn(tab) is [.., ShownInTheChat.EndOfATurn { StillRunning: not null }],
+      WaitUntil(() => tab.ClaudeCodeChat.StatusLine.BackgroundWork is not null && tab.BackgroundWorkMarked is not null && ShownIn(tab) is [.., ShownInTheChat.EndOfATurn { StillRunning: not null }],
                 "the line under the input box, the tab's header and the turn's end told of the shell",
-                () => $"the line: {tab.Chat.StatusLine.BackgroundWork}; the tab: {tab.BackgroundWorkMarked}; the conversation's end: {ShownIn(tab).LastOrDefault()}");
+                () => $"the line: {tab.ClaudeCodeChat.StatusLine.BackgroundWork}; the tab: {tab.BackgroundWorkMarked}; the conversation's end: {ShownIn(tab).LastOrDefault()}");
       Render(window, "a-tab-whose-claude-runs-a-shell-in-the-background");
       return tab;
    });
 
    /// <summary>As Claude Code's TUI counts it beside its input box: "· 1 shell · ↓ to manage".</summary>
-   [XF] public void the_line_under_the_input_box_counts_it_as_Claude_Code_does() => OnTheUIThread(() => _tab.Chat.StatusLine.BackgroundWork).Must().Be("1 shell");
+   [XF] public void the_line_under_the_input_box_counts_it_as_Claude_Code_does() => OnTheUIThread(() => _tab.ClaudeCodeChat.StatusLine.BackgroundWork).Must().Be("1 shell");
 
-   [XF] public void the_lines_tip_tells_what_the_shell_does_in_Claudes_words_and_its_command() => OnTheUIThread(() => _tab.Chat.StatusLine.TipOfTheBackgroundWork).Must().Be(TheShell);
+   [XF] public void the_lines_tip_tells_what_the_shell_does_in_Claudes_words_and_its_command() => OnTheUIThread(() => _tab.ClaudeCodeChat.StatusLine.TipOfTheBackgroundWork).Must().Be(TheShell);
 
    /// <summary>While Claude is idle, the marker's place is the spinner's while Claude works.</summary>
    [XF] public void the_tabs_header_marks_that_it_runs_its_tip_telling_what_runs() => OnTheUIThread(() => _tab.BackgroundWorkMarked).Must().Be($"1 shell\n{TheShell}");
@@ -47,13 +47,13 @@ public class When_Claude_runs_a_shell_command_in_the_background : SpecificationW
    {
       public and_then_the_shell_ends() =>
          WaitUntil(() => ShownIn(_tab) is [.., ShownInTheChat.ClaudesText { Markdown: var reply }, ShownInTheChat.EndOfATurn] && IsTheReplyToTheShellsEnd(reply)
-                         && _tab.Chat.StatusLine.BackgroundWork is null && _tab.BackgroundWorkMarked is null && !_tab.ShowsThatItsSessionWorks,
+                         && _tab.ClaudeCodeChat.StatusLine.BackgroundWork is null && _tab.BackgroundWorkMarked is null && !_tab.ShowsThatItsSessionWorks,
                    "Claude replied to the shell's end and the turn ended, and the line under the input box and the tab's marker went",
-                   () => $"the replies: {string.Join(" | ", RepliesIn(_tab))}; the conversation's end: {ShownIn(_tab).LastOrDefault()}; the line: {_tab.Chat.StatusLine.BackgroundWork}; the tab: {_tab.BackgroundWorkMarked}");
+                   () => $"the replies: {string.Join(" | ", RepliesIn(_tab))}; the conversation's end: {ShownIn(_tab).LastOrDefault()}; the line: {_tab.ClaudeCodeChat.StatusLine.BackgroundWork}; the tab: {_tab.BackgroundWorkMarked}");
 
       [XF] public void Claude_replies_to_its_end() => RepliesIn(_tab).Must().Satisfy(it => it.Count(IsTheReplyToTheShellsEnd) == 1);
 
-      [XF] public void the_line_under_the_input_box_goes() => OnTheUIThread(() => _tab.Chat.StatusLine.BackgroundWork).Must().BeNull();
+      [XF] public void the_line_under_the_input_box_goes() => OnTheUIThread(() => _tab.ClaudeCodeChat.StatusLine.BackgroundWork).Must().BeNull();
 
       [XF] public void the_marker_in_the_tabs_header_goes() => OnTheUIThread(() => _tab.BackgroundWorkMarked).Must().BeNull();
 

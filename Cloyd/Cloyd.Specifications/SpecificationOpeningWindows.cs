@@ -165,7 +165,7 @@ public abstract class SpecificationOpeningWindows : IDisposable
 
    /// <summary>Waits until the chat's input box of <paramref name="tab"/> in <paramref name="window"/> has the keyboard, as a tab's selection gives it, the tab showing its chat.</summary>
    private protected void WaitUntilTheInputBoxHasTheKeyboard(Window window, SessionTab tab) =>
-      WaitUntil(() => TopLevel.GetTopLevel(window)!.FocusManager!.GetFocusedElement() is Control focused && focused.FindAncestorOfType<InputBoxOfTheChat>() is {} box && box == tab.Chat.InputBox,
+      WaitUntil(() => TopLevel.GetTopLevel(window)!.FocusManager!.GetFocusedElement() is Control focused && focused.FindAncestorOfType<InputBoxOfTheChat>() is {} box && box == tab.ClaudeCodeChat.InputBox,
                 "the chat's input box had the keyboard");
 
    /// <summary>The one button in <paramref name="within"/> that says <paramref name="text"/>, as Magnus reads it.</summary>

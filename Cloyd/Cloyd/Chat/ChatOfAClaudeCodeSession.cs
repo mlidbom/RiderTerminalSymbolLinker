@@ -25,7 +25,7 @@ namespace Cloyd.Chat;
 /// A long conversation, such as one of Magnus's of 15,000 messages, is drawn only as far up as he scrolls: see
 /// <see cref="DrawnEndOfTheConversation"/>.
 /// </remarks>
-sealed class ChatOfASession : SessionChat
+sealed class ChatOfAClaudeCodeSession : SessionChat
 {
    readonly TheHub _hub;
    readonly OpenedInTheChat _opened = new();
@@ -46,7 +46,7 @@ sealed class ChatOfASession : SessionChat
    BlockBeingWritten? _blockBeingWritten;
 
    /// <summary>A chat that follows its conversation through <paramref name="hub"/>, and sends through it: the images pasted into its input box are saved in <paramref name="pastedImages"/>.</summary>
-   public ChatOfASession(TheHub hub, PastedImages pastedImages)
+   public ChatOfAClaudeCodeSession(TheHub hub, PastedImages pastedImages)
    {
       _hub = hub;
       InputBox = new InputBoxOfTheChat(hub, pastedImages) { MaxWidth = WidthOfTheColumn + 32 };

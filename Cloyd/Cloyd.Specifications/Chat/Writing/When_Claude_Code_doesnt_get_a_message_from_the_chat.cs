@@ -20,14 +20,14 @@ public class When_Claude_Code_doesnt_get_a_message_from_the_chat : Specification
       WaitUntil(() => tab.Terminal.TextShown.Contains("typed in the terminal"), "Claude Code's box showed what was typed in the terminal");
       SwitchWithCtrlH(window, tab);
       TypeAndSend(window, "from the chat");
-      WaitUntil(() => tab.Chat.InputBox.Notice is not null, "the chat's input box told why");
+      WaitUntil(() => tab.ClaudeCodeChat.InputBox.Notice is not null, "the chat's input box told why");
       Render(window, "a-message-claude-code-didnt-get");
       return tab;
    });
 
    [XF] public void the_message_is_back_in_the_box() => TextIn(_tab).Must().Be("from the chat");
 
-   [XF] public void the_box_tells_why() => OnTheUIThread(() => _tab.Chat.InputBox.Notice).Must().Satisfy(it => it!.Contains("input box holds text"));
+   [XF] public void the_box_tells_why() => OnTheUIThread(() => _tab.ClaudeCodeChat.InputBox.Notice).Must().Satisfy(it => it!.Contains("input box holds text"));
 
    [XF] public void the_chat_shows_no_message() => PromptsIn(_tab).Must().BeEmpty();
 }

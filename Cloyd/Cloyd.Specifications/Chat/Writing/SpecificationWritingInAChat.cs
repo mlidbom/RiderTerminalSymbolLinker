@@ -47,7 +47,7 @@ public abstract class SpecificationWritingInAChat : SpecificationOpeningWindows
    }
 
    /// <summary>What the chat of <paramref name="tab"/> shows now.</summary>
-   private protected static IReadOnlyList<ShownInTheChat> ShownIn(SessionTab tab) => OnTheUIThread(() => tab.Chat.Shown.ToList());
+   private protected static IReadOnlyList<ShownInTheChat> ShownIn(SessionTab tab) => OnTheUIThread(() => tab.ClaudeCodeChat.Shown.ToList());
 
    /// <summary>The prompts the chat of <paramref name="tab"/> shows now, in order.</summary>
    private protected static IReadOnlyList<string> PromptsIn(SessionTab tab) => [.. ShownIn(tab).OfType<ShownInTheChat.Prompt>().Select(it => it.Text)];
@@ -56,5 +56,5 @@ public abstract class SpecificationWritingInAChat : SpecificationOpeningWindows
    private protected static IReadOnlyList<string> RepliesIn(SessionTab tab) => [.. ShownIn(tab).OfType<ShownInTheChat.ClaudesText>().Select(it => it.Markdown)];
 
    /// <summary>What the chat's input box of <paramref name="tab"/> holds now, as text.</summary>
-   private protected static string TextIn(SessionTab tab) => OnTheUIThread(() => tab.Chat.InputBox.Draft.Document.Text);
+   private protected static string TextIn(SessionTab tab) => OnTheUIThread(() => tab.ClaudeCodeChat.InputBox.Draft.Document.Text);
 }

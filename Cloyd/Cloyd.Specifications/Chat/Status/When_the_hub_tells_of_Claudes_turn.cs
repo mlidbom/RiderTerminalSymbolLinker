@@ -29,7 +29,7 @@ public class When_the_hub_tells_of_Claudes_turn : SpecificationWritingInAChat
       var (window, tab) = AChatOfANewSessionIn(Sandbox.Project("the-project"));
       var turn = new TheTurnAsTheChatShowedIt(tab);
       TypeAndSend(window, ThePrompt);
-      WaitUntil(() => turn.LookedAt() && turn.ClaudesTextAtTheEnd.Count > 0 && tab.Chat.WorkingLine.Says?.StartsWith("Writing… (", StringComparison.Ordinal) == true,
+      WaitUntil(() => turn.LookedAt() && turn.ClaudesTextAtTheEnd.Count > 0 && tab.ClaudeCodeChat.WorkingLine.Says?.StartsWith("Writing… (", StringComparison.Ordinal) == true,
                 "the working line said Claude wrote, and the chat showed what it wrote", turn.WhatItSaw);
       return (tab, turn);
    });
@@ -54,13 +54,13 @@ public class When_the_hub_tells_of_Claudes_turn : SpecificationWritingInAChat
 
       public and_then_the_turn_ends() => _seenToEnd = Once(() =>
       {
-         WaitUntil(() => _turn.LookedAt() && _tab.Chat.WorkingLine.Says is null && _tab.Chat.Shown is [.., ShownInTheChat.ClaudesText, ShownInTheChat.EndOfATurn],
+         WaitUntil(() => _turn.LookedAt() && _tab.ClaudeCodeChat.WorkingLine.Says is null && _tab.ClaudeCodeChat.Shown is [.., ShownInTheChat.ClaudesText, ShownInTheChat.EndOfATurn],
                    "the working line went, and the conversation had Claude's reply and the turn's end", _turn.WhatItSaw);
          return DateTime.Now;
       });
 
       /// <summary>As Claude Code's TUI writes a line after each turn: "✻ Sautéed for 21s · done 2:37 PM".</summary>
-      [XF] public void after_the_reply_the_chat_tells_the_turn_ended() => OnTheUIThread(() => _tab.Chat.Shown[^2]).Must().Satisfy(it => it is ShownInTheChat.ClaudesText { Markdown: TheReply });
+      [XF] public void after_the_reply_the_chat_tells_the_turn_ended() => OnTheUIThread(() => _tab.ClaudeCodeChat.Shown[^2]).Must().Satisfy(it => it is ShownInTheChat.ClaudesText { Markdown: TheReply });
 
       [XF] public void in_a_line_that_says_how_long_it_took_and_when_it_ended() => TheTurnsEnd.Success.Must().BeTrue();
 
@@ -70,14 +70,14 @@ public class When_the_hub_tells_of_Claudes_turn : SpecificationWritingInAChat
       [XF] public void and_when_it_ended_by_the_clock_today() =>
          TimeOnly.Parse(TheTurnsEnd.Groups["done"].Value, CultureInfo.CurrentCulture).Must().Satisfy(it => TimeOnly.FromDateTime(_seenToEnd) - it < TimeSpan.FromMinutes(2));
 
-      Match TheTurnsEnd => Regex.Match(OnTheUIThread(() => ((ShownInTheChat.EndOfATurn)_tab.Chat.Shown[^1]).Line), @"^Worked for (?<took>\d+)s · done (?<done>[^·]+)$");
+      Match TheTurnsEnd => Regex.Match(OnTheUIThread(() => ((ShownInTheChat.EndOfATurn)_tab.ClaudeCodeChat.Shown[^1]).Line), @"^Worked for (?<took>\d+)s · done (?<done>[^·]+)$");
 
       [XF] public void the_reply_grew_as_Claude_wrote_it_until_it_was_whole() =>
          _turn.ClaudesTextAtTheEnd.Must().Satisfy(it => it.Count >= 2 && it[^1] == TheReply && it.Zip(it.Skip(1)).All(pair => pair.Second.Length > pair.First.Length && pair.Second.StartsWith(pair.First, StringComparison.Ordinal)));
 
       [XF] public void the_chat_shows_the_reply_once() => RepliesIn(_tab).Must().Satisfy(it => it.SequenceEqual([TheReply]));
 
-      [XF] public void the_working_line_goes() => OnTheUIThread(() => _tab.Chat.WorkingLine.Says).Must().BeNull();
+      [XF] public void the_working_line_goes() => OnTheUIThread(() => _tab.ClaudeCodeChat.WorkingLine.Says).Must().BeNull();
    }
 
    /// <summary>Then Magnus clicks Stop while Claude writes, and the turn ends cut short: Claude Code never writes the reply to the transcript.</summary>
@@ -86,13 +86,13 @@ public class When_the_hub_tells_of_Claudes_turn : SpecificationWritingInAChat
       public and_then_Magnus_stops_it() => Once(() =>
       {
          Click(TheButtonWithTheTip(_tab, InputBoxOfTheChat.TipOfTheStopButton));
-         WaitUntil(() => _tab.Chat.WorkingLine.Says is null && !_tab.Chat.Shown.OfType<ShownInTheChat.ClaudesText>().Any(), "the working line went, and the text Claude wrote went");
+         WaitUntil(() => _tab.ClaudeCodeChat.WorkingLine.Says is null && !_tab.ClaudeCodeChat.Shown.OfType<ShownInTheChat.ClaudesText>().Any(), "the working line went, and the text Claude wrote went");
          return true;
       });
 
       [XF] public void the_text_Claude_wrote_goes_and_no_reply_comes() => RepliesIn(_tab).Must().BeEmpty();
 
-      [XF] public void the_working_line_goes() => OnTheUIThread(() => _tab.Chat.WorkingLine.Says).Must().BeNull();
+      [XF] public void the_working_line_goes() => OnTheUIThread(() => _tab.ClaudeCodeChat.WorkingLine.Says).Must().BeNull();
    }
 
    /// <summary>Whether <paramref name="said"/> holds each of <paramref name="inOrder"/>, in that order, with or without more between them.</summary>

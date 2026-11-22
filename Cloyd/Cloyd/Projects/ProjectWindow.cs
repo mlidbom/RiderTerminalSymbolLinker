@@ -278,7 +278,7 @@ sealed class ProjectWindow : Window
    async Task<SessionTab?> BringBack(SavedSessionTab saved, SessionHostOfTheHub? host, ResumableSessions resumable)
    {
       var tab = await TheTabBroughtBack();
-      tab?.Chat.InputBox.BringBack(saved.Draft ?? []);
+      tab?.ClaudeCodeChat.InputBox.BringBack(saved.Draft ?? []);
       return tab;
 
       async Task<SessionTab?> TheTabBroughtBack()
