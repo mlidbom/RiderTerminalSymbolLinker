@@ -21,6 +21,7 @@ sealed class TheCloydApplication(CloydsFolder folder)
 {
    static readonly TimeSpan HowLongStartingMayTake = TimeSpan.FromSeconds(30);
    static readonly TimeSpan BetweenTries = TimeSpan.FromMilliseconds(100);
+   static readonly HttpClient PeerLaunches = new() { Timeout = TimeSpan.FromSeconds(110) };
 
    readonly CloydsFolder _folder = folder;
    readonly HttpClient _http = new() { Timeout = HowLongStartingMayTake };
@@ -51,6 +52,15 @@ sealed class TheCloydApplication(CloydsFolder folder)
 
    /// <summary>The windows the application shows: null when none runs.</summary>
    public IReadOnlyList<WindowInTheAnswer>? Windows() => TheOneThatRuns() is {} running ? WindowsOf(running) : null;
+
+   /// <summary>Starts Cloyd if necessary and obtains the address of the named helper in its project window.</summary>
+   public PeerSessionStarted StartPeerSession(SessionToStartForAPeer session)
+   {
+      var announcement = TheOneThatRunsOrStarted();
+      using var request = new HttpRequestMessage(HttpMethod.Post, announcement.AddressOf("sessions/start"));
+      request.Content = JsonContent.Create(session, options: CloydsLocalApiProtocol.Json);
+      return Answer<PeerSessionStarted>(announcement, request, PeerLaunches) ?? throw new InvalidOperationException("Cloyd stopped answering. Retry the same launch to find its tab.");
+   }
 
    /// <summary>The process of the application: null when none runs.</summary>
    public int? ProcessId => TheOneThatRuns()?.ProcessId;
@@ -90,7 +100,7 @@ sealed class TheCloydApplication(CloydsFolder folder)
    /// What the application announced answers <paramref name="request"/>, as a <typeparamref name="TAnswer"/>: null when its
    /// API doesn't listen, and an <see cref="HttpRequestException"/> with its body when it answers with a failure.
    /// </summary>
-   TAnswer? Answer<TAnswer>(AnnouncementOfCloydsLocalApi announcement, HttpRequestMessage request) where TAnswer : class
+   TAnswer? Answer<TAnswer>(AnnouncementOfCloydsLocalApi announcement, HttpRequestMessage request, HttpClient? client = null) where TAnswer : class
    {
       if(announcement.Protocol != CloydsLocalApiProtocol.Version)
          throw new InvalidOperationException($"The Cloyd application that runs speaks protocol {announcement.Protocol}, and this Cloyd.exe protocol {CloydsLocalApiProtocol.Version}: close its windows, so that this one starts a new one.");
@@ -99,7 +109,7 @@ sealed class TheCloydApplication(CloydsFolder folder)
       HttpResponseMessage answer;
       try
       {
-         answer = _http.Send(request);
+         answer = (client ?? _http).Send(request);
       }
       catch(HttpRequestException failure) when(failure.HttpRequestError == HttpRequestError.ConnectionError)
       {

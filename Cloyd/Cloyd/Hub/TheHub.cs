@@ -35,15 +35,30 @@ sealed partial class TheHub
    static readonly TimeSpan HowLongANewHubMayTakeToAnswer = TimeSpan.FromSeconds(30);
    static readonly TimeSpan BetweenTries = TimeSpan.FromMilliseconds(250);
 
-   readonly HttpClient _http = new() { Timeout = Timeout.InfiniteTimeSpan };
+   readonly HttpClient _http;
    readonly DirectoryInfo _folderOfTheAnnouncement;
    readonly bool _isThePublishedHub;
+   readonly AnnouncementOfTheHub? _oneHubForThisLaunch;
 
    TheHub(DirectoryInfo folderOfTheAnnouncement, bool isThePublishedHub)
    {
+      _http = new HttpClient { Timeout = Timeout.InfiniteTimeSpan };
       _folderOfTheAnnouncement = folderOfTheAnnouncement;
       _isThePublishedHub = isThePublishedHub;
    }
+
+   TheHub(TheHub source, AnnouncementOfTheHub oneHubForThisLaunch)
+   {
+      _http = source._http;
+      _folderOfTheAnnouncement = source._folderOfTheAnnouncement;
+      _isThePublishedHub = source._isThePublishedHub;
+      _oneHubForThisLaunch = oneHubForThisLaunch;
+   }
+
+   /// <summary>For a peer's persistent launch, submit each command to one generation of the hub just once.
+   /// Losing a reply can leave a live host or CLI. A retry finds it through the launch receipt.</summary>
+   public async Task<TheHub> ForOnePeerLaunch(CancellationToken cancellation) =>
+      new(this, await TheAnnouncement(new TimeToAnswer(_folderOfTheAnnouncement), cancellation));
 
    /// <summary>
    /// The hub Cloyd's environment names: the one tried out apart from the published one, whose announcement's folder
@@ -85,7 +100,7 @@ sealed partial class TheHub
    {
       var body = new SessionHostToStartInTheRequest(shell.CommandLine, directory, Columns: null, Rows: null, new Dictionary<string, string>(shell.Environment), label);
       var answer = await Send(Request, cancellation);
-      if(answer.StatusCode == HttpStatusCode.InternalServerError)
+      if(_oneHubForThisLaunch is null && answer.StatusCode == HttpStatusCode.InternalServerError)
       {
          answer.Dispose();
          answer = await Send(Request, cancellation);
@@ -270,7 +285,9 @@ sealed partial class TheHub
    /// while the hub announced doesn't answer, as at a publish, for <see cref="HowLongANewHubMayTakeToAnswer"/>.
    /// </summary>
    async Task<HttpResponseMessage> Send(Func<AnnouncementOfTheHub, HttpRequestMessage> request, CancellationToken cancellation) =>
-      (await SendToTheAnnouncedHub(request, cancellation, HttpCompletionOption.ResponseContentRead)).Response;
+      _oneHubForThisLaunch is {} fixedHub
+         ? await SendOnce(fixedHub, request, HttpCompletionOption.ResponseContentRead, cancellation)
+         : (await SendToTheAnnouncedHub(request, cancellation, HttpCompletionOption.ResponseContentRead)).Response;
 
    /// <summary>Returns the announcement of the hub that actually answered, including after a publish during a retry.</summary>
    async Task<(AnnouncementOfTheHub Hub, HttpResponseMessage Response)> SendToTheAnnouncedHub(Func<AnnouncementOfTheHub, HttpRequestMessage> request,

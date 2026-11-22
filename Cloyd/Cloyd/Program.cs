@@ -36,8 +36,26 @@ static class Program
       {
          [ArgumentThatMakesItTheApplication, _] => BuildAvaloniaApp().StartWithClassicDesktopLifetime(arguments),
          [ArgumentThatAsksWhatLinks, var folder, var line] => TellWhatLinksIn(line, new Project(folder)),
+         ["--start-peer-session"] => StartPeerSession(),
          _ => ShowTheWindowOf(ProjectNamedBy(arguments))
       };
+
+   /// <summary>The Peers command. Reads the launch request as JSON on stdin and prints the qualified session address.</summary>
+   static int StartPeerSession()
+   {
+      try
+      {
+         var request = System.Text.Json.JsonSerializer.Deserialize<LocalApi.Contract.SessionToStartForAPeer>(Console.OpenStandardInput(), CloydsLocalApiProtocol.Json);
+         if(request?.IsValid != true) throw new ArgumentException("Invalid peer session launch request.");
+         Console.WriteLine(TheCloydApplication.OfCloydsEnvironment().StartPeerSession(request).Address);
+         return 0;
+      }
+      catch(Exception failure)
+      {
+         Console.Error.WriteLine(failure.Message);
+         return 1;
+      }
+   }
 
    /// <summary>The application on the desktop. Also found by name by Avalonia's designer.</summary>
    public static AppBuilder BuildAvaloniaApp() => AppBuilder.Configure<CloydApp>().UsePlatformDetect();

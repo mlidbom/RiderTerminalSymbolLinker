@@ -41,7 +41,7 @@ namespace Cloyd.Projects;
 /// A window with no desktop saved, as on its first opening, goes to the desktop of the project's window in an IDE, once
 /// an IDE shows the project. It follows neither afterwards: where Magnus moves it, it stays.
 /// </remarks>
-sealed class ProjectWindow : Window
+sealed partial class ProjectWindow : Window
 {
    static readonly TimeSpan BeforeFollowingTheRunningSessionsAgain = TimeSpan.FromSeconds(1);
    static readonly TimeSpan BetweenSaves = TimeSpan.FromSeconds(2);
@@ -255,35 +255,6 @@ sealed class ProjectWindow : Window
       await StartIn(tab, session.Command);
    }
 
-   /// <summary>Starts the requested helper in its worktree, keeping an existing tab selected. On recovery,
-   /// observes only the host of the original launch. The shell accepting a line does not identify a session.</summary>
-   public async Task<Session> SessionForAPeer(LocalApi.Contract.SessionToStartForAPeer request, bool create)
-   {
-      await BringingBackTheTabs;
-      var label = SessionHostLabel.ForAPeer(Project, request.RequestId);
-      SessionTab tab;
-      if(create)
-      {
-         var session = request.Session;
-         if(!(await _hub.AgentClisItServes(_closed.Token)).Contains(session.AgentCli))
-            throw new InvalidOperationException($"The hub does not serve {session.AgentCli}.");
-         var host = await _hub.StartASessionHost(_shellOfNewSessions, request.Worktree, label, _closed.Token);
-         tab = Show(host, latestSession: null, session);
-         _tabs.SelectedItem ??= tab;
-         await session.Command.HaveTheHubTypeItInto(host, _hub, _closed.Token);
-      }
-      else
-      {
-         tab = Tabs.SingleOrDefault(it => it.Host.Label == label)
-            ?? throw new InvalidOperationException("The original launch has no visible host. Inspect the project before starting another helper.");
-      }
-
-      using var deadline = CancellationTokenSource.CreateLinkedTokenSource(_closed.Token);
-      deadline.CancelAfter(TimeSpan.FromSeconds(90));
-      while(tab.SessionRunningInIt?.Session is not {} running || running.AgentCli != request.Session.AgentCli || running.Name != request.Name)
-         await Task.Delay(150, deadline.Token);
-      return tab.SessionRunningInIt.Session;
-   }
 
    /// <summary>
    /// Brings back the tabs the project's last window <paramref name="saved"/>, in their order, then shows the project's

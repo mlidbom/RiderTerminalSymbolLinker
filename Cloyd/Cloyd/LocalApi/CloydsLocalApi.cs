@@ -143,7 +143,7 @@ sealed class CloydsLocalApi
          PeerSessionStarted result = await Dispatcher.UIThread.InvokeAsync(() => starts.Start(request));
          await Reply(exchange, 200, result);
       }
-      catch(ArgumentException conflict)
+      catch(PeerSessionRequestConflict conflict)
       {
          await Reply(exchange, 409, new ErrorAnswer(conflict.Message));
       }

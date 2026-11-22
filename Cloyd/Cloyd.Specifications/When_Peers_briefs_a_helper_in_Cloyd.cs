@@ -25,8 +25,16 @@ public class When_Peers_briefs_a_helper_in_Cloyd : SpecificationRunningTheCloydA
    private protected override IReadOnlyList<SandboxProject> Projects => [_project, _worktree];
 
    [XF(Skip = "Run with the paired Peers build and launch trial.", SkipUnless = nameof(HasPeersTrial))]
-   public void both_kinds_of_coordinator_can_launch_and_contact_both_kinds_of_helper()
+   public void a_Claude_coordinator_can_launch_and_contact_both_kinds_of_helper() => VerifyCoordinator("claude");
+
+   [XF(Skip = "Run with the paired Peers build and launch trial.", SkipUnless = nameof(HasPeersTrial))]
+   public void a_Codex_coordinator_can_launch_and_contact_both_kinds_of_helper() => VerifyCoordinator("codex");
+
+   void VerifyCoordinator(string sender)
    {
+      var bin = CloydsFolder.Folder.CreateSubdirectory("bin");
+      foreach(var file in new DirectoryInfo(AppContext.BaseDirectory).EnumerateFiles().Where(it => it.Extension == ".dll" || it.Name.StartsWith("Cloyd.", StringComparison.Ordinal)))
+         file.CopyTo(Path.Combine(bin.FullName, file.Name), overwrite: true);
       Sandbox.StartClaudeWithThePeersChannel();
       HandedOver(_project);
       var window = OnTheUIThread(() => Windows.Open.Single());
@@ -38,14 +46,14 @@ public class When_Peers_briefs_a_helper_in_Cloyd : SpecificationRunningTheCloydA
       foreach(var (key, value) in hub.Environment) start.Environment[key] = value;
       start.Environment["CLOYD_FOLDER"] = CloydsFolder.Folder.FullName;
       start.Environment["PEERS_STAND_IN_FOR_CODEX"] = Path.Combine(hub.FolderOfTheStandInForCodex, "codex.exe");
-      foreach(var argument in new[] { Environment.GetEnvironmentVariable("CLOYD_PEERS_LAUNCH_TRIAL")!, _project.Project.Folder, _worktree.Project.Folder, coordinator.Process.ToString() })
+      foreach(var argument in new[] { Environment.GetEnvironmentVariable("CLOYD_PEERS_LAUNCH_TRIAL")!, _project.Project.Folder, _worktree.Project.Folder, coordinator.Process.ToString(), sender })
          start.ArgumentList.Add(argument);
       using var process = Process.Start(start)!;
       try
       {
-         WaitUntil(() => process.HasExited, "Peers completed the paired trial");
+         WaitUntil(() => process.HasExited, "Peers completed the paired trial", timeout: TimeSpan.FromMinutes(3));
          if(process.ExitCode != 0) throw new InvalidOperationException(process.StandardError.ReadToEnd() + process.StandardOutput.ReadToEnd());
-         OnTheUIThread(() => window.Tabs.Count).Must().Be(5);
+         OnTheUIThread(() => window.Tabs.Count).Must().Be(3);
       }
       finally
       {

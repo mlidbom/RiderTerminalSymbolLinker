@@ -15,9 +15,14 @@ sealed record SessionToStartForAPeer([property: JsonPropertyName("requestId")] G
    [JsonIgnore] public NewSession Session => new(AgentCli == "codex" ? Sessions.AgentCli.Codex : Sessions.AgentCli.ClaudeCode, Name);
 
    [JsonIgnore] public bool IsValid => RequestId != Guid.Empty && Fingerprint is { Length: 64 } && Fingerprint.All(char.IsAsciiHexDigit)
-                       && AgentCli is "codex" or "claude" && !string.IsNullOrWhiteSpace(Name) && !Name.Any(char.IsControl)
+                       && AgentCli is "codex" or "claude" && !string.IsNullOrWhiteSpace(Name) && Name.Trim() == Name && !Name.Any(char.IsControl)
                        && ExistingAbsoluteFolder(Project) && ExistingAbsoluteFolder(Worktree);
 
    static bool ExistingAbsoluteFolder(string? folder) =>
       !string.IsNullOrWhiteSpace(folder) && Path.IsPathFullyQualified(folder) && Directory.Exists(folder);
+
+   public bool Matches(SessionToStartForAPeer other) =>
+      RequestId == other.RequestId && Fingerprint == other.Fingerprint && Name == other.Name && AgentCli == other.AgentCli
+      && string.Equals(Project, other.Project, StringComparison.OrdinalIgnoreCase)
+      && string.Equals(Worktree, other.Worktree, StringComparison.OrdinalIgnoreCase);
 }
