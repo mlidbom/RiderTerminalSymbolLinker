@@ -17,10 +17,10 @@ namespace Cloyd.Specifications.Chat.Codex;
 /// saved history. Both views see the same prompt and answer.</summary>
 public class When_Magnus_writes_to_the_Codex_session_in_a_tab : SpecificationOpeningWindows
 {
-   private protected readonly ProjectWindow _window;
-   private protected readonly SessionTab _tab;
-   private protected readonly CodexSessionId _session;
-   private protected ChatOfACodexSession Chat => _tab.CodexChat!;
+   readonly ProjectWindow _window;
+   readonly SessionTab _tab;
+   readonly CodexSessionId _session;
+   ChatOfACodexSession Chat => _tab.CodexChat!;
 
    public When_Magnus_writes_to_the_Codex_session_in_a_tab() => (_window, _tab, _session) = Once(() =>
    {
@@ -81,6 +81,10 @@ public class When_Magnus_writes_to_the_Codex_session_in_a_tab : SpecificationOpe
       });
 
       [XF] public void the_interruption_also_appears_in_Terminal() => OnTheUIThread(() => _tab.Terminal.TextShown).Must().Contain("Conversation interrupted");
+
+      [XF] public void the_interruption_belongs_to_the_steered_turn() => OnTheUIThread(() =>
+         Chat.Shown.OfType<ShownInTheChat.Prompt>().Single(it => it.Text == "additional instruction").Id
+             .StartsWith(Chat.Shown.OfType<CodexChatNotice>().Single(it => it.Line == "Turn interrupted").Id + "/", StringComparison.Ordinal)).Must().BeTrue();
    }
 
    public class and_Magnus_sends_a_pasted_image_with_no_text : When_Magnus_writes_to_the_Codex_session_in_a_tab

@@ -354,6 +354,6 @@ sealed partial class TheHub
       var body = await answer.Content.ReadAsStringAsync(cancellation);
       if(answer.StatusCode is not (HttpStatusCode.Conflict or HttpStatusCode.NotFound) && !answer.IsSuccessStatusCode)
          throw new HttpRequestException($"{answer.RequestMessage?.Method} {answer.RequestMessage?.RequestUri?.AbsolutePath}: {(int)answer.StatusCode} {body}");
-      return JsonSerializer.Deserialize<TAnswer>(body, LocalApiProtocol.Json)!;
+      return JsonSerializer.Deserialize<TAnswer>(body, LocalApiProtocol.Json) ?? throw new InvalidDataException("The hub returned a null response.");
    }
 }

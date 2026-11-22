@@ -90,7 +90,7 @@ partial class TheHub : ICodexChatInTheHub
       if(answer.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden or HttpStatusCode.BadRequest)
          throw new RefusedByTheHub($"The hub rejected the {command} request (HTTP {(int)answer.StatusCode}).");
       var receipt = await Read<CodexChatCommandAccepted>(answer, deadline.Token);
-      if(string.IsNullOrWhiteSpace(receipt?.TurnId) || expected is not null && receipt.TurnId != expected.Value)
+      if(string.IsNullOrWhiteSpace(receipt.TurnId) || expected is not null && receipt.TurnId != expected.Value)
          throw new InvalidDataException("The hub did not acknowledge the expected Codex turn.");
    }
 }
