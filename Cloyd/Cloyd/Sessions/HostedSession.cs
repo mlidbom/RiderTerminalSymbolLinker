@@ -4,6 +4,7 @@ using Cloyd.Hub;
 using Cloyd.Hub.RunningSessions;
 using Cloyd.Saving;
 using Cloyd.Terminals;
+using Cloyd.Projects;
 
 namespace Cloyd.Sessions;
 
@@ -23,6 +24,7 @@ sealed class HostedSession
       _sessions = sessions;
       Host = host;
       LatestSession = saved?.Session ?? latest;
+      LastSessionFolder = saved?.SessionDirectory is {} directory ? new Project(directory) : null;
       _startedAs = startedAs;
       _size = size;
       ChatState = new SessionChatState(sessions.Hub, sessions.Images);
@@ -31,6 +33,7 @@ sealed class HostedSession
 
    public SessionHostOfTheHub Host { get; }
    public Session? LatestSession { get; private set; }
+   public Project? LastSessionFolder { get; private set; }
    public RunningSession? Running { get; private set; }
    /// <summary>The agent identified by a previous or requested session. A shell can have neither.</summary>
    public AgentCli? KnownAgentCli => LatestSession?.AgentCli ?? _startedAs?.AgentCli;
@@ -47,11 +50,17 @@ sealed class HostedSession
    public event Action? Changed;
    public event Action<string>? Ended;
 
+   public void RememberSession(Session session, Project? workingFolder)
+   {
+      if(LatestSession?.Id != session.Id || workingFolder is not null) LastSessionFolder = workingFolder;
+      LatestSession = session;
+   }
+
    public void Update(RunningSession? running)
    {
       Running = running;
       ChatState.ClaudeCode.Turn.Show(running as RunningClaudeCode);
-      if(running is not null) LatestSession = running.Session;
+      if(running is not null) RememberSession(running.Session, running.WorkingFolder);
       Changed?.Invoke();
    }
 
@@ -81,7 +90,8 @@ sealed class HostedSession
       if(_views.FirstOrDefault() is {} remaining) ShowTerminalIn(remaining);
    }
 
-   public SavedSessionTab AsSaved => new(Host.Id, Host.Directory, LatestSession, ChatState.ClaudeCodeDraft, ChatState.CodexDrafts);
+   public SavedSessionTab AsSaved => new(Host.Id, Host.Directory, LatestSession, ChatState.ClaudeCodeDraft, ChatState.CodexDrafts,
+      string.Equals(LastSessionFolder?.Folder, Host.Directory, StringComparison.OrdinalIgnoreCase) ? null : LastSessionFolder?.Folder);
 
    /// <summary>Releases the host when its last window closes or it passes to an external attach client.</summary>
    public void LetGo()

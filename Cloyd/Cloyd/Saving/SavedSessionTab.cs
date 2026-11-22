@@ -11,7 +11,7 @@ namespace Cloyd.Saving;
 /// host is gone, as after a reboot.
 /// </summary>
 /// <param name="SessionHost">The host the tab showed.</param>
-/// <param name="Directory">The directory the host's shell started in: where a new host resumes the session.</param>
+/// <param name="Directory">The directory the host's shell started in, used for resumption when the agent's last folder is unavailable.</param>
 /// <param name="Session">
 /// The session that ran in the host last, of whichever agent CLI: null when none had, as before Claude Code recorded its
 /// session.
@@ -21,5 +21,7 @@ namespace Cloyd.Saving;
 /// input box.
 /// </param>
 /// <param name="CodexDrafts">Each Codex session's own unsent draft, including uncertain submissions.</param>
+/// <param name="SessionDirectory">The agent's last working folder when it differs from the host's initial directory.</param>
 sealed record SavedSessionTab(SessionHostId SessionHost, string Directory, Session? Session, IReadOnlyList<PartOfAMessage>? Draft = null,
-                              [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] IReadOnlyList<SavedCodexDraft>? CodexDrafts = null);
+                              [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] IReadOnlyList<SavedCodexDraft>? CodexDrafts = null,
+                              [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? SessionDirectory = null);

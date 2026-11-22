@@ -126,8 +126,7 @@ sealed partial class ProjectsDashboardWindow : Window, ISessionHistoryTarget
    {
       CloseView();
       if(Tree.ActiveSession is not {} row) return;
-      Tabs.SelectedItem = row;
-      Tabs.ScrollIntoView(row);
+      RevealTabIfListed(row);
       _restoringSelection = false;
       _restoreSelection = null;
       if(row.Host is not {} host)
@@ -170,10 +169,22 @@ sealed partial class ProjectsDashboardWindow : Window, ISessionHistoryTarget
       if(Tree.ActiveSession != row) Tree.Select(row);
       else
       {
-         Tabs.SelectedItem = row;
-         Tabs.ScrollIntoView(row);
+         RevealTabIfListed(row);
          View?.FocusWhatItShows();
       }
+   }
+
+   void RevealTabIfListed(DashboardSession row)
+   {
+      Tabs.SelectedItem = Tree.VisibleRows.Contains(row) ? row : null;
+      if(Tabs.SelectedItem is not null) Tabs.ScrollIntoView(row);
+   }
+
+   void TogglePin(object? sender, RoutedEventArgs e)
+   {
+      if(sender is not Control { DataContext: DashboardSession row }) return;
+      try { Tree.TogglePin(row); }
+      catch(Exception failure) { Tell(failure); }
    }
 
    public WindowInTheAnswer? ShowSession(ClaudeCodeSessionId? session, ClaudeCodeProcessId? process)
@@ -260,7 +271,7 @@ sealed partial class ProjectsDashboardWindow : Window, ISessionHistoryTarget
       else if(key is { Key: Key.H, KeyModifiers: KeyModifiers.Control }) View?.SwitchBetweenTheTerminalAndTheChat();
       else if(key.Key == Key.Tab && key.KeyModifiers is KeyModifiers.Control or (KeyModifiers.Control | KeyModifiers.Shift))
       {
-         var rows = Tree.Sessions.ToList();
+         var rows = Tree.NavigableSessions.ToList();
          if(rows.Count == 0) return;
          var index = rows.FindIndex(it => it == Tree.ActiveSession);
          var step = key.KeyModifiers.HasFlag(KeyModifiers.Shift) ? -1 : 1;

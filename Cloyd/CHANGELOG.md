@@ -7,6 +7,13 @@ All notable changes to Cloyd are documented here. The format follows
 ## [0.1.0]
 
 ### Added
+- **Pin sessions in Projects Dashboard and choose Only pinned above the tabs.** The filter shows each
+  pinned session under its worktree and project, hiding groups with no pins. Pins and the filter survive
+  reopening the dashboard. Filtering leaves the current chat or terminal open.
+- **Projects Dashboard lists the projects trusted in Claude Code's configuration and their Git worktrees,**
+  including projects with no running sessions or open project windows. Recorded projects inherit trust from
+  an accepted parent folder. Sessions appear under the worktree where their agent is running, including when
+  the host's shell originally started in the main checkout.
 - **Projects Dashboard arranges sessions as vertical tabs grouped by project and worktree.** Every registered
   worktree of a displayed Git repository is available, including empty checkouts and checkouts on another drive.
   A worktree’s **+** starts a session there. Drag projects, worktrees or tabs to reorder siblings. Click either

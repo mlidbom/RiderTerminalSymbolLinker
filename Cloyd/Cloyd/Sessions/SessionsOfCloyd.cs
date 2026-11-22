@@ -58,7 +58,7 @@ sealed class SessionsOfCloyd(TheHub hub, CloydsFolder folder, ShellOfNewSessions
    public HostedSession Open(SessionHostOfTheHub host, Session? latest = null, NewSession? startedAs = null, ConsoleSize? size = null, SavedSessionTab? previouslySaved = null)
    {
       if(_sessions.TryGetValue(host.Id, out var existing)) return existing;
-      var saved = _saved.Read(host.Id) ?? (previouslySaved is null ? LegacyProjectTab(host) : _saved.Read(previouslySaved.SessionHost) ?? previouslySaved);
+      var saved = _saved.Read(host.Id) ?? (previouslySaved is null ? LegacyProjectTab(host) : SavedForResume(previouslySaved));
       var session = new HostedSession(this, host, latest, startedAs, size ?? ConsoleSize.Default, saved);
       _sessions.Add(host.Id, session);
       session.Update(Running.FirstOrDefault(it => it.SessionHost == host.Id));
@@ -66,6 +66,14 @@ sealed class SessionsOfCloyd(TheHub hub, CloydsFolder folder, ShellOfNewSessions
    }
 
    public HostedSession? Known(SessionHostId host) => _sessions.GetValueOrDefault(host);
+
+   /// <summary>Preserves the pinned session's identity and working folder even if no window has yet shown its terminal.</summary>
+   public void RememberPinnedHost(SessionHostOfTheHub host, Session? latest, Project? workingFolder)
+   {
+      var session = Open(host, latest);
+      if(latest is not null && session.Running is null) session.RememberSession(latest, workingFolder);
+      Save(session);
+   }
    public void Include(SessionHostOfTheHub host)
    {
       if(Hosts.Any(it => it.Id == host.Id)) return;
@@ -93,6 +101,7 @@ sealed class SessionsOfCloyd(TheHub hub, CloydsFolder folder, ShellOfNewSessions
 
    /// <summary>Reads the application’s copy first and imports older project-window drafts on first use.</summary>
    public SavedSessionTab? Saved(SessionHostOfTheHub host) => _saved.Read(host.Id) ?? LegacyProjectTab(host);
+   public SavedSessionTab SavedForResume(SavedSessionTab tab) => _saved.Read(tab.SessionHost) ?? tab;
 
    SavedSessionTab? LegacyProjectTab(SessionHostOfTheHub host) =>
       host.Project is {} project ? Folder.SavedProjectWindows.Of(project).Tabs.FirstOrDefault(it => it.SessionHost == host.Id) : null;

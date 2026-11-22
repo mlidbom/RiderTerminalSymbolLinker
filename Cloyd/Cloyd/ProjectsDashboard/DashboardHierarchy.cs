@@ -24,6 +24,7 @@ sealed class DashboardHierarchy(ProjectWindows windows, DashboardWorktrees workt
       _present.Clear();
       Roots.Clear();
       foreach(var repository in _worktrees.Repositories) IncludeRepository(repository);
+      foreach(var project in _worktrees.TrustedProjects) GroupFor(project, project);
       foreach(var window in _windows.Open) GroupFor(window.Project, window.Project);
       foreach(var host in _windows.Sessions.Hosts) IncludeHost(host);
       foreach(var running in _windows.Sessions.Running.Where(it => it.SessionHost is null)) IncludeOutsideHost(running);
@@ -39,20 +40,23 @@ sealed class DashboardHierarchy(ProjectWindows windows, DashboardWorktrees workt
 
    void IncludeHost(SessionHostOfTheHub host)
    {
-      var directory = new Project(host.Directory);
-      var group = GroupFor(directory, host.Project ?? directory);
-      var row = SessionIn(group, $"host:{host.Id}");
+      var key = $"host:{host.Id}";
+      var previous = _byKey.GetValueOrDefault(key) as DashboardSession;
       var running = _windows.Sessions.Running.FirstOrDefault(it => it.SessionHost == host.Id);
       var known = _windows.Sessions.Known(host.Id);
-      var latest = known?.LatestSession ?? row.Latest;
-      if(latest is null && row.Host is null) latest = _windows.Sessions.Saved(host)?.Session;
-      row.Update(host, running, latest, known?.KnownAgentCli);
+      var saved = previous is null && known is null ? _windows.Sessions.Saved(host) : null;
+      var latest = known?.LatestSession ?? previous?.Latest ?? saved?.Session;
+      var lastFolder = running is null || running.Session.Id == previous?.Latest?.Id ? previous?.WorkingFolder : null;
+      var folder = running?.WorkingFolder ?? known?.LastSessionFolder ?? lastFolder ?? new Project(saved?.SessionDirectory ?? host.Directory);
+      var row = SessionIn(GroupFor(folder, host.Project ?? folder), key);
+      row.Update(host, running, latest, known?.KnownAgentCli, folder);
    }
 
    void IncludeOutsideHost(RunningSession running)
    {
-      var row = SessionIn(ProjectGroup(null), $"external:{running.Session.AgentCli.Name}:{running.Session.Id}");
-      row.Update(null, running, running.Session, running.Session.AgentCli);
+      var group = running.WorkingFolder is {} folder ? GroupFor(folder, folder) : ProjectGroup(null);
+      var row = SessionIn(group, $"external:{running.Session.AgentCli.Name}:{running.Session.Id}");
+      row.Update(null, running, running.Session, running.Session.AgentCli, running.WorkingFolder);
    }
 
    /// <summary>The host's working folder determines its worktree. A label can identify its project
@@ -62,6 +66,12 @@ sealed class DashboardHierarchy(ProjectWindows windows, DashboardWorktrees workt
       var actual = _worktrees.Of(folder);
       if(actual?.Containing(folder) is {} checkout)
          return WorktreeIn(ProjectGroup(actual.Repository), checkout);
+      if(actual is null && !folder.Equals(labelledProject))
+      {
+         var projects = _worktrees.TrustedProjects.Concat(_windows.Open.Select(it => it.Project));
+         if(projects.Where(it => _worktrees.Of(it) is null && it.Contains(folder)).MaxBy(it => it.Folder.Length) is {} containing)
+            return ProjectGroup(containing);
+      }
       return ProjectGroup((actual ?? _worktrees.Of(labelledProject))?.Repository ?? labelledProject);
    }
 

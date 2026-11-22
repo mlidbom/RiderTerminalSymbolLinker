@@ -21,7 +21,7 @@ sealed class DashboardArrangement
       {
          group.Expanded = !Saved.Collapsed.Contains(group.Key, StringComparer.OrdinalIgnoreCase);
          OrderSiblings(group.Key, group.Children);
-         group.Summarize();
+         group.Summarize(Saved.OnlyPinned);
       }
    }
 
@@ -29,7 +29,7 @@ sealed class DashboardArrangement
    {
       group.Expanded = !group.Expanded;
       Saved.SetExpanded(group.Key, group.Expanded);
-      group.Summarize();
+      group.Summarize(Saved.OnlyPinned);
    }
 
    public void Move(DashboardHierarchy hierarchy, DashboardRow row, DashboardRow neighbour, bool after)

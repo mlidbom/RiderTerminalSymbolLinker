@@ -12,6 +12,9 @@ sealed class SessionTabHeader : Grid
    public static readonly StyledProperty<bool> CanEndProperty = AvaloniaProperty.Register<SessionTabHeader, bool>(nameof(CanEnd), true);
    readonly TextBlock _title = new() { VerticalAlignment = VerticalAlignment.Center, TextTrimming = TextTrimming.CharacterEllipsis };
    readonly Button _end = new() { Content = "×", Background = Brushes.Transparent, Padding = new Thickness(6, 0), VerticalAlignment = VerticalAlignment.Center };
+   readonly Border _beforeClose = new();
+   /// <summary>An optional session action beside the close button, such as pinning a dashboard tab.</summary>
+   public Control? BeforeClose { get => _beforeClose.Child; set => _beforeClose.Child = value; }
    public IndicatorOfASessionTab Indicator { get; } = new();
    public SessionTabHeading? Heading { get => GetValue(HeadingProperty); set => SetValue(HeadingProperty, value); }
    public bool CanEnd { get => GetValue(CanEndProperty); set => SetValue(CanEndProperty, value); }
@@ -22,10 +25,11 @@ sealed class SessionTabHeader : Grid
       ColumnDefinitions = new ColumnDefinitions("Auto,*,Auto");
       ColumnSpacing = 3;
       SetColumn(_title, 1);
-      SetColumn(_end, 2);
+      var actions = new StackPanel { Orientation = Orientation.Horizontal, Children = { _beforeClose, _end } };
+      SetColumn(actions, 2);
       Children.Add(Indicator);
       Children.Add(_title);
-      Children.Add(_end);
+      Children.Add(actions);
       ToolTip.SetTip(_end, "End the session");
       _end.Click += (_, e) => EndRequested?.Invoke(this, e);
    }

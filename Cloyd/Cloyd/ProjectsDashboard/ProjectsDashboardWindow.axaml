@@ -66,20 +66,37 @@
       <Setter Property="Foreground" Value="{DynamicResource WaitingText}"/>
       <Setter Property="FontWeight" Value="SemiBold"/>
     </Style>
+    <Style Selector="ToggleButton.sessionPin">
+      <Setter Property="Padding" Value="5,2"/>
+      <Setter Property="Background" Value="Transparent"/>
+      <Setter Property="BorderThickness" Value="0"/>
+      <Setter Property="Opacity" Value="0.5"/>
+    </Style>
+    <Style Selector="ToggleButton.sessionPin:checked, ToggleButton.sessionPin:pointerover">
+      <Setter Property="Opacity" Value="1"/>
+    </Style>
+    <Style Selector="ToggleButton.sessionPin:checked PathIcon">
+      <Setter Property="Foreground" Value="{DynamicResource SystemControlHighlightAccentBrush}"/>
+    </Style>
   </Window.Styles>
   <Panel x:Name="Overlays">
     <DockPanel>
       <TextBlock x:Name="FailureText" DockPanel.Dock="Bottom" IsVisible="False" Foreground="DarkOrange" Margin="8" TextWrapping="Wrap"/>
       <Grid ColumnDefinitions="330,4,*">
         <DockPanel Background="{DynamicResource TabStripGround}">
+          <Border DockPanel.Dock="Top" Padding="12,4" BorderBrush="{DynamicResource GroupDivider}" BorderThickness="0,0,0,1">
+            <CheckBox Content="Only pinned" IsChecked="{Binding OnlyPinned, Mode=TwoWay}"/>
+          </Border>
           <Border DockPanel.Dock="Bottom" BorderBrush="{DynamicResource GroupDivider}" BorderThickness="0,1,0,0" Padding="6">
             <Button Content="Resume a session" ToolTip.Tip="Resume a session: Ctrl+Alt+Shift+Y"
                     HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Background="Transparent" Click="OpenHistory"/>
           </Border>
+          <Panel>
           <dashboard:DashboardTabStrip x:Name="Tabs" ItemsSource="{Binding VisibleRows}" Padding="3,0"
                                        Background="Transparent" BorderThickness="0" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
             <dashboard:DashboardTabStrip.ItemContainerTheme>
-              <ControlTheme TargetType="ListBoxItem">
+              <ControlTheme TargetType="ListBoxItem" x:DataType="dashboard:DashboardRow">
+                <Setter Property="AutomationProperties.AutomationId" Value="{Binding Key}"/>
                 <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
                 <Setter Property="Template">
                   <ControlTemplate>
@@ -122,7 +139,15 @@
                   <Grid RowDefinitions="Auto,Auto" ColumnDefinitions="3,*" ColumnSpacing="4">
                     <Border Grid.RowSpan="2" Width="3" Margin="0,5" CornerRadius="2" IsVisible="{Binding IsActive}"
                             Background="{DynamicResource SystemControlHighlightAccentBrush}"/>
-                    <sessions:SessionTabHeader Grid.Row="0" Grid.Column="1" Heading="{Binding Heading}" CanEnd="{Binding HasHost}" EndRequested="EndSession"/>
+                    <sessions:SessionTabHeader Grid.Row="0" Grid.Column="1" Heading="{Binding Heading}" CanEnd="{Binding HasHost}" EndRequested="EndSession">
+                      <sessions:SessionTabHeader.BeforeClose>
+                        <ToggleButton Classes="sessionPin" IsChecked="{Binding IsPinned, Mode=OneWay}" Click="TogglePin"
+                                      AutomationProperties.Name="{Binding PinAction}" ToolTip.Tip="{Binding PinAction}">
+                          <PathIcon Width="12" Height="12" RenderTransform="rotate(32deg)"
+                                    Data="M5 1 H15 V3 H14 V9 L17 12 V14 H11 V19 L10 22 L9 19 V14 H3 V12 L6 9 V3 H5 Z"/>
+                        </ToggleButton>
+                      </sessions:SessionTabHeader.BeforeClose>
+                    </sessions:SessionTabHeader>
                     <TextBlock Grid.Column="1" Grid.Row="1" Text="{Binding Activity}" IsVisible="{Binding HasActivity}"
                                Margin="21,0,6,2" TextTrimming="CharacterEllipsis" FontSize="12" Opacity="0.8" Classes.waiting="{Binding IsWaiting}"/>
                   </Grid>
@@ -131,6 +156,9 @@
               </DataTemplate>
             </dashboard:DashboardTabStrip.DataTemplates>
           </dashboard:DashboardTabStrip>
+          <TextBlock Text="No pinned sessions" IsVisible="{Binding ShowNoPinnedSessions}" IsHitTestVisible="False"
+                     HorizontalAlignment="Center" VerticalAlignment="Top" Margin="8,22" Opacity="0.7"/>
+          </Panel>
         </DockPanel>
         <GridSplitter Grid.Column="1" Background="{DynamicResource GroupDivider}" ResizeDirection="Columns" HorizontalAlignment="Stretch"/>
         <ContentControl Grid.Column="2" x:Name="SelectedSession"/>

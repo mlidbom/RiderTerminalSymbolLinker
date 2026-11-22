@@ -6,6 +6,7 @@ using Avalonia.VisualTree;
 using ClaudeTooling.SessionHost.Protocol;
 using Cloyd.ProjectsDashboard;
 using Cloyd.Sessions;
+using System.Text.Json;
 using Cloyd.Specifications.TheSandbox;
 using Compze.Must;
 using Compze.xUnitBDD;
@@ -49,6 +50,100 @@ public class When_Magnus_arranges_the_dashboard_tabs : SpecificationOpeningWindo
 
    SessionHostId StartHelperShell() => Sandbox.HubOfTheSandbox.Hub.StartASessionHost(Sandbox.ShellOfItsSessions,
       _linked.FullName, _alpha.LabelOfCloydsHosts).GetAwaiter().GetResult().Id;
+
+   [XF] public void both_agents_follow_the_worktree_where_they_run_even_when_their_host_was_started_elsewhere()
+   {
+      StartInAnotherCheckout(_first, "codex");
+      StartInAnotherCheckout(_second, "claude");
+      OnTheUIThread(() => _emptyGroup.Sessions.Select(it => it.Host!.Id).ToHashSet().SetEquals([_first, _second])).Must().BeTrue();
+      var agents = OnTheUIThread(() => _emptyGroup.Sessions.Select(it => it.Latest!.Id).ToHashSet());
+      Close(_dashboard);
+      Close(OnTheUIThread(() => Sandbox.WindowsOfCloyd.Open.Single(it => it.Project.Equals(_alpha.Project))));
+      _alpha.End(_first);
+      _alpha.End(_second);
+      var restored = Open(_alpha.Window);
+      WaitUntil(() => restored.BringingBackTheTabs.IsCompleted && restored.Tabs.Count == 2 && restored.Tabs.All(it => it.SessionRunningInIt is not null),
+                "both sessions resumed in replacement hosts");
+      OnTheUIThread(() => restored.Tabs.All(it => it.Host.Directory == _empty.FullName && agents.Contains(it.LatestSession!.Id))).Must().BeTrue();
+
+      void StartInAnotherCheckout(SessionHostId id, string agent)
+      {
+         var row = OnTheUIThread(() => _linkedGroup.Sessions.Single(it => it.Host!.Id == id));
+         OnTheUIThread(() =>
+         {
+            _dashboard.Select(row);
+            if(_dashboard.View!.ShowsTheChat) _dashboard.View.SwitchBetweenTheTerminalAndTheChat();
+         });
+         WaitUntil(() => _dashboard.View!.Terminal.TextShown.Contains("PS "), "the helper shell was ready");
+         DoneOnTheUIThread(() => _dashboard.View!.Terminal.SendInputAsync($"Set-Location -LiteralPath '{_empty.FullName.Replace("'", "''")}'; {agent}\r"));
+         WaitUntil(() => row.Running is not null && _emptyGroup.Sessions.Contains(row), "the running agent appeared in its actual checkout");
+         OnTheUIThread(() => row.Host!.Directory).Must().Be(_linked.FullName);
+         OnTheUIThread(() => row.WorkingFolder!.Folder).Must().Be(_empty.FullName);
+      }
+   }
+
+   [XF] public void only_pinned_hides_every_empty_ancestor_preserves_the_open_view_and_remembers_the_filter()
+   {
+      var pinned = OnTheUIThread(() => _linkedGroup.Sessions.Single(it => it.Host!.Id == _first));
+      OnTheUIThread(() => _dashboard.Select(_linkedGroup.Sessions.Single(it => it.Host!.Id == _second)));
+      var view = OnTheUIThread(() => _dashboard.View);
+      Click(PinButton(_dashboard, pinned));
+      var filter = OnTheUIThread(() => _dashboard.GetVisualDescendants().OfType<CheckBox>().Single(it => Equals(it.Content, "Only pinned")));
+      Focus(filter);
+      Press(_dashboard, Key.Space, PhysicalKey.Space, RawInputModifiers.None);
+      WaitUntil(() => _dashboard.Tree.OnlyPinned, "the checkbox applied the filter");
+      OnTheUIThread(() => _dashboard.Tree.VisibleRows.ToArray()).Must().SequenceEqual([_alphaGroup, _linkedGroup, pinned]);
+      Render(_dashboard, "Projects-Dashboard-only-pinned");
+      OnTheUIThread(() => _dashboard.View).Must().ReferenceEqual(view);
+      OnTheUIThread(() => _dashboard.Tree.Toggle(_alphaGroup));
+      OnTheUIThread(() => _dashboard.Tree.VisibleRows.ToArray()).Must().SequenceEqual([_alphaGroup]);
+      OnTheUIThread(() => _alphaGroup.Summary).Must().Be("1 session");
+      OnTheUIThread(() => _dashboard.Tree.Toggle(_alphaGroup));
+      Press(_dashboard, Key.Tab, PhysicalKey.Tab, RawInputModifiers.Control);
+      WaitUntil(() => _dashboard.View!.Host.Id == _first, "Ctrl+Tab chose the one pinned session");
+      Close(_dashboard);
+      var reopened = OnTheUIThread(() => Sandbox.WindowsOfCloyd.ShowDashboard(_alpha.Project));
+      WaitUntil(() => reopened.Tree.OnlyPinned && reopened.Tree.VisibleRows.Count == 3 && reopened.Tree.NavigableSessions.SingleOrDefault()?.Host?.Id == _first,
+                "the saved pin and filter came back beneath the linked checkout");
+      Click(PinButton(reopened, OnTheUIThread(() => reopened.Tree.NavigableSessions.Single())));
+      WaitUntil(() => reopened.Tree.VisibleRows.Count == 0 && reopened.Tree.ShowNoPinnedSessions, "removing the last pin hid every group");
+      OnTheUIThread(() => reopened.View!.Host.Id).Must().Be(_first);
+
+      Button PinButton(ProjectsDashboardWindow window, DashboardSession row) => OnTheUIThread(() => window.GetVisualDescendants()
+        .OfType<Button>().Single(it => it.DataContext == row && Equals(ToolTip.GetTip(it), row.PinAction)));
+   }
+
+   [XF] public void Claudes_trust_config_lists_dormant_projects_and_all_their_worktrees_including_inherited_trust()
+   {
+      var parent = Sandbox.Project("Trusted parent").Project;
+      var nested = Directory.CreateDirectory(Path.Combine(parent.Folder, "Inherited project"));
+      GitRepositoryOfASpecification.In(new DirectoryInfo(parent.Folder));
+      var inherited = GitRepositoryOfASpecification.In(nested);
+      var linked = new DirectoryInfo(Path.Combine(Sandbox.ProjectsFolder, "Distant dormant worktree"));
+      inherited.HasAWorktreeIn(linked, "topic");
+      var untrusted = Sandbox.Project("Untrusted").Project;
+      GitRepositoryOfASpecification.In(new DirectoryInfo(untrusted.Folder));
+      var config = Path.Combine(Sandbox.HubOfTheSandbox.Environment["CLAUDE_CONFIG_DIR"], ".claude.json");
+      new FileWrittenWhole(config).Write(JsonSerializer.Serialize(new { projects = new Dictionary<string, object>
+      {
+         [parent.Folder] = new { hasTrustDialogAccepted = true },
+         [nested.FullName] = new { },
+         [untrusted.Folder] = new { hasTrustDialogAccepted = false }
+      } }));
+      Close(_dashboard);
+      var reopened = OnTheUIThread(() => Sandbox.WindowsOfCloyd.ShowDashboard(_alpha.Project));
+      WaitUntil(() => reopened.Tree.Projects.Any(it => it.Project?.Folder == nested.FullName && it.Children.OfType<DashboardWorktree>().Any(w => w.StartFolder.Folder == linked.FullName)),
+                "the inactive inherited project and its remote worktree appeared");
+      OnTheUIThread(() => reopened.Tree.Projects.Any(it => it.Project?.Equals(parent) == true)).Must().BeTrue();
+      OnTheUIThread(() => reopened.Tree.Projects.Any(it => it.Project?.Equals(untrusted) == true)).Must().BeFalse();
+      OnTheUIThread(() => reopened.Tree.Projects.Single(it => it.Project?.Folder == nested.FullName).Sessions.Count()).Must().Be(0);
+      new FileWrittenWhole(config).Write(JsonSerializer.Serialize(new { projects = new Dictionary<string, object>
+      {
+         [untrusted.Folder] = new { hasTrustDialogAccepted = true }
+      } }));
+      WaitUntil(() => reopened.Tree.Projects.Any(it => it.Project?.Equals(untrusted) == true), "Cloyd reread Claude's changed trust configuration");
+      OnTheUIThread(() => reopened.Tree.Projects.Any(it => it.Project?.Equals(parent) == true || it.Project?.Folder == nested.FullName)).Must().BeFalse();
+   }
 
    [XF] public void the_worktree_and_its_sessions_belong_to_the_repository_that_registered_it()
    {

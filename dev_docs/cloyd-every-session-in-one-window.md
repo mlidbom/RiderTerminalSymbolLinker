@@ -6,11 +6,19 @@ Magnus named the window **Projects Dashboard** on 2026-11-22. The button at the 
 tab strip opens the dashboard or brings its existing window forward. A project window can close while the
 dashboard stays open. The dashboard saves its selected session and virtual desktop in `projects-dashboard.json`.
 
-- **The vertical tab strip** groups sessions under their project and then their worktree. It discovers a
-  repository from the open project or the host's actual working directory. Git's registered worktree list
+- **The vertical tab strip** groups sessions under their project and then their worktree. It discovers
+  projects from Claude Code's global config, open project windows and session hosts. Recorded projects
+  underneath a folder with accepted trust are included. The running session's reported working directory
+  takes precedence over the host's original directory. A replacement host resumes a session in its last
+  reported directory when that directory still exists. Git's registered worktree list
   supplies every checkout, including empty checkouts anywhere on disk. Previously seen repositories come back
   even when their last session and project window have closed. For a folder outside Git, tabs
-  sit directly under the project. Sessions outside a host have a separate read-only group.
+  sit directly under the project. Sessions outside a host with a known folder appear there read-only.
+  Sessions outside a host whose folder is unknown share a read-only group.
+- **Pins** belong to the agent session, including across a change of host. A shell pinned before its first
+  session is known passes its pin to that session. **Only pinned** hides unpinned tabs and all worktrees and
+  projects with no pinned sessions. Its counts and Ctrl+Tab apply to the pinned sessions. The open chat or
+  terminal stays in place when filtered from the sidebar.
 - Project tabs and dashboard tabs share their heading, including the idle agent mark, busy animation,
   title and close button. A group heading toggles expansion independently of the active session. A
   collapsed group shows its active tab and counts of sessions, including those busy or waiting. Reordering

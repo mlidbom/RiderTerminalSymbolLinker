@@ -28,7 +28,7 @@ sealed record RunningClaudeCode(ClaudeCodeProcessId Process, ClaudeCodeSessionId
       new(new ClaudeCodeProcessId(session.ProcessId), new ClaudeCodeSessionId(session.SessionId), session.Name, session.SessionHost is {} host ? new SessionHostId(host) : null, new StatusOfAClaudeCode(session.Status, session.WaitingFor),
          session.StatusLine is {} statusLine ? ClaudeCodesStatusLine.InThe(statusLine) : null,
          session.TurnUnderWay is {} turn ? TurnUnderWay.InThe(turn) : null,
-         session.BackgroundWork is {} work ? BackgroundWork.InThe(work) : null);
+         session.BackgroundWork is {} work ? BackgroundWork.InThe(work) : null) { WorkingFolder = WorkingFolderIn(session) };
 
    public override ClaudeCodeSession Session => new(SessionId, Name);
 

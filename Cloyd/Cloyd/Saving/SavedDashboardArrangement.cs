@@ -6,6 +6,8 @@ sealed class SavedDashboardArrangement
 {
    public List<string> Collapsed { get; init; } = [];
    public List<string> Repositories { get; set; } = [];
+   public HashSet<string> PinnedSessions { get; init; } = [];
+   public bool OnlyPinned { get; set; }
    public Dictionary<string, List<string>> Order
    {
       get => field;

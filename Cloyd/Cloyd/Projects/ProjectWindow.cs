@@ -286,9 +286,10 @@ sealed partial class ProjectWindow : Window, ISessionHistoryTarget
    {
       if(Sessions.Ending(saved.SessionHost)) return null;
       if(host is not null) return Sessions.CanRestore(host) ? Show(host, saved.Session, newSession: null, saved) : null;
-      if(saved.Session is not {} session || !await resumable.Include(session) || Sessions.Ending(saved.SessionHost)) return null;
-
-      var resumed = await ShowANewHost(saved.Directory, session, newSession: null, saved);
+      var last = Sessions.SavedForResume(saved);
+      if(last.Session is not {} session || !await resumable.Include(session) || Sessions.Ending(saved.SessionHost)) return null;
+      var directory = Directory.Exists(last.SessionDirectory) ? last.SessionDirectory! : saved.Directory;
+      var resumed = await ShowANewHost(directory, session, newSession: null, last);
       await StartIn(resumed, session.CommandThatResumesIt);
       return resumed;
    }

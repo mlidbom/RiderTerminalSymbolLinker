@@ -95,7 +95,7 @@ sealed class DashboardTabStrip : ListBox
          case Key.Left when row is DashboardGroup { Expanded: true } group: Tree.Toggle(group); break;
          case Key.Left when row.Parent is {} parent: SelectedItem = parent; break;
          case Key.Right when row is DashboardGroup { Expanded: false } group: Tree.Toggle(group); break;
-         case Key.Right when row is DashboardGroup expanded && expanded.Children.FirstOrDefault() is {} first: SelectedItem = first; break;
+         case Key.Right when row is DashboardGroup expanded && Tree.VisibleRows.FirstOrDefault(it => it.Parent == expanded) is {} first: SelectedItem = first; break;
          default: return;
       }
       key.Handled = true;

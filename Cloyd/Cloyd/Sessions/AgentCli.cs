@@ -1,5 +1,6 @@
 using Cloyd.Hub.Commands;
 using Cloyd.Hub.RunningSessions;
+using ClaudeTooling.Hub.LocalApi.Contract;
 
 namespace Cloyd.Sessions;
 
@@ -13,15 +14,16 @@ namespace Cloyd.Sessions;
 /// </remarks>
 sealed class AgentCli
 {
-   public static AgentCli ClaudeCode { get; } = new("Claude Code", titleOfASessionWithNoName: "Claude", ignoresTheShiftOnEnter: true, ClaudeCodeCommand.OfANewSession);
+   public static AgentCli ClaudeCode { get; } = new("Claude Code", AgentCliNames.ClaudeCode, titleOfASessionWithNoName: "Claude", ignoresTheShiftOnEnter: true, ClaudeCodeCommand.OfANewSession);
 
-   public static AgentCli Codex { get; } = new("Codex", titleOfASessionWithNoName: "Codex", ignoresTheShiftOnEnter: false, CodexCommand.OfANewSession);
+   public static AgentCli Codex { get; } = new("Codex", AgentCliNames.Codex, titleOfASessionWithNoName: "Codex", ignoresTheShiftOnEnter: false, CodexCommand.OfANewSession);
 
    readonly Func<string?, AgentCliCommand> _commandOfANewSession;
 
-   AgentCli(string name, string titleOfASessionWithNoName, bool ignoresTheShiftOnEnter, Func<string?, AgentCliCommand> commandOfANewSession)
+   AgentCli(string name, string nameInTheHub, string titleOfASessionWithNoName, bool ignoresTheShiftOnEnter, Func<string?, AgentCliCommand> commandOfANewSession)
    {
       Name = name;
+      NameInTheHub = nameInTheHub;
       TitleOfASessionWithNoName = titleOfASessionWithNoName;
       IgnoresTheShiftOnEnter = ignoresTheShiftOnEnter;
       _commandOfANewSession = commandOfANewSession;
@@ -29,6 +31,8 @@ sealed class AgentCli
 
    /// <summary>Its name, as Magnus knows it, such as "Claude Code".</summary>
    public string Name { get; }
+   /// <summary>The stable agent identifier in the hub protocol and Cloyd's saved session pins.</summary>
+   public string NameInTheHub { get; }
 
    /// <summary>The title of a tab whose session of it has no name, such as "Claude".</summary>
    public string TitleOfASessionWithNoName { get; }

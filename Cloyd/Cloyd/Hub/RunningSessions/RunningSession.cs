@@ -2,6 +2,7 @@ using ClaudeTooling.Hub.LocalApi.Contract;
 using ClaudeTooling.Hub.LocalApi.Contract.RunningSessions;
 using ClaudeTooling.SessionHost.Protocol;
 using Cloyd.Sessions;
+using Cloyd.Projects;
 
 namespace Cloyd.Hub.RunningSessions;
 
@@ -13,6 +14,9 @@ namespace Cloyd.Hub.RunningSessions;
 /// <param name="SessionHost">The session host whose console the agent CLI runs in: null when it runs in none, as in a terminal of its own.</param>
 abstract record RunningSession(SessionHostId? SessionHost)
 {
+   /// <summary>The working folder the hub reports for the agent. Its host's shell can have started in a different checkout.</summary>
+   public Project? WorkingFolder { get; init; }
+
    /// <summary>The session that runs: its id and its name.</summary>
    public abstract Session Session { get; }
 
@@ -32,4 +36,7 @@ abstract record RunningSession(SessionHostId? SessionHost)
       AgentCliNames.Codex => RunningCodex.InThe(session),
       _ => null
    };
+
+   protected static Project? WorkingFolderIn(RunningSessionInTheAnswer session) =>
+      session.Directory is { Length: > 0 } folder && Path.IsPathFullyQualified(folder) ? new Project(folder) : null;
 }
