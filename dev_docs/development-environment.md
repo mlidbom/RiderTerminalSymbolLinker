@@ -227,9 +227,10 @@ window. The deploy says for each IDE whether it does, or needs a restart: a plug
 **Every deploy puts the working tree's Cloyd in first,** which Claude Sessions runs from 0.2.0: published in Release
 into `%LOCALAPPDATA%\Cloyd\bin` (`InstalledCloyd.Everyday`), moving the files a running Cloyd application maps aside, as
 for a plugin's jar. The application that runs runs on with the build it has until its last window closes; the next
-project to open then starts the new one. `--dry-run` says which, and changes nothing. `everyday reload Cloyd` has it
+launch starts the new one. `--dry-run` says which, and changes nothing. `everyday reload Cloyd` has it
 take the new build at once: it closes its windows, each saving its tabs, and runs `Cloyd.exe --project` for each
-project it showed, which starts it again with the same windows, their tabs brought back. The sessions run on in their
+project it showed, which starts it again with the same windows, their tabs brought back. An open Projects Dashboard
+is restored through the no-argument launcher, including when it was the only window. The sessions run on in their
 hosts. On Magnus's go, as it closes the windows he works in. `everyday cloyd` reads where its windows are, changing
 nothing: each one's virtual desktop, and its project's IDE window's, which it is to keep to (`CloydBesideTheIdes`).
 

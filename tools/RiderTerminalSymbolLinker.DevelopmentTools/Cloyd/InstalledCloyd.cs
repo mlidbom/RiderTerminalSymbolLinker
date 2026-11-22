@@ -74,7 +74,9 @@ public sealed class InstalledCloyd(string folder)
    ///   The windows the Cloyd application shows, as its <c>GET /windows</c> lists them, each with its project's folder and
    ///   its title: null when no application runs.
    /// </summary>
-   public JsonArray? Windows()
+   public JsonArray? Windows() => WindowInventory()?["windows"]!.AsArray();
+
+   JsonNode? WindowInventory()
    {
       if(TheApplication() is null || TheAnnouncement() is not {} announcement) return null;
       using var request = new HttpRequestMessage(HttpMethod.Get, $"http://127.0.0.1:{announcement["port"]!.GetValue<int>()}/windows");
@@ -92,12 +94,14 @@ public sealed class InstalledCloyd(string folder)
       using(answer)
       {
          answer.EnsureSuccessStatusCode();
-         return JsonNode.Parse(answer.Content.ReadAsStringAsync().GetAwaiter().GetResult())!["windows"]!.AsArray();
+         return JsonNode.Parse(answer.Content.ReadAsStringAsync().GetAwaiter().GetResult());
       }
    }
 
    /// <summary>The folders of the projects whose windows the Cloyd application shows: none when no application runs.</summary>
-   public IReadOnlyList<string> ProjectsItShows() => [.. (Windows() ?? []).Select(it => Path.GetFullPath(it!["project"]!.GetValue<string>()))];
+   public IReadOnlyList<string> ProjectsItShows() => ProjectsIn(Windows());
+
+   static string[] ProjectsIn(JsonArray? windows) => [.. (windows ?? []).Select(it => Path.GetFullPath(it!["project"]!.GetValue<string>()))];
 
    /// <summary>The Cloyd application's windows on the desktop: none when no application runs.</summary>
    internal IReadOnlyList<TopLevelWindow> WindowsOnTheDesktop() =>
@@ -127,12 +131,16 @@ public sealed class InstalledCloyd(string folder)
    internal string RestartTheApplication()
    {
       if(TheApplication() is not {} before) return $"No Cloyd application runs: the next project to open starts one with the build in {this}.";
-      var projects = ProjectsItShows();
+      var inventory = WindowInventory() ?? throw new InvalidOperationException("Could not read Cloyd's open windows before restarting it.");
+      var projects = ProjectsIn(inventory["windows"]!.AsArray());
       var desktops = ScreenThread.Run(DesktopsOfTheWindows);
+      var dashboard = inventory["dashboardOpen"]?.GetValue<bool>() ?? WindowsOnTheDesktop().Any(it => it.Title == "Projects Dashboard");
       StopTheApplication();
-      foreach(var project in projects) ShowTheWindowOf(project);
+      foreach(var project in projects) OpenWindow("--project", project);
+      if(dashboard) OpenWindow();
       var putBack = ScreenThread.Run(() => PutTheWindowsBackOn(desktops));
-      return $"Restarted the Cloyd application on the build in {this}: process {before.Id} is now {TheApplication()?.Id.ToString() ?? "none"}, showing {string.Join(", ", projects)}.{putBack}";
+      var shown = dashboard ? projects.Append("Projects Dashboard") : projects;
+      return $"Restarted the Cloyd application on the build in {this}: process {before.Id} is now {TheApplication()?.Id.ToString() ?? "none"}, showing {string.Join(", ", shown)}.{putBack}";
    }
 
    /// <summary>The virtual desktop each of the application's windows is on, by its title, such as <c>Cloyd: Compze</c>.</summary>
@@ -164,12 +172,14 @@ public sealed class InstalledCloyd(string folder)
       return moved.Count == 0 ? "" : $" Put back on the desktop each was on: {string.Join(", ", moved.Distinct())}.";
    }
 
-   /// <summary>Runs <c>Cloyd.exe --project <paramref name="project"/></c>, which hands the project to the application, starting it if none runs, and returns once its window shows.</summary>
-   void ShowTheWindowOf(string project)
+   /// <summary>Opens Projects Dashboard with no arguments, or a project window with <c>--project</c>.</summary>
+   void OpenWindow(params string[] arguments)
    {
-      using var command = Process.Start(new ProcessStartInfo(CloydExe, ["--project", project]) { UseShellExecute = false })!;
+      var start = new ProcessStartInfo(CloydExe, arguments) { UseShellExecute = false };
+      start.Environment["CLOYD_FOLDER"] = Folder;
+      using var command = Process.Start(start)!;
       command.WaitForExit();
-      if(command.ExitCode != 0) throw new InvalidOperationException($"{CloydExe} --project {project} exited with {command.ExitCode}.");
+      if(command.ExitCode != 0) throw new InvalidOperationException($"{CloydExe} {string.Join(" ", arguments)} exited with {command.ExitCode}.");
    }
 
    /// <summary>
