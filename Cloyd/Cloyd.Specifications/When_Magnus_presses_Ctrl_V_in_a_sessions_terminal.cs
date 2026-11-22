@@ -34,7 +34,7 @@ public abstract class When_Magnus_presses_Ctrl_V_in_a_sessions_terminal : Specif
       Press(_window, Key.V, PhysicalKey.V, RawInputModifiers.Control);
    }
 
-   string LinesOfTheInputBox => OnTheUIThread(() => InputBoxOfTheStandIn.LinesShownIn(_tab.Terminal));
+   string LinesOfTheInputBox => OnTheUIThread(() => InputBoxOfTheStandInForClaudeCode.LinesShownIn(_tab.Terminal));
 
    /// <summary>Waits until the stand-in's input box shows <paramref name="shown"/>, as it does once what was pasted reaches it.</summary>
    void WaitUntilTheInputBoxShows(string shown) => WaitUntil(() => LinesOfTheInputBox == shown, $"the input box showed {shown}");

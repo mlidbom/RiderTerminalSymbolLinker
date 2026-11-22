@@ -6,7 +6,7 @@ namespace Cloyd.Specifications.TheSandbox;
 /// The input box of the tooling owner's stand-in for Claude Code, which the sandbox's session hosts run, as a terminal
 /// shows it: drawn as Claude Code draws its own, between two rules, its first line starting with the prompt sign.
 /// </summary>
-static class InputBoxOfTheStandIn
+static class InputBoxOfTheStandInForClaudeCode
 {
    /// <summary>
    /// The box's lines as <paramref name="terminal"/> shows them now: from the line with its prompt sign to the line before

@@ -15,7 +15,8 @@ namespace Cloyd.Terminals;
 /// <summary>
 /// The terminal of a session host: Iciclecreek's terminal control, on XTerm.NET, drawing what the host's pseudo console
 /// draws and typing into it, as a terminal does for a pseudo console of its own. It speaks the console's win32 input
-/// mode, which the host's console asks for, so that it receives each key with its modifiers.
+/// mode, which the host's console asks for, so that each key reaches the agent CLI in the host exactly, with its modifiers,
+/// Escape included.
 /// </summary>
 sealed class TerminalOfASessionHost : TerminalControl
 {
@@ -23,9 +24,9 @@ sealed class TerminalOfASessionHost : TerminalControl
    const int LinesItKeeps = 5000;
 
    /// <summary>
-   /// What Shift+Enter types in Claude Code: a line feed, which it takes from a pseudo console as Ctrl+J, its key for a new line
-   /// in its input box, as the IDE's terminal typing one found (claude-sessions.md, "The chat view: what the spikes
-   /// found").
+   /// What Shift+Enter types in Claude Code: a line feed, which it takes from a pseudo console as Ctrl+J, its key for a
+   /// new line in its input box, as the IDE's terminal typing one found (claude-sessions.md, "The chat view: what the
+   /// spikes found").
    /// </summary>
    const string ANewLineInClaudeCodesInputBox = "\n";
 
@@ -36,7 +37,7 @@ sealed class TerminalOfASessionHost : TerminalControl
    const string EndOfABracketedPaste = "\u001b[201~";
 
    readonly PastedImages _pastedImages;
-   readonly Func<AgentCli> _currentAgentCli;
+   readonly Func<AgentCli> _agentCliInTheHost;
    bool _attached;
 
    /// <summary>
@@ -47,13 +48,13 @@ sealed class TerminalOfASessionHost : TerminalControl
 
    /// <summary>
    /// Attaches to the host of <paramref name="attachment"/> once laid out. The images pasted into it are saved in
-   /// <paramref name="pastedImages"/>. The tab supplies <paramref name="currentAgentCli"/> as its host can run
-   /// different agent CLIs during the tab's lifetime.
+   /// <paramref name="pastedImages"/>. <paramref name="agentCliInTheHost"/> says which agent CLI the host runs now,
+   /// which can change while the terminal shows it.
    /// </summary>
-   public TerminalOfASessionHost(AttachmentToASessionHost attachment, PastedImages pastedImages, Func<AgentCli> currentAgentCli)
+   public TerminalOfASessionHost(AttachmentToASessionHost attachment, PastedImages pastedImages, Func<AgentCli> agentCliInTheHost)
    {
       _pastedImages = pastedImages;
-      _currentAgentCli = currentAgentCli;
+      _agentCliInTheHost = agentCliInTheHost;
       FontFamily = new FontFamily("Cascadia Mono");
       FontSize = 14;
       BufferSize = LinesItKeeps;
@@ -63,7 +64,7 @@ sealed class TerminalOfASessionHost : TerminalControl
          _attached = true;
          AttachConnection(new SessionHostAsAPseudoConsole(attachment));
       };
-      AddHandler(KeyDownEvent, TypeANewLineInClaudeCodeOnShiftEnter, RoutingStrategies.Tunnel);
+      AddHandler(KeyDownEvent, TypeANewLineOnAShiftEnterThatWouldSend, RoutingStrategies.Tunnel);
       AddHandler(KeyDownEvent, PasteOnCtrlV, RoutingStrategies.Tunnel);
       AddHandler(KeyUpEvent, LetGoOfAKeyTakenFromTheTerminal, RoutingStrategies.Tunnel);
       UrlClicked += OpenAWebPagesUrlInTheBrowser;
@@ -87,14 +88,17 @@ sealed class TerminalOfASessionHost : TerminalControl
    bool HasBeenLaidOut => _attached;
 
    /// <summary>
-   /// Claude Code ignores Shift on Enter in a Windows console and would send the message.
-   /// Codex uses the Shift modifier that the terminal's win32 input mode carries to start a new line.
+   /// Has Shift+Enter type a new line, as it does in every editor and did in the IDE's terminal, in an agent CLI that
+   /// <see cref="AgentCli.IgnoresTheShiftOnEnter"/>, as Claude Code does: there it would send the message. In Codex,
+   /// which starts a new line on Shift+Enter itself, the key reaches the host as pressed.
    /// </summary>
-   void TypeANewLineInClaudeCodeOnShiftEnter(object? sender, KeyEventArgs key)
+   void TypeANewLineOnAShiftEnterThatWouldSend(object? sender, KeyEventArgs key)
    {
-      if(key is not { Key: Key.Enter, KeyModifiers: KeyModifiers.Shift } || _currentAgentCli() != AgentCli.ClaudeCode) return;
+      if(!IsAShiftEnterThatWouldSend()) return;
       TakeFromTheTerminal(key);
       _ = SendInputAsync(ANewLineInClaudeCodesInputBox);
+
+      bool IsAShiftEnterThatWouldSend() => key is { Key: Key.Enter, KeyModifiers: KeyModifiers.Shift } && _agentCliInTheHost().IgnoresTheShiftOnEnter;
    }
 
    /// <summary>

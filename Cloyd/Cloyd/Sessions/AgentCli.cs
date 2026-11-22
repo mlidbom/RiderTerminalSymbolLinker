@@ -13,18 +13,19 @@ namespace Cloyd.Sessions;
 /// </remarks>
 sealed class AgentCli
 {
-   public static AgentCli ClaudeCode { get; } = new("Claude Code", titleOfASessionWithNoName: "Claude", hasAChat: true, ClaudeCodeCommand.OfANewSession);
+   public static AgentCli ClaudeCode { get; } = new("Claude Code", titleOfASessionWithNoName: "Claude", hasAChat: true, ignoresTheShiftOnEnter: true, ClaudeCodeCommand.OfANewSession);
 
    /// <summary>Codex, whose tab shows its terminal only: Cloyd has no chat of a Codex session yet.</summary>
-   public static AgentCli Codex { get; } = new("Codex", titleOfASessionWithNoName: "Codex", hasAChat: false, CodexCommand.OfANewSession);
+   public static AgentCli Codex { get; } = new("Codex", titleOfASessionWithNoName: "Codex", hasAChat: false, ignoresTheShiftOnEnter: false, CodexCommand.OfANewSession);
 
    readonly Func<string?, AgentCliCommand> _commandOfANewSession;
 
-   AgentCli(string name, string titleOfASessionWithNoName, bool hasAChat, Func<string?, AgentCliCommand> commandOfANewSession)
+   AgentCli(string name, string titleOfASessionWithNoName, bool hasAChat, bool ignoresTheShiftOnEnter, Func<string?, AgentCliCommand> commandOfANewSession)
    {
       Name = name;
       TitleOfASessionWithNoName = titleOfASessionWithNoName;
       HasAChat = hasAChat;
+      IgnoresTheShiftOnEnter = ignoresTheShiftOnEnter;
       _commandOfANewSession = commandOfANewSession;
    }
 
@@ -36,6 +37,13 @@ sealed class AgentCli
 
    /// <summary>Whether a tab of its session has a chat, beside the terminal its TUI draws in: else the terminal only.</summary>
    public bool HasAChat { get; }
+
+   /// <summary>
+   /// Whether its TUI, in a Windows console, takes Shift+Enter for Enter, and sends the message. Claude Code ignores the
+   /// Shift, even with the Shift that win32 input mode carries (the spike, 2026-11-20). Codex reads it, and starts a new
+   /// line: its <c>keymap.rs</c> binds Shift+Enter to <c>editor.insert_newline</c> (0.171.0).
+   /// </summary>
+   public bool IgnoresTheShiftOnEnter { get; }
 
    /// <summary>The command that starts a new session of it, named <paramref name="name"/>, or with no name when it is null.</summary>
    public AgentCliCommand CommandOfANewSession(string? name) => _commandOfANewSession(name);

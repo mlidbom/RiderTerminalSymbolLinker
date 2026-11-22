@@ -10,11 +10,11 @@ namespace Cloyd.Specifications;
 /// Shift+Enter in Claude Code's input box, as Magnus presses it in every editor to start a new line, and as he did in the
 /// IDE's terminal: in a Windows console Claude Code ignores the Shift, and would send the message.
 /// </summary>
-public class When_Magnus_presses_Shift_Enter_in_a_sessions_terminal : SpecificationOpeningWindows
+public class When_Magnus_presses_Shift_Enter_in_a_Claude_Code_sessions_terminal : SpecificationOpeningWindows
 {
    readonly SessionTab _tab;
 
-   public When_Magnus_presses_Shift_Enter_in_a_sessions_terminal()
+   public When_Magnus_presses_Shift_Enter_in_a_Claude_Code_sessions_terminal()
    {
       var project = Sandbox.Project("the-project");
       var window = Open(project.Window);
@@ -31,5 +31,5 @@ public class When_Magnus_presses_Shift_Enter_in_a_sessions_terminal : Specificat
 
    [XF] public void claude_codes_input_box_holds_what_was_typed_on_two_lines() => LinesOfTheInputBox.Must().Be("❯ first\n  second");
 
-   string LinesOfTheInputBox => OnTheUIThread(() => InputBoxOfTheStandIn.LinesShownIn(_tab.Terminal));
+   string LinesOfTheInputBox => OnTheUIThread(() => InputBoxOfTheStandInForClaudeCode.LinesShownIn(_tab.Terminal));
 }

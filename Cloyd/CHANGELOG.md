@@ -129,8 +129,9 @@ All notable changes to Cloyd are documented here. The format follows
     the session, as after it was archived. Windows saved before read their sessions as Claude Code's.
 
 ### Fixed
-- **Shift+Enter starts a new line in a Codex session's terminal.** You can write a prompt over several lines
-  and send it with Enter.
+- **Shift+Enter types a new line in Codex's input box,** as in Claude Code's: it typed nothing there, and what you
+  typed next ran on in the same line. Codex starts a new line on Shift+Enter itself, so Cloyd now passes the key to it
+  as pressed, and types Ctrl+J for Claude Code alone.
 - **Your prompts show at the right of the chat's column,** as in the desktop app, lined up with the input box: in a
   conversation of prompts alone, as a new session's is at first, they showed in the middle.
 - **Shift+Enter types a new line in Claude Code's input box,** where it sent the message: in a Windows console Claude
