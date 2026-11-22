@@ -375,6 +375,8 @@ Each as it is found: what the app does, what he asked for and where, and that th
   (`TheSampleSession.RepeatedInTheSandbox`).
 - **Following the end** (`WhatTheViewFollows`), or a match a search shows in place of it, is told by what Magnus does,
   the wheel, the keys and the scroll bar, not by where the view is: what is drawn grows without him.
+  Opening a transcript row pauses following so the heading stays in place. While the scrollbar thumb is held,
+  the mouse controls the viewport. Releasing it at the bottom resumes following.
 - **Windows' theme, as the app follows it** (Magnus, 2026-11-20): Cloyd follows it, light or dark, and the chat's
   colours (`ColoursOfTheChat`) are near the app's in each, its code blocks in Visual Studio Code's colours for each. The
   terminal stays dark in either, as Iciclecreek's terminal draws itself.

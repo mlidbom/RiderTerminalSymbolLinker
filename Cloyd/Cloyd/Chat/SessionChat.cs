@@ -132,6 +132,9 @@ abstract class SessionChat : UserControl
 
    protected void ScrollToTheEnd() => _followed.ScrollToTheEnd();
 
+   /// <summary>Keeps the transcript at the row Magnus is opening or closing as its content changes height.</summary>
+   public void KeepHeaderInPlace(Control header, Action toggle) => _followed.KeepHeaderInPlace(header, toggle);
+
    /// <summary>
    /// Draws more above what is drawn, as Magnus scrolls up near its top, once the layout his scrolling started is done,
    /// and keeps what was drawn first where it was in view: the scroll viewer's anchor doesn't, at the very top.

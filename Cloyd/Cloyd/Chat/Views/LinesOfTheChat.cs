@@ -4,6 +4,7 @@ using Avalonia.Controls;
 using Avalonia.Controls.Documents;
 using Avalonia.Layout;
 using Avalonia.Media;
+using Avalonia.VisualTree;
 using Cloyd.Theming;
 using LiveMarkdown.Avalonia;
 
@@ -94,10 +95,16 @@ static class LinesOfTheChat
       Show(isOpen);
       line.Click += (_, _) =>
       {
-         Show(under.Content is null);
-         toggled(under.Content is not null);
+         if(line.FindAncestorOfType<SessionChat>() is {} chat) chat.KeepHeaderInPlace(line, Toggle);
+         else Toggle();
       };
       return new StackPanel { Spacing = 6, Children = { line, under } };
+
+      void Toggle()
+      {
+         Show(under.Content is null);
+         toggled(under.Content is not null);
+      }
 
       void Show(bool open)
       {

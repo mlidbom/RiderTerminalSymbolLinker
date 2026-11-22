@@ -148,6 +148,9 @@ All notable changes to Cloyd are documented here. The format follows
     the session, as after it was archived. Windows saved before read their sessions as Claude Code's.
 
 ### Fixed
+- **Opening a transcript row keeps its heading in place, even at the bottom of the chat.** Tool calls and peer
+  messages open beneath the heading you clicked. A scrollbar drag can reach the bottom and move back up in
+  one gesture. Release at the bottom to follow new replies, or release higher up to keep reading there.
 
 - **Codex Chat restores an unconsumed steer.** If the turn ends before Codex records the message, its original
   text and pasted images return to the editor ahead of newer typing. Chat remembers pending steers when a tab reopens.

@@ -3,6 +3,7 @@ using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using Avalonia.Layout;
 using Avalonia.VisualTree;
 
 namespace Cloyd.Chat.Views;
@@ -23,6 +24,7 @@ sealed class WhatTheViewFollows
    const double NearEnoughTheEnd = 4;
 
    readonly ScrollViewer _scroller;
+   ChatScrollMode _mode = ChatScrollMode.FollowingTheEnd;
 
    /// <summary>What the view follows in place of the end, and where in it, in its own coordinates: null while it follows none.</summary>
    (Visual Visual, Rect Bounds)? _followedInPlaceOfTheEnd;
@@ -32,18 +34,35 @@ sealed class WhatTheViewFollows
       _scroller = scroller;
       scroller.AddHandler(InputElement.PointerWheelChangedEvent, (_, wheel) => MagnusScrolled(up: wheel.Delta.Y > 0), RoutingStrategies.Tunnel, handledEventsToo: true);
       scroller.AddHandler(InputElement.KeyDownEvent, (_, key) => { if(key.Key is Key.Up or Key.PageUp or Key.Home or Key.Down or Key.PageDown or Key.End) MagnusScrolled(up: key.Key is Key.Up or Key.PageUp or Key.Home); }, RoutingStrategies.Tunnel, handledEventsToo: true);
-      scroller.AddHandler(InputElement.PointerPressedEvent, (_, pressed) => { if(IsOnTheScrollBar(pressed)) MagnusScrolled(up: true); }, RoutingStrategies.Tunnel, handledEventsToo: true);
+      scroller.AddHandler(InputElement.PointerPressedEvent, (_, pressed) =>
+      {
+         if(IsOnTheScrollBar(pressed)) BeginManualScroll(ChatScrollMode.MayResumeAtTheEnd);
+      }, RoutingStrategies.Tunnel, handledEventsToo: true);
+      scroller.AddHandler(Thumb.DragStartedEvent, (_, drag) =>
+      {
+         if(IsOnTheScrollBar(drag)) BeginManualScroll(ChatScrollMode.DraggingTheScrollBar);
+      }, handledEventsToo: true);
+      scroller.AddHandler(Thumb.DragCompletedEvent, (_, drag) =>
+      {
+         if(IsOnTheScrollBar(drag)) _mode = ChatScrollMode.ReadingInPlace; // Also raised when the thumb loses capture.
+      }, handledEventsToo: true);
+      scroller.AddHandler(InputElement.PointerReleasedEvent, (_, released) =>
+      {
+         if(released.InitialPressMouseButton == MouseButton.Left && IsOnTheScrollBar(released))
+            _mode = IsAtTheEnd ? ChatScrollMode.FollowingTheEnd : ChatScrollMode.ReadingInPlace;
+      }, RoutingStrategies.Bubble, handledEventsToo: true);
       scroller.ScrollChanged += (_, changed) => KeepInView(changed);
    }
 
    /// <summary>Whether the view follows the end: until Magnus scrolls away from it, or the view follows something in place of it, and again once he scrolls back to it.</summary>
-   public bool IsFollowingTheEnd { get; private set; } = true;
+   public bool IsFollowingTheEnd => _mode == ChatScrollMode.FollowingTheEnd;
 
    /// <summary>Scrolls to the end, and follows it from then on.</summary>
    public void ScrollToTheEnd()
    {
       _followedInPlaceOfTheEnd = null;
-      IsFollowingTheEnd = true;
+      if(_mode == ChatScrollMode.DraggingTheScrollBar) return;
+      _mode = ChatScrollMode.FollowingTheEnd;
       _scroller.ScrollToEnd();
    }
 
@@ -57,7 +76,8 @@ sealed class WhatTheViewFollows
    /// </remarks>
    public void FollowInPlaceOfTheEnd(Visual visual, Rect bounds)
    {
-      IsFollowingTheEnd = false;
+      if(_mode == ChatScrollMode.DraggingTheScrollBar) return;
+      _mode = ChatScrollMode.ReadingInPlace;
       _followedInPlaceOfTheEnd = (visual, bounds);
       KeepInView(visual, bounds);
    }
@@ -65,26 +85,47 @@ sealed class WhatTheViewFollows
    /// <summary>Stops following what it follows in place of the end, as when the search that showed it ends.</summary>
    public void StopFollowingInPlaceOfTheEnd() => _followedInPlaceOfTheEnd = null;
 
-   static bool IsOnTheScrollBar(PointerPressedEventArgs pressed) => (pressed.Source as Visual)?.FindAncestorOfType<ScrollBar>(includeSelf: true) is not null;
+   bool IsOnTheScrollBar(RoutedEventArgs input) =>
+      (input.Source as Visual)?.FindAncestorOfType<ScrollBar>(includeSelf: true) is { Orientation: Orientation.Vertical } bar
+      && bar.TemplatedParent == _scroller;
 
    bool IsAtTheEnd => _scroller.Offset.Y >= _scroller.Extent.Height - _scroller.Viewport.Height - NearEnoughTheEnd;
+
+   /// <summary>Keep the clicked heading at its viewport position even when layout anchors a later transcript item.</summary>
+   public void KeepHeaderInPlace(Control header, Action toggle)
+   {
+      BeginManualScroll(ChatScrollMode.ReadingInPlace);
+      var before = HeaderTop();
+      toggle();
+      _scroller.UpdateLayout();
+      _scroller.Offset = _scroller.Offset.WithY(_scroller.Offset.Y + HeaderTop() - before);
+
+      double HeaderTop() => header.TranslatePoint(default, _scroller)!.Value.Y;
+   }
+
+   void BeginManualScroll(ChatScrollMode mode)
+   {
+      _followedInPlaceOfTheEnd = null;
+      _mode = mode;
+   }
 
    /// <summary>Magnus scrolls the view, <paramref name="up"/> or down: it no longer follows what it followed in place of the end, nor the end, as he scrolls up.</summary>
    void MagnusScrolled(bool up)
    {
-      _followedInPlaceOfTheEnd = null;
-      if(up) IsFollowingTheEnd = false;
+      if(_mode == ChatScrollMode.DraggingTheScrollBar) return;
+      BeginManualScroll(up ? ChatScrollMode.ReadingInPlace : IsAtTheEnd ? ChatScrollMode.FollowingTheEnd : ChatScrollMode.MayResumeAtTheEnd);
    }
 
    void KeepInView(ScrollChangedEventArgs changed)
    {
+      if(_mode == ChatScrollMode.DraggingTheScrollBar) return;
       if(_followedInPlaceOfTheEnd is var (visual, bounds))
       {
          if(changed.ExtentDelta.Y != 0) KeepInView(visual, bounds);
          return;
       }
 
-      if(changed.OffsetDelta.Y > 0 && IsAtTheEnd) IsFollowingTheEnd = true;
+      if(_mode == ChatScrollMode.MayResumeAtTheEnd && changed.OffsetDelta.Y > 0 && IsAtTheEnd) _mode = ChatScrollMode.FollowingTheEnd;
       if(IsFollowingTheEnd && !IsAtTheEnd) _scroller.ScrollToEnd();
    }
 
