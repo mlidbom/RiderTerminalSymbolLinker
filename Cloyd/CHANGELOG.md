@@ -7,6 +7,9 @@ All notable changes to Cloyd are documented here. The format follows
 ## [0.1.0]
 
 ### Added
+- **Cloyd records unhandled managed exceptions before it exits.** Each failure gets its own file in
+  `%LOCALAPPDATA%\Cloyd\crashes`, with the UTC timestamp, build, process and managed thread IDs,
+  and the full exception and stack trace. A sandbox writes reports inside its own Cloyd folder.
 - **Search the Projects Dashboard tree.** Click the magnifier or press Ctrl+Shift+F, then type words
   from a project, worktree, branch or session name. Matching rows appear under their headings, including
   in collapsed groups. An empty search closes when you click elsewhere or move focus away. A nonempty

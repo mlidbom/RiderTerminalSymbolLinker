@@ -35,14 +35,18 @@ static class Program
    const string ArgumentThatAsksWhatLinks = "--links-in";
 
    [STAThread]
-   public static int Main(string[] arguments) =>
-      arguments switch
+   public static int Main(string[] arguments)
+   {
+      var cloydsFolder = arguments is [ArgumentThatMakesItTheApplication, _] ? FolderOfTheApplication(arguments) : CloydsFolder.OfCloydsEnvironment();
+      cloydsFolder.CrashReports.Register();
+      return arguments switch
       {
          [ArgumentThatMakesItTheApplication, _] => BuildAvaloniaApp().StartWithClassicDesktopLifetime(arguments),
          [ArgumentThatAsksWhatLinks, var folder, var line] => TellWhatLinksIn(line, new Project(folder)),
          ["--start-peer-session"] => StartPeerSession(),
          _ => ShowTheWindowOf(ProjectNamedBy(arguments))
       };
+   }
 
    /// <summary>The Peers command. Reads the launch request as JSON on stdin and prints the qualified session address.</summary>
    static int StartPeerSession()

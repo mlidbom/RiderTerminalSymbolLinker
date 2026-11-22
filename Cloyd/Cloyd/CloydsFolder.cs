@@ -1,4 +1,5 @@
 using Cloyd.Pasting;
+using Cloyd.Diagnostics;
 using Cloyd.Saving;
 
 namespace Cloyd;
@@ -28,6 +29,7 @@ sealed class CloydsFolder(DirectoryInfo folder)
 
    public SavedHostedSessions SavedHostedSessions => new(new DirectoryInfo(Path.Combine(Folder.FullName, "hosted-sessions")));
    public FileWrittenWhole ProjectsDashboard => new(Path.Combine(Folder.FullName, "projects-dashboard.json"));
+   public CrashReports CrashReports => new(new DirectoryInfo(Path.Combine(Folder.FullName, "crashes")));
 
    /// <summary>Where the images Magnus pastes into the sessions are saved, to be handed to Claude Code.</summary>
    public PastedImages PastedImages => new(new DirectoryInfo(Path.Combine(Folder.FullName, "pasted-images")));

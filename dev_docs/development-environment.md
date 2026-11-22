@@ -233,6 +233,11 @@ project it showed, which starts it again with the same windows, their tabs broug
 hosts. On Magnus's go, as it closes the windows he works in. `everyday cloyd` reads where its windows are, changing
 nothing: each one's virtual desktop, and its project's IDE window's, which it is to keep to (`CloydBesideTheIdes`).
 
+**Diagnosing a Cloyd crash.** Check the newest report in `%LOCALAPPDATA%\Cloyd\crashes`, or in the
+sandbox's Cloyd folder under `crashes`. The report includes the full managed exception, inner
+exceptions, stack, build, UTC time, process ID and managed thread ID. The process ID and time also
+identify the corresponding Windows Application event and any dump in `%LOCALAPPDATA%\CrashDumps`.
+
 **Checking the tabs through a Cloyd restart.** Run `pwsh Cloyd/check-restored-tabs.ps1 -Record <temporary-file>`
 before the restart, then `pwsh Cloyd/check-restored-tabs.ps1 -Compare <temporary-file>`. The comparison waits
 for the new process to save its restored tabs and checks project windows, ordered hosts, selections and
