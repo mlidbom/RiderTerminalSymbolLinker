@@ -2,6 +2,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Documents;
 using Avalonia.Controls.Primitives;
+using Avalonia.Markup.Xaml.MarkupExtensions;
 using Avalonia.Media;
 using Avalonia.Media.Immutable;
 using Avalonia.Styling;
@@ -26,6 +27,9 @@ sealed class ColourOfTheTheme(string inTheLightTheme, string inTheDarkTheme)
 
    /// <summary>The colour in <paramref name="theme"/>, light or dark.</summary>
    public Color In(ThemeVariant theme) => theme == ThemeVariant.Dark ? InTheDarkTheme : InTheLightTheme;
+
+   /// <summary>A style setter that paints <paramref name="property"/> with this colour while the style applies.</summary>
+   public Setter AsASetterFor(StyledProperty<IBrush?> property) => new(property, new DynamicResourceExtension(this));
 
    /// <summary>Has the text of <paramref name="element"/>, such as a text block or a run of text in one, drawn in this colour.</summary>
    public TElement AsTheForegroundOf<TElement>(TElement element) where TElement : StyledElement => Painting(element, TextElement.ForegroundProperty);

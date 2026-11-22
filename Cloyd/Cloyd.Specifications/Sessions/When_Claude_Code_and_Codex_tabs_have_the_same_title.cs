@@ -4,6 +4,7 @@ using Avalonia.Media;
 using Avalonia.Styling;
 using Avalonia.VisualTree;
 using Cloyd.Chat.Status;
+using Cloyd.Chat.Views;
 using Cloyd.Codex;
 using Cloyd.Projects;
 using Cloyd.Sessions;
@@ -43,7 +44,8 @@ public class When_Claude_Code_and_Codex_tabs_have_the_same_title : Specification
 
    [XF] public void the_idle_Codex_tab_shows_a_stationary_dot() => OnTheUIThread(() => (_dot.IsEffectivelyVisible, _dot.IsPulsing)).Must().Be((true, false));
 
-   [XF] public void the_star_is_warm_and_the_dot_blue_in_both_themes() => _idleColours.Must().Satisfy(it => it.All(HasTheAgentColours));
+   [XF] public void both_idle_marks_are_grey_in_each_theme() =>
+      _idleColours.Must().SequenceEqual(new[] { ThemeVariant.Light, ThemeVariant.Dark }.Select(it => (ColoursOfTheChat.Grey.In(it), ColoursOfTheChat.Grey.In(it))));
 
    static bool HasTheAgentColours((Color Star, Color Dot) marks) =>
       marks.Star.R > marks.Star.G && marks.Star.G > marks.Star.B && marks.Dot.B > marks.Dot.G && marks.Dot.G > marks.Dot.R;
@@ -66,8 +68,9 @@ public class When_Claude_Code_and_Codex_tabs_have_the_same_title : Specification
    public class and_both_sessions_start_a_turn : When_Claude_Code_and_Codex_tabs_have_the_same_title
    {
       readonly CodexProgressDot _chatDot;
+      readonly IReadOnlyList<(Color Star, Color Dot)> _workingColours;
 
-      public and_both_sessions_start_a_turn() => _chatDot = Once(() =>
+      public and_both_sessions_start_a_turn() => (_chatDot, _workingColours) = Once(() =>
       {
          foreach(var tab in new[] { _claudeTab, _codexTab })
             DoneOnTheUIThread(() => tab.Terminal.SendInputAsync("Be busy for 60 seconds\r"));
@@ -75,14 +78,19 @@ public class When_Claude_Code_and_Codex_tabs_have_the_same_title : Specification
          var chatDot = OnTheUIThread(() => _codexTab.CodexChat!.Progress.FindDescendantOfType<CodexProgressDot>()!);
          WaitUntil(() => ScaleOf(chatDot) > 0.85, "the dot in the chat grew");
          WaitUntil(() => ScaleOf(_dot) > 0.85, "the dot in the tab grew");
-         RenderInBothThemes("working");
+         var colours = RenderInBothThemes("working");
          WaitUntil(() => ScaleOf(_dot) < 0.75, "the tab's dot shrank again");
-         return chatDot;
+         return (chatDot, colours);
 
          static double ScaleOf(CodexProgressDot dot) => dot.RenderTransform!.Value.M11;
       });
 
       [XF] public void Claude_Code_uses_its_spinner() => OnTheUIThread(() => _star is { IsEffectivelyVisible: true, IsTurning: true }).Must().BeTrue();
+
+      [XF] public void the_working_star_is_warm_and_the_working_dot_blue_in_both_themes() => _workingColours.Must().Satisfy(it => it.All(HasTheAgentColours));
+
+      [XF] public void the_dot_in_the_header_and_chat_peaks_at_the_width_of_Claudes_spinner_glyphs() =>
+         OnTheUIThread(() => (_dot.Bounds.Width, _dot.Bounds.Height, _chatDot.Bounds.Width, _chatDot.Bounds.Height)).Must().Be((11d, 11d, 11d, 11d));
 
       [XF] public void the_Codex_chat_shows_the_pulsing_dot_beside_its_activity() =>
          OnTheUIThread(() => _chatDot is { IsEffectivelyVisible: true, IsPulsing: true }).Must().BeTrue();

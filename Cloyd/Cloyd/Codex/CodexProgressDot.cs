@@ -11,26 +11,29 @@ using Cloyd.Theming;
 namespace Cloyd.Codex;
 
 /// <summary>
-/// The blue dot that identifies Codex in a session tab and beside the activity in
-/// <see cref="Chat.Status.ProgressOfACodexChat"/>. It rests at its smaller size between turns.
+/// The dot that identifies Codex in a session tab and beside the activity in
+/// <see cref="Chat.Status.ProgressOfACodexChat"/>. It rests in grey between turns and pulses in blue during a turn.
 /// </summary>
 sealed class CodexProgressDot : Border
 {
    const string Pulsing = ":pulsing";
-   const double ScaleAtRest = 0.62;
+   /// <summary>The full diameter in logical pixels, matching the largest glyphs drawn by <see cref="Cloyd.Chat.Status.SpinnerOfClaudeCode"/>.</summary>
+   const double Diameter = 11;
+   const double ScaleAtRest = 0.7;
 
    public CodexProgressDot()
    {
-      Width = Height = 14;
-      Margin = new Thickness(2);
+      Width = Height = Diameter;
+      Margin = new Thickness(3.5);
       HorizontalAlignment = HorizontalAlignment.Center;
       VerticalAlignment = VerticalAlignment.Center;
-      CornerRadius = new CornerRadius(7);
-      Resources.MergedDictionaries.Add(ColourOfTheTheme.AsResources([ColoursOfTheChat.CodexActivity]));
-      ColoursOfTheChat.CodexActivity.AsTheBackgroundOf(this);
+      CornerRadius = new CornerRadius(Diameter / 2);
+      Resources.MergedDictionaries.Add(ColourOfTheTheme.AsResources([ColoursOfTheChat.Grey, ColoursOfTheChat.CodexActivity]));
+      Styles.Add(new Style { Setters = { ColoursOfTheChat.Grey.AsASetterFor(BackgroundProperty) } });
       RenderTransform = new ScaleTransform(ScaleAtRest, ScaleAtRest);
       Styles.Add(new Style(it => it.Class(Pulsing))
       {
+         Setters = { ColoursOfTheChat.CodexActivity.AsASetterFor(BackgroundProperty) },
          Animations =
          {
             new Animation

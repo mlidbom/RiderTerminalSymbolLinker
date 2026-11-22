@@ -7,8 +7,9 @@ All notable changes to Cloyd are documented here. The format follows
 ## [0.1.0]
 
 ### Added
-- **A warm star marks Claude Code tabs and a blue dot marks Codex tabs, even when idle.** During a turn,
-  Claude’s star spins and the Codex dot slowly grows and shrinks. Codex Chat shows the same pulse above its input box.
+- **A grey star marks an idle Claude Code tab and a grey dot marks an idle Codex tab.** During a turn,
+  Claude's star spins in orange and the Codex dot pulses in blue, growing to the same diameter as Claude's spinner.
+  Codex Chat shows the same pulse above its input box.
   The title and close button stay in place. A grey star still marks a Claude Code session with background work.
   A tab adopted at a plain shell prompt leaves the mark empty until Cloyd identifies its agent.
   Projects Dashboard shows the same spinner or pulsing dot while a session works.

@@ -2,6 +2,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Layout;
 using Avalonia.Media;
+using Avalonia.Styling;
 using Avalonia.Threading;
 using Cloyd.Chat.Views;
 using Cloyd.Theming;
@@ -11,7 +12,7 @@ namespace Cloyd.Chat.Status;
 /// <summary>
 /// The spinner that shows Claude works, as Claude Code's own: its glyphs in Claude's orange, one after another and back,
 /// while it <see cref="IsTurning"/>. At the start of the <see cref="WorkingLineOfTheChat"/>'s turn line, and in the
-/// header of each Claude Code tab, where it rests on a star between turns. The glyphs keep the same line height.
+/// header of each Claude Code tab, where it rests on a grey star between turns. The glyphs keep the same line height.
 /// </summary>
 sealed class SpinnerOfClaudeCode : TextBlock
 {
@@ -40,8 +41,9 @@ sealed class SpinnerOfClaudeCode : TextBlock
 
    public SpinnerOfClaudeCode()
    {
-      Resources.MergedDictionaries.Add(ColourOfTheTheme.AsResources([ColoursOfTheChat.ClaudeActivity]));
-      ColoursOfTheChat.ClaudeActivity.AsTheForegroundOf(this);
+      Resources.MergedDictionaries.Add(ColourOfTheTheme.AsResources([ColoursOfTheChat.Grey, ColoursOfTheChat.ClaudeActivity]));
+      Styles.Add(new Style { Setters = { ColoursOfTheChat.Grey.AsASetterFor(ForegroundProperty) } });
+      Styles.Add(new Style(it => it.PropertyEquals(IsTurningProperty, true)) { Setters = { ColoursOfTheChat.ClaudeActivity.AsASetterFor(ForegroundProperty) } });
       FontFamily = new FontFamily("Segoe UI Symbol");
       FontSize = SizeOfItsGlyphs;
       Width = HowWideItIs;

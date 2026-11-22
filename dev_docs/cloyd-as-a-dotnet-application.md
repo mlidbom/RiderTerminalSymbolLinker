@@ -725,8 +725,9 @@ each appear once as outgoing messages. Codex's native incoming delegations are i
 delivered them and its envelope. Other tools stay in the expandable tool-call rows.
 
 In Codex Chat the active tool and the turn's progress sit above the composer. The blue `CodexProgressDot` there
-and in the tab header grows and shrinks during a turn. Between turns, the header keeps a still dot for Codex
-and a warm star for Claude Code. Each indicator occupies the same space through a change of activity.
+and in the tab header grows and shrinks during a turn, reaching the diameter of Claude Code's spinner glyphs.
+Between turns, the header shows a still grey dot for Codex and a still grey star for Claude Code.
+Each indicator occupies the same space through a change of activity.
 The turn and item clocks come from
 Codex, so opening Chat halfway through a command preserves its elapsed time. A completed turn uses the same
 duration and local time formats as Claude Code Chat. An older history can lack those measurements.
