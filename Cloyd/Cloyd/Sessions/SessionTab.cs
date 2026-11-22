@@ -210,7 +210,11 @@ sealed class SessionTab : TabItem
    }
 
    /// <summary>Lets go of the tab's host, whose session runs on.</summary>
-   public void LetGo() => _attachment.Dispose();
+   public void LetGo()
+   {
+      Terminal.Dispose();
+      _attachment.Dispose();
+   }
 
    /// <summary>
    /// Shows the chat when <paramref name="chat"/>, else the terminal, as Magnus asks, and gives it the keyboard once it is
