@@ -694,6 +694,10 @@ Codex session when that capability is present. Older hubs can still open Codex t
   A steer has its own client message ID. Cloyd retains its parts after acknowledgement until that ID appears in
   the conversation. When the turn ends without it, the steer returns ahead of newer typing. Pending steers are
   saved with their own session's draft when the window closes. Resending is always explicit.
+  A missing turn or unknown status leaves the steer pending; Chat offers to copy that input into the editor.
+  If a transport error returned an unedited copy and later history confirms delivery, Chat withdraws only that
+  copy. Work already in the editor and later edits remain. With an older hub, Chat keeps the draft and directs
+  Magnus to Terminal for steering during the upgrade.
 - Codex 0.171.0 can omit the beginning of an in-progress reply on the first attachment. Its completed item
   supplies the full text. Also, if Terminal starts a turn just as Chat submits an idle Send, Codex can steer that
   new turn with the submitted text. The tooling's `dev_docs/the-hubs-local-api.md` records both behaviors.

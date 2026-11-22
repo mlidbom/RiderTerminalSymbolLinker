@@ -7,6 +7,7 @@ namespace Cloyd.Codex.Chat;
 /// <see cref="MessageFromTheChat"/> can be restored with all its text and images if the turn ends first.</summary>
 sealed record SubmittedCodexSteer(CodexTurnId Turn, string ClientUserMessageId, IReadOnlyList<PartOfAMessage> Parts)
 {
+   [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] public SteerRecovery Recovery { get; init; }
    [JsonIgnore] public MessageFromTheChat Message => new(Parts);
    public static SubmittedCodexSteer For(CodexTurnId turn, MessageFromTheChat message) =>
       new(turn, Guid.CreateVersion7().ToString("D"), message.Parts);

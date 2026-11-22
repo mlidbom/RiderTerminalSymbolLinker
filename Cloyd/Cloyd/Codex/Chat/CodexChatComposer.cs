@@ -1,3 +1,4 @@
+using Avalonia.Controls;
 using Cloyd.Chat.Writing;
 using Cloyd.Hub;
 using Cloyd.Pasting;
@@ -10,6 +11,7 @@ sealed class CodexChatComposer : ChatComposer
 {
    readonly ICodexChatInTheHub _hub;
    readonly CodexDraftsOfATab _drafts;
+   readonly Button _copyUnconfirmed = new() { Content = "Copy unconfirmed input to editor", IsVisible = false };
    CodexSessionDraft _input;
    CodexSessionId? _session;
    CodexTurnId? _turn;
@@ -22,6 +24,8 @@ sealed class CodexChatComposer : ChatComposer
       _drafts = drafts;
       _input = drafts.For(null);
       _input.Changed += Refresh;
+      _copyUnconfirmed.Click += (_, _) => _input.CopyUnconfirmedSteersToEditor();
+      AddNoticeAction(_copyUnconfirmed);
       Edit(_input.Draft);
       Refresh();
    }
@@ -47,6 +51,7 @@ sealed class CodexChatComposer : ChatComposer
    {
       CanSend = _ready && !_input.IsSending;
       ShowsTheStopButton = _ready && _turn is not null;
+      _copyUnconfirmed.IsVisible = _input.HasUnconfirmedSteersToCopy;
       Tell(_input.Notice);
    }
 

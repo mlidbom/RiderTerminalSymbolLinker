@@ -30,6 +30,7 @@ abstract class ChatComposer : UserControl
    readonly Button _send = RoundButton("↑", TipOfTheSendButton);
    readonly Button _stop;
    readonly TextBlock _notice = new() { IsVisible = false, Foreground = Brushes.IndianRed, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(4, 0, 4, 4) };
+   readonly StackPanel _notices = new();
 
    /// <summary>The images whose thumbnails show, as the draft held them when they were last drawn.</summary>
    IReadOnlyList<PastedStretch.OfAnImage> _imagesShown = [];
@@ -92,6 +93,9 @@ abstract class ChatComposer : UserControl
 
    /// <summary>What the box tells over it, as why Claude Code didn't get a message: null while it tells nothing.</summary>
    public string? Notice => _notice.IsVisible ? _notice.Text : null;
+
+   /// <summary>Places a chat-specific recovery action alongside its delivery notice.</summary>
+   protected void AddNoticeAction(Button action) => _notices.Children.Add(action);
 
    /// <summary>The placeholders of the images whose thumbnails show over the box, in order, such as <c>[Image #1]</c>.</summary>
    public IReadOnlyList<string> Thumbnails => [.. _imagesShown.Select(it => it.Placeholder)];
@@ -214,8 +218,9 @@ abstract class ChatComposer : UserControl
       };
       box.Bind(Border.BorderBrushProperty, box.GetResourceObservable("TextControlBorderBrush"));
       box.Bind(Border.BackgroundProperty, box.GetResourceObservable("TextControlBackground"));
-      DockPanel.SetDock(_notice, Dock.Top);
-      return new DockPanel { Margin = new Thickness(16, 4, 16, 6), Children = { _notice, box } };
+      _notices.Children.Add(_notice);
+      DockPanel.SetDock(_notices, Dock.Top);
+      return new DockPanel { Margin = new Thickness(16, 4, 16, 6), Children = { _notices, box } };
    }
 
    static Button RoundButton(string content, string tip)

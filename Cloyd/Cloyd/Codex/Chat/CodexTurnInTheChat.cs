@@ -9,6 +9,7 @@ namespace Cloyd.Codex.Chat;
 sealed record CodexTurnInTheChat(string Id, CodexTurnProgress? Progress, IReadOnlyList<ShownInTheChat> Rows)
 {
    public bool IsUnderWay => Progress is not null;
+   public bool HasEnded { get; private init; }
    /// <summary>Client-assigned IDs of user messages Codex recorded in this turn.</summary>
    public IReadOnlySet<string> RecordedClientMessageIds { get; private init; } = new HashSet<string>();
 
@@ -41,6 +42,7 @@ sealed record CodexTurnInTheChat(string Id, CodexTurnProgress? Progress, IReadOn
 
       return new CodexTurnInTheChat(turn.Id, turn.Status == "inProgress" ? CodexTurnProgress.From(turn) : null, rows)
       {
+         HasEnded = turn.Status is "completed" or "interrupted" or "failed",
          RecordedClientMessageIds = turn.Items.Where(it => it.Kind == "userMessage")
                                         .Select(it => it.ClientUserMessageId).OfType<string>().ToHashSet(StringComparer.Ordinal)
       };

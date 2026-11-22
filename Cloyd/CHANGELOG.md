@@ -149,7 +149,10 @@ All notable changes to Cloyd are documented here. The format follows
 
 - **Codex Chat restores an unconsumed steer.** If the turn ends before Codex records the message, its original
   text and pasted images return to the editor ahead of newer typing. Chat remembers pending steers when a tab reopens.
-  Press Send to try again.
+  A late delivery confirmation clears an untouched copy returned after a transport error. Newer edits stay in
+  the editor. If history cannot settle delivery, you can copy the pending input into the editor yourself.
+  Chat refuses to steer through an older hub without message receipts and keeps the draft. Terminal is available
+  during that upgrade window. Press Send to try again.
 - **Codex Chat and Claude Code Chat identify incoming peer messages.** A row names the sending session and previews
   its message. Open it to read or copy the full text. This also applies to saved conversations and to Peers channel
   messages received while Claude was working.
