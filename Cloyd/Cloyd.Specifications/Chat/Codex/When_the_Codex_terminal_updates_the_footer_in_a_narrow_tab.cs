@@ -13,9 +13,10 @@ namespace Cloyd.Specifications.Chat.Codex;
 public class When_the_Codex_terminal_updates_the_footer_in_a_narrow_tab : SpecificationOpeningWindows
 {
    readonly SessionTab _tab;
+   readonly string _footerBeforeTheFirstPrompt;
    ChatOfACodexSession Chat => _tab.CodexChat!;
 
-   public When_the_Codex_terminal_updates_the_footer_in_a_narrow_tab() => _tab = Once(() =>
+   public When_the_Codex_terminal_updates_the_footer_in_a_narrow_tab() => (_tab, _footerBeforeTheFirstPrompt) = Once(() =>
    {
       string[] items = ["thread-id", "model-with-reasoning", "current-dir", "thread-name", "context-used", "weekly-limit", "used-tokens", "total-input-tokens", "total-output-tokens"];
       var home = Sandbox.HubOfTheSandbox.CodexFolder;
@@ -28,15 +29,20 @@ public class When_the_Codex_terminal_updates_the_footer_in_a_narrow_tab : Specif
       WaitUntil(() => tab.CodexChat?.InputBox.CanSend == true && tab.CodexChat.StatusLine.TextShown.Contains("Sandbox Model xhigh fast"),
                 "the footer identified the running model and its tier", () => tab.CodexChat?.StatusLine.TextShown ?? tab.Title);
       var chat = OnTheUIThread(() => tab.CodexChat!);
-      OnTheUIThread(() => chat.StatusLine.TextShown.Contains(" out")).Must().BeFalse();
+      WaitUntil(() => chat.StatusLine.TextShown.Contains("week 1%", StringComparison.Ordinal),
+                "the new chat received the sandbox account's weekly usage before any prompt", () => chat.StatusLine.TextShown);
+      var footerBeforeTheFirstPrompt = OnTheUIThread(() => chat.StatusLine.TextShown);
       WaitUntilTheInputBoxHasTheKeyboard(window, tab);
       Type(window, "Check the status line");
       Press(window, Key.Enter, PhysicalKey.Enter, RawInputModifiers.Control);
       WaitUntil(() => chat.StatusLine.TextShown.EndsWith("1K out", StringComparison.Ordinal) && chat.Shown.LastOrDefault() is EndOfACodexTurn,
                 "the rate limit and token counters arrived from the hub", () => chat.StatusLine.TextShown);
       Render(window, "Codex-status-after-the-turn-in-a-narrow-tab");
-      return tab;
+      return (tab, footerBeforeTheFirstPrompt);
    });
+
+   [XF] public void even_a_thread_without_turns_shows_the_accounts_weekly_usage() =>
+      _footerBeforeTheFirstPrompt.Must().Satisfy(it => it.Contains("week 1%") && !it.Contains(" out"));
 
    [XF] public void Chat_starts_with_the_model_and_the_session_name_stays_in_the_tab() =>
       OnTheUIThread(() => _tab.Title == "Footer check" && Chat.StatusLine.TextShown.StartsWith("Sandbox Model xhigh fast · ", StringComparison.Ordinal)
