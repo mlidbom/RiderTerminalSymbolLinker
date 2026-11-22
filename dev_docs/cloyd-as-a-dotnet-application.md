@@ -701,6 +701,17 @@ peer sender, or receives Peers through `<channel source="plugin:peers:peers" …
 tag for attribution and displays the body as plain text. Claude prompts recorded as human keep their authorship.
 A verbatim copy of the complete Codex envelope has the same representation in Codex history as a Peers delivery.
 
+In Codex Chat the active tool and the turn's progress sit above the composer. The turn and item clocks come from
+Codex, so opening Chat halfway through a command preserves its elapsed time. A completed turn uses the same
+duration and local time formats as Claude Code Chat. An older history can lack those measurements.
+
+The hub supplies the Codex footer in the first live snapshot and replaces it with `footer` events as session
+settings, token usage and account limits arrive. Cloyd renders the supported configured items below the composer
+in their native order, with wrapping and theme-aware colours. A missing reading leaves the item out. The
+background-terminal line uses the live session's `/background-terminals` endpoint on opening, at turn boundaries
+and every five seconds while a turn or background terminal runs. The tooltip lists the commands. Saved
+conversations show their recorded turns and do not query live terminals or account limits.
+
 ## What's still open
 
 - **The TUI needs a host. Settled by the spike: Iciclecreek.Avalonia.Terminal** (see "What the spike found"). Slash

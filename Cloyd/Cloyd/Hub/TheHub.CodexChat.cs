@@ -12,6 +12,16 @@ namespace Cloyd.Hub;
 
 partial class TheHub : ICodexChatInTheHub
 {
+   public async Task<CodexChatBackgroundTerminals?> BackgroundTerminals(CodexSessionId session, CancellationToken cancellation)
+   {
+      using var deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellation);
+      deadline.CancelAfter(HowLongANewHubMayTakeToAnswer);
+      using var answer = await Send(it => new HttpRequestMessage(HttpMethod.Get, it.AddressOf($"codex-chat/{session}/background-terminals")), deadline.Token);
+      if(answer.StatusCode == HttpStatusCode.NotImplemented) return null;
+      if(answer.StatusCode == HttpStatusCode.NotFound) throw new RefusedByTheHub((await Read<RefusalAnswer>(answer, deadline.Token)).Error);
+      return await Read<CodexChatBackgroundTerminals>(answer, deadline.Token);
+   }
+
    /// <summary>Reads the saved conversation without attaching a client or waking a Codex session that exited.</summary>
    public async Task<CodexChatReading> SavedConversation(CodexSessionId session, CancellationToken cancellation)
    {
@@ -43,6 +53,10 @@ partial class TheHub : ICodexChatInTheHub
                case CodexChatEvents.Turn:
                   if(conversation is null) throw new InvalidDataException("The hub sent a Codex turn before the session snapshot.");
                   conversation.Update(JsonSerializer.Deserialize<CodexChatTurn>(sent.Data, LocalApiProtocol.Json)!);
+                  break;
+               case CodexChatEvents.Footer:
+                  if(conversation is null) throw new InvalidDataException("The hub sent a Codex footer before the session snapshot.");
+                  conversation.Update(JsonSerializer.Deserialize<CodexChatFooter>(sent.Data, LocalApiProtocol.Json)!);
                   break;
                default:
                   continue;

@@ -6,6 +6,7 @@ using Avalonia.Platform;
 using Cloyd.Chat;
 using Cloyd.Codex;
 using Cloyd.Codex.Chat;
+using Cloyd.Codex.Chat.Status;
 using Cloyd.Projects;
 using Cloyd.Sessions;
 using Compze.Must;
@@ -77,14 +78,14 @@ public class When_Magnus_writes_to_the_Codex_session_in_a_tab : SpecificationOpe
          SendFromChat("additional instruction");
          WaitUntil(() => Chat.InputBox.ShowsTheStopButton && Chat.Shown.OfType<ShownInTheChat.Prompt>().Any(it => it.Text == "additional instruction"), "Codex accepted the steer into the running turn");
          Click(TheButtonWithTheTip(Chat, "Stop Codex"));
-         WaitUntil(() => !Chat.InputBox.ShowsTheStopButton && Chat.Shown.OfType<CodexChatNotice>().Any(it => it.Line == "Turn interrupted"), "the same turn ended as interrupted");
+         WaitUntil(() => !Chat.InputBox.ShowsTheStopButton && Chat.Shown.OfType<EndOfACodexTurn>().Any(it => it.Status == "interrupted"), "the same turn ended as interrupted");
       });
 
       [XF] public void the_interruption_also_appears_in_Terminal() => OnTheUIThread(() => _tab.Terminal.TextShown).Must().Contain("Conversation interrupted");
 
       [XF] public void the_interruption_belongs_to_the_steered_turn() => OnTheUIThread(() =>
          Chat.Shown.OfType<ShownInTheChat.Prompt>().Single(it => it.Text == "additional instruction").Id
-             .StartsWith(Chat.Shown.OfType<CodexChatNotice>().Single(it => it.Line == "Turn interrupted").Id + "/", StringComparison.Ordinal)).Must().BeTrue();
+             .StartsWith(Chat.Shown.OfType<EndOfACodexTurn>().Single(it => it.Status == "interrupted").Id + "/", StringComparison.Ordinal)).Must().BeTrue();
    }
 
    public class and_Magnus_sends_a_pasted_image_with_no_text : When_Magnus_writes_to_the_Codex_session_in_a_tab
@@ -120,16 +121,23 @@ public class When_Magnus_writes_to_the_Codex_session_in_a_tab : SpecificationOpe
       public and_Chat_reopens_in_the_middle_of_the_reply() => _idOfThePartialReply = Once(() =>
       {
          SendFromChat("Stream a reply");
-         WaitUntil(() => Chat.Shown.OfType<CodexReply>().Any(it => it.Markdown == "Heard: "), "the first part of the reply arrived");
+         WaitUntil(() => Chat.Shown.OfType<CodexReply>().Any(it => it.Markdown == "Heard: ") && Chat.Progress.WorkingLine?.StartsWith("Writing… (") == true,
+                   "the first part of the reply arrived with the writing phase and turn clock", () => Chat.Progress.WorkingLine ?? Chat.Notice ?? "");
          var partial = OnTheUIThread(() => Chat.Shown.OfType<CodexReply>().Single(it => it.Markdown == "Heard: "));
          SwitchWithCtrlH(_window, _tab);
          SwitchWithCtrlH(_window, _tab);
          WaitUntil(() => Chat.Shown.OfType<CodexReply>().Any(it => it.Markdown == "Heard: Stream a reply"), "the reply completed after Chat reopened");
+         WaitUntil(() => Chat.Shown.LastOrDefault() is EndOfACodexTurn { Status: "completed", Took: not null, Ended: not null }
+                         && Chat.Progress.WorkingLine is null && Chat.StatusLine.TextShown.Contains("codex-chat"),
+                   "the completion line replaced live progress and the project's Codex footer stayed visible", () => $"{Chat.StatusLine.TextShown} | {Chat.Shown.LastOrDefault()?.TextShown}");
          return partial.Id;
       });
 
       [XF] public void the_finished_reply_occupies_the_partial_reply_s_row() =>
          OnTheUIThread(() => Chat.Shown.OfType<CodexReply>().Single(it => it.Id == _idOfThePartialReply).Markdown).Must().Be("Heard: Stream a reply");
+
+      [XF] public void the_turn_finishes_with_its_recorded_duration_and_local_end_time() =>
+         OnTheUIThread(() => Chat.Shown.Last().TextShown).Must().Satisfy(it => it.StartsWith("Worked for ") && it.Contains(" · done "));
    }
 
    public class and_Terminal_changes_to_another_session : When_Magnus_writes_to_the_Codex_session_in_a_tab

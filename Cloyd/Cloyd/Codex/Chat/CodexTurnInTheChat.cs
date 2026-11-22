@@ -1,11 +1,12 @@
 using ClaudeTooling.Hub.LocalApi.Contract.CodexChat;
 using Cloyd.Chat;
+using Cloyd.Codex.Chat.Status;
 
 namespace Cloyd.Codex.Chat;
 
 /// <summary>The rows a single Codex turn contributes to the conversation. Each replacement from the hub
 /// rebuilds just this turn, keeping the already drawn rows of earlier turns.</summary>
-sealed record CodexTurnInTheChat(string Id, bool IsUnderWay, IReadOnlyList<ShownInTheChat> Rows)
+sealed record CodexTurnInTheChat(string Id, CodexTurnProgress? Progress, IReadOnlyList<ShownInTheChat> Rows)
 {
    public static CodexTurnInTheChat From(CodexChatTurn turn)
    {
@@ -32,10 +33,9 @@ sealed record CodexTurnInTheChat(string Id, bool IsUnderWay, IReadOnlyList<Shown
          rows.Add(row);
       }
       EndRunOfCalls();
-      if(turn.Status == "interrupted") rows.Add(new CodexChatNotice(turn.Id, "Turn interrupted"));
-      if(turn.Status == "failed") rows.Add(new CodexChatNotice(turn.Id, "Turn failed"));
+      if(EndOfACodexTurn.From(turn) is {} end) rows.Add(end);
 
-      return new CodexTurnInTheChat(turn.Id, turn.Status == "inProgress", rows);
+      return new CodexTurnInTheChat(turn.Id, turn.Status == "inProgress" ? CodexTurnProgress.From(turn) : null, rows);
 
       void EndRunOfCalls()
       {
