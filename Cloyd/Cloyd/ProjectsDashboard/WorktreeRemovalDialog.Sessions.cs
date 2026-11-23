@@ -20,21 +20,10 @@ sealed partial class WorktreeRemovalDialog
       {
          rows.Children.Add(new Border { Padding = new Thickness(12,10), Child = Notice("Live sessions and open tabs block removal",
             "Stop running agents and close their tabs before removing this worktree.", false) });
-         foreach(var group in review.Occupants)
-         foreach(var occupant in group.Rows)
-         {
-            var grid = Grid("1.25*,1*,1*", 10);
-            Put(grid, Label(NameOf(occupant), 14, FontWeight.SemiBold), 0);
-            Put(grid, Label(occupant.Activity switch { "idle" when occupant.Target.SessionId is null => "Idle shell", "waitingForInput" => "Waiting for you",
-               "working" => "Working", "idle" => "Idle", _ => "Activity unknown" }, 13), 1);
-            Put(grid, Label(occupant.Target.HostId is null ? "Outside Cloyd" : "Open tab", 13, color: Muted), 2);
-            var details = Stack(2);
-            details.Children.Add(grid);
-            if(review.Git.SharedRules?.Checkout.Root.Equals(group.Root) == true) details.Children.Add(Label("Shared rules · .claude-shared", 12, color: Muted));
-            if(Unavailable(occupant) is {} reason) details.Children.Add(Label(reason, 12, color: Muted));
-            rows.Children.Add(new Border { Padding = new Thickness(15,7), Child = details });
-            rows.Children.Add(Divider());
-         }
+      }
+      AddSessionFamilies(rows, review);
+      if(live.Length > 0)
+      {
          var buttons = new WrapPanel { Orientation = Orientation.Horizontal };
          AddAction("Stop idle sessions", "stopAgent");
          AddAction("Close idle shell tabs", "closeShell");
@@ -49,21 +38,29 @@ sealed partial class WorktreeRemovalDialog
             buttons.Children.Add(button);
          }
       }
-      else rows.Children.Add(new Border { Padding = new Thickness(15,11), Child = Label("No running sessions or open tabs.", 14, color: Muted) });
-      foreach(var blocker in review.Inventories.SelectMany(it => it.Blockers).Where(it => it.Code is not ("openHost" or "runningSession")).DistinctBy(it => it.Message))
+      else if(!review.Subagents.Any)
+         rows.Children.Add(new Border { Padding = new Thickness(15,11), Child = Label("No running sessions or open tabs.", 14, color: Muted) });
+      var shownSubagentBlockers = review.Subagents.Blockers.Select(it => it.SessionId).ToHashSet();
+      foreach(var blocker in review.Inventories.SelectMany(it => it.Blockers).Where(it => it.Code is not ("openHost" or "runningSession") &&
+              !(it.Code == "activeDescendant" && it.SessionId is {} id && shownSubagentBlockers.Contains(id))).DistinctBy(it => it.Message))
          rows.Children.Add(Notice("Removal blocked", blocker.Message, false));
       return Card(rows);
    }
 
-   string? Unavailable(WorktreeOccupant occupant) => occupant.Target.HostId is {} id && _hasDraft(new SessionHostId(id))
-      ? "This tab has an unsent Cloyd draft." : occupant.Reason;
+   string? Unavailable(WorktreeOccupant occupant)
+   {
+      if(occupant.Target.HostId is {} id && _hasDraft(new SessionHostId(id))) return "This tab has an unsent Cloyd draft.";
+      if(_review?.Subagents.BlockingStopOf(occupant) is {} child) return child.Reason ?? $"{child.DisplayName} has outstanding work.";
+      return occupant.Reason;
+   }
 
    string NameOf(WorktreeOccupant occupant)
    {
       var target = occupant.Target;
       if(target.SessionId is null) return $"Shell · {target.HostId}";
-      return !string.IsNullOrWhiteSpace(occupant.Name) ? occupant.Name :
-         _nameOf(new WorktreeSession(target.AgentCli!, target.SessionId, target.HostId, occupant.Activity));
+      if(!string.IsNullOrWhiteSpace(occupant.Name)) return occupant.Name;
+      if(target.AgentCli == "codex" && _review?.Subagents.ParentName(target.SessionId) is {} parentName) return parentName;
+      return _nameOf(new WorktreeSession(target.AgentCli!, target.SessionId, target.HostId, occupant.Activity));
    }
 
    async Task<string?> ActOnOccupants(Cloyd.Hub.TheHub reviewedHub, WorktreeOccupants[] displayed, string action)

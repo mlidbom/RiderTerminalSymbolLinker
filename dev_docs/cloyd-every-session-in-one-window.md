@@ -50,6 +50,11 @@ session and virtual desktop in `projects-dashboard.json`.
   **Refresh** re-reads Git and the unfiltered hub inventory, including sessions outside Cloyd.
   Idle-agent and idle-shell actions use reviewed process identities on hubs advertising
   `supportsWorktreeOccupantActions`. Working, waiting, unknown and drafted tabs stay in the review.
+  The review uses the hub’s `descendants` from both session and occupant readings to show native
+  Codex helpers beneath their parent. A completed helper with an empty queue and no background
+  terminal can stay loaded. Other helper activity can block removal even after its parent exits.
+  The hub checks descendants again for a stop or a disposition. Only the parent appears as a
+  stop target. Subagents have no independent action or archive choice in the dialog.
   A final removal uses only the stopped-session archive API with an operation ID per checkout.
   The agent-worktree creation path invokes the machine catalog's attach step for consuming
   projects and verifies the catalog registration before starting an agent. The dialog inspects

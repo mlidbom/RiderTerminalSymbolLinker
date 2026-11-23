@@ -385,6 +385,7 @@ public class When_Magnus_arranges_the_dashboard_tabs : SpecificationOpeningWindo
             Directory.Exists(_empty.FullName).Must().BeTrue();
             hub.SessionsOnDisk().Any(it => it.Session.Id == archived.Id).Must().BeTrue();
             _alpha.End(shell.Id);
+            WaitUntil(() => _alpha.SessionHost(shell.Id) is null, "the hub confirmed the shell had exited before refreshing the dialog");
             Click(OnTheUIThread(() => dialog.GetVisualDescendants().OfType<Button>().Single(it => Equals(it.Content, "Refresh"))));
             WaitUntil(() => RemovalButton(dialog).IsEnabled, "refresh released the stopped shell");
          }
@@ -442,7 +443,7 @@ public class When_Magnus_arranges_the_dashboard_tabs : SpecificationOpeningWindo
       Click(close!);
       WaitUntil(() => HasText(dialog, "No running sessions or open tabs") && RemovalButton(dialog).IsEnabled, "the review refreshed after the shell closed");
       Directory.Exists(folder.Folder).Must().BeTrue();
-      _alpha.ItsSessionHosts().Any(it => it.Id == shell.Id).Must().BeFalse();
+      _alpha.SessionHost(shell.Id).Must().BeNull();
       Close(dialog);
    }
 

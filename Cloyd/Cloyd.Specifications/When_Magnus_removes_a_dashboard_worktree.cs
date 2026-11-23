@@ -73,7 +73,7 @@ public class When_Magnus_removes_a_dashboard_worktree : SpecificationOpeningWind
       File.Exists(Path.Combine(checkout.Folder, "keep.txt")).Must().BeTrue();
 
       var waiting = preview with { Sessions = [new WorktreeSession("codex", "session", "host", "waitingForInput")] };
-      var occupied = reviewed with { Inventories = [waiting], Occupants = [WorktreeOccupants.From(waiting, null)] };
+      var occupied = new WorktreeRemovalReview(reviewed.ReviewedHub, reviewed.Git, [waiting], [WorktreeOccupants.From(waiting, null)], []);
       occupied.CanRemove.Must().BeFalse();
       await Xunit.Assert.ThrowsAsync<InvalidOperationException>(() => removal.Remove(occupied, new HashSet<Project>(), false, default));
    }

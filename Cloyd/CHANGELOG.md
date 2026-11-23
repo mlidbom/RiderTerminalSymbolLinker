@@ -225,6 +225,10 @@ All notable changes to Cloyd are documented here. The format follows
     the session, as after it was archived. Windows saved before read their sessions as Claude Code's.
 
 ### Fixed
+- **Remove worktree groups Codex subagents under their parent.** Completed helpers can remain loaded
+  after their turn ends. Working helpers, pending input, and background terminals show their name and
+  the reason removal is blocked. An idle Codex tab can also be stopped when its status line wraps
+  below an empty composer.
 - **Tabbing out of Projects Dashboard search keeps Cloyd running.** An empty search now closes after
   keyboard focus finishes moving. Reopening search, typing, and using Tab or Shift+Tab keeps the query.
 - **The worktree context menu is visible when you right-click.** Open **Git Extensions** to reach

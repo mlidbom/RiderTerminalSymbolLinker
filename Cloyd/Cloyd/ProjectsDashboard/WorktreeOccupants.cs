@@ -4,7 +4,7 @@ using Cloyd.Projects;
 namespace Cloyd.ProjectsDashboard;
 
 /// <summary>The live occupants of one of the reviewed checkouts, including any newly discovered by the hub's action review.</summary>
-sealed record WorktreeOccupants(Project Root, WorktreeOccupant[] Rows)
+sealed record WorktreeOccupants(Project Root, WorktreeOccupant[] Rows, WorktreeSubagent[] Descendants)
 {
    public static WorktreeOccupants From(WorktreeSessionsPreview inventory, ReviewedOccupants? eligibility, IEnumerable<WorktreeOccupant>? dashboard = null)
    {
@@ -19,7 +19,7 @@ sealed record WorktreeOccupants(Project Root, WorktreeOccupant[] Rows)
          if(!rows.Any(it => local.Target.HostId is {} host ? it.Target.HostId == host :
                it.Target.SessionId == local.Target.SessionId && it.Target.AgentCli == local.Target.AgentCli))
             rows.Add(local);
-      return new(new Project(inventory.WorktreePath), rows.ToArray());
+      return new(new Project(inventory.WorktreePath), rows.ToArray(), [.. eligibility?.Descendants ?? [], .. inventory.Descendants]);
       string Reason() => eligibility is null ? "This hub cannot verify idle occupants. Stop or close it manually." : "Occupant changed during review. Refresh to check again.";
    }
 }

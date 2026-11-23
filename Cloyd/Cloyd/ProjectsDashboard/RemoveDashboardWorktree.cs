@@ -24,12 +24,28 @@ sealed class RemoveDashboardWorktree(TheHub hub, CloydsFolder cloydFolder, Proje
          inventory.RequireIdentityOf(checkout.Checkout.Root);
          return inventory;
       }));
-      var occupants = await Task.WhenAll(inventories.Select(async inventory => WorktreeOccupants.From(inventory,
-         inventory.HasOpenTabsOrRunningSessions ? await source.ReviewWorktreeOccupants(new Project(inventory.WorktreePath), cancellation) : null,
-         dashboardOccupants?.Invoke(new Project(inventory.WorktreePath)))));
+      var occupants = await Task.WhenAll(inventories.Select(async inventory =>
+      {
+         var root = new Project(inventory.WorktreePath);
+         var eligibility = await source.ReviewWorktreeOccupants(root, cancellation);
+         var local = await LiveDashboardOccupants(source, root, cancellation);
+         return WorktreeOccupants.From(inventory, eligibility, local);
+      }));
       var pending = git.Checkouts.Select(it => new PendingWorktreeDisposition(cloydFolder, it.Checkout.Root).AwaitingReceipt)
                                  .OfType<PendingWorktreeDisposition.Confirmation>().ToArray();
       return new(source, git, inventories, occupants, pending);
+   }
+
+   /// <summary>The tree retains a host's last worktree when the hub cannot identify its foreground session.
+   /// Its periodic reading may still contain a tab or process that just closed.</summary>
+   async Task<WorktreeOccupant[]> LiveDashboardOccupants(TheHub source, Project root, CancellationToken cancellation)
+   {
+      var local = dashboardOccupants?.Invoke(root).ToArray() ?? [];
+      if(local.Length == 0) return [];
+      var hosts = local.Any(it => it.Target.HostId is not null) ? await source.SessionHosts(cancellation) : [];
+      var agents = local.Any(it => it.Target.HostId is null) ? await source.RunningSessions(cancellation) : [];
+      return local.Where(it => it.Target.HostId is {} host ? hosts.Any(known => known.Id.Value == host) :
+         agents.Any(agent => agent.Session.Id.Value == it.Target.SessionId && (agent.Session.AgentCli == AgentCli.ClaudeCode ? "claude" : agent.Session.AgentCli.NameInTheHub) == it.Target.AgentCli)).ToArray();
    }
 
    public async Task<string?> Recover(PendingWorktreeDisposition.Confirmation previous)
@@ -90,7 +106,7 @@ sealed class RemoveDashboardWorktree(TheHub hub, CloydsFolder cloydFolder, Proje
          {
             var remaining = await hub.PreviewWorktreeSessions(checkout.Checkout.Root, cancellation);
             remaining.RequireReadyFor(checkout.Checkout.Root);
-            if(!remaining.Empty || dashboardOccupants?.Invoke(checkout.Checkout.Root).Any() == true)
+            if(!remaining.Empty || (await LiveDashboardOccupants(hub, checkout.Checkout.Root, cancellation)).Length != 0)
                throw new InvalidOperationException($"New sessions were found in {checkout.Checkout.Root}. Review them before removal.");
          }
       }

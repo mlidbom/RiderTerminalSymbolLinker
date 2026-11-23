@@ -4,8 +4,10 @@ namespace Cloyd.Hub.Worktrees;
 
 /// <summary>The worktree's saved sessions and live occupants as seen by the hub. Only a
 /// preview containing exclusively stopped sessions can be confirmed for removal.</summary>
-sealed record WorktreeSessionsPreview(Guid OperationId, string WorktreePath, WorktreeSession[] Sessions, WorktreeShell[] ShellOnlyHosts, RemovalBlocker[] Blockers)
+sealed record WorktreeSessionsPreview(Guid OperationId, string WorktreePath, WorktreeSession[] Sessions, WorktreeShell[] ShellOnlyHosts,
+                                     RemovalBlocker[] Blockers)
 {
+   public WorktreeSubagent[] Descendants { get; init; } = [];
    public bool Empty => Sessions.Length == 0 && ShellOnlyHosts.Length == 0;
    public bool HasOpenTabsOrRunningSessions => ShellOnlyHosts.Length > 0 || Sessions.Any(it => it.IsOpen);
 
@@ -28,6 +30,8 @@ sealed record WorktreeSessionsPreview(Guid OperationId, string WorktreePath, Wor
          throw new InvalidOperationException($"Close all session tabs and stop all running sessions in {checkout} ({string.Join(", ", occupants)}).");
       }
       if(Blockers.Length > 0) throw new InvalidOperationException(string.Join(Environment.NewLine, Blockers.Select(it => it.Message)));
+      if(Descendants.FirstOrDefault(it => it.BlocksRemoval) is {} helper)
+         throw new InvalidOperationException(helper.Reason ?? $"{helper.DisplayName} blocks removal ({helper.Activity}).");
    }
 
 }
@@ -37,4 +41,4 @@ sealed record WorktreeSession(string AgentCli, string SessionId, string? HostId,
    public bool IsOpen => HostId is not null || Activity != "closed";
 }
 sealed record WorktreeShell(string HostId);
-sealed record RemovalBlocker(string Message, string? Code = null);
+sealed record RemovalBlocker(string Message, string? Code = null, string? SessionId = null);
