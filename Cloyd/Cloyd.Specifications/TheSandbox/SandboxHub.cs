@@ -49,6 +49,9 @@ sealed class SandboxHub
 
    public TheHub Hub => TheHub.AnnouncedIn(new DirectoryInfo(_started.AnnouncementFolder));
 
+   public bool OffersWorktreeSessionRemoval => JsonNode.Parse(new FileWrittenWhole(Path.Combine(_started.AnnouncementFolder, WhatTheAnnouncementSays.FileName)).Text()!)!
+      ["supportsWorktreeSessionRemoval"]?.GetValue<bool>() == true;
+
    /// <summary>Makes this sandbox advertise the capabilities of a hub built before Codex Chat.</summary>
    public void AnnounceWithoutCodexChat()
    {

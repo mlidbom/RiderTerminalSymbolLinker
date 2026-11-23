@@ -311,6 +311,41 @@ public class When_Magnus_arranges_the_dashboard_tabs : SpecificationOpeningWindo
       File.Exists(Path.Combine(nested.FullName, "uncommitted.txt")).Must().BeTrue();
    }
 
+   [XF] public void the_worktree_menu_uses_the_installed_hubs_archive_capability()
+   {
+      var hub = Sandbox.HubOfTheSandbox;
+      var archived = new SessionOfASpecification(new ClaudeCodeSessionId(Guid.NewGuid().ToString()), _empty.FullName, "Archive this conversation.");
+      var kept = new SessionOfASpecification(new ClaudeCodeSessionId(Guid.NewGuid().ToString()), _linked.FullName, "Keep this conversation.");
+      archived.WriteItsTranscriptFor(hub);
+      kept.WriteItsTranscriptFor(hub);
+      var menu = OnTheUIThread(() =>
+      {
+         var item = _dashboard.GetVisualDescendants().OfType<ListBoxItem>().Single(it => it.DataContext == _emptyGroup);
+         item.ContextMenu!.Open(item);
+         return item.ContextMenu;
+      });
+      var remove = OnTheUIThread(() => menu.Items.OfType<MenuItem>().Single(it => Equals(it.Header, "Remove worktree")));
+      if(!hub.OffersWorktreeSessionRemoval)
+      {
+         WaitUntil(() => AutomationProperties.GetHelpText(remove)?.Contains("does not yet offer") == true, "the older hub explained why removal was unavailable");
+         OnTheUIThread(() => remove.IsEffectivelyEnabled).Must().BeFalse();
+         OnTheUIThread(menu.Close);
+         Directory.Exists(_empty.FullName).Must().BeTrue();
+      }
+      else
+      {
+         WaitUntil(() => remove.IsEffectivelyEnabled, "the private hub found the stopped conversation and approved a preview");
+         OnTheUIThread(() => { menu.Close(); remove.Command!.Execute(null); });
+         Button? archive = null;
+         WaitUntil(() => (archive = _dashboard.OwnedWindows.OfType<WorktreeRemovalDialog>().SingleOrDefault()?.GetVisualDescendants()
+            .OfType<Button>().SingleOrDefault(it => Equals(it.Content, "Archive"))) is not null, "the dashboard offered Archive");
+         Click(archive!);
+         WaitUntil(() => !Directory.Exists(_empty.FullName) && !_alphaGroup.Children.Contains(_emptyGroup), "the hub archived the session and Git removed its checkout");
+         hub.SessionsOnDisk().Any(it => it.Session.Id == archived.Id).Must().BeFalse();
+      }
+      hub.SessionsOnDisk().Any(it => it.Session.Id == kept.Id).Must().BeTrue();
+   }
+
    [XF] public async Task removal_checks_for_new_files_and_new_commits_after_the_worktree_was_reviewed()
    {
       var git = await WorktreeRemoval.Inspect(_alpha.Project, _emptyGroup.StartFolder, default);
