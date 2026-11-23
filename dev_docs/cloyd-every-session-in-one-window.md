@@ -22,20 +22,16 @@ session and virtual desktop in `projects-dashboard.json`.
   Selecting a stopped conversation opens a read-only transcript. **Resume session** starts it explicitly.
   The root, project and worktree clocks open the same history picker, scoped to the clicked heading's full
   membership independently of sidebar filters. Session rows open their conversations directly.
-- **Inclusion switches** at the root, project and worktree match pins, open project tabs, and sessions in
-  no project tab. Open tabs uses the tabs in open project windows and the restoration rules for closed
-  windows. This includes eligible project-labelled hosts and saved sessions that would resume in a new
-  host. Reading those choices never launches an agent. A match on any enabled switch includes the
-  session. The nearest manually set value for
-  each switch wins. A context-menu action or Delete on a local switch restores inheritance. **AG** shows
-  hidden group headings so their switches remain reachable. A second strip above the tree includes any
-  of the selected statuses. The **A** at the right of each strip bypasses that strip's individual settings
-  until switched off. Its selected individual choices are boxed and remain clickable. Clicking one
-  changes it and exits **A**. A strip with no choices defaults to **A**. Worktree switches, including
-  **A**, cycle through On, Off and Unset. Unset inherits the project value. Counts and Ctrl+Tab follow
-  the filters. The current chat or terminal stays in place.
-  Pins belong to the agent session, including across a change of host. Older pinned-only settings migrate
-  to the pinned switch alone.
+- **Session filters** use a single list at every level. A session appears if any selected switch
+  matches its pin, project-tab membership or activity. Open tabs includes the tabs a closed project
+  window would restore. The dashboard can read those choices without starting an agent.
+  **A** temporarily shows all sessions. Turning it off restores the individual choices. Clicking an
+  individual switch releases **A**. An empty selection defaults to **A**.
+  At project and worktree headings every switch cycles through On, Off and Unset. Unset follows its
+  parent. A ✓ marks an explicit On and × marks an explicit Off. Both stay visible when the strip
+  collapses. Hovering or entering by keyboard reveals the full strip. **Reset overrides**
+  clears every local choice in one operation. **AG** reveals all group headings. Counts and
+  Ctrl+Tab follow the filters. Pins follow the session across host changes.
 - **Tree search** opens and takes focus from the magnifier or Ctrl+Shift+F. Words match project, worktree,
   branch and session names within the active filters. Search temporarily expands matching headings.
   An empty box closes on focus loss or a click elsewhere. Escape in the box clears it and restores
@@ -44,8 +40,6 @@ session and virtual desktop in `projects-dashboard.json`.
   A Git project's **+** starts a named Claude or Codex session in a new linked worktree.
   Its folder sits under the repository's sibling `.worktrees` folder. Its branch uses dashes for
   spaces in the name. Worktree headings and projects outside Git start a session in their existing folder.
-- **Filter strips** collapse to their selected icons. Hovering or entering a strip by keyboard
-  expands it in place. The root status strip and the membership strips all behave alike.
 - **Draft preview** uses the transcript's Markdown renderer. Hold Ctrl+M in either agent's input
   box to read the draft in place. Releasing the shortcut or leaving the editor ends the preview.
 - **Worktree context menus** have a Git Extensions submenu. Browse opens its revision graph and Commit

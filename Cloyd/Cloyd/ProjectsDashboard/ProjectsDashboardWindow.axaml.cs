@@ -306,6 +306,8 @@ sealed partial class ProjectsDashboardWindow : Window
 
    void OpenHistory(object? sender, RoutedEventArgs e) => _ = OpenHistory((sender as Control)?.DataContext as DashboardGroup);
 
+   void ResetFilterOverrides(object? sender, RoutedEventArgs e) => Tree.ResetFilterOverrides();
+
    void ShowTreeSearch(object? sender, RoutedEventArgs e) => ShowTreeSearch();
    void ShowTreeSearch()
    {

@@ -9,8 +9,12 @@ All notable changes to Cloyd are documented here. The format follows
 ### Added
 - **Hold Ctrl+M in the chat input box to preview your draft as Markdown.** Release either key to
   return to the same caret and selection in Claude and Codex chats.
-- **Dashboard filter strips show their selected switches at rest.** Hover over a strip or tab into
-  it to see and change every switch, including the ones on project and worktree headings.
+- **Projects Dashboard has one session filter at every level.** Select Pinned, Open tabs, or any
+  activity together to include sessions matching any selected icon. **A** temporarily shows all
+  sessions and restores your choices when released. An empty selection also shows all sessions.
+  Project and worktree switches cycle through On, Off and Unset. Local choices stay visible with
+  a ✓ or ×. Hover or use the keyboard to reveal every switch. **Reset overrides** makes
+  every project and worktree use the toolbar choices. **AG** shows all group headings.
 - **The + on a Git project creates a worktree and starts a session in it.** Enter one name for the
   checkout and the session, and choose Claude or Codex. The new branch starts at the local integration
   branch, or at HEAD when there is none. The + on an existing worktree starts a session there.
@@ -38,19 +42,9 @@ All notable changes to Cloyd are documented here. The format follows
   magnifier opens history for all projects.
 - **Right-click a dashboard worktree to open Git Extensions.** Choose **Browse** for its revision graph
   or **Commit** for its commit dialog. Both open in the checkout you clicked.
-- **Combine dashboard status icons above the tree.** Pinned comes first in the session switches. Each
-  strip ends with **A**, which temporarily includes all its sessions or statuses and remembers the
-  individual switches. While **A** is on, boxes mark the selected choices. Click an individual switch
-  to change it and leave **A**. An empty strip selects **A** automatically. Worktree switches cycle
-  **On → Off → Unset**. Unset follows the project's choice. **AG** shows all group headings.
 - **History and Projects Dashboard share a session list.** Click a stored conversation to read it and choose
   **Resume session** to run it. The dashboard clock searches all projects; each project and worktree clock
   searches its own sessions, including those the sidebar filters hide.
-- **Choose which sessions to include at each level.** The three icons include open project tabs, pinned
-  sessions, and sessions outside project tabs. A match on any enabled icon is enough. Each individual
-  switch inherits from its parent until changed locally. Right-click a local switch and choose **Use parent
-  setting** to restore inheritance. The gear reveals hidden group headings for editing. The status selector
-  narrows the resulting list to running, resumable, working, waiting, idle or failed sessions.
 - **Worktree branch icons show Git status.** Green means all commits are in the local integration branch,
   purple means some are still outside it, and an amber dot marks uncommitted changes. On the integration
   branch itself the colour compares against its upstream. ↑ marks outgoing commits and ↓ incoming commits.

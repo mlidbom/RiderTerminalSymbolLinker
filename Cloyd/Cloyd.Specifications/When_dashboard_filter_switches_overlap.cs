@@ -9,6 +9,7 @@ using Cloyd.Projects.Git;
 using Cloyd.ProjectsDashboard;
 using Cloyd.ProjectsDashboard.Filters;
 using Cloyd.Saving;
+using Cloyd.Sessions;
 using Compze.Must;
 using Compze.xUnitBDD;
 
@@ -18,7 +19,7 @@ public class When_dashboard_filter_switches_overlap
 {
    [XF] public void running_includes_every_live_agent_while_specific_statuses_add_independently()
    {
-      var settings = new SavedDashboardArrangement { RootMemberships = IncludedSessions.AllMemberships, GlobalStatuses = IncludedSessions.Running };
+      var settings = new SavedDashboardArrangement { ToolbarFilters = IncludedSessions.Running };
       var filters = new DashboardSessionFilters(settings);
       var idleWithShell = RowOf(new RunningClaudeCode(new ClaudeCodeProcessId(1), new ClaudeCodeSessionId("claude"), null, null,
                                                        new StatusOfAClaudeCode("shell", null), null, null, null));
@@ -33,14 +34,18 @@ public class When_dashboard_filter_switches_overlap
       DashboardSession[] rows = [idleWithShell, busy, waiting, error, otherActivity, ready, shell];
       rows.Where(filters.Includes).Must().SequenceEqual([idleWithShell, busy, waiting, error, otherActivity]);
 
-      settings.GlobalStatuses = IncludedSessions.Waiting | IncludedSessions.ReadyToResume;
+      settings.ToolbarFilters = IncludedSessions.Waiting | IncludedSessions.ReadyToResume;
       rows.Where(filters.Includes).Must().SequenceEqual([waiting, ready]);
-      settings.GlobalStatuses = IncludedSessions.Idle | IncludedSessions.Working | IncludedSessions.Error;
+      settings.ToolbarFilters = IncludedSessions.Idle | IncludedSessions.Working | IncludedSessions.Error;
       rows.Where(filters.Includes).Must().SequenceEqual([idleWithShell, busy, error]);
-      filters.Toggle(null, IncludedSessions.AllStatuses);
+      filters.Toggle(null, IncludedSessions.All);
       rows.Where(filters.Includes).Must().SequenceEqual(rows);
-      filters.Toggle(null, IncludedSessions.AllStatuses);
+      filters.Toggle(null, IncludedSessions.All);
       rows.Where(filters.Includes).Must().SequenceEqual([idleWithShell, busy, error]);
+
+      ready.ReadPin([ready.PinKey], new HashSet<SessionId>());
+      settings.ToolbarFilters = IncludedSessions.Pinned | IncludedSessions.Waiting;
+      rows.Where(filters.Includes).Must().SequenceEqual([waiting, ready]);
 
       static DashboardSession CodexWith(string status) =>
          RowOf(new RunningCodex(new CodexSessionId(status), null, null, new StatusOfACodex(status)));
@@ -62,34 +67,54 @@ public class When_dashboard_filter_switches_overlap
       })
       {
          var settings = JsonSerializer.Deserialize<SavedDashboardArrangement>(saved, json)!;
-         settings.RootMemberships.Must().Be(IncludedSessions.None);
-         settings.GlobalStatuses.Must().Be(IncludedSessions.None);
-         new DashboardSessionFilters(settings).Effective(null).Must().Be(IncludedSessions.AllMemberships | IncludedSessions.AllStatuses);
+         settings.ToolbarFilters.Must().Be(IncludedSessions.None);
+         new DashboardSessionFilters(settings).Effective(null).Must().Be(IncludedSessions.All);
          var reopened = JsonSerializer.Deserialize<SavedDashboardArrangement>(JsonSerializer.Serialize(settings, json), json)!;
-         reopened.RootMemberships.Must().Be(IncludedSessions.None);
-         reopened.GlobalStatuses.Must().Be(IncludedSessions.None);
+         reopened.ToolbarFilters.Must().Be(IncludedSessions.None);
       }
+   }
+
+   [XF] public void old_All_memberships_in_a_worktree_still_honours_the_restrictive_toolbar_status()
+   {
+      var group = new DashboardWorktree(new GitWorktree(new Project(@"C:\Topic"), "topic", false));
+      var json = new JsonSerializerOptions(JsonSerializerDefaults.Web);
+      var oldSettings = new { rootInclusions = 2, rootStatuses = 64, groupFilters = new Dictionary<string, object>
+         { [group.Key] = new { specified = 512, included = 512 } } };
+      var settings = JsonSerializer.Deserialize<SavedDashboardArrangement>(JsonSerializer.Serialize(oldSettings), json)!;
+      var filters = new DashboardSessionFilters(settings);
+      filters.Effective(null).Must().Be(IncludedSessions.Pinned | IncludedSessions.Waiting);
+      filters.Effective(group).Must().Be(IncludedSessions.Waiting);
+   }
+
+   [XF] public void the_old_unfiltered_default_opens_on_All_and_one_click_selects_only_Waiting()
+   {
+      var settings = JsonSerializer.Deserialize<SavedDashboardArrangement>("""{"rootInclusions":5,"rootStatuses":1024}""",
+                                                                          new JsonSerializerOptions(JsonSerializerDefaults.Web))!;
+      var filters = new DashboardSessionFilters(settings);
+      filters.Effective(null).Must().Be(IncludedSessions.All);
+      filters.Toggle(null, IncludedSessions.Waiting);
+      filters.Effective(null).Must().Be(IncludedSessions.Waiting);
    }
 
    [XF] public void clicking_an_individual_worktree_switch_under_automatic_All_turns_off_only_that_worktrees_All()
    {
       var parent = new DashboardProject(new Project(@"C:\Main"));
       var worktree = new DashboardWorktree(new GitWorktree(new Project(@"C:\Topic"), "topic", false)) { Parent = parent };
-      var settings = new SavedDashboardArrangement { RootMemberships = IncludedSessions.None };
+      var settings = new SavedDashboardArrangement { ToolbarFilters = IncludedSessions.None };
       var filters = new DashboardSessionFilters(settings);
-      filters.AutomaticallyIncludesAll(worktree, IncludedSessions.AllMemberships).Must().BeTrue();
+      filters.AutomaticallyIncludesAll(worktree).Must().BeTrue();
 
       filters.Toggle(worktree, IncludedSessions.Pinned);
       filters.LocalSetting(worktree, IncludedSessions.Pinned).Must().Be(true);
-      filters.LocalSetting(worktree, IncludedSessions.AllMemberships).Must().Be(false);
+      filters.LocalSetting(worktree, IncludedSessions.All).Must().Be(false);
       filters.LocalSetting(worktree, IncludedSessions.OutsideTabs).Must().BeNull();
 
       var json = new JsonSerializerOptions(JsonSerializerDefaults.Web);
       var reopened = new DashboardSessionFilters(JsonSerializer.Deserialize<SavedDashboardArrangement>(JsonSerializer.Serialize(settings, json), json)!);
       reopened.Toggle(null, IncludedSessions.OpenTabs);
-      reopened.Toggle(null, IncludedSessions.AllMemberships);
-      reopened.Effective(parent).HasFlag(IncludedSessions.AllMemberships).Must().BeTrue();
-      reopened.Effective(worktree).HasFlag(IncludedSessions.AllMemberships).Must().BeFalse();
+      reopened.Toggle(null, IncludedSessions.All);
+      reopened.Effective(parent).HasFlag(IncludedSessions.All).Must().BeTrue();
+      reopened.Effective(worktree).HasFlag(IncludedSessions.All).Must().BeFalse();
       reopened.Effective(worktree).HasFlag(IncludedSessions.OpenTabs | IncludedSessions.Pinned).Must().BeTrue();
    }
 }

@@ -1,4 +1,5 @@
 using Cloyd.Chat.Status;
+using Cloyd.ProjectsDashboard.Filters;
 using Cloyd.Hub;
 using Cloyd.Hub.RunningSessions;
 using Cloyd.Sessions;
@@ -31,6 +32,22 @@ sealed class DashboardSession(string key) : DashboardRow(key)
       MatchesPinFilter = IsPinned && (Running is not null || Latest is null || !running.Contains(Latest.Id));
       return acquiredIdentity;
    }
+   /// <summary>The dashboard switches that include this session, regardless of which switches its ancestors have selected.</summary>
+   public IncludedSessions MatchingFilters => IncludedSessions.All | ActivityFilters
+      | (OpenInProjectTab ? IncludedSessions.OpenTabs : IncludedSessions.OutsideTabs)
+      | (MatchesPinFilter ? IncludedSessions.Pinned : IncludedSessions.None);
+
+   IncludedSessions ActivityFilters => Running is null
+      ? ReadyToResume ? IncludedSessions.ReadyToResume : IncludedSessions.None
+      : IncludedSessions.Running | (Running switch
+      {
+         { IsBusy: true } => IncludedSessions.Working,
+         _ when IsWaiting => IncludedSessions.Waiting,
+         RunningClaudeCode {Status.AsReported: "idle" or "shell"} or RunningCodex {Status.AsReported: "idle"} => IncludedSessions.Idle,
+         RunningCodex {Status.AsReported: "error"} => IncludedSessions.Error,
+         _ => IncludedSessions.None
+      });
+
    public double Opacity => HasHost ? 1 : 0.6;
    public string Name { get => field; private set => SetProperty(ref field, value); } = "";
    public string Activity { get => field; private set => SetProperty(ref field, value); } = "";

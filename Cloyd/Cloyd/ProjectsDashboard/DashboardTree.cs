@@ -73,8 +73,16 @@ sealed class DashboardTree : ObservableObject
       Filters.Inherit(group, kind);
       NotifyFiltersChanged();
    }
+   public bool HasFilterOverrides => Filters.HasOverrides;
+   public void ResetFilterOverrides()
+   {
+      Filters.ResetOverrides();
+      NotifyFiltersChanged();
+   }
+
    void NotifyFiltersChanged()
    {
+      OnPropertyChanged(nameof(HasFilterOverrides));
       FiltersChanged?.Invoke();
       RefreshFilter();
    }

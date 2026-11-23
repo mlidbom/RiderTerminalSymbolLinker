@@ -47,7 +47,7 @@ public class When_Cloyd_is_launched_without_arguments : SpecificationRunningTheC
       WindowsItLists().Must().BeEmpty();
       Answered(() => new TheCloydApplication(CloydsFolder).WindowInventory()!.DashboardOpen, "the API reported the dashboard").Must().BeTrue();
       WaitUntil(() => dashboard.Tree.Sessions.Any(it => it.Latest?.Id == historyOnly), "the dashboard read the conversation history");
-      OnTheUIThread(() => dashboard.Tree.ToggleInclusion(null, IncludedSessions.OutsideTabs));
+      OnTheUIThread(() => dashboard.Tree.ToggleInclusion(null, IncludedSessions.OpenTabs));
       WaitUntil(() => dashboard.Tree.NavigableSessions.Count() == 2 &&
                       dashboard.Tree.NavigableSessions.Any(it => it.Host?.Id == live.Id) &&
                       dashboard.Tree.NavigableSessions.Any(it => it.Latest?.Id == saved.Id && it.Host is null), "Open tabs included the live shell and the saved tab");
@@ -95,7 +95,7 @@ public class When_Cloyd_is_launched_without_arguments : SpecificationRunningTheC
       _project.SaveTheWindowAs(new SavedProjectWindow([new(saved.Id, folder, null), new(attached.Id, folder, null)], saved.Id, null));
       LaunchFromAnUnrelatedDirectory();
       var dashboard = OnTheUIThread(() => Windows.Dashboard!);
-      OnTheUIThread(() => dashboard.Tree.ToggleInclusion(null, IncludedSessions.OutsideTabs));
+      OnTheUIThread(() => dashboard.Tree.ToggleInclusion(null, IncludedSessions.OpenTabs));
       WaitUntil(() => dashboard.Tree.Sessions.Count() == 3 && dashboard.Tree.NavigableSessions.Select(it => it.Host?.Id).SequenceEqual([saved.Id]),
                 "only the saved unlabelled host counted as a project tab");
       _project.SessionHost(attached.Id)!.Attached.Must().BeTrue();
@@ -116,7 +116,7 @@ public class When_Cloyd_is_launched_without_arguments : SpecificationRunningTheC
       LaunchFromAnUnrelatedDirectory();
       var dashboard = OnTheUIThread(() => Windows.Dashboard!);
       WaitUntil(() => dashboard.Tree.Sessions.Any(it => it.Latest?.Id == session.Id), "the external session appeared");
-      OnTheUIThread(() => dashboard.Tree.ToggleInclusion(null, IncludedSessions.OutsideTabs));
+      OnTheUIThread(() => dashboard.Tree.ToggleInclusion(null, IncludedSessions.OpenTabs));
       HandedOver(_project);
       WaitUntil(() => Windows.Open.Single().BringingBackTheTabs.IsCompleted, "the project finished checking its saved tab");
       OnTheUIThread(() => Windows.Open.Single().Tabs.Count).Must().Be(0);

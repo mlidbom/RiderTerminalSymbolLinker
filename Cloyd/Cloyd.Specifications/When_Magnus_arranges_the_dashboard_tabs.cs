@@ -58,7 +58,7 @@ public class When_Magnus_arranges_the_dashboard_tabs : SpecificationOpeningWindo
    SessionHostId StartHelperShell() => Sandbox.HubOfTheSandbox.Hub.StartASessionHost(Sandbox.ShellOfItsSessions,
       _linked.FullName, _alpha.LabelOfCloydsHosts).GetAwaiter().GetResult().Id;
 
-   [XF] public void each_All_switch_temporarily_bypasses_only_its_strip_and_restores_its_choices_after_reopening()
+   [XF] public void one_All_switch_restores_the_combined_choices_after_reopening()
    {
       Close(_dashboard);
       Sandbox.WindowsOfCloyd.Sessions.Folder.ProjectsDashboard.Write("""{"arrangement":{"rootInclusions":2,"activityFilter":6}}""");
@@ -66,17 +66,14 @@ public class When_Magnus_arranges_the_dashboard_tabs : SpecificationOpeningWindo
       WaitUntil(() => window.Tree.Sessions.Count() == 2, "the two tabs were in the dashboard");
       OnTheUIThread(() =>
       {
-         var memberships = window.GetVisualDescendants().OfType<SessionFilterStrip>().Single(it => it.DataContext == window.Tree);
-         var statuses = window.GetVisualDescendants().OfType<SessionStatusFilterStrip>().Single();
-         Names(memberships).Must().SequenceEqual(["Pinned", "Open tabs", "Sessions outside tabs", "All session memberships"]);
-         Names(statuses).Must().SequenceEqual(["Running", "Ready to resume", "Working", "Waiting for you", "Idle", "Error", "All statuses"]);
+         var strip = window.GetVisualDescendants().OfType<SessionFilterStrip>().Single(it => it.DataContext == window.Tree);
+         Names(strip).Must().SequenceEqual(["Pinned", "Open tabs", "Sessions outside tabs", "Running", "Ready to resume", "Working", "Waiting for you", "Idle", "Error", "All sessions"]);
          Switch(window, "Error").IsChecked.Must().Be(true);
       });
       PressSwitch(window, "Waiting for you");
-      PressSwitch(window, "All statuses");
       OnTheUIThread(() => window.Tree.NoMatches).Must().BeTrue();
-      PressSwitch(window, "All session memberships");
-      WaitUntil(() => window.Tree.NavigableSessions.Count() == 2, "both All switches admitted the two unpinned shells");
+      PressSwitch(window, "All sessions");
+      WaitUntil(() => window.Tree.NavigableSessions.Count() == 2, "All admitted the two unpinned shells");
       OnTheUIThread(() =>
       {
          var selected = Switch(window, "Pinned");
@@ -88,52 +85,103 @@ public class When_Magnus_arranges_the_dashboard_tabs : SpecificationOpeningWindo
       Render(window, "Projects-Dashboard-switches-while-All-is-on");
       Close(window);
       var reopened = OnTheUIThread(() => Sandbox.WindowsOfCloyd.ShowDashboard(_alpha.Project));
-      WaitUntil(() => reopened.Tree.NavigableSessions.Count() == 2, "both temporary All choices survived reopening");
-      PressSwitch(reopened, "All statuses");
+      WaitUntil(() => reopened.Tree.NavigableSessions.Count() == 2, "the temporary All choice survived reopening");
+      PressSwitch(reopened, "All sessions");
       OnTheUIThread(() =>
       {
          Switch(reopened, "Waiting for you").IsChecked.Must().Be(true);
          Switch(reopened, "Error").IsChecked.Must().Be(true);
          Switch(reopened, "Idle").IsChecked.Must().Be(false);
          reopened.Tree.NoMatches.Must().BeTrue();
-      });
-      PressSwitch(reopened, "All session memberships");
-      OnTheUIThread(() =>
-      {
          Switch(reopened, "Pinned").IsChecked.Must().Be(true);
          Switch(reopened, "Open tabs").IsChecked.Must().Be(false);
          Switch(reopened, "Sessions outside tabs").IsChecked.Must().Be(false);
       });
-      PressSwitch(reopened, "All statuses");
+      PressSwitch(reopened, "All sessions");
       PressSwitch(reopened, "Error");
       OnTheUIThread(() =>
       {
-         Switch(reopened, "All statuses").IsChecked.Must().Be(false);
+         Switch(reopened, "All sessions").IsChecked.Must().Be(false);
          Switch(reopened, "Error").IsChecked.Must().Be(false);
          Switch(reopened, "Waiting for you").IsChecked.Must().Be(true);
       });
       PressSwitch(reopened, "Waiting for you");
-      PressSwitch(reopened, "All statuses");
-      OnTheUIThread(() => Switch(reopened, "All statuses").IsChecked).Must().Be(true);
-      PressSwitch(reopened, "Idle");
-      OnTheUIThread(() => Switch(reopened, "All statuses").IsChecked).Must().Be(false);
       PressSwitch(reopened, "Pinned");
-      OnTheUIThread(() => Switch(reopened, "All session memberships").IsChecked).Must().Be(true);
+      OnTheUIThread(() => Switch(reopened, "All sessions").IsChecked).Must().Be(true);
       PressSwitch(reopened, "Open tabs");
-      OnTheUIThread(() => Switch(reopened, "All session memberships").IsChecked).Must().Be(false);
+      OnTheUIThread(() => Switch(reopened, "All sessions").IsChecked).Must().Be(false);
 
       bool HasVisibleBorder(ToggleButton button) => button.GetVisualDescendants().OfType<Avalonia.Controls.Presenters.ContentPresenter>()
          .Single(it => it.Name == "PART_ContentPresenter") is { BorderThickness.Left: > 0, BorderBrush: Avalonia.Media.ISolidColorBrush { Color.A: > 0 } };
-      string[] Names(DashboardFilterStrip strip) => strip.Children.OfType<ToggleButton>().Select(it => AutomationProperties.GetName(it)!).ToArray();
-      ToggleButton Switch(ProjectsDashboardWindow dashboard, string name) => dashboard.GetVisualDescendants().OfType<DashboardFilterStrip>().Where(it => it.DataContext == dashboard.Tree)
+      string[] Names(SessionFilterStrip strip) => strip.Children.OfType<ToggleButton>().Select(it => AutomationProperties.GetName(it)!).ToArray();
+      ToggleButton Switch(ProjectsDashboardWindow dashboard, string name) => dashboard.GetVisualDescendants().OfType<SessionFilterStrip>().Where(it => it.DataContext == dashboard.Tree)
          .SelectMany(it => it.Children.OfType<ToggleButton>()).Single(it => AutomationProperties.GetName(it) == name);
       void PressSwitch(ProjectsDashboardWindow dashboard, string name)
       {
          var button = OnTheUIThread(() => Switch(dashboard, name));
-         Focus(OnTheUIThread(() => ((DashboardFilterStrip)button.Parent!).Children.OfType<ToggleButton>().First(it => it.IsVisible)));
+         Focus(OnTheUIThread(() => ((SessionFilterStrip)button.Parent!).Children.OfType<ToggleButton>().First(it => it.IsVisible)));
          Focus(button);
          Press(dashboard, Key.Space, PhysicalKey.Space, RawInputModifiers.None);
       }
+   }
+
+   [XF] public void both_levels_show_explicit_Off_at_rest_and_resetting_all_overrides_keeps_only_the_toolbar_choices()
+   {
+      Close(_dashboard);
+      var arrangement = new
+      {
+         rootInclusions = 2, rootStatuses = 0, pinnedSessions = new[] { $"host:{_first}" },
+         groupFilters = new Dictionary<string, object>
+         {
+            [_alphaGroup.Key] = new { specified = 514, included = 0 },
+            [_linkedGroup.Key] = new { specified = 514, included = 0 },
+            ["project:absent"] = new { specified = 1, included = 1 }
+         }
+      };
+      Sandbox.WindowsOfCloyd.Sessions.Folder.ProjectsDashboard.Write(JsonSerializer.Serialize(new { arrangement }));
+      var window = OnTheUIThread(() => Sandbox.WindowsOfCloyd.ShowDashboard(_alpha.Project));
+      WaitUntil(() => window.Tree.NavigableSessions.Count() == 2, "the saved local Off choices left All active");
+      OnTheUIThread(() =>
+      {
+         window.Tree.EditingFilters = true;
+         window.UpdateLayout();
+         var project = window.Tree.Projects.Single(it => it.Key == _alphaGroup.Key);
+         var worktree = project.Children.OfType<DashboardWorktree>().Single(it => it.Key == _linkedGroup.Key);
+         foreach(var group in new DashboardGroup[] {project, worktree})
+         {
+            var strip = window.GetVisualDescendants().OfType<SessionFilterStrip>().Single(it => it.DataContext == group);
+            var pin = strip.Children.OfType<ToggleButton>().Single(it => AutomationProperties.GetName(it) == "Pinned");
+            var mark = pin.GetVisualDescendants().OfType<TextBlock>().Single(it => it.Text == "×");
+            pin.IsVisible.Must().BeTrue();
+            mark.IsEffectivelyVisible.Must().BeTrue();
+         }
+
+         var projectStrip = window.GetVisualDescendants().OfType<SessionFilterStrip>().Single(it => it.DataContext == project);
+         var waiting = projectStrip.Children.OfType<ToggleButton>().Single(it => AutomationProperties.GetName(it) == "Waiting for you");
+         var point = projectStrip.TranslatePoint(new Point(2, 5), window)!.Value;
+         window.MouseMove(point);
+         window.UpdateLayout();
+         var centre = waiting.TranslatePoint(new Point(waiting.Bounds.Width / 2, waiting.Bounds.Height / 2), window)!.Value;
+         foreach(var setting in new bool?[] { true, false, null })
+         {
+            window.MouseDown(centre, MouseButton.Left);
+            window.MouseUp(centre, MouseButton.Left);
+            window.Tree.Filters.LocalSetting(project, IncludedSessions.Waiting).Must().Be(setting);
+            var expectedMark = setting switch { true => "✓", false => "×", null => null };
+            var mark = waiting.GetVisualDescendants().OfType<TextBlock>().Single();
+            mark.Text.Must().Be(expectedMark);
+            window.UpdateLayout();
+         }
+      });
+      var reset = OnTheUIThread(() => window.GetVisualDescendants().OfType<Button>().Single(it => AutomationProperties.GetName(it) == "Reset filter overrides"));
+      Click(reset);
+      WaitUntil(() => window.Tree.NavigableSessions.SingleOrDefault()?.Host?.Id == _first && !reset.IsVisible,
+                "one reset applied Pinned to all groups");
+      Close(window);
+      var reopened = OnTheUIThread(() => Sandbox.WindowsOfCloyd.ShowDashboard(_alpha.Project));
+      WaitUntil(() => reopened.Tree.NavigableSessions.SingleOrDefault()?.Host?.Id == _first &&
+                      reopened.Tree.Arrangement.GroupFilters.Count == 0 && reopened.Tree.Arrangement.ToolbarFilters == IncludedSessions.Pinned,
+                "resetting every override persisted while the pinned session and toolbar choice survived");
    }
 
    [XF] public void a_worktree_switch_cycles_On_Off_Unset_and_only_overrides_All_in_its_own_worktree()
@@ -142,32 +190,32 @@ public class When_Magnus_arranges_the_dashboard_tabs : SpecificationOpeningWindo
       {
          var tree = _dashboard.Tree;
          var filters = tree.Filters;
-         tree.ToggleInclusion(null, IncludedSessions.AllMemberships);
+         tree.ToggleInclusion(null, IncludedSessions.All);
          tree.EditingFilters = true;
          Cycle(IncludedSessions.Pinned);
          filters.LocalSetting(_linkedGroup, IncludedSessions.Pinned).Must().Be(true);
-         filters.Effective(_linkedGroup).HasFlag(IncludedSessions.AllMemberships).Must().BeFalse();
-         filters.Effective(_emptyGroup).HasFlag(IncludedSessions.AllMemberships).Must().BeTrue();
+         filters.Effective(_linkedGroup).HasFlag(IncludedSessions.All).Must().BeFalse();
+         filters.Effective(_emptyGroup).HasFlag(IncludedSessions.All).Must().BeTrue();
          Cycle(IncludedSessions.Pinned);
          filters.LocalSetting(_linkedGroup, IncludedSessions.Pinned).Must().Be(false);
          tree.ToggleInclusion(_alphaGroup, IncludedSessions.Pinned);
          filters.Effective(_linkedGroup).HasFlag(IncludedSessions.Pinned).Must().BeFalse();
          Cycle(IncludedSessions.Pinned);
-         filters.IsInherited(_linkedGroup, IncludedSessions.Pinned).Must().BeTrue();
+         filters.LocalSetting(_linkedGroup, IncludedSessions.Pinned).Must().BeNull();
          filters.Effective(_linkedGroup).HasFlag(IncludedSessions.Pinned).Must().BeTrue();
          tree.ToggleInclusion(_alphaGroup, IncludedSessions.Pinned);
          filters.Effective(_linkedGroup).HasFlag(IncludedSessions.Pinned).Must().BeFalse();
-         Cycle(IncludedSessions.AllMemberships);
-         filters.IsInherited(_linkedGroup, IncludedSessions.AllMemberships).Must().BeTrue();
-         Cycle(IncludedSessions.AllMemberships);
-         filters.LocalSetting(_linkedGroup, IncludedSessions.AllMemberships).Must().Be(true);
-         Cycle(IncludedSessions.AllMemberships);
-         filters.LocalSetting(_linkedGroup, IncludedSessions.AllMemberships).Must().Be(false);
+         Cycle(IncludedSessions.All);
+         filters.LocalSetting(_linkedGroup, IncludedSessions.All).Must().BeNull();
+         Cycle(IncludedSessions.All);
+         filters.LocalSetting(_linkedGroup, IncludedSessions.All).Must().Be(true);
+         Cycle(IncludedSessions.All);
+         filters.LocalSetting(_linkedGroup, IncludedSessions.All).Must().Be(false);
 
          void Cycle(IncludedSessions kind)
          {
             _dashboard.UpdateLayout();
-            var name = kind == IncludedSessions.Pinned ? "Pinned" : "All session memberships";
+            var name = kind == IncludedSessions.Pinned ? "Pinned" : "All sessions";
             var strip = _dashboard.GetVisualDescendants().OfType<SessionFilterStrip>().Single(it => it.DataContext == _linkedGroup);
             _dashboard.MouseMove(strip.TranslatePoint(new Point(2, strip.Bounds.Height / 2), _dashboard)!.Value);
             _dashboard.UpdateLayout();
@@ -463,9 +511,9 @@ public class When_Magnus_arranges_the_dashboard_tabs : SpecificationOpeningWindo
       var view = OnTheUIThread(() => _dashboard.View);
       Click(PinButton(_dashboard, pinned));
       var root = OnTheUIThread(() => _dashboard.GetVisualDescendants().OfType<SessionFilterStrip>().Single(it => it.DataContext == _dashboard.Tree));
-      foreach(var name in new[] { "Pinned", "Open tabs", "Sessions outside tabs" })
-         Click(OnTheUIThread(() => root.GetVisualDescendants().OfType<Button>().Single(it => AutomationProperties.GetName(it) == name)));
-      WaitUntil(() => (_dashboard.Tree.Filters.Effective(null) & IncludedSessions.MembershipSwitches) == IncludedSessions.Pinned, "the root switches included pinned sessions alone");
+      Focus(OnTheUIThread(() => root.Children.OfType<ToggleButton>().Single(it => it.IsVisible)));
+      Click(OnTheUIThread(() => root.Children.OfType<Button>().Single(it => AutomationProperties.GetName(it) == "Pinned")));
+      WaitUntil(() => _dashboard.Tree.Filters.Effective(null) == IncludedSessions.Pinned, "the root switches included pinned sessions alone");
       OnTheUIThread(() => _dashboard.Tree.VisibleRows.ToArray()).Must().SequenceEqual([_alphaGroup, _linkedGroup, pinned]);
       Render(_dashboard, "Projects-Dashboard-only-pinned");
       OnTheUIThread(() => _dashboard.View).Must().ReferenceEqual(view);
@@ -477,7 +525,7 @@ public class When_Magnus_arranges_the_dashboard_tabs : SpecificationOpeningWindo
       WaitUntil(() => _dashboard.View!.Host.Id == _first, "Ctrl+Tab chose the one pinned session");
       Close(_dashboard);
       var reopened = OnTheUIThread(() => Sandbox.WindowsOfCloyd.ShowDashboard(_alpha.Project));
-      WaitUntil(() => (reopened.Tree.Filters.Effective(null) & IncludedSessions.MembershipSwitches) == IncludedSessions.Pinned && reopened.Tree.VisibleRows.Count == 3 && reopened.Tree.NavigableSessions.SingleOrDefault()?.Host?.Id == _first,
+      WaitUntil(() => reopened.Tree.Filters.Effective(null) == IncludedSessions.Pinned && reopened.Tree.VisibleRows.Count == 3 && reopened.Tree.NavigableSessions.SingleOrDefault()?.Host?.Id == _first,
                 "the saved pin and filter came back beneath the linked checkout");
       Click(PinButton(reopened, OnTheUIThread(() => reopened.Tree.NavigableSessions.Single())));
       WaitUntil(() => reopened.Tree.VisibleRows.Count == 0 && reopened.Tree.NoMatches, "removing the last pin hid every group");
@@ -493,13 +541,13 @@ public class When_Magnus_arranges_the_dashboard_tabs : SpecificationOpeningWindo
       var saved = Sandbox.WindowsOfCloyd.Sessions.Folder.ProjectsDashboard;
       saved.Write(JsonSerializer.Serialize(new { arrangement = new { onlyPinned = true, pinnedSessions = new[] { $"host:{_first}" } } }));
       var reopened = OnTheUIThread(() => Sandbox.WindowsOfCloyd.ShowDashboard(_alpha.Project));
-      WaitUntil(() => (reopened.Tree.Filters.Effective(null) & IncludedSessions.MembershipSwitches) == IncludedSessions.Pinned
+      WaitUntil(() => reopened.Tree.Filters.Effective(null) == IncludedSessions.Pinned
                       && reopened.Tree.NavigableSessions.SingleOrDefault()?.Host?.Id == _first,
                 "the former checkbox became the Pinned inclusion switch");
       OnTheUIThread(() => reopened.Tree.ToggleInclusion(null, IncludedSessions.OpenTabs));
       Close(reopened);
       var changed = OnTheUIThread(() => Sandbox.WindowsOfCloyd.ShowDashboard(_alpha.Project));
-      WaitUntil(() => (changed.Tree.Filters.Effective(null) & IncludedSessions.MembershipSwitches) == (IncludedSessions.Pinned | IncludedSessions.OpenTabs)
+      WaitUntil(() => changed.Tree.Filters.Effective(null) == (IncludedSessions.Pinned | IncludedSessions.OpenTabs)
                       && changed.Tree.NavigableSessions.Count() == 2,
                 "later changes to the switches took precedence over the migrated preference");
    }
@@ -541,13 +589,11 @@ public class When_Magnus_arranges_the_dashboard_tabs : SpecificationOpeningWindo
       OnTheUIThread(() =>
       {
          var tree = _dashboard.Tree;
-         tree.ToggleInclusion(null, IncludedSessions.OpenTabs);
-         tree.ToggleInclusion(null, IncludedSessions.OutsideTabs);
          tree.ToggleInclusion(null, IncludedSessions.Pinned);
          tree.VisibleRows.Count.Must().Be(0);
          tree.ToggleInclusion(_linkedGroup, IncludedSessions.OpenTabs);
          tree.NavigableSessions.Count().Must().Be(2);
-         tree.Filters.IsInherited(_linkedGroup, IncludedSessions.Pinned).Must().BeTrue();
+         tree.Filters.LocalSetting(_linkedGroup, IncludedSessions.Pinned).Must().BeNull();
          tree.ToggleInclusion(_alphaGroup, IncludedSessions.OpenTabs);
          tree.ToggleInclusion(_alphaGroup, IncludedSessions.OpenTabs);
          tree.NavigableSessions.Count().Must().Be(2);
@@ -561,7 +607,7 @@ public class When_Magnus_arranges_the_dashboard_tabs : SpecificationOpeningWindo
          .Single(it => it.DataContext == linked).GetVisualDescendants().OfType<Button>().Single(it => AutomationProperties.GetName(it) == "Open tabs"));
       Focus(localSwitch);
       Press(reopened, Key.Delete, PhysicalKey.Delete, RawInputModifiers.None);
-      WaitUntil(() => reopened.Tree.Filters.IsInherited(linked, IncludedSessions.OpenTabs) && reopened.Tree.NoMatches,
+      WaitUntil(() => reopened.Tree.Filters.LocalSetting(linked, IncludedSessions.OpenTabs) == null && reopened.Tree.NoMatches,
                 "Delete restored the project's explicit off setting");
       Focus(OnTheUIThread(() => reopened.GetVisualDescendants().OfType<Button>().Single(it => AutomationProperties.GetName(it) == "All groups")));
       Press(reopened, Key.Space, PhysicalKey.Space, RawInputModifiers.None);
@@ -576,7 +622,7 @@ public class When_Magnus_arranges_the_dashboard_tabs : SpecificationOpeningWindo
       foreach(var item in new[] { saved, other }) item.WriteItsTranscriptFor(Sandbox.HubOfTheSandbox);
       var codex = new CodexSessionOfASpecification(new CodexSessionId("9f222222-0000-4321-9876-000000000003"), _elsewhere.Project.Folder, "A different repository");
       codex.WriteItsRecordFor(Sandbox.HubOfTheSandbox);
-      OnTheUIThread(() => _dashboard.Tree.ToggleInclusion(null, IncludedSessions.OutsideTabs));
+      OnTheUIThread(() => _dashboard.Tree.ToggleInclusion(null, IncludedSessions.OpenTabs));
       Click(OnTheUIThread(() => _dashboard.GetVisualDescendants().OfType<Button>().Single(it => AutomationProperties.GetName(it) == "All projects history")));
       WaitUntil(() => _dashboard.HistoryPicker.Listed.Count == 3, "the top history clock listed all projects");
       OnTheUIThread(() => _dashboard.HistoryPicker.Listed.Select(it => it.Id).ToHashSet().SetEquals([saved.Id, other.Id, codex.Id])).Must().BeTrue();
@@ -608,9 +654,9 @@ public class When_Magnus_arranges_the_dashboard_tabs : SpecificationOpeningWindo
          tree.VisibleRows.Contains(tree.ActiveSession!).Must().BeFalse();
          tree.ToggleInclusion(_alphaGroup, IncludedSessions.Pinned);
          tree.NavigableSessions.Count().Must().Be(3);
-         tree.ToggleInclusion(null, IncludedSessions.AllStatuses);
+         tree.ToggleInclusion(null, IncludedSessions.OpenTabs);
          tree.ToggleInclusion(null, IncludedSessions.ReadyToResume);
-         tree.NavigableSessions.Select(it => it.Latest!.Id).ToArray().Must().SequenceEqual([saved.Id]);
+         tree.NavigableSessions.Select(it => it.Latest!.Id).ToHashSet().SetEquals([saved.Id, other.Id, codex.Id]).Must().BeTrue();
       });
       Sandbox.HubOfTheSandbox.RunningClaudeCodes().Any(it => it.SessionId == saved.Id).Must().BeFalse();
       DoneOnTheUIThread(_dashboard.ResumeSelected);
@@ -678,7 +724,7 @@ public class When_Magnus_arranges_the_dashboard_tabs : SpecificationOpeningWindo
 
    [XF] public void hovering_a_filter_strip_or_tabbing_into_it_reveals_all_its_choices()
    {
-      var strip = OnTheUIThread(() => _dashboard.GetVisualDescendants().OfType<SessionStatusFilterStrip>().Single());
+      var strip = OnTheUIThread(() => _dashboard.GetVisualDescendants().OfType<SessionFilterStrip>().Single(it => it.DataContext == _dashboard.Tree));
       OnTheUIThread(() =>
       {
          var layout = (Grid)_dashboard.GetVisualDescendants().OfType<GridSplitter>().Single().Parent!;

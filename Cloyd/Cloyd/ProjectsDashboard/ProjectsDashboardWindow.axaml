@@ -107,6 +107,16 @@
       <Setter Property="Background" Value="{DynamicResource ActiveTabGround}"/>
       <Setter Property="Foreground" Value="{DynamicResource SystemControlHighlightAccentBrush}"/>
     </Style>
+    <Style Selector="ToggleButton.localOn /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="BorderBrush" Value="{DynamicResource SystemControlHighlightAccentBrush}"/>
+      <Setter Property="BorderThickness" Value="2"/>
+    </Style>
+    <Style Selector="ToggleButton.localOff /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource ActiveTabGround}"/>
+      <Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
+      <Setter Property="BorderBrush" Value="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
+      <Setter Property="BorderThickness" Value="1"/>
+    </Style>
   </Window.Styles>
   <Panel x:Name="Overlays">
     <DockPanel>
@@ -115,11 +125,10 @@
         <DockPanel Background="{DynamicResource TabStripGround}">
           <Border DockPanel.Dock="Top" Padding="12,4" BorderBrush="{DynamicResource GroupDivider}" BorderThickness="0,0,0,1">
             <Grid RowDefinitions="Auto,Auto" ColumnDefinitions="*,Auto" ColumnSpacing="6">
-              <Grid ColumnDefinitions="Auto,*" VerticalAlignment="Top">
-                <filters:SessionFilterStrip Margin="0,2,8,2"/>
-                <filters:SessionStatusFilterStrip Grid.Column="1" HorizontalAlignment="Left" Margin="0,2"/>
-              </Grid>
+              <filters:SessionFilterStrip Margin="0,2" VerticalAlignment="Top"/>
               <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="3" VerticalAlignment="Center">
+                <Button Content="Reset overrides" Padding="5,2" Click="ResetFilterOverrides" IsVisible="{Binding HasFilterOverrides}"
+                        AutomationProperties.Name="Reset filter overrides" ToolTip.Tip="Use toolbar filters everywhere · Reset all project and worktree overrides"/>
                 <ToggleButton Content="AG" IsChecked="{Binding EditingFilters, Mode=TwoWay}" Padding="5,2"
                               AutomationProperties.Name="All groups" ToolTip.Tip="All groups · Show group headings even when no sessions match"/>
                 <Button Padding="4,2" Background="Transparent" Click="OpenHistory"
@@ -162,7 +171,7 @@
             </dashboard:DashboardTabStrip.ItemContainerTheme>
             <dashboard:DashboardTabStrip.DataTemplates>
               <DataTemplate DataType="dashboard:DashboardGroup" x:DataType="dashboard:DashboardGroup">
-                <Border Classes="group" Classes.worktree="{Binding IsWorktree}" ToolTip.Tip="{Binding Description}">
+                <Border Name="GroupHeading" Classes="group" Classes.worktree="{Binding IsWorktree}" ToolTip.Tip="{Binding Description}">
                   <Grid ColumnDefinitions="14,*,Auto,Auto,23,22" ColumnSpacing="3">
                     <TextBlock Text="{Binding Disclosure}" VerticalAlignment="Center" Opacity="0.75"/>
                     <Panel Grid.Column="1" HorizontalAlignment="Left">
@@ -189,7 +198,8 @@
                     </Panel>
                     <TextBlock Grid.Column="2" Text="{Binding Summary}" FontSize="12" Opacity="0.85"
                                Classes.waiting="{Binding IsWaiting}" VerticalAlignment="Center"/>
-                    <filters:SessionFilterStrip Grid.Column="3" VerticalAlignment="Center"/>
+                    <filters:SessionFilterStrip Grid.Column="3" VerticalAlignment="Center"
+                                              MaxWidth="{Binding #GroupHeading.Bounds.Width, Converter={x:Static filters:SessionFilterStrip.MaximumWidthOnHeading}}"/>
                     <Button Grid.Column="4" Click="OpenHistory" ToolTip.Tip="History for this group"
                             AutomationProperties.Name="Group history" Background="Transparent" Padding="3,2">
                       <PathIcon Classes="historyClock"/>

@@ -12,7 +12,7 @@ sealed record GroupFilterOverride(IncludedSessions Specified = IncludedSessions.
       new(Specified | kind, enabled ? Included | kind : Included & ~kind);
    public GroupFilterOverride WithParentSetting(IncludedSessions kind) => new(Specified & ~kind, Included & ~kind);
 
-   /// <summary>A worktree cycles from its parent's setting to explicit On, then Off, then back to its parent.</summary>
+   /// <summary>A group cycles from its parent's setting to explicit On, then Off, then back to its parent.</summary>
    public GroupFilterOverride Cycle(IncludedSessions kind) => LocalSetting(kind) switch
    {
       null => WithLocalSetting(kind, true),
