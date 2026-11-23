@@ -130,8 +130,9 @@ public sealed class SandboxRider
 
    /// <summary>
    ///   Builds this working tree's plugins with Gradle and puts them in the sandbox's plugins folder, with the
-   ///   <paramref name="mcp"/> build of the .NET Analysis&amp;Refactoring MCP, and this working tree's Cloyd in
-   ///   <see cref="ItsCloyd"/>. A running sandbox is then made to reload those of our plugins that changed, and this
+   ///   <paramref name="mcp"/> build of the .NET Analysis&amp;Refactoring MCP, and in <see cref="ItsCloyd"/> the build of
+   ///   Cloyd that Magnus's IDEs run, <see cref="InstalledCloyd.Everyday"/>'s, which <c>~/.claude</c>'s
+   ///   <c>src/publish.ps1</c> installs: Cloyd moved there on 2026-11-23. A running sandbox is then made to reload those of our plugins that changed, and this
    ///   returns once their new builds answer. Returns what it did.
    /// </summary>
    /// <remarks>
@@ -148,7 +149,9 @@ public sealed class SandboxRider
    public string Install(McpBuild mcp = McpBuild.Everyday)
    {
       _plugins.Fill();
-      var cloyd = CloydBuild.Published();
+      if(!InstalledCloyd.Everyday.IsInstalled)
+         throw new InvalidOperationException($"No Cloyd is installed in {InstalledCloyd.Everyday.Bin}, for the sandbox to run too: ~/.claude's src/publish.ps1 installs it.");
+      var cloyd = InstalledCloyd.Everyday.Bin;
       var cloydChanged = !ItsCloyd.Has(cloyd);
       if(cloydChanged)
       {

@@ -18,8 +18,8 @@ static class Program
                                                       build, and waits until it has.
                           sandbox install [--mcp marketplace]
                                                       Builds the working tree's plugin and puts it in the sandbox's plugins
-                                                      folder, which a running sandbox reloads it from in a second, and the
-                                                      working tree's Cloyd in the sandbox's Cloyd folder. With it
+                                                      folder, which a running sandbox reloads it from in a second, and
+                                                      Magnus's installed Cloyd in the sandbox's Cloyd folder. With it
                                                       the .NET Analysis&Refactoring MCP: by default the build the everyday
                                                       Riders run, its plugin and its deployed tools builds; or the
                                                       Marketplace's. A running sandbox restarts when the MCP's plugin
@@ -78,10 +78,6 @@ static class Program
                                                       Has his IDEs, or only the one named, such as Rider or
                                                       "IntelliJ IDEA", reload the build of the plugin they have, when he
                                                       next switches to its window
-                          everyday reload Cloyd       Has his Cloyd application take the build in %LOCALAPPDATA%\Cloyd\bin:
-                                                      restarts it, its windows closing and opening again for the same
-                                                      projects, their tabs brought back. The sessions run on. On his
-                                                      go-ahead, as it closes the windows he works in
                           everyday cloyd              Where his Cloyd application's windows are: each one's virtual
                                                       desktop, and its project's IDE window's, which it is to keep to
                         """;
@@ -136,9 +132,6 @@ static class Program
             break;
          case ["everyday", "cloyd"]:
             foreach(var line in CloydBesideTheIdes.WhereTheWindowsAre(InstalledCloyd.Everyday)) Console.WriteLine(line);
-            break;
-         case ["everyday", "reload", "Cloyd"]:
-            Console.WriteLine(InstalledCloyd.Everyday.RestartTheApplication());
             break;
          case ["everyday", "reload", var plugin]:
             foreach(var line in EverydayIdes.Reload(OurPlugin.Named(plugin))) Console.WriteLine(line);

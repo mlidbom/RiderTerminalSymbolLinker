@@ -21,7 +21,6 @@ public sealed class InstalledCloyd(string folder)
 {
    static readonly HttpClient Http = new() { Timeout = TimeSpan.FromSeconds(10) };
    static readonly TimeSpan HowLongItsApplicationMayTakeToExit = TimeSpan.FromSeconds(10);
-   static readonly TimeSpan HowLongAWindowMayTakeToGoToItsDesktop = TimeSpan.FromSeconds(3);
 
    /// <summary>Magnus's Cloyd, in <c>%LOCALAPPDATA%\Cloyd</c>, which his IDEs' Claude Sessions run.</summary>
    internal static InstalledCloyd Everyday { get; } = new(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Cloyd"));
@@ -30,7 +29,7 @@ public sealed class InstalledCloyd(string folder)
    internal string Folder { get; } = folder;
 
    /// <summary>Where the build is: <c>Cloyd.exe</c> and what it runs on.</summary>
-   string Bin => Path.Combine(Folder, "bin");
+   internal string Bin => Path.Combine(Folder, "bin");
 
    string CloydExe => Path.Combine(Bin, "Cloyd.exe");
 
@@ -105,66 +104,6 @@ public sealed class InstalledCloyd(string folder)
          application.Kill();
          application.WaitForExit();
       }
-   }
-
-   /// <summary>
-   ///   Has the Cloyd application take the build in <see cref="Bin"/>, as a reload has an IDE take a plugin's: stops it,
-   ///   its windows saving their tabs, and runs <c>Cloyd.exe --project</c> for each project it showed, as Claude Sessions
-   ///   does as a project opens, which starts it again. The sessions run on in their hosts, and each window brings its tabs
-   ///   back, and is put back on the virtual desktop it was on. Returns what it did.
-   /// </summary>
-   internal string RestartTheApplication()
-   {
-      if(TheApplication() is not {} before) return $"No Cloyd application runs: the next project to open starts one with the build in {this}.";
-      var inventory = WindowInventory() ?? throw new InvalidOperationException("Could not read Cloyd's open windows before restarting it.");
-      var projects = ProjectsIn(inventory["windows"]!.AsArray());
-      var desktops = ScreenThread.Run(DesktopsOfTheWindows);
-      var dashboard = inventory["dashboardOpen"]?.GetValue<bool>() ?? WindowsOnTheDesktop().Any(it => it.Title == "Projects Dashboard");
-      StopTheApplication();
-      foreach(var project in projects) OpenWindow("--project", project);
-      if(dashboard) OpenWindow();
-      var putBack = ScreenThread.Run(() => PutTheWindowsBackOn(desktops));
-      var shown = dashboard ? projects.Append("Projects Dashboard") : projects;
-      return $"Restarted the Cloyd application on the build in {this}: process {before.Id} is now {TheApplication()?.Id.ToString() ?? "none"}, showing {string.Join(", ", shown)}.{putBack}";
-   }
-
-   /// <summary>The virtual desktop each of the application's windows is on, by its title, such as <c>Cloyd: Compze</c>.</summary>
-   IReadOnlyDictionary<string, WindowsDesktop.VirtualDesktop> DesktopsOfTheWindows() =>
-      WindowsOnTheDesktop().Where(it => it.Desktop is not null).DistinctBy(it => it.Title).ToDictionary(it => it.Title, it => it.Desktop!);
-
-   /// <summary>
-   ///   Moves each of the application's windows back onto the desktop in <paramref name="desktops"/> its title was on,
-   ///   and keeps doing it for <see cref="HowLongAWindowMayTakeToGoToItsDesktop"/>: a window that has no desktop saved, as
-   ///   a Cloyd that didn't save its windows' desktops left them, goes to its IDE window's once it has asked the IDEs.
-   ///   Returns what it moved.
-   /// </summary>
-   string PutTheWindowsBackOn(IReadOnlyDictionary<string, WindowsDesktop.VirtualDesktop> desktops)
-   {
-      var moved = new List<string>();
-      var watching = Stopwatch.StartNew();
-      while(watching.Elapsed < HowLongAWindowMayTakeToGoToItsDesktop)
-      {
-         foreach(var window in WindowsOnTheDesktop())
-            if(desktops.TryGetValue(window.Title, out var desktop) && window.Desktop?.Id != desktop.Id)
-            {
-               window.MoveTo(desktop);
-               moved.Add(window.Title);
-            }
-
-         Thread.Sleep(250);
-      }
-
-      return moved.Count == 0 ? "" : $" Put back on the desktop each was on: {string.Join(", ", moved.Distinct())}.";
-   }
-
-   /// <summary>Opens Projects Dashboard with no arguments, or a project window with <c>--project</c>.</summary>
-   void OpenWindow(params string[] arguments)
-   {
-      var start = new ProcessStartInfo(CloydExe, arguments) { UseShellExecute = false };
-      start.Environment["CLOYD_FOLDER"] = Folder;
-      using var command = Process.Start(start)!;
-      command.WaitForExit();
-      if(command.ExitCode != 0) throw new InvalidOperationException($"{CloydExe} {string.Join(" ", arguments)} exited with {command.ExitCode}.");
    }
 
    /// <summary>
