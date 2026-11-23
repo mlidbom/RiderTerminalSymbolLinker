@@ -1,7 +1,8 @@
 # The development environment
 
 What the plugins are built, checked and deployed with: the symbol linker, and Claude Sessions
-([how it works](claude-sessions.md)), with the Cloyd Claude Sessions runs ([Cloyd](cloyd-as-a-dotnet-application.md)).
+([how it works](claude-sessions.md)), with the Cloyd Claude Sessions runs, which is developed in `~/.claude` since
+2026-11-23 (`~/.claude/dev_docs/cloyd/developing-cloyd.md`).
 The commands are in `dotnet run --project tools/RiderTerminalSymbolLinker.DevelopmentTools`, which lists them.
 
 ## Building
@@ -51,8 +52,9 @@ platform's and the terminal's, alike in every IDE.
   and description, which the changelog edits).
   Once, right after the sandbox started, a replaced jar wasn't noticed, nor any change after it, until a restart
   (2026-11-17): not seen since, and not understood.
-- **A Cloyd of its own:** `sandbox install` publishes this working tree's Cloyd (`CloydBuild`, `Cloyd/Cloyd` in Release)
-  into `cloyd\bin` in the sandbox's folder (`InstalledCloyd`), and `CLOYD_FOLDER` names that folder in the sandbox
+- **A Cloyd of its own:** `sandbox install` mirrors the Cloyd Magnus's IDEs run, `%LOCALAPPDATA%\Cloyd\bin`, which
+  `~/.claude`'s `src/publish.ps1` installs, into `cloyd\bin` in the sandbox's folder (`InstalledCloyd`), so that Claude
+  Sessions is specified against the Cloyd it runs with; `CLOYD_FOLDER` names that folder in the sandbox
   Rider's environment: so Claude Sessions there runs the sandbox's `Cloyd.exe --project` as a project opens, and the
   application it starts serves the sandbox's folder, with the sandbox's hub, apart from Magnus's Cloyd. A new build of
   Cloyd ends the application that runs the old one, and has Claude Sessions show the projects again, through a reload of
@@ -60,7 +62,8 @@ platform's and the terminal's, alike in every IDE.
   `sandbox stop`, and the end of a specification run that started the sandbox, close its windows. Its windows go where
   the sandbox Rider's go, after opening on the virtual desktop that's shown, as Rider's do. `sandbox cloyd` tells what
   it shows. The sandbox Rider runs in no job, as the tools start it, where Magnus's IDEs run in the one explorer starts
-  them in (2026-11-20): Cloyd's breaking away from an IDE's job is specified in Cloyd's own specifications.
+  them in (2026-11-20): Cloyd's breaking away from an IDE's job is specified in Cloyd's own specifications, in
+  `~/.claude`.
 - **JVM options of its own:** `rider64.exe.vmoptions` in the sandbox's folder, which `RIDER_VM_OPTIONS` names, holds
   `-Xmx2048m`, the installation's default heap. Without it, Rider's launcher reads the everyday Riders'
   `%APPDATA%\JetBrains\Rider2026.3\rider64.exe.vmoptions` wherever `idea.config.path` points, and the sandbox ran with
@@ -116,30 +119,7 @@ reload of the plugin, whose unloading stops the server on the EDT.
 
 ## The specifications
 
-**Cloyd's:** `pwsh Cloyd/run-the-specifications.ps1` builds once, deals the specification classes out over six
-`dotnet test` runs at once (`-Runs`), by the time each took when last measured, and says what passed, what failed and
-how long each run took; `-ShowTimes` adds each class's time, `-Filter History` takes only some classes. A run is one
-process, whose Avalonia UI thread and keyboard focus take its specifications one after another, and each scenario has a
-sandbox of its own, its hub included, so the runs share nothing else (`Cloyd.Specifications/TheSandbox`). On
-2026-11-20, with each sandbox started ahead and ended in the background: 124-128 s in one run, 31-41 s in six.
-
-To test Cloyd with a staged tooling build, set `CLOYD_SPECIFICATIONS_TOOLING_EXE` to that build's
-`ClaudeTooling.exe` and `TheHubsContract` to the matching `ClaudeTooling.Hub.LocalApi.Contract` source
-directory in the shell that runs the specifications. Each scenario starts its own hub and stand-ins from that
-build. By default the specifications launch the installed tooling. The build prefers its contract and uses the
-tooling checkout's contract if the installed copy predates the Codex Chat footer. The Codex Chat integration specifications
-exercise a hub that offers the feature.
-
-**Where a specification's time goes: NCrunch's MCP** (`ncrunch`, Magnus's suggestion, 2026-11-20): the NCrunch Console
-Tool's server in its headless mode, whose `StartSession` runs an engine of its own, apart from Rider's NCrunch, so it
-needs no IDE; it runs only once started, which nothing does at logon yet. The user-level skill `profiling-dotnet` has
-the route and its quirks. It runs the tests in processes of its own, never two at once in one, as these specifications' one UI thread a process needs, and records
-the time of every line each test ran, with no profiler to attach: `StartSession` on `Cloyd.slnx` with the engine mode
-`Run all tests manually`, `SetTestSelection`, `RunTests`, `WaitForEngineWorkCompleted`, then `GetLinePerformance` for
-the tests selected. It ran all 204 in 25-37 s, and showed at once that 12 of a scenario's 12.3 s were its two 3 s waits.
-Two limits: NCrunch builds Cloyd, a WinExe, without its `Cloyd.exe`, so the 5 facts that run it fail there, and
-`run-the-specifications.ps1` stays the full check; and NCrunch ends its pooled test processes without the run's end,
-whose sandboxes' hubs end with them (`--ending-with`), while their folders wait for the next run's first sandbox.
+Cloyd's own specifications, and where their time goes, are in `~/.claude/dev_docs/cloyd/developing-cloyd.md`.
 
 **The plugins':** `dotnet test tests/RiderTerminalSymbolLinker.Specifications` checks what the symbol linker links and what a click does,
 in the sandbox, against the fixture solution, and, in `ClaudeSessions/`, what Claude Sessions does: has the sandbox's
@@ -227,29 +207,10 @@ window. The deploy says for each IDE whether it does, or needs a restart: a plug
 **Cloyd, which Claude Sessions runs from 0.2.0, is deployed from `~/.claude`,** where it moved on 2026-11-23: its
 `src/publish.ps1` installs it into `%LOCALAPPDATA%\Cloyd\bin` (`~/.claude/dev_docs/cloyd/developing-cloyd.md`), and
 `everyday deploy` no longer does. The application that runs runs on with the build it has until its last window
-closes; the next launch starts the new one. `everyday reload Cloyd`, as `ClaudeTooling.exe cloyd restart` does, has it
-take the new build at once: it closes its windows, each saving its tabs, and runs `Cloyd.exe --project` for each
-project it showed, which starts it again with the same windows, their tabs brought back. An open Projects Dashboard
-is restored through the no-argument launcher, including when it was the only window. The sessions run on in their
-hosts. On Magnus's go, as it closes the windows he works in. `everyday cloyd` reads where its windows are, changing
+closes; the next launch starts the new one, and `ClaudeTooling.exe cloyd restart` has it take the new build at once,
+on Magnus's go. That document also says how to diagnose a crash, check the tabs through a restart, and see what links
+in a line of a terminal's output. `everyday cloyd` reads where its windows are, changing
 nothing: each one's virtual desktop, and its project's IDE window's, which it is to keep to (`CloydBesideTheIdes`).
-
-**Diagnosing a Cloyd crash.** Check the newest report in `%LOCALAPPDATA%\Cloyd\crashes`, or in the
-sandbox's Cloyd folder under `crashes`. The report includes the full managed exception, inner
-exceptions, stack, build, UTC time, process ID and managed thread ID. The process ID and time also
-identify the corresponding Windows Application event and any dump in `%LOCALAPPDATA%\CrashDumps`.
-
-**Checking the tabs through a Cloyd restart.** Run `pwsh Cloyd/check-restored-tabs.ps1 -Record <temporary-file>`
-before the restart, then `pwsh Cloyd/check-restored-tabs.ps1 -Compare <temporary-file>`. The comparison waits
-for the new process to save its restored tabs and checks project windows, ordered hosts, selections and
-draft fingerprints. The temporary record contains no draft text. A difference can also reflect Magnus editing
-or sending a message between the readings. Delete the temporary file after checking.
-
-**What links in a line of a terminal's output,** with a project's files as git lists them now and its C# symbols as
-Magnus's Rider has them now, with no window: `Cloyd.exe --links-in <the project's folder> "<line>"`, from Cloyd's
-`bin`, Debug or the installed one. It prints how long reading each took, and each file reference and symbol reference,
-with its span; it changes nothing. On 2026-11-20 it read this repository's 265 files in 48 ms and gathered Cloyd's
-solution in 358 ms, and Compze's in 3.5 s.
 
 **A build that needs a restart isn't put into a running IDE that reloads,** and the deploy says `DIDN'T DEPLOY`, and
 `--dry-run` says `CLOSE <IDE> FIRST`. Such a build adds or removes a file, or changes what its plugin.xml registers, and
@@ -321,7 +282,7 @@ Run that again after a rule changes. Codex asks Magnus to trust the folder the f
 the folder's `.codex/config.toml` only once he has.
 
 **Starting a helper** is Magnus's: `cd` into the checkout, `codex`, trust the folder, then `/rename codex-helper-1`, the
-name it is addressed by, and a first prompt such as "You're a helper for .NET-cloyd. Its briefs come as turns of their
+name it is addressed by, and a first prompt such as "You're a helper for claude-sessions. Its briefs come as turns of their
 own: end this one now." It shows in `list_peers` once it has had a turn. Told only to wait for its briefs, the first
 helpers slept a minute at a time, for up to four minutes, before ending the turn, and a brief runs only after the turn
 under way.
@@ -335,7 +296,7 @@ the first brief. Here:
    says. The limits in so many words, though the rule on working in a checkout other than the main one has them too:
    deploy and reload nothing, use none of Rider's or ReSharper's editing tools, and what not to touch, such as code
    another session is changing. What is done: committed on its branch, the changelog entry where one is due, and
-   permanent specifications in `Cloyd/Cloyd.Specifications` or `tests/RiderTerminalSymbolLinker.Specifications`,
+   permanent specifications in `tests/RiderTerminalSymbolLinker.Specifications`,
    asked for in so many words, passing with the rest. What to send back: its commits, the specifications it ran and
    their result, what it verified and what it inferred, and what it noticed and left.
 3. Review its commits once it replies, `git log main..codex-helper-1` and `git diff main...codex-helper-1`, for design

@@ -4,16 +4,15 @@ Whenever you add a feature, fix a bug, or make any user-facing or otherwise nota
 to the plugin's changelog as part of the same change — not as a follow-up. **A change isn't
 done until it's in the changelog.**
 
-Each plugin, and Cloyd, has its own:
+Each plugin has its own:
 
 - **The symbol linker:** [CHANGELOG.md](../../../CHANGELOG.md), with its version in `pluginVersion` in
   [gradle.properties](../../../gradle.properties) and its release tags `v<version>`, as below.
 - **Claude Sessions:** [ClaudeSessions/CHANGELOG.md](../../../ClaudeSessions/CHANGELOG.md), with its version in
   [ClaudeSessions/build.gradle.kts](../../../ClaudeSessions/build.gradle.kts). It has no release yet, so its top
   version is the one in progress.
-- **Cloyd:** [Cloyd/CHANGELOG.md](../../../Cloyd/CHANGELOG.md), with its version in
-  [Cloyd/Cloyd/Cloyd.csproj](../../../Cloyd/Cloyd/Cloyd.csproj). Cloyd moved to `~/.claude` on 2026-11-23, whose
-  `src/publish.ps1` installs it: its changes are recorded there, in `src/Cloyd/CHANGELOG.md`.
+
+Cloyd's changes are recorded in `~/.claude`, where it moved on 2026-11-23, in `src/Cloyd/CHANGELOG.md`.
 
 ## Which version section to add it to
 

@@ -2,7 +2,7 @@
 
 Claude Sessions (plugin id `dev.magnus.claudesessions`, Kotlin package `dev.magnus.claudesessions`, Gradle project
 `ClaudeSessions/`) has Cloyd show each project's Claude Code sessions: as a project opens, it runs `Cloyd.exe --project`,
-and Cloyd, the .NET application beside the IDEs (`cloyd-as-a-dotnet-application.md`), shows the project's window. It
+and Cloyd, the .NET application beside the IDEs (`~/.claude/dev_docs/cloyd/cloyd-as-a-dotnet-application.md`), shows the project's window. It
 also has the IDE's local API, through which the Claude tooling sees the IDE's windows and restarts it, and puts each
 project window back on its virtual desktop after a restart. It runs in any JetBrains IDE: it uses only the platform and
 its JNA. Magnus asked for it on 2026-11-17: shutting down 3-8 IDEs with 1-4 Claude sessions each, and starting them all
@@ -55,7 +55,7 @@ Its packages, below `dev.magnus.claudesessions`, which holds what it tells the u
 The Claude tooling sees the IDE's windows through it, and restarts the IDE. Until 0.2.0 it also showed a session's
 tab, as clicking a notification of Magnus's session tooling asked, after the tooling had brought the IDE's window
 forward: `POST /sessions/show?session=&process=` and `GET /sessions`, which went with the tabs. Cloyd's local API
-answers the same request now (`cloyd-as-a-dotnet-application.md`, "A notification's click shows the session's tab"),
+answers the same request now (`~/.claude/dev_docs/cloyd/cloyd-as-a-dotnet-application.md`, "A notification's click shows the session's tab"),
 and the hub is to ask it there. The contract, agreed with tooling-owner on 2026-11-17 (protocol 1):
 
 - **`LocalApi`,** an application service that the first project's `LocalApiStartup` starts, listens on a free
@@ -66,7 +66,7 @@ and the hub is to ask it there. The contract, agreed with tooling-owner on 2026-
   (`~/.claude/dev_docs/restarting-the-ides.md`), agreed with it on 2026-11-19. `GET /windows`: each project window's
   folder, title, native handle (`HWND`), and its virtual desktop's GUID. The hub tells whether a Rider window is in
   front from Windows' foreground window itself (the tooling's fd212d6). Cloyd asks it every 2 s for each of its
-  project windows, which keeps to its IDE window's desktop (`cloyd-as-a-dotnet-application.md`). `POST /restart` `{"why", "askedBy",
+  project windows, which keeps to its IDE window's desktop (`~/.claude/dev_docs/cloyd/cloyd-as-a-dotnet-application.md`). `POST /restart` `{"why", "askedBy",
   "beforeItStartsAgain"}`: 202, then `ApplicationEx.restart(SAVE | EXIT_CONFIRMED, beforeItStartsAgain)`, as
   `restart(exitConfirmed = true)` does with no command; 409 while a modal dialog is open; one that exits already goes
   on exiting (`Application.isExitInProgress` is internal API, which the verifier refuses). Rider may still ask on the
@@ -208,7 +208,7 @@ tells of in the tab's session host, by the `sessionHost` of its running session 
 
 ### The session history picker
 
-Ported to Cloyd on 2026-11-20: `cloyd-as-a-dotnet-application.md`, "The session history picker, as it's built". As
+Ported to Cloyd on 2026-11-20: `~/.claude/dev_docs/cloyd/cloyd-as-a-dotnet-application.md`, "The session history picker, as it's built". As
 the plugin had it until 0.2.0:
 
 `ResumeClaudeSessionAction` (the history button in the tool window's title bar, and Ctrl+Alt+Shift+Y, free in the
@@ -326,7 +326,7 @@ adds beyond that.
 
 **Moot under the direction since 2026-11-20,** a .NET Cloyd beside the IDEs: the application joins Tessaging itself, and
 reaches each IDE through the plugin's local API. What survives of this, and what doesn't, is in
-`cloyd-as-a-dotnet-application.md`, "What it means for the Tessaging work".
+`~/.claude/dev_docs/cloyd/cloyd-as-a-dotnet-application.md`, "What it means for the Tessaging work".
 
 ### The chat view
 
