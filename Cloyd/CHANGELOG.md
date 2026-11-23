@@ -225,6 +225,12 @@ All notable changes to Cloyd are documented here. The format follows
     the session, as after it was archived. Windows saved before read their sessions as Claude Code's.
 
 ### Fixed
+- **Windows can release an empty worktree folder after removal.** If Git has unregistered the
+  checkout and only its locked directory remains, Cloyd finishes the selected local branch
+  deletion and shows a cleanup receipt. The hub retries at startup and every three minutes.
+  A replaced, re-registered or newly populated directory is flagged for review. If the locked
+  folder belongs to a nested shared-rules worktree, the project checkout stays registered until
+  you can review it again.
 - **Close the shell in the worktree where its prompt is now.** If you start PowerShell in the main
   checkout and change into a linked worktree, **Close idle shell tabs** can close it there after
   the agent exits. After **Stop idle sessions**, the open dialog briefly rechecks the session

@@ -4,6 +4,8 @@ namespace Cloyd.Projects.Git;
 /// identifies the repository, including when the main repository is bare and only its linked worktrees have files.</summary>
 sealed record GitWorktrees(Project Repository, IReadOnlyList<GitWorktree> Checkouts)
 {
+   public IReadOnlySet<Project> RegisteredRoots { get; private init; } = new HashSet<Project>();
+
    public static async Task<GitWorktrees?> Read(Project folder, CancellationToken cancellation)
    {
       if(!Directory.Exists(folder.Folder)) return null;
@@ -11,17 +13,19 @@ sealed record GitWorktrees(Project Repository, IReadOnlyList<GitWorktree> Checko
       if(listing.ExitCode != 0 && listing.Error.Contains("not a git repository", StringComparison.Ordinal)) return null;
       var records = listing.CheckedOutput().Split("\0\0", StringSplitOptions.RemoveEmptyEntries);
       var checkouts = new List<GitWorktree>();
+      var registrations = new HashSet<Project>();
       Project? repository = null;
       foreach(var record in records)
       {
          var fields = record.Split('\0');
          var root = new Project(fields.Single(it => it.StartsWith("worktree ", StringComparison.Ordinal))["worktree ".Length..]);
          repository ??= root;
+         registrations.Add(root);
          if(fields.Contains("bare") || fields.Any(it => it == "prunable" || it.StartsWith("prunable ", StringComparison.Ordinal))) continue;
          var branch = fields.FirstOrDefault(it => it.StartsWith("branch refs/heads/", StringComparison.Ordinal))?["branch refs/heads/".Length..];
          checkouts.Add(new GitWorktree(root, branch, root.Equals(repository), fields.Any(it => it == "locked" || it.StartsWith("locked ", StringComparison.Ordinal))));
       }
-      return new GitWorktrees(repository ?? throw new InvalidDataException($"Git listed no worktrees for {folder}."), checkouts);
+      return new GitWorktrees(repository ?? throw new InvalidDataException($"Git listed no worktrees for {folder}."), checkouts) { RegisteredRoots = registrations };
    }
 
    /// <summary>Finds the most specific registered worktree containing a folder, including nested worktrees.</summary>

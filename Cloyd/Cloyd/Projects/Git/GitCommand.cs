@@ -10,7 +10,7 @@ sealed record GitCommand(int ExitCode, string Output, string Error)
    public static Task<GitCommand> In(Project folder, CancellationToken cancellation, params string[] arguments) =>
       Run(new ProcessStartInfo("git", ["--no-optional-locks", "-C", folder.Folder, .. arguments]), cancellation);
 
-   public static async Task<GitCommand> Run(ProcessStartInfo start, CancellationToken cancellation)
+   public static async Task<GitCommand> Run(ProcessStartInfo start, CancellationToken cancellation, Action<Process>? started = null)
    {
       cancellation.ThrowIfCancellationRequested();
       start.CreateNoWindow = true;
@@ -23,7 +23,11 @@ sealed record GitCommand(int ExitCode, string Output, string Error)
       using var git = Process.Start(start)!;
       var output = git.StandardOutput.ReadToEndAsync();
       var error = git.StandardError.ReadToEndAsync();
-      try { await git.WaitForExitAsync(cancellation); }
+      try
+      {
+         try { started?.Invoke(git); }
+         finally { await git.WaitForExitAsync(cancellation); }
+      }
       catch(OperationCanceledException) when(cancellation.IsCancellationRequested)
       {
          if(!git.HasExited) git.Kill(entireProcessTree: true);

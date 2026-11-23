@@ -9,9 +9,7 @@ sealed partial class TheHub
 {
    public async Task<ReviewedOccupants?> ReviewWorktreeOccupants(Project worktree, CancellationToken cancellation)
    {
-      var announcement = new FileWrittenWhole(Path.Combine(_folderOfTheAnnouncement.FullName, WhatTheAnnouncementSays.FileName));
-      using var fields = JsonDocument.Parse(announcement.Text() ?? "{}");
-      if(!fields.RootElement.TryGetProperty("supportsWorktreeOccupantActions", out var available) || available.ValueKind != JsonValueKind.True) return null;
+      if(!Advertises("supportsWorktreeOccupantActions")) return null;
       return await OccupantRequest<ReviewedOccupants>("review", new { worktreePath = worktree.Folder }, cancellation);
    }
 

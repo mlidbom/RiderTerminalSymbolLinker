@@ -48,18 +48,38 @@ sealed record WorktreeRemoval(Project Repository, GitWorktree Checkout, string? 
       return null;
    }
 
-   public async Task Remove(CancellationToken cancellation, Func<Task>? requireVacant = null, bool deleteBranch = false)
+   internal Task<GitCommand> RemoveDirectoryWithGit(Action<System.Diagnostics.Process>? started = null) =>
+      GitCommand.Run(new("git", ["--no-optional-locks", "-C", Repository.Folder, "worktree", "remove", "--", Checkout.Root.Folder]), CancellationToken.None, started);
+
+   public async Task<string?> Remove(CancellationToken cancellation, Func<Task>? requireVacant = null, bool deleteBranch = false,
+                                     WorktreeDirectoryCleanups? directoryCleanups = null, Project? removedNested = null)
    {
       if(deleteBranch && !CanDeleteBranch) throw new InvalidOperationException("The integration branch or a detached checkout cannot be deleted as a branch.");
       var now = await Inspect(Repository, Checkout.Root, cancellation);
       if(now != this || now.Status.ChangedPaths > 0)
          throw new InvalidOperationException($"The worktree changed. Review {Checkout.Root} again before removing it.");
+      var ticket = directoryCleanups is null ? null : await directoryCleanups.Prepare(Checkout.Root, cancellation);
       if(requireVacant is not null) await requireVacant();
       var last = await GitStatusReport.Read(Checkout.Root, cancellation);
       if(last.Commit != Commit || last.ChangedPaths != 0 || last.Branch != (Checkout.Branch ?? "(detached)"))
          throw new InvalidOperationException($"The checkout changed during the vacancy check. Review {Checkout.Root} again.");
+      if(removedNested is not null && Path.Exists(removedNested.Folder))
+         throw new InvalidOperationException($"The path {removedNested} has been occupied again. Review its contents before removing the parent worktree.");
       cancellation.ThrowIfCancellationRequested();
-      (await GitCommand.In(Repository, CancellationToken.None, "worktree", "remove", "--", Checkout.Root.Folder)).CheckedOutput();
-      if(deleteBranch) await new ReviewedLocalBranch(Repository, Checkout.Branch!, Commit!).Delete();
+      if(ticket is not null)
+         return (await directoryCleanups!.Remove(this, ticket, deleteBranch, cancellation)) is { Status: "pending" } receipt ? receipt.WorktreePath : null;
+      (await RemoveDirectoryWithGit()).CheckedOutput();
+      if(deleteBranch) await DeleteReviewedBranch(null);
+      return null;
+   }
+
+   internal async Task DeleteReviewedBranch(string? deferred)
+   {
+      try { await new ReviewedLocalBranch(Repository, Checkout.Branch!, Commit!).Delete(); }
+      catch(Exception failure)
+      {
+         var cleanup = deferred is null ? "" : $" Windows is holding the empty directory {deferred} open. Its cleanup is queued.";
+         throw new WorktreeRemovalNeedsAttention($"Git unregistered {Checkout.Root}.{cleanup} Branch cleanup for {Checkout.Branch} needs review. {failure.Message}", failure);
+      }
    }
 }

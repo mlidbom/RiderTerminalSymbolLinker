@@ -12,8 +12,16 @@ namespace Cloyd.ProjectsDashboard;
 sealed class RemoveDashboardWorktree(TheHub hub, CloydsFolder cloydFolder, Project project, Project worktree, SharedRulesCatalog? catalog = null,
                                      SessionsOfCloyd? sessions = null, Func<Project, IEnumerable<WorktreeOccupant>>? dashboardOccupants = null)
 {
+   readonly WorktreeDirectoryCleanups _directoryCleanups = sessions?.DirectoryCleanups ?? new WorktreeDirectoryCleanups(hub, cloydFolder);
    public Project Worktree => worktree;
-   public Task<WorktreeRemovalPlan> ReadGit(CancellationToken cancellation) => WorktreeRemovalPlan.Read(project, worktree, cancellation, catalog);
+   public async Task<WorktreeRemovalPlan> ReadGit(CancellationToken cancellation)
+   {
+      var plan = await WorktreeRemovalPlan.Read(project, worktree, cancellation, catalog);
+      var nested = SharedRulesCatalog.FolderIn(worktree);
+      if(plan.SharedRules is null && await _directoryCleanups.CleanupBlocker(nested, cancellation) is {} blocker)
+         return plan with { ProjectCheckout = plan.ProjectCheckout with { StructuralBlocker = blocker } };
+      return plan;
+   }
 
    public async Task<WorktreeRemovalReview> ReviewSessions(WorktreeRemovalPlan git, CancellationToken cancellation)
    {
@@ -54,14 +62,14 @@ sealed class RemoveDashboardWorktree(TheHub hub, CloydsFolder cloydFolder, Proje
       return "The previous confirmation was reconciled. Review the remaining worktree contents.";
    }
 
-   public async Task Remove(WorktreeRemovalReview reviewed, IReadOnlySet<Project> deleteBranches, bool deleteConversations, CancellationToken cancellation)
+   public async Task<string?> Remove(WorktreeRemovalReview reviewed, IReadOnlySet<Project> deleteBranches, bool deleteConversations, CancellationToken cancellation)
    {
       if(sessions?.BeginRemovingWorktree(worktree) == false) throw new InvalidOperationException("Another removal is already in progress.");
-      try { await RemoveReviewed(reviewed, deleteBranches, deleteConversations, cancellation); }
+      try { return await RemoveReviewed(reviewed, deleteBranches, deleteConversations, cancellation); }
       finally { sessions?.FinishRemovingWorktree(worktree); }
    }
 
-   async Task RemoveReviewed(WorktreeRemovalReview reviewed, IReadOnlySet<Project> deleteBranches, bool deleteConversations, CancellationToken cancellation)
+   async Task<string?> RemoveReviewed(WorktreeRemovalReview reviewed, IReadOnlySet<Project> deleteBranches, bool deleteConversations, CancellationToken cancellation)
    {
       if(!reviewed.CanRemove) throw new InvalidOperationException("Close live sessions and resolve Git changes before removal.");
       await RequireReviewedGit();
@@ -89,11 +97,15 @@ sealed class RemoveDashboardWorktree(TheHub hub, CloydsFolder cloydFolder, Proje
             processed += result.Results.Length;
          }
          await RequireReviewedGit();
-         await reviewed.Git.Remove(deleteBranches, RequireVacant, cancellation);
+         return await reviewed.Git.Remove(deleteBranches, RequireVacant, cancellation, _directoryCleanups);
+      }
+      catch(WorktreeRemovalNeedsAttention failure) when(processed > 0)
+      {
+         throw new WorktreeRemovalNeedsAttention($"{processed} saved {(processed == 1 ? "conversation" : "conversations")} processed. {failure.Message}", failure);
       }
       catch(Exception failure) when(processed > 0)
       {
-         throw new InvalidOperationException($"{processed} saved conversations processed. {failure.Message}", failure);
+         throw new InvalidOperationException($"{processed} saved {(processed == 1 ? "conversation" : "conversations")} processed. {failure.Message}", failure);
       }
 
       async Task RequireReviewedGit()

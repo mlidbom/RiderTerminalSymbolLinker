@@ -59,6 +59,13 @@ session and virtual desktop in `projects-dashboard.json`.
   explicit agent stop, the dialog observes its session ID and host for up to 75 seconds while
   the native session unloads and the shell prompt returns. Stop, close and remove are separate
   user actions throughout.
+  When the hub advertises `supportsWorktreeDirectoryCleanup`, Cloyd obtains a cleanup ID bound
+  to the physical directory while Git still lists the checkout. Cloyd records that ID on disk
+  immediately before invoking Git. A confirmed locked, empty directory can then be handed to
+  the hub while the selected branch deletion finishes. The hub retries pending jobs at startup
+  and every three minutes. Replacement, new contents or a new registration require review.
+  Cloyd can replay an interrupted delivery using the same ID. This recovery never repeats Git
+  or the session disposition. A deferred nested directory keeps the outer checkout registered.
   A final removal uses only the stopped-session archive API with an operation ID per checkout.
   The agent-worktree creation path invokes the machine catalog's attach step for consuming
   projects and verifies the catalog registration before starting an agent. The dialog inspects

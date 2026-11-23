@@ -10,11 +10,16 @@ sealed partial class TheHub
 {
    static readonly JsonSerializerOptions WorktreeJson = new(JsonSerializerDefaults.Web) { RespectRequiredConstructorParameters = true, RespectNullableAnnotations = true };
 
-   public async Task<WorktreeSessionsPreview> PreviewWorktreeSessions(Project worktree, CancellationToken cancellation)
+   bool Advertises(string capability)
    {
       var announcement = new FileWrittenWhole(Path.Combine(_folderOfTheAnnouncement.FullName, WhatTheAnnouncementSays.FileName));
       using var fields = JsonDocument.Parse(announcement.Text() ?? "{}");
-      if(!fields.RootElement.TryGetProperty("supportsWorktreeSessionRemoval", out var supported) || supported.ValueKind != JsonValueKind.True)
+      return fields.RootElement.TryGetProperty(capability, out var supported) && supported.ValueKind == JsonValueKind.True;
+   }
+
+   public async Task<WorktreeSessionsPreview> PreviewWorktreeSessions(Project worktree, CancellationToken cancellation)
+   {
+      if(!Advertises("supportsWorktreeSessionRemoval"))
          throw new InvalidOperationException("The running hub does not yet offer worktree session removal.");
       using var response = await Send(hub => new HttpRequestMessage(HttpMethod.Post, hub.AddressOf("worktree-sessions/preview"))
       {

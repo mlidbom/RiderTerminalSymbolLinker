@@ -26,10 +26,15 @@ sealed class SharedRulesCatalog(Project machineClone)
       return nested;
    }
 
-   public async Task AttachIfUsed(Project repository, Project worktree, CancellationToken cancellation)
+   public async Task<bool> IsUsedBy(Project repository, Project worktree, CancellationToken cancellation)
    {
       var hook = Path.Combine(worktree.Folder, ".claude", "attach-shared-claude-config.sessionstart-hook.sh");
-      if(!File.Exists(hook) && !FolderIn(repository).Equals(machineClone) && await LinkedIn(repository, cancellation) is null) return;
+      return File.Exists(hook) || FolderIn(repository).Equals(machineClone) || await LinkedIn(repository, cancellation) is not null;
+   }
+
+   public async Task AttachIfUsed(Project repository, Project worktree, CancellationToken cancellation)
+   {
+      if(!await IsUsedBy(repository, worktree, cancellation)) return;
       var script = Path.Combine(machineClone.Folder, "git-scripts", "sessionstart-hook.attach-the-catalog.sh");
       if(!File.Exists(script)) throw new InvalidOperationException($"Shared rules setup is missing at {script}.");
       var target = FolderIn(worktree);

@@ -102,13 +102,34 @@ sealed partial class WorktreeRemovalDialog : Window
          if(closeWhenDone)
          {
             _mutating = false;
-            Close();
+            if(outcome is null) Close();
+            else ShowRemovalReceipt("Worktree removal", outcome, false);
             return;
          }
+      }
+      catch(WorktreeRemovalNeedsAttention partial) when(closeWhenDone)
+      {
+         ShowRemovalReceipt("Worktree removal needs attention", partial.Message, true);
+         return;
       }
       catch(Exception failure) { outcome = failure.Message; failed = true; }
       finally { _busy = null; _mutating = false; }
       await Refresh(outcome, failed);
+   }
+
+   /// <summary>Keep the final handoff or partial result visible after Git unregisters the checkout.
+   /// Refreshing that path would replace the outcome with a missing-worktree error.</summary>
+   void ShowRemovalReceipt(string title, string message, bool needsAttention)
+   {
+      _review = null;
+      _git = null;
+      var result = Stack(14);
+      result.Children.Add(Label(title, 23, FontWeight.SemiBold));
+      result.Children.Add(needsAttention ? Notice("Remaining cleanup", message, true) : Label(message, 14));
+      var done = ActionButton("Done", Close, true);
+      done.HorizontalAlignment = HorizontalAlignment.Right;
+      result.Children.Add(done);
+      Content = new Border { Background = White, Padding = new Thickness(24), Child = result };
    }
 
    void RenderReview()
@@ -150,11 +171,7 @@ sealed partial class WorktreeRemovalDialog : Window
       var remove = ActionButton(label, () =>
       {
          if(_review is not { CanRemove: true } reviewed) return;
-         _ = Act("Removing worktree…", async () =>
-         {
-            await _removal.Remove(reviewed, _deleteBranches, _deleteConversations, _lifetime.Token);
-            return null;
-         }, closeWhenDone: true);
+         _ = Act("Removing worktree…", () => _removal.Remove(reviewed, _deleteBranches, _deleteConversations, _lifetime.Token), closeWhenDone: true);
       }, _busy is null && _review?.CanRemove == true);
       if(remove.IsEnabled)
       {

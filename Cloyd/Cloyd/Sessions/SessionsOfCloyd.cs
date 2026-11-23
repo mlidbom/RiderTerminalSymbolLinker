@@ -5,6 +5,7 @@ using Cloyd.History;
 using Cloyd.Hub.Commands;
 using Cloyd.Hub.RunningSessions;
 using Cloyd.Projects;
+using Cloyd.Projects.Git;
 using Cloyd.Pasting;
 using Cloyd.Saving;
 using Cloyd.SessionHosts;
@@ -29,6 +30,7 @@ sealed class SessionsOfCloyd(TheHub hub, CloydsFolder folder, ShellOfNewSessions
    SessionCatalogue? _catalogue;
    public SessionCatalogue Catalogue => _catalogue ?? throw new InvalidOperationException("No Cloyd window is open.");
    public CloydsFolder Folder { get; } = folder;
+   public WorktreeDirectoryCleanups DirectoryCleanups { get; } = new(hub, folder);
    public PastedImages Images { get; } = folder.PastedImages;
    public IReadOnlyList<RunningSession> Running { get; private set; } = [];
    public IReadOnlyList<SessionHostOfTheHub> Hosts { get; private set; } = [];
@@ -45,6 +47,7 @@ sealed class SessionsOfCloyd(TheHub hub, CloydsFolder folder, ShellOfNewSessions
       _catalogue = new SessionCatalogue(Hub, _following.Token);
       _ = FollowRunningSessions(_following.Token);
       _ = FollowHosts(_following.Token);
+      _ = DirectoryCleanups.RecoverWhileOpen(_following.Token, failure => Failed?.Invoke(failure));
    }
 
    public void WindowClosed()
