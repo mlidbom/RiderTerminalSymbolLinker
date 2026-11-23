@@ -46,21 +46,6 @@ public sealed class InstalledCloyd(string folder)
    /// </summary>
    internal bool Install(string build) => new FolderMirror(Path.Combine(Folder, "replaced-files")).Mirror(build, Bin);
 
-   /// <summary>
-   ///   Puts <paramref name="build"/> in, as a deploy does, unless <paramref name="dryRun"/>, and returns what that does,
-   ///   or would do: when the next Cloyd application starts it.
-   /// </summary>
-   internal string Deploy(string build, bool dryRun)
-   {
-      if(Has(build)) return $"Cloyd in {this} has this build already.";
-      var when = !IsInstalled ? "where it wasn't yet: the next project to open starts it"
-               : TheApplication() is {} running ? $"and the Cloyd application that runs, process {running.Id}, runs the build it has until its last window closes"
-               : "and the next project to open starts it";
-      if(dryRun) return $"Cloyd's build would go into {this}, {when}.";
-      Install(build);
-      return $"Put Cloyd's build into {this}, {when}.";
-   }
-
    /// <summary>The Cloyd application that runs, as its announcement names it: null when none does.</summary>
    public Process? TheApplication()
    {

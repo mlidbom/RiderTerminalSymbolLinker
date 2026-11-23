@@ -12,8 +12,8 @@ Each plugin, and Cloyd, has its own:
   [ClaudeSessions/build.gradle.kts](../../../ClaudeSessions/build.gradle.kts). It has no release yet, so its top
   version is the one in progress.
 - **Cloyd:** [Cloyd/CHANGELOG.md](../../../Cloyd/CHANGELOG.md), with its version in
-  [Cloyd/Cloyd/Cloyd.csproj](../../../Cloyd/Cloyd/Cloyd.csproj). It has no release yet either: `everyday deploy` puts
-  the working tree's build in Magnus's `%LOCALAPPDATA%\Cloyd\bin`, so its top version is the one in progress.
+  [Cloyd/Cloyd/Cloyd.csproj](../../../Cloyd/Cloyd/Cloyd.csproj). Cloyd moved to `~/.claude` on 2026-11-23, whose
+  `src/publish.ps1` installs it: its changes are recorded there, in `src/Cloyd/CHANGELOG.md`.
 
 ## Which version section to add it to
 

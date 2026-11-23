@@ -40,7 +40,7 @@ Its packages, below `dev.magnus.claudesessions`, which holds what it tells the u
   another virtual desktop stays there, as Cloyd's `--project` leaves it. Specified in the sandbox through the
   observation channel's `POST /actions/perform`, which performs an action as the user would.
 - **Where Cloyd is:** `bin\Cloyd.exe` in Cloyd's folder (`CloydsFolder`): `%LOCALAPPDATA%\Cloyd`, or the folder
-  `CLOYD_FOLDER` names, as the sandbox Rider's environment does. `everyday deploy` puts it there.
+  `CLOYD_FOLDER` names, as the sandbox Rider's environment does. `~/.claude`'s `src/publish.ps1` installs it there.
 - **The command** finds the Cloyd application, or starts it outside the IDE's job, and exits once the project's window
   shows: in 0.16 s when the application runs, 0.84 s when it starts it. It inherits the IDE's environment, and the
   application it starts inherits the command's. Its output goes to a file, not a pipe, so that a command that hangs

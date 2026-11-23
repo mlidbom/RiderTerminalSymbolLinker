@@ -4,8 +4,8 @@ The main checkout is `C:\Dev\ClaudeSymbolLinker`. Others are git worktrees of it
 `C:\Dev\ClaudeSymbolLinker.worktrees\` (`dev_docs/development-environment.md`, "Codex helpers, in checkouts of their
 own"). In one of those:
 
-- **Deploy and reload nothing.** `everyday deploy` puts the build of the checkout it runs in into Magnus's IDEs and his
-  Cloyd, so a deploy from a worktree would put work that nobody has reviewed there. Here, a change is done when it is
+- **Deploy and reload nothing.** `everyday deploy` puts the build of the checkout it runs in into Magnus's IDEs, so a
+  deploy from a worktree would put work that nobody has reviewed there. Here, a change is done when it is
   committed on the checkout's branch, with its specifications passing. The session that handed you the work merges it
   into `main` and deploys it from the main checkout.
 - **Rider's and ReSharper's tools see the main checkout, not yours.** Rider has the main checkout's solution open, so

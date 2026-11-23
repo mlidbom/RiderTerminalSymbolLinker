@@ -54,13 +54,9 @@ static class Program
                                                       of every installed IDE it runs in: the symbol linker in Rider, Claude
                                                       Sessions in Rider, IntelliJ IDEA and PyCharm. Says for each whether it
                                                       reloads it when he next switches to its window, or needs a restart.
-                                                      Every deploy first puts the working tree's Cloyd, which Claude
-                                                      Sessions runs, in %LOCALAPPDATA%\Cloyd\bin: a Cloyd application that
-                                                      runs runs on with the build it has until its last window closes
-                          everyday deploy Cloyd       Puts the working tree's Cloyd in %LOCALAPPDATA%\Cloyd\bin alone, as
-                                                      every deploy does first: for a Cloyd to go out while the plugins'
-                                                      builds wait for a restart of the IDEs
-                          everyday deploy --dry-run   Builds the plugins and Cloyd and says what deploying them would do,
+                                                      Cloyd, which Claude Sessions runs, is deployed from ~/.claude since
+                                                      2026-11-23: its src/publish.ps1 installs it in %LOCALAPPDATA%\Cloyd\bin
+                          everyday deploy --dry-run   Builds the plugins and says what deploying them would do,
                                                       changing nothing: a line marked RESTART takes his go-ahead
                           everyday deploy --into-running-ides
                                                       Deploys as everyday deploy does, and also puts a build that needs a
@@ -151,18 +147,12 @@ static class Program
             foreach(var line in EverydayIdes.Reload(OurPlugin.Named(plugin), EverydayIde.Named(ide))) Console.WriteLine(line);
             break;
          case ["everyday", "deploy"]:
-            Console.WriteLine(InstalledCloyd.Everyday.Deploy(CloydBuild.Published(), dryRun: false));
             foreach(var line in EverydayIdes.Deploy(GradleSandbox.Filled())) Console.WriteLine(line);
             break;
-         case ["everyday", "deploy", "Cloyd"]:
-            Console.WriteLine(InstalledCloyd.Everyday.Deploy(CloydBuild.Published(), dryRun: false));
-            break;
          case ["everyday", "deploy", "--dry-run"]:
-            Console.WriteLine(InstalledCloyd.Everyday.Deploy(CloydBuild.Published(), dryRun: true));
             foreach(var line in EverydayIdes.Deploy(GradleSandbox.Filled(), dryRun: true)) Console.WriteLine(line);
             break;
          case ["everyday", "deploy", "--into-running-ides"]:
-            Console.WriteLine(InstalledCloyd.Everyday.Deploy(CloydBuild.Published(), dryRun: false));
             foreach(var line in EverydayIdes.Deploy(GradleSandbox.Filled(), intoRunningIdes: true)) Console.WriteLine(line);
             break;
          case ["everyday", "deploy", "--restarting-the-ides"]:

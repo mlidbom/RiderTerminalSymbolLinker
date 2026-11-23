@@ -224,10 +224,10 @@ one's folder under `%APPDATA%\JetBrains` (Rider since 2026-11-17, IDEA and PyCha
 each reloads a plugin without a restart when it next looks at its plugins folder, expected when he switches to its
 window. The deploy says for each IDE whether it does, or needs a restart: a plugin new to an IDE always does.
 
-**Every deploy puts the working tree's Cloyd in first,** which Claude Sessions runs from 0.2.0: published in Release
-into `%LOCALAPPDATA%\Cloyd\bin` (`InstalledCloyd.Everyday`), moving the files a running Cloyd application maps aside, as
-for a plugin's jar. The application that runs runs on with the build it has until its last window closes; the next
-launch starts the new one. `--dry-run` says which, and changes nothing. `everyday reload Cloyd` has it
+**Cloyd, which Claude Sessions runs from 0.2.0, is deployed from `~/.claude`,** where it moved on 2026-11-23: its
+`src/publish.ps1` installs it into `%LOCALAPPDATA%\Cloyd\bin` (`~/.claude/dev_docs/cloyd/developing-cloyd.md`), and
+`everyday deploy` no longer does. The application that runs runs on with the build it has until its last window
+closes; the next launch starts the new one. `everyday reload Cloyd`, as `ClaudeTooling.exe cloyd restart` does, has it
 take the new build at once: it closes its windows, each saving its tabs, and runs `Cloyd.exe --project` for each
 project it showed, which starts it again with the same windows, their tabs brought back. An open Projects Dashboard
 is restored through the no-argument launcher, including when it was the only window. The sessions run on in their
