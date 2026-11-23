@@ -327,6 +327,8 @@ public class When_Magnus_arranges_the_dashboard_tabs : SpecificationOpeningWindo
       var remove = OnTheUIThread(() => menu.Items.OfType<MenuItem>().Single(it => Equals(it.Header, "Remove worktree")));
       if(!hub.OffersWorktreeSessionRemoval)
       {
+         if(Environment.GetEnvironmentVariable("CLOYD_REQUIRE_WORKTREE_ARCHIVE") == "1")
+            throw new InvalidOperationException("The paired archive trial requires a private hub that advertises worktree session removal.");
          WaitUntil(() => AutomationProperties.GetHelpText(remove)?.Contains("does not yet offer") == true, "the older hub explained why removal was unavailable");
          OnTheUIThread(() => remove.IsEffectivelyEnabled).Must().BeFalse();
          OnTheUIThread(menu.Close);
