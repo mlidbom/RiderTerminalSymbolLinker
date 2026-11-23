@@ -30,8 +30,8 @@ sealed partial class TheHub
       var request = new
       {
          reviewed.OperationId, disposition,
-         sessions = reviewed.Sessions.Select(it => new { it.AgentCli, it.SessionId, it.HostId }),
-         shellOnlyHostIds = reviewed.ShellOnlyHosts.Select(it => it.HostId)
+         sessions = reviewed.Sessions.Select(it => new { it.AgentCli, it.SessionId, hostId = (string?)null }),
+         shellOnlyHostIds = Array.Empty<string>()
       };
       using var response = await Send(hub => new HttpRequestMessage(HttpMethod.Post, hub.AddressOf("worktree-sessions/apply"))
       {

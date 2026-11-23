@@ -12,7 +12,7 @@ sealed partial class ProjectsDashboardWindow
       if(!Sessions.BeginRemovingWorktree(folder)) return;
       try
       {
-         var action = new RemoveDashboardWorktree(this, Sessions.Hub, Sessions.Folder, ShowUncommittedChanges, Sessions.Folder.SavedProjectWindows.Forget);
+         var action = new RemoveDashboardWorktree(this, Sessions.Hub, Sessions.Folder, ShowUncommittedChanges);
          await action.Run(row.Group.Project!, folder, sessions, _closed.Token);
       }
       finally

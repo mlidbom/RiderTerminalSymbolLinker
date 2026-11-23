@@ -1,6 +1,6 @@
 using System.Diagnostics;
+using System.ComponentModel;
 using Avalonia.Controls;
-using Avalonia.Data;
 using Avalonia.Automation;
 using Cloyd.Hub.Worktrees;
 using Cloyd.Projects;
@@ -28,13 +28,29 @@ sealed class WorktreeContextMenu : ContextMenu
       var removeReviewed = new RelayCommand(() => remove(reviewed!), () => reviewed is not null);
       var removal = new MenuItem { Header = "Remove worktree", Command = removeReviewed };
       ToolTip.SetShowOnDisabled(removal, true);
-      removal.Bind(IsEnabledProperty, new Binding(nameof(DashboardWorktree.CanRemove)) { Source = worktree });
       Items.Add(removal);
-      Opened += async (_, _) =>
+      Opened += (_, _) =>
       {
+         worktree.PropertyChanged += WorktreeChanged;
+         RefreshRemoval();
+      };
+      Closed += (_, _) =>
+      {
+         worktree.PropertyChanged -= WorktreeChanged;
+         reading?.Cancel();
+      };
+
+      void WorktreeChanged(object? sender, PropertyChangedEventArgs change)
+      {
+         if(change.PropertyName == nameof(worktree.RemovalBlocker)) RefreshRemoval();
+      }
+
+      async void RefreshRemoval()
+      {
+         reading?.Cancel();
          reviewed = null;
          removeReviewed.NotifyCanExecuteChanged();
-         Explain(worktree.CanRemove ? "Checking sessions and shells in this worktree." : worktree.WhyRemovalIsUnavailable);
+         Explain(worktree.RemovalBlocker ?? "Checking sessions and shells in this worktree.");
          if(!worktree.CanRemove) return;
          using var current = new CancellationTokenSource();
          reading = current;
@@ -48,13 +64,9 @@ sealed class WorktreeContextMenu : ContextMenu
             removeReviewed.NotifyCanExecuteChanged();
          }
          catch(OperationCanceledException) when(current.IsCancellationRequested) { }
-         catch(Exception failure)
-         {
-            Explain(failure.Message);
-         }
+         catch(Exception failure) { if(!current.IsCancellationRequested) Explain(failure.Message); }
          finally { if(reading == current) reading = null; }
-      };
-      Closed += (_, _) => reading?.Cancel();
+      }
 
       void Explain(string text)
       {

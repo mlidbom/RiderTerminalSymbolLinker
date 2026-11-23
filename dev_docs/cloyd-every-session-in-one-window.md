@@ -51,9 +51,11 @@ session and virtual desktop in `projects-dashboard.json`.
 - **Worktree context menus** have a Git Extensions submenu. Browse opens its revision graph and Commit
   opens the interactive commit dialog in that worktree's directory.
   **Remove worktree** uses the hub's `supportsWorktreeSessionRemoval` capability. Opening the menu
-  requests a preview that includes hidden sessions and shell-only hosts. The hub owns the shared
-  archive, seven-day recoverable deletion, activity checks and guarded closure. Its apply request
-  contains the reviewed identities and operation ID. Cloyd requires a completed receipt covering
+  checks the full worktree even when filters hide its rows. A live host (including a shell-only
+  tab) or any running session, including an idle agent outside Cloyd, disables removal. A saved
+  tab that could be restored is eligible once its host and agent have exited. The hub owns the
+  shared archive and seven-day recoverable deletion. Its apply request names only the reviewed
+  stopped conversations and their operation ID. Cloyd requires a completed receipt covering
   every target before asking Git to remove the checkout. A partial result leaves the checkout in
   place. Cloyd checks the registered checkout, revision, nested checkouts and uncommitted paths
   again after confirmation and immediately before removal. A final preview must find the checkout

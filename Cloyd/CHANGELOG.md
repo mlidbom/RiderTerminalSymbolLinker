@@ -15,9 +15,10 @@ All notable changes to Cloyd are documented here. The format follows
   checkout and the session, and choose Claude or Codex. The new branch starts at the local integration
   branch, or at HEAD when there is none. The + on an existing worktree starts a session there.
 - **Remove a linked worktree from its dashboard menu with a hub that supports the shared session archive.**
-  Working sessions and requests waiting for your input disable removal. Uncommitted files open Git
-  Extensions. Unmerged commits require confirmation. For saved or idle sessions, choose Archive,
-  Delete with seven days of recovery, or Cancel. Git keeps the branch.
+  Close all live session tabs, including shell tabs, and stop any agents running in the worktree
+  outside Cloyd. The disabled menu item tells you what is still open. For saved conversations,
+  choose Archive, Delete with seven days of recovery, or Cancel. Uncommitted changes open Git
+  Extensions. Unmerged commits require confirmation. Git keeps the branch.
 - **Launching Cloyd from the Start menu opens Projects Dashboard.** Running the executable without
   arguments also brings an existing dashboard forward. Right-click a project heading and choose
   **Open project** to open or activate its project window.

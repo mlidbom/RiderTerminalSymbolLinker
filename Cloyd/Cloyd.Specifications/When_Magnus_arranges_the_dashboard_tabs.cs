@@ -311,20 +311,18 @@ public class When_Magnus_arranges_the_dashboard_tabs : SpecificationOpeningWindo
       File.Exists(Path.Combine(nested.FullName, "uncommitted.txt")).Must().BeTrue();
    }
 
-   [XF] public void the_worktree_menu_uses_the_installed_hubs_archive_capability()
+   [XF] public void the_worktree_menu_uses_the_installed_hubs_archive_capability() => RemoveStoppedConversation("Archive");
+
+   [XF] public void the_worktree_menu_can_recoverably_delete_a_stopped_conversation() => RemoveStoppedConversation("Delete");
+
+   void RemoveStoppedConversation(string choice)
    {
       var hub = Sandbox.HubOfTheSandbox;
       var archived = new SessionOfASpecification(new ClaudeCodeSessionId(Guid.NewGuid().ToString()), _empty.FullName, "Archive this conversation.");
       var kept = new SessionOfASpecification(new ClaudeCodeSessionId(Guid.NewGuid().ToString()), _linked.FullName, "Keep this conversation.");
       archived.WriteItsTranscriptFor(hub);
       kept.WriteItsTranscriptFor(hub);
-      var menu = OnTheUIThread(() =>
-      {
-         var item = _dashboard.GetVisualDescendants().OfType<ListBoxItem>().Single(it => it.DataContext == _emptyGroup);
-         item.ContextMenu!.Open(item);
-         return item.ContextMenu;
-      });
-      var remove = OnTheUIThread(() => menu.Items.OfType<MenuItem>().Single(it => Equals(it.Header, "Remove worktree")));
+      var (menu, remove) = RemovalMenu(_emptyGroup);
       if(!hub.OffersWorktreeSessionRemoval)
       {
          if(Environment.GetEnvironmentVariable("CLOYD_REQUIRE_WORKTREE_ARCHIVE") == "1")
@@ -336,17 +334,73 @@ public class When_Magnus_arranges_the_dashboard_tabs : SpecificationOpeningWindo
       }
       else
       {
-         WaitUntil(() => remove.IsEffectivelyEnabled, "the private hub found the stopped conversation and approved a preview");
-         OnTheUIThread(() => { menu.Close(); remove.Command!.Execute(null); });
-         Button? archive = null;
-         WaitUntil(() => (archive = _dashboard.OwnedWindows.OfType<WorktreeRemovalDialog>().SingleOrDefault()?.GetVisualDescendants()
-            .OfType<Button>().SingleOrDefault(it => Equals(it.Content, "Archive"))) is not null, "the dashboard offered Archive");
-         Click(archive!);
-         WaitUntil(() => !Directory.Exists(_empty.FullName) && !_alphaGroup.Children.Contains(_emptyGroup), "the hub archived the session and Git removed its checkout");
+         var confirm = Confirmation(menu, remove);
+         if(choice == "Archive")
+         {
+            var shell = hub.Hub.StartASessionHost(Sandbox.ShellOfItsSessions, _empty.FullName, _alpha.LabelOfCloydsHosts).GetAwaiter().GetResult();
+            Click(confirm);
+            WaitUntil(() => _dashboard.FailureText.Text?.Contains("Worktree kept") == true, "a shell opened during confirmation kept the worktree");
+            _alpha.SessionHost(shell.Id).Must().NotBeNull();
+            Directory.Exists(_empty.FullName).Must().BeTrue();
+            hub.SessionsOnDisk().Any(it => it.Session.Id == archived.Id).Must().BeTrue();
+            _alpha.End(shell.Id);
+            WaitUntil(() => _emptyGroup.CanRemove, "the worktree became available again");
+            (menu, remove) = RemovalMenu(_emptyGroup);
+            confirm = Confirmation(menu, remove);
+         }
+         Click(confirm);
+         WaitUntil(() => !Directory.Exists(_empty.FullName) && !_alphaGroup.Children.Contains(_emptyGroup), "the hub processed the saved conversation and Git removed its checkout");
          hub.SessionsOnDisk().Any(it => it.Session.Id == archived.Id).Must().BeFalse();
+         var entries = Directory.EnumerateFiles(Path.Combine(hub.Environment["CLAUDE_CONFIG_DIR"], "session-archive"), "archived-session.json", SearchOption.AllDirectories);
+         var saved = entries.Select(it => JsonSerializer.Deserialize<JsonElement>(File.ReadAllText(it))).Single(it => it.GetProperty("sessionId").GetString() == archived.Id.Value);
+         var expiry = saved.GetProperty("deletedForGoodAfter");
+         if(choice == "Delete") (Math.Abs((expiry.GetDateTime().ToUniversalTime() - DateTime.UtcNow).TotalDays - 7) < 0.01).Must().BeTrue();
+         else expiry.ValueKind.Must().Be(JsonValueKind.Null);
       }
       hub.SessionsOnDisk().Any(it => it.Session.Id == kept.Id).Must().BeTrue();
+
+      Button Confirmation(ContextMenu context, MenuItem item)
+      {
+         WaitUntil(() => item.IsEffectivelyEnabled, "the private hub found only stopped conversations");
+         OnTheUIThread(() => { context.Close(); item.Command!.Execute(null); });
+         Button? button = null;
+         WaitUntil(() => (button = _dashboard.OwnedWindows.OfType<WorktreeRemovalDialog>().SingleOrDefault()?.GetVisualDescendants()
+             .OfType<Button>().SingleOrDefault(it => Equals(it.Content, choice))) is not null, $"the dashboard offered {choice}");
+         return button!;
+      }
    }
+
+   [XF] public void open_shell_tabs_and_an_idle_agent_outside_Cloyd_each_disable_Remove_worktree()
+   {
+      CheckDisabled(_linkedGroup, "Shell");
+      using(ClaudeCodeInATerminalOfItsOwn.Running(Sandbox.HubOfTheSandbox, _empty.FullName, "External session", "Record this conversation"))
+      {
+         WaitUntil(() => _emptyGroup.Sessions.Any(it => it.Name == "External session" && it.Running?.IsBusy == false && !it.HasHost), "the worktree contained an idle agent outside every tab");
+         CheckDisabled(_emptyGroup, "External session");
+      }
+      DoneOnTheUIThread(() => Sandbox.WindowsOfCloyd.Sessions.Catalogue.Read(default, force: true));
+      WaitUntil(() => _emptyGroup.CanRemove && _emptyGroup.Sessions.Any(it => it.ReadyToResume),
+                "after the agent exited its saved conversation remained eligible for removal");
+      _alpha.End(_first);
+      _alpha.End(_second);
+      WaitUntil(() => _linkedGroup.CanRemove, "closing the last shell tab released its worktree");
+
+      void CheckDisabled(DashboardWorktree group, string name)
+      {
+         var (menu, remove) = RemovalMenu(group);
+         WaitUntil(() => !remove.IsEffectivelyEnabled && AutomationProperties.GetHelpText(remove)?.Contains(name) == true,
+                   "the disabled menu item named what kept the worktree open");
+         OnTheUIThread(menu.Close);
+      }
+   }
+
+   (ContextMenu Menu, MenuItem Remove) RemovalMenu(DashboardWorktree group) => OnTheUIThread(() =>
+   {
+      var item = _dashboard.GetVisualDescendants().OfType<ListBoxItem>().Single(it => it.DataContext == group);
+      var menu = item.ContextMenu!;
+      menu.Open(item);
+      return (menu, menu.Items.OfType<MenuItem>().Single(it => Equals(it.Header, "Remove worktree")));
+   });
 
    [XF] public async Task removal_checks_for_new_files_and_new_commits_after_the_worktree_was_reviewed()
    {
