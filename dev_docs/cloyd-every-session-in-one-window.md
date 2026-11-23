@@ -55,6 +55,10 @@ session and virtual desktop in `projects-dashboard.json`.
   terminal can stay loaded. Other helper activity can block removal even after its parent exits.
   The hub checks descendants again for a stop or a disposition. Only the parent appears as a
   stop target. Subagents have no independent action or archive choice in the dialog.
+  Shell ownership follows the verified prompt directory across a change of worktree. After an
+  explicit agent stop, the dialog observes its session ID and host for up to 75 seconds while
+  the native session unloads and the shell prompt returns. Stop, close and remove are separate
+  user actions throughout.
   A final removal uses only the stopped-session archive API with an operation ID per checkout.
   The agent-worktree creation path invokes the machine catalog's attach step for consuming
   projects and verifies the catalog registration before starting an agent. The dialog inspects

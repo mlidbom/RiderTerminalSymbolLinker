@@ -447,6 +447,41 @@ public class When_Magnus_arranges_the_dashboard_tabs : SpecificationOpeningWindo
       Close(dialog);
    }
 
+   [XF] public async Task stopping_Codex_after_changing_worktrees_offers_its_returned_shell_for_close()
+   {
+      var hub = Sandbox.HubOfTheSandbox.Hub;
+      var folder = _emptyGroup.StartFolder;
+      var cmd = Path.Combine(Sandbox.HubOfTheSandbox.FolderOfTheStandInForCodex, "codex.exe");
+      var shell = Sandbox.ShellOfItsSessions with
+      {
+         CommandLine = $"pwsh.exe -NoLogo -NoProfile -NoExit -Command \"Set-Location -LiteralPath '{folder.Folder.Replace("'", "''")}'; & '{cmd.Replace("'", "''")}'\""
+      };
+      var started = await hub.StartASessionHost(shell, _alpha.Project.Folder, _alpha.LabelOfCloydsHosts);
+      using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+      while(true)
+      {
+         var reviewed = await hub.ReviewWorktreeOccupants(folder, deadline.Token);
+         if(reviewed?.Occupants.Any(it => it.Target.HostId == started.Id.Value && it.Action == "stopAgent") == true) break;
+         await Task.Delay(200, deadline.Token);
+      }
+      var dialog = OpenRemovalReview(_emptyGroup);
+      Button? stop = null, close = null;
+      WaitUntil(() => (stop = FindButton("Stop idle sessions (1)"))?.IsEnabled == true, "the agent was in its linked checkout");
+      Click(stop!);
+      WaitUntil(() => (close = FindButton("Close idle shell tabs (1)"))?.IsEnabled == true,
+                "the original shell could close in its current worktree without refreshing");
+      var original = await hub.ReviewWorktreeOccupants(_alpha.Project, default);
+      original!.Occupants.Any(it => it.Target.HostId == started.Id.Value).Must().BeFalse();
+      original.VerifiedShellsElsewhere.Contains(started.Id.Value).Must().BeTrue();
+      Click(close!);
+      WaitUntil(() => _alpha.SessionHost(started.Id) is null && RemovalButton(dialog).IsEnabled,
+                "the shell closed and the stopped conversation was ready for review", timeout: TimeSpan.FromSeconds(90));
+      Directory.Exists(_empty.FullName).Must().BeTrue();
+      _alpha.SessionHost(_first).Must().NotBeNull();
+      Close(dialog);
+      Button? FindButton(string label) => dialog.GetVisualDescendants().OfType<Button>().SingleOrDefault(it => Equals(it.Content, label));
+   }
+
    WorktreeRemovalDialog OpenRemovalReview(DashboardWorktree group)
    {
       var (menu, item) = RemovalMenu(group);

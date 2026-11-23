@@ -25,6 +25,8 @@ sealed partial class WorktreeRemovalDialog : Window
    bool _failed;
    bool _deleteConversations;
    bool _mutating;
+   readonly WorktreeStopFollowUp _afterStop = new(TimeProvider.System);
+   CancellationTokenSource? _followingStop;
 
    public WorktreeRemovalDialog(RemoveDashboardWorktree removal, Func<WorktreeSession, string> nameOf,
                                 Action<Project> showChanges, Func<ClaudeTooling.SessionHost.Protocol.SessionHostId, bool> hasDraft, CancellationToken cancellation)
@@ -54,6 +56,7 @@ sealed partial class WorktreeRemovalDialog : Window
    async Task Refresh(string? outcome = null, bool failed = false)
    {
       if(_busy is not null || _lifetime.IsCancellationRequested) return;
+      _followingStop?.Cancel();
       var previous = _git;
       var previousReview = _review;
       _message = outcome;
@@ -69,17 +72,24 @@ sealed partial class WorktreeRemovalDialog : Window
             != _git.Checkouts.SingleOrDefault(it => it.Checkout.Root.Equals(folder)));
          _busy = "Checking sessions…";
          if(!_lifetime.IsCancellationRequested) RenderReview();
-         _review = await _removal.ReviewSessions(_git, _lifetime.Token);
-         if(previousReview is null || !previousReview.SavedIdentities.SetEquals(_review.SavedIdentities)) _deleteConversations = false;
+         ShowReading(await _removal.ReviewSessions(_git, _lifetime.Token), previousReview);
       }
       catch(OperationCanceledException) when(_lifetime.IsCancellationRequested) { }
       catch(Exception failure) { _failed = true; _message = string.Join(Environment.NewLine, new[] { outcome, failure.Message }.Where(it => it is not null)); }
       finally { _busy = null; if(!_lifetime.IsCancellationRequested) RenderReview(); }
+      if(_review is {} ready && !_lifetime.IsCancellationRequested) _ = FollowStoppedAgents(ready);
+   }
+
+   void ShowReading(WorktreeRemovalReview next, WorktreeRemovalReview? previous)
+   {
+      if(previous is null || !previous.SavedIdentities.SetEquals(next.SavedIdentities)) _deleteConversations = false;
+      _review = next;
    }
 
    async Task Act(string description, Func<Task<string?>> action, bool closeWhenDone = false)
    {
       if(_busy is not null || _review is null) return;
+      _followingStop?.Cancel();
       _busy = description;
       _mutating = true;
       _message = null;

@@ -106,7 +106,9 @@ sealed class RemoveDashboardWorktree(TheHub hub, CloydsFolder cloydFolder, Proje
          {
             var remaining = await hub.PreviewWorktreeSessions(checkout.Checkout.Root, cancellation);
             remaining.RequireReadyFor(checkout.Checkout.Root);
-            if(!remaining.Empty || (await LiveDashboardOccupants(hub, checkout.Checkout.Root, cancellation)).Length != 0)
+            var local = await LiveDashboardOccupants(hub, checkout.Checkout.Root, cancellation);
+            var eligibility = local.Length == 0 ? null : await hub.ReviewWorktreeOccupants(checkout.Checkout.Root, cancellation);
+            if(!remaining.Empty || WorktreeOccupants.From(remaining, eligibility, local).Rows.Length != 0 || eligibility?.Descendants.Any(it => it.BlocksRemoval) == true)
                throw new InvalidOperationException($"New sessions were found in {checkout.Checkout.Root}. Review them before removal.");
          }
       }

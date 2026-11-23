@@ -21,8 +21,10 @@ sealed partial class WorktreeRemovalDialog
       {
          var activity = occupant is { Activity: "idle", Target.SessionId: null } ? "Idle shell" : ActivityText(occupant.Activity);
          var parent = occupant.Target.AgentCli == "codex" ? occupant.Target.SessionId : null;
-         rows.Children.Add(SessionRow(NameOf(occupant), activity, occupant.Target.HostId is null ? "Outside Cloyd" : "Open tab", 0,
-                                     group.Root.Equals(catalog) ? catalogLabel : null, Unavailable(occupant)));
+         var unloading = _afterStop.IsUnloading(occupant);
+         rows.Children.Add(SessionRow(NameOf(occupant), unloading ? "Terminal stopped" : _afterStop.IsWaitingForPrompt(occupant) ? "Rechecking shell" : activity,
+                                     unloading ? "Rechecking session" : occupant.Target.HostId is null ? "Outside Cloyd" : "Open tab", 0,
+                                     group.Root.Equals(catalog) ? catalogLabel : null, unloading ? "The session is still listed. Checking for an update." : Unavailable(occupant)));
          if(parent is not null) AddChildren(parent, 1);
          rows.Children.Add(Divider());
       }

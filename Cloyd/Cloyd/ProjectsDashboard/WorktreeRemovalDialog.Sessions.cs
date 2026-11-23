@@ -1,7 +1,6 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Layout;
-using Avalonia.Media;
 using ClaudeTooling.SessionHost.Protocol;
 using Cloyd.Hub.Worktrees;
 
@@ -49,6 +48,7 @@ sealed partial class WorktreeRemovalDialog
 
    string? Unavailable(WorktreeOccupant occupant)
    {
+      if(_afterStop.ExitConfirmed(occupant.Target)) return "This exact terminal process already stopped.";
       if(occupant.Target.HostId is {} id && _hasDraft(new SessionHostId(id))) return "This tab has an unsent Cloyd draft.";
       if(_review?.Subagents.BlockingStopOf(occupant) is {} child) return child.Reason ?? $"{child.DisplayName} has outstanding work.";
       return occupant.Reason;
@@ -73,16 +73,23 @@ sealed partial class WorktreeRemovalDialog
          if(eligible.Length == 0) continue;
          var result = await reviewedHub.ActOnWorktreeOccupants(group.Root, action, eligible.Select(it => it.Target).ToArray(), _lifetime.Token);
          var stopped = result.Results.Where(it => it.Outcome == "stopped" && it.Target.HostId is not null).ToArray();
+         foreach(var item in stopped) _afterStop.Stopped(group.Root, item.Target);
          foreach(var item in result.Results.Where(it => it.Outcome == "closed" && it.Target.HostId is not null))
-            ShellClosed?.Invoke(new SessionHostId(item.Target.HostId!));
+            ConfirmShellClosed(item.Target.HostId!);
          if(stopped.Length > 0)
          {
             var hosts = (await reviewedHub.SessionHosts(_lifetime.Token)).Select(it => it.Id.Value).ToHashSet();
             foreach(var item in stopped.Where(it => !hosts.Contains(it.Target.HostId!) || it.Target.AgentPid == it.Target.ShellPid))
-               ShellClosed?.Invoke(new SessionHostId(item.Target.HostId!));
+               ConfirmShellClosed(item.Target.HostId!);
          }
          outcomes.AddRange(result.Results.Select(it => $"{NameOf(eligible.Single(row => row.Target == it.Target))}: {it.Outcome}. {it.Reason}".TrimEnd()));
       }
       return outcomes.Count == 0 ? "No reviewed occupants are still eligible." : string.Join(Environment.NewLine, outcomes);
+   }
+
+   void ConfirmShellClosed(string host)
+   {
+      _afterStop.ShellClosed(host);
+      ShellClosed?.Invoke(new SessionHostId(host));
    }
 }

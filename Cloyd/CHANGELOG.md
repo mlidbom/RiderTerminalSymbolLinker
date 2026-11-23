@@ -225,6 +225,10 @@ All notable changes to Cloyd are documented here. The format follows
     the session, as after it was archived. Windows saved before read their sessions as Claude Code's.
 
 ### Fixed
+- **Close the shell in the worktree where its prompt is now.** If you start PowerShell in the main
+  checkout and change into a linked worktree, **Close idle shell tabs** can close it there after
+  the agent exits. After **Stop idle sessions**, the open dialog briefly rechecks the session
+  and shell automatically. Drafts and running commands still block shell closure.
 - **Remove worktree groups Codex subagents under their parent.** Completed helpers can remain loaded
   after their turn ends. Working helpers, pending input, and background terminals show their name and
   the reason removal is blocked. An idle Codex tab can also be stopped when its status line wraps

@@ -6,6 +6,9 @@ sealed record WorktreeOccupant(OccupantTarget Target, string Activity, string? A
 sealed record ReviewedOccupants(WorktreeOccupant[] Occupants)
 {
    public WorktreeSubagent[] Descendants { get; init; } = [];
+   /// <summary>Hosts whose current shell prompt places them outside the reviewed checkout.
+   /// Older hubs provide no such evidence.</summary>
+   public string[] VerifiedShellsElsewhere { get; init; } = [];
 }
 sealed record OccupantActionResult(OccupantTarget Target, string Outcome, string? Reason);
 sealed record OccupantActionResults(OccupantActionResult[] Results);

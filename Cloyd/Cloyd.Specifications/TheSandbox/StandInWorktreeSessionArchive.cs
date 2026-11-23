@@ -23,6 +23,9 @@ sealed class StandInWorktreeSessionArchive : IAsyncDisposable
    public bool LoseNextReceipt { get; set; }
 
    public JsonObject? OccupantRequest { get; private set; }
+   public Func<WorktreeSessionsPreview>? PreviewNow { get; init; }
+   public Func<ReviewedOccupants>? OccupantsNow { get; init; }
+   public Func<OccupantTarget[], OccupantActionResults>? OccupantAction { get; init; }
 
    public StandInWorktreeSessionArchive(DirectoryInfo folder, WorktreeSessionsPreview preview, ReviewedOccupants? occupants = null)
    {
@@ -30,18 +33,19 @@ sealed class StandInWorktreeSessionArchive : IAsyncDisposable
       builder.WebHost.UseKestrelCore().ConfigureKestrel(server => server.Listen(IPAddress.Loopback, 0));
       builder.Services.AddRoutingCore();
       _api = builder.Build();
-      _api.MapPost("/worktree-sessions/occupants/review", () => Results.Json(occupants));
+      _api.MapGet("/session-hosts", () => Results.Json(new { sessionHosts = Array.Empty<object>() }));
+      _api.MapPost("/worktree-sessions/occupants/review", () => Results.Json(OccupantsNow?.Invoke() ?? occupants));
       _api.MapPost("/worktree-sessions/occupants/act", async (HttpContext exchange) =>
       {
          OccupantRequest = await exchange.Request.ReadFromJsonAsync<JsonObject>();
          var targets = OccupantRequest!["targets"]!.Deserialize<OccupantTarget[]>(JsonSerializerOptions.Web)!;
-         return Results.Json(new OccupantActionResults(targets.Select(it => new OccupantActionResult(it, "skipped", "Activity changed after review.")).ToArray()));
+         return Results.Json(OccupantAction?.Invoke(targets) ?? new OccupantActionResults(targets.Select(it => new OccupantActionResult(it, "skipped", "Activity changed after review.")).ToArray()));
       });
       _api.MapPost("/worktree-sessions/preview", async exchange =>
       {
          var request = await exchange.Request.ReadFromJsonAsync<JsonObject>();
          if(request!["worktreePath"]!.GetValue<string>() != preview.WorktreePath) { exchange.Response.StatusCode = 400; return; }
-         var listed = Applied is not null && Result?.Status == "completed" ? preview with { Sessions = [], ShellOnlyHosts = [] } : preview;
+         var listed = Applied is not null && Result?.Status == "completed" ? preview with { Sessions = [], ShellOnlyHosts = [] } : PreviewNow?.Invoke() ?? preview;
          await exchange.Response.WriteAsJsonAsync(listed, JsonSerializerOptions.Web);
       });
       _api.MapPost("/worktree-sessions/apply", async exchange =>

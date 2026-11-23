@@ -106,6 +106,60 @@ public class When_Magnus_removes_a_dashboard_worktree : SpecificationOpeningWind
       Button? Button(string content) => window.GetVisualDescendants().OfType<Button>().SingleOrDefault(it => Equals(it.Content, content));
    }
 
+   [XF] public async Task a_confirmed_terminal_exit_is_rechecked_until_Codex_unloads_without_another_click()
+   {
+      var project = Sandbox.Project("stop follow-up").Project;
+      var checkout = new Project(Path.Combine(Sandbox.ProjectsFolder, "waiting for unload"));
+      GitRepositoryOfASpecification.In(new DirectoryInfo(project.Folder)).HasAWorktreeIn(new DirectoryInfo(checkout.Folder), "topic");
+      var target = new OccupantTarget("0000000000000001", 301, "codex", "stopped-parent", 302, DateTime.UtcNow);
+      var session = new WorktreeSession("codex", target.SessionId!, target.HostId, "idle");
+      var idle = new WorktreeSessionsPreview(Guid.NewGuid(), checkout.Folder, [session], [], []);
+      var agent = new WorktreeOccupant(target, "idle", "stopAgent", null, "Helper");
+      var hasStopped = new TaskCompletionSource();
+      var terminalGone = new TaskCompletionSource();
+      var unloaded = new TaskCompletionSource();
+      var acts = 0;
+      await using var server = new StandInWorktreeSessionArchive(new DirectoryInfo(Path.Combine(project.Folder, "api")), idle, new([agent]))
+      {
+         PreviewNow = () => !terminalGone.Task.IsCompleted ? idle : idle with
+            { Sessions = [session with { HostId = null, Activity = unloaded.Task.IsCompleted ? "closed" : "unknown" }] },
+         OccupantsNow = () => !terminalGone.Task.IsCompleted ? new([agent]) : unloaded.Task.IsCompleted ? new([]) :
+            new([new(target with { HostId = null, ShellPid = null, AgentPid = null, AgentStartedAt = null }, "unknown", null, "No verified terminal.", "Daemon session")]),
+         OccupantAction = targets =>
+         {
+            Interlocked.Increment(ref acts);
+            hasStopped.TrySetResult();
+            return new([new(targets.Single(), "stopped", null)]);
+         }
+      };
+      var removal = new RemoveDashboardWorktree(server.Hub, Sandbox.CloydsFolder, project, checkout);
+      var window = Open(() => new WorktreeRemovalDialog(removal, it => it.SessionId, _ => {}, _ => false, default));
+      Button? stop = null;
+      WaitUntil(() => (stop = FindButton("Stop idle sessions (1)"))?.IsEnabled == true, "one exact target could be stopped");
+      Click(stop!);
+      WaitUntil(() => hasStopped.Task.IsCompleted && FindButton("Stop idle sessions (0)") is { IsEnabled: false }, "the already-stopped process could not be stopped again");
+      terminalGone.SetResult();
+      WaitUntil(() => window.GetVisualDescendants().OfType<TextBlock>().Any(it => it.Text == "Daemon session"), "the stopped terminal was waiting for the daemon");
+      OnTheUIThread(() => FindButton("Remove worktree")!.IsEnabled).Must().BeFalse();
+      unloaded.SetResult();
+      WaitUntil(() => FindButton("Remove worktree")?.IsEnabled == true, "the stale occupant cleared without a manual refresh");
+      acts.Must().Be(1);
+      (server.Applied is null).Must().BeTrue();
+      Directory.Exists(checkout.Folder).Must().BeTrue();
+      Button? FindButton(string name) => window.GetVisualDescendants().OfType<Button>().SingleOrDefault(it => Equals(it.Content, name));
+   }
+
+   [XF] public void a_verified_prompt_in_another_checkout_supersedes_only_the_dashboard_shell_fallback()
+   {
+      var root = new Project(Path.GetTempPath());
+      var preview = new WorktreeSessionsPreview(Guid.NewGuid(), root.Folder, [], [], []);
+      var shell = new WorktreeOccupant(new("shell", null, null, null, null, null), "unknown", null, "Last seen here.");
+      var elsewhere = new ReviewedOccupants([]) { VerifiedShellsElsewhere = ["shell"] };
+      WorktreeOccupants.From(preview, elsewhere, [shell]).Rows.Length.Must().Be(0);
+      WorktreeOccupants.From(preview, new ReviewedOccupants([]), [shell]).Rows.Single().Must().Be(shell);
+      WorktreeOccupants.From(preview with { ShellOnlyHosts = [new("shell")] }, elsewhere, [shell]).Rows.Length.Must().Be(1);
+   }
+
    [XF] public async Task a_lost_receipt_replays_the_original_disposition_after_reopening()
    {
       var folder = Sandbox.Project("receipt").Project;
