@@ -7,7 +7,7 @@ sealed record GitWorktrees(Project Repository, IReadOnlyList<GitWorktree> Checko
    public static async Task<GitWorktrees?> Read(Project folder, CancellationToken cancellation)
    {
       if(!Directory.Exists(folder.Folder)) return null;
-      var listing = await GitRead.In(folder, cancellation, "worktree", "list", "--porcelain", "-z");
+      var listing = await GitCommand.In(folder, cancellation, "worktree", "list", "--porcelain", "-z");
       if(listing.ExitCode != 0 && listing.Error.Contains("not a git repository", StringComparison.Ordinal)) return null;
       var records = listing.CheckedOutput().Split("\0\0", StringSplitOptions.RemoveEmptyEntries);
       var checkouts = new List<GitWorktree>();
@@ -19,7 +19,7 @@ sealed record GitWorktrees(Project Repository, IReadOnlyList<GitWorktree> Checko
          repository ??= root;
          if(fields.Contains("bare") || fields.Any(it => it == "prunable" || it.StartsWith("prunable ", StringComparison.Ordinal))) continue;
          var branch = fields.FirstOrDefault(it => it.StartsWith("branch refs/heads/", StringComparison.Ordinal))?["branch refs/heads/".Length..];
-         checkouts.Add(new GitWorktree(root, branch, root.Equals(repository)));
+         checkouts.Add(new GitWorktree(root, branch, root.Equals(repository), fields.Any(it => it == "locked" || it.StartsWith("locked ", StringComparison.Ordinal))));
       }
       return new GitWorktrees(repository ?? throw new InvalidDataException($"Git listed no worktrees for {folder}."), checkouts);
    }

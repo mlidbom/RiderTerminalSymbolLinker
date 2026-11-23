@@ -41,8 +41,25 @@ session and virtual desktop in `projects-dashboard.json`.
   An empty box closes on focus loss or a click elsewhere. Escape in the box clears it and restores
   the saved expansion. Ctrl+F remains available in the transcript.
 - **Project headings** offer **Open project** to open the project window or bring the existing one forward.
+  A Git project's **+** starts a named Claude or Codex session in a new linked worktree.
+  Its folder sits under the repository's sibling `.worktrees` folder. Its branch uses dashes for
+  spaces in the name. Worktree headings and projects outside Git start a session in their existing folder.
+- **Filter strips** collapse to their selected icons. Hovering or entering a strip by keyboard
+  expands it in place. The root status strip and the membership strips all behave alike.
+- **Draft preview** uses the transcript's Markdown renderer. Hold Ctrl+M in either agent's input
+  box to read the draft in place. Releasing the shortcut or leaving the editor ends the preview.
 - **Worktree context menus** have a Git Extensions submenu. Browse opens its revision graph and Commit
   opens the interactive commit dialog in that worktree's directory.
+  **Remove worktree** uses the hub's `supportsWorktreeSessionRemoval` capability. Opening the menu
+  requests a preview that includes hidden sessions and shell-only hosts. The hub owns the shared
+  archive, seven-day recoverable deletion, activity checks and guarded closure. Its apply request
+  contains the reviewed identities and operation ID. Cloyd requires a completed receipt covering
+  every target before asking Git to remove the checkout. A partial result leaves the checkout in
+  place. Cloyd checks the registered checkout, revision, nested checkouts and uncommitted paths
+  again after confirmation and immediately before removal. A final preview must find the checkout
+  vacant. The Git command keeps the branch. Cloyd records the confirmed disposition under
+  `worktree-dispositions` before contacting the hub. If a reply is lost, the next removal attempt
+  replays the same operation ID and identities to recover its receipt.
 - **Branch icons** compare checkout commits against local main (otherwise the available integration branch).
   Green means integrated; purple means commits are still outside it. On the integration branch, green and
   purple compare against the last locally known remote upstream, and ↑/↓ mark outgoing/incoming commits.

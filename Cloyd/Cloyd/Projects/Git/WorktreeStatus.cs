@@ -11,13 +11,15 @@ sealed record WorktreeStatus(bool? Integrated, int ChangedPaths, string Explanat
    public static WorktreeStatus Unavailable(Exception failure) => new(null, 0, $"Git status unavailable: {failure.Message}");
 
    public static async Task<WorktreeStatus> Read(GitWorktree checkout, GitIntegrationBranch? target, CancellationToken cancellation)
+      => await FromReport(checkout, target, await GitStatusReport.Read(checkout.Root, cancellation), cancellation);
+
+   public static async Task<WorktreeStatus> FromReport(GitWorktree checkout, GitIntegrationBranch? target, GitStatusReport status, CancellationToken cancellation)
    {
-      var status = await GitStatusReport.Read(checkout.Root, cancellation);
       if(status.Commit is null or "(initial)") return new(null, status.ChangedPaths, "No commits yet");
       if(target is null) return new(null, status.ChangedPaths, "No local integration branch");
       if(status.Branch == target.Name) return ComparedWithUpstream(status, target);
 
-      var comparison = await GitRead.In(checkout.Root, cancellation, "rev-list", "--count", $"{target.Commit}..{status.Commit}");
+      var comparison = await GitCommand.In(checkout.Root, cancellation, "rev-list", "--count", $"{target.Commit}..{status.Commit}");
       if(comparison.ExitCode != 0) return new(null, status.ChangedPaths, $"Couldn't compare with {target.Name}: {comparison.Error.TrimEnd()}");
       var outside = int.Parse(comparison.Output, CultureInfo.InvariantCulture);
       return new(outside == 0, status.ChangedPaths,

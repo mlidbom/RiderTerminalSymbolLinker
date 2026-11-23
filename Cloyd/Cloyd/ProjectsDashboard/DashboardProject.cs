@@ -15,8 +15,8 @@ sealed class DashboardProject(Project? project) : DashboardGroup(KeyFor(project)
    public static string KeyFor(Project? project) => project is null ? "outside-hosts" : $"project:{project.Folder}";
    public override string Name => Project is null ? "Unknown project" : Project.Name.Length > 0 ? Project.Name : Project.Folder;
    public override string Description => Project?.Folder ?? Name;
-   public override Project? StartFolder => Children.OfType<DashboardWorktree>().Any() ? null : Project;
-   public void UpdateStartFolder() => OnPropertyChanged(nameof(CanStartSession));
+   public override Project? StartFolder => Project;
+   public bool CreatesWorktree { get => field; set => SetProperty(ref field, value); }
 
    static IBrush ColourFor(Project? project)
    {

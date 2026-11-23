@@ -17,6 +17,7 @@ sealed class SessionsOfCloyd(TheHub hub, CloydsFolder folder, ShellOfNewSessions
 {
    readonly Dictionary<SessionHostId, HostedSession> _sessions = [];
    readonly HashSet<SessionHostId> _ending = [];
+   readonly HashSet<Project> _worktreesBeingRemoved = [];
    readonly SavedHostedSessions _saved = folder.SavedHostedSessions;
    CancellationTokenSource? _following;
    int _windows;
@@ -126,15 +127,31 @@ sealed class SessionsOfCloyd(TheHub hub, CloydsFolder folder, ShellOfNewSessions
       }
    }
 
-   public Task<SessionHostOfTheHub> StartHost(Project project, string directory, CancellationToken cancellation) =>
-      Hub.StartASessionHost(shell, directory, SessionHostLabel.OfANewHostOf(project), cancellation);
+   public bool BeginRemovingWorktree(Project folder) => _worktreesBeingRemoved.Add(folder);
+   public void FinishRemovingWorktree(Project folder) => _worktreesBeingRemoved.Remove(folder);
+
+   void RequireAvailableWorktree(string directory)
+   {
+      var folder = new Project(directory);
+      if(_worktreesBeingRemoved.Any(it => it.Contains(folder))) throw new InvalidOperationException($"{folder} is being removed.");
+   }
+
+   public Task<SessionHostOfTheHub> StartHost(Project project, string directory, CancellationToken cancellation)
+   {
+      RequireAvailableWorktree(directory);
+      return Hub.StartASessionHost(shell, directory, SessionHostLabel.OfANewHostOf(project), cancellation);
+   }
 
    /// <summary>Starts the one labelled host for a coordinator in its worktree through the hub pinned for this launch.</summary>
-   public Task<SessionHostOfTheHub> StartPeerHost(TheHub launchHub, Project project, string worktree, Guid requestId, CancellationToken cancellation) =>
-      launchHub.StartASessionHost(shell, worktree, SessionHostLabel.ForAPeer(project, requestId), cancellation);
+   public Task<SessionHostOfTheHub> StartPeerHost(TheHub launchHub, Project project, string worktree, Guid requestId, CancellationToken cancellation)
+   {
+      RequireAvailableWorktree(worktree);
+      return launchHub.StartASessionHost(shell, worktree, SessionHostLabel.ForAPeer(project, requestId), cancellation);
+   }
 
    public async Task StartIn(SessionView tab, AgentCliCommand command, CancellationToken cancellation)
    {
+      RequireAvailableWorktree(tab.Session.LastSessionFolder?.Folder ?? tab.Host.Directory);
       try { await command.HaveTheHubTypeItInto(tab.Host, Hub, cancellation); }
       catch(RefusedByTheHub refusal) { tab.Tell($"The hub didn't type {command}: {refusal.Message}"); }
    }

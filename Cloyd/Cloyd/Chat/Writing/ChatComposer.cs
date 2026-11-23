@@ -26,6 +26,7 @@ abstract class ChatComposer : UserControl
 
    readonly PastedImages _pastedImages;
    readonly TextEditor _editor;
+   readonly DraftPreview _draftPreview;
    readonly WrapPanel _thumbnails = new() { Orientation = Orientation.Horizontal, Margin = new Thickness(8, 8, 8, 0), IsVisible = false };
    readonly Button _send = RoundButton("↑", TipOfTheSendButton);
    readonly Button _stop;
@@ -60,6 +61,7 @@ abstract class ChatComposer : UserControl
       _stop.IsVisible = false;
       _stop.Click += (_, _) => _ = Stop();
       AddHandler(KeyDownEvent, TakeItsKeys, RoutingStrategies.Tunnel);
+      _draftPreview = new DraftPreview(_editor);
       Content = TheLayout();
    }
 
@@ -70,6 +72,7 @@ abstract class ChatComposer : UserControl
    protected void Edit(DraftOfAMessage draft)
    {
       if(Draft == draft) return;
+      _draftPreview.Reset();
       Draft.Changed -= ShowTheThumbnailsOfTheImagesHeld;
       Draft = draft;
       _editor.Document = draft.Document;
@@ -106,7 +109,7 @@ abstract class ChatComposer : UserControl
    /// <summary>The highest the box grows, in logical pixels, as Magnus writes more lines: past it, it scrolls.</summary>
    public double MostHeight
    {
-      set => _editor.MaxHeight = value;
+      set => _draftPreview.MaxHeight = _editor.MaxHeight = value;
    }
 
    /// <summary>Brings back what the box saved, <paramref name="saved"/>, as its window opens.</summary>
@@ -126,6 +129,9 @@ abstract class ChatComposer : UserControl
    {
       switch(key)
       {
+         case {} when _draftPreview.IsPreviewing:
+            key.Handled = true;
+            break;
          case { Key: Key.Enter, KeyModifiers: KeyModifiers.Control }:
             key.Handled = true;
             Send();
@@ -217,7 +223,7 @@ abstract class ChatComposer : UserControl
       {
          CornerRadius = new CornerRadius(12),
          BorderThickness = new Thickness(1),
-         Child = new DockPanel { Children = { _thumbnails, buttons, _editor } }
+         Child = new DockPanel { Children = { _thumbnails, buttons, _draftPreview } }
       };
       box.Bind(Border.BorderBrushProperty, box.GetResourceObservable("TextControlBorderBrush"));
       box.Bind(Border.BackgroundProperty, box.GetResourceObservable("TextControlBackground"));

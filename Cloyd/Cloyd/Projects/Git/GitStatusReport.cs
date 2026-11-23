@@ -21,7 +21,7 @@ sealed class GitStatusReport
       : null;
 
    public static async Task<GitStatusReport> Read(Project folder, CancellationToken cancellation) =>
-      new((await GitRead.In(folder, cancellation, "status", "--porcelain=v2", "--branch", "--ahead-behind", "--untracked-files=all")).CheckedOutput());
+      new((await GitCommand.In(folder, cancellation, "status", "--porcelain=v2", "--branch", "--ahead-behind", "--untracked-files=all")).CheckedOutput());
 
    string? Header(string name)
    {

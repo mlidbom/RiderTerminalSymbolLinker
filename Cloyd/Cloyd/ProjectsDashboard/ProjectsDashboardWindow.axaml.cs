@@ -12,6 +12,7 @@ using Cloyd.Hub.Commands;
 using Cloyd.Hub.RunningSessions;
 using Cloyd.LocalApi.Contract;
 using Cloyd.Projects;
+using Cloyd.Projects.Git;
 using Cloyd.Saving;
 using Cloyd.Sessions;
 using Cloyd.VirtualDesktops;
@@ -48,13 +49,7 @@ sealed partial class ProjectsDashboardWindow : Window
       DataContext = Tree;
       Tree.ActiveSessionChanged += ShowActiveSession;
       Tabs.TabChosen += Select;
-      Tabs.ContainerPrepared += (_, prepared) =>
-         prepared.Container.ContextMenu = Tabs.Items[prepared.Index] switch
-         {
-            DashboardWorktree worktree => new WorktreeContextMenu(worktree.StartFolder, Tell),
-            DashboardProject { Project: {} project } => ProjectMenu(project),
-            _ => null
-         };
+      Tabs.ContainerPrepared += (_, prepared) => prepared.Container.ContextMenu = MenuFor(Tabs.Items[prepared.Index]);
       Overlays.Children.Add(_history);
       _history.Chosen += entry =>
       {
@@ -128,6 +123,14 @@ sealed partial class ProjectsDashboardWindow : Window
       };
       return new ContextMenu { Items = { open } };
    }
+
+   ContextMenu? MenuFor(object? row) => row switch
+   {
+      DashboardWorktree worktree => new WorktreeContextMenu(worktree, Tell, token => Sessions.Hub.PreviewWorktreeSessions(worktree.StartFolder, token),
+         preview => _ = ReportFailure(() => RemoveWorktree(worktree, preview))),
+      DashboardProject { Project: {} project } => ProjectMenu(project),
+      _ => null
+   };
 
    void Refresh()
    {
@@ -231,10 +234,18 @@ sealed partial class ProjectsDashboardWindow : Window
       var button = (NewSessionButton)sender!;
       if(button.Tag is not null) return;
       button.Tag = this;
-      button.Opened += () => _ = ReportFailure(async () => button.Offer(await Sessions.Hub.AgentClisItServes(_closed.Token)));
+      DashboardGroup? chosenGroup = null;
+      button.Opened += () =>
+      {
+         chosenGroup = button.DataContext as DashboardGroup;
+         button.AskForWorktreeName(chosenGroup is DashboardProject { CreatesWorktree: true });
+         _ = ReportFailure(async () => button.Offer(await Sessions.Hub.AgentClisItServes(_closed.Token)));
+      };
       button.NewSessionAsked += session =>
       {
-         if(button.DataContext is DashboardGroup { StartFolder: {} folder } group)
+         if(chosenGroup is DashboardProject { Project: {} project })
+            _ = ReportFailure(() => StartFromProject(project, session));
+         else if(chosenGroup is { StartFolder: {} folder } group)
             _ = ReportFailure(() => StartInNewHost(OwningProject(group, folder), folder, null, session, session.Command));
       };
    }
@@ -243,6 +254,25 @@ sealed partial class ProjectsDashboardWindow : Window
       _windows.Open.FirstOrDefault(it => it.Project.Equals(folder))?.Project ?? group.Group.Project ?? folder;
 
    public Task Start(Project project, NewSession session) => StartInNewHost(project, project, null, session, session.Command);
+
+   async Task StartFromProject(Project project, NewSession session)
+   {
+      if(await GitWorktrees.Read(project, _closed.Token) is not {} repository)
+      {
+         await Start(project, session);
+         return;
+      }
+      var worktree = await NewSessionWorktree.Create(repository.Repository, session.Name, _closed.Token);
+      try
+      {
+         await Tree.RefreshWorktrees(RefreshRows, Tell, _closed.Token);
+         await StartInNewHost(repository.Repository, worktree, null, session, session.Command);
+      }
+      catch(Exception failure) when(!_closed.IsCancellationRequested)
+      {
+         throw new InvalidOperationException($"Created {worktree}. Starting the session failed: {failure.Message}. Its + can start a session there.", failure);
+      }
+   }
 
    void ShowHost(SessionHostOfTheHub host, Session? latest, NewSession? startedAs)
    {

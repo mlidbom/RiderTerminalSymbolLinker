@@ -6,7 +6,7 @@ sealed record GitIntegrationBranch(string Name, string Commit, bool TracksRemote
 {
    public static async Task<GitIntegrationBranch?> Of(Project repository, CancellationToken cancellation)
    {
-      var refs = (await GitRead.In(repository, cancellation, "for-each-ref", "--format=%(refname)%00%(objectname)%00%(upstream:remotename)%00%(symref)",
+      var refs = (await GitCommand.In(repository, cancellation, "for-each-ref", "--format=%(refname)%00%(objectname)%00%(upstream:remotename)%00%(symref)",
                                    "refs/heads", "refs/remotes/origin/HEAD")).CheckedOutput()
          .Split('\n', StringSplitOptions.RemoveEmptyEntries).Select(it => it.TrimEnd('\r').Split('\0')).ToDictionary(it => it[0], StringComparer.Ordinal);
       var defaultRemote = refs.GetValueOrDefault("refs/remotes/origin/HEAD")?[3];

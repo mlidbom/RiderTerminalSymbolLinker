@@ -5,23 +5,40 @@ using Avalonia.Controls.Primitives;
 using Avalonia.Input;
 using Avalonia.Layout;
 using Avalonia.Media;
+using Avalonia.Threading;
 
 namespace Cloyd.ProjectsDashboard.Filters;
 
 /// <summary>A row of dashboard switches. All temporarily bypasses the other switches in this
 /// strip while their check marks retain the choices that take effect when All is released.</summary>
-abstract class DashboardFilterStrip : StackPanel
+abstract class DashboardFilterStrip : WrapPanel
 {
    readonly IncludedSessions _all;
    DashboardTree? _tree;
    DashboardGroup? Group => DataContext as DashboardGroup;
    readonly Dictionary<IncludedSessions, ToggleButton> _buttons = [];
+   bool _keyboardNavigation;
 
    protected DashboardFilterStrip(IncludedSessions all)
    {
       _all = all;
       Orientation = Orientation.Horizontal;
-      Spacing = 2;
+      Background = Brushes.Transparent;
+      PointerEntered += (_, _) => ShowChoices();
+      PointerExited += (_, _) => ShowChoices();
+      GotFocus += (_, focus) =>
+      {
+         _keyboardNavigation = focus.NavigationMethod != NavigationMethod.Pointer;
+         ShowChoices();
+      };
+      LostFocus += (_, _) => Dispatcher.UIThread.Post(ShowChoices, DispatcherPriority.Input);
+      AddHandler(PointerPressedEvent, (_, _) => _keyboardNavigation = false, Avalonia.Interactivity.RoutingStrategies.Tunnel);
+      AddHandler(KeyDownEvent, (_, key) =>
+      {
+         if(key.Key != Key.Tab) return;
+         _keyboardNavigation = true;
+         ShowChoices();
+      }, Avalonia.Interactivity.RoutingStrategies.Tunnel);
       Loaded += (_, _) =>
       {
          _tree = (TopLevel.GetTopLevel(this) as ProjectsDashboardWindow)?.Tree;
@@ -36,6 +53,14 @@ abstract class DashboardFilterStrip : StackPanel
       DataContextChanged += (_, _) => Refresh();
    }
 
+   /// <summary>Keyboard navigation can reveal the same choices as hovering. Mouse focus alone
+   /// must let the strip collapse again when the pointer leaves after a click.</summary>
+   void ShowChoices()
+   {
+      var expanded = IsPointerOver || _keyboardNavigation && IsKeyboardFocusWithin;
+      foreach(var button in _buttons.Values) button.IsVisible = expanded || button.IsChecked == true;
+   }
+
    protected void Add(IncludedSessions kind, string name, Geometry icon) =>
       AddButton(kind, name, new PathIcon { Data = icon, Width = 13, Height = 13 });
 
@@ -46,7 +71,7 @@ abstract class DashboardFilterStrip : StackPanel
       var button = new ToggleButton
       {
          Content = content, HorizontalContentAlignment = HorizontalAlignment.Center, VerticalContentAlignment = VerticalAlignment.Center,
-         MinWidth = 22, Height = 23, Padding = new Thickness(4, 2), CornerRadius = new CornerRadius(4)
+         MinWidth = 22, Height = 23, Margin = new Thickness(0, 0, 2, 0), Padding = new Thickness(4, 2), CornerRadius = new CornerRadius(4)
       };
       AutomationProperties.SetName(button, name);
       button.Click += (_, _) => _tree?.ToggleInclusion(Group, kind);
@@ -78,6 +103,7 @@ abstract class DashboardFilterStrip : StackPanel
          AutomationProperties.SetHelpText(button, help);
          ToolTip.SetTip(button, help);
       }
+      ShowChoices();
 
       IEnumerable<string> DescribeSwitch(IncludedSessions kind, string name, bool inherited)
       {

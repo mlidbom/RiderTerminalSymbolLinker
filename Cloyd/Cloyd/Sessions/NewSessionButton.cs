@@ -43,6 +43,9 @@ sealed class NewSessionButton : Button
 
    protected override Type StyleKeyOverride => typeof(Button);
 
+   public void AskForWorktreeName(bool createsWorktree) => _name.PlaceholderText =
+      createsWorktree ? "Name for the new worktree and session" : "The new session's name, or none";
+
    /// <summary>Raised as its box opens, for the window to <see cref="Offer"/> the agent CLIs the hub serves.</summary>
    public event Action? Opened;
 

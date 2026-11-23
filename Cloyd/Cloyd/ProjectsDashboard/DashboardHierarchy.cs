@@ -41,7 +41,8 @@ sealed class DashboardHierarchy(ProjectWindows windows, DashboardWorktrees workt
          if(listings.TryGetValue(running.Session.Id, out var listing)) IncludeOutsideHost(running, listing);
       IncludeRecordedSessions(listings);
       foreach(var gone in _byKey.Values.Where(it => !_present.Contains(it)).ToArray()) _byKey.Remove(gone.Key);
-      foreach(var project in Projects) project.UpdateStartFolder();
+      foreach(var project in Projects) project.CreatesWorktree = project.Project is {} folder && _worktrees.Repositories.Any(it => it.Repository.Equals(folder));
+      foreach(var worktree in Groups.OfType<DashboardWorktree>()) worktree.UpdateRemovalAvailability();
    }
 
    void IncludeRecordedSessions(IReadOnlyDictionary<SessionId, SessionListing> listings)

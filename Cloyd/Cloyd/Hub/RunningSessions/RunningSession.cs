@@ -28,6 +28,15 @@ abstract record RunningSession(SessionHostId? SessionHost)
    /// <summary>Whether the agent CLI works at a turn, which the tab's header shows.</summary>
    public abstract bool IsBusy { get; }
 
+   /// <summary>An idle agent may be closed during worktree removal. A turn, a request for
+   /// input or work still running in the background needs its checkout.</summary>
+   public bool KeepsWorktreeInUse => this switch
+   {
+      RunningClaudeCode { Status.AsReported: "idle", BackgroundWork: null or { IsAny: false } } => false,
+      RunningCodex { Status.AsReported: "idle" or "error" } => false,
+      _ => true
+   };
+
    /// <summary>
    /// The running sessions <paramref name="answer"/> lists. One of an agent CLI Cloyd doesn't know is left out, as the
    /// hub's contract has a reader do.

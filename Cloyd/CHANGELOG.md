@@ -7,6 +7,17 @@ All notable changes to Cloyd are documented here. The format follows
 ## [0.1.0]
 
 ### Added
+- **Hold Ctrl+M in the chat input box to preview your draft as Markdown.** Release either key to
+  return to the same caret and selection in Claude and Codex chats.
+- **Dashboard filter strips show their selected switches at rest.** Hover over a strip or tab into
+  it to see and change every switch, including the ones on project and worktree headings.
+- **The + on a Git project creates a worktree and starts a session in it.** Enter one name for the
+  checkout and the session, and choose Claude or Codex. The new branch starts at the local integration
+  branch, or at HEAD when there is none. The + on an existing worktree starts a session there.
+- **Remove a linked worktree from its dashboard menu with a hub that supports the shared session archive.**
+  Working sessions and requests waiting for your input disable removal. Uncommitted files open Git
+  Extensions. Unmerged commits require confirmation. For saved or idle sessions, choose Archive,
+  Delete with seven days of recovery, or Cancel. Git keeps the branch.
 - **Launching Cloyd from the Start menu opens Projects Dashboard.** Running the executable without
   arguments also brings an existing dashboard forward. Right-click a project heading and choose
   **Open project** to open or activate its project window.

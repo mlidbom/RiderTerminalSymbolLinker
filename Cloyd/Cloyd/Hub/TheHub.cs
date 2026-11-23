@@ -375,11 +375,11 @@ sealed partial class TheHub
    /// What <paramref name="answer"/> says, as the contract's <typeparamref name="TAnswer"/>: an
    /// <see cref="HttpRequestException"/> with its body for an answer that is neither a success nor a refusal (409, 404).
    /// </summary>
-   static async Task<TAnswer> Read<TAnswer>(HttpResponseMessage answer, CancellationToken cancellation)
+   static async Task<TAnswer> Read<TAnswer>(HttpResponseMessage answer, CancellationToken cancellation, JsonSerializerOptions? json = null)
    {
       var body = await answer.Content.ReadAsStringAsync(cancellation);
       if(answer.StatusCode is not (HttpStatusCode.Conflict or HttpStatusCode.NotFound) && !answer.IsSuccessStatusCode)
          throw new HttpRequestException($"{answer.RequestMessage?.Method} {answer.RequestMessage?.RequestUri?.AbsolutePath}: {(int)answer.StatusCode} {body}");
-      return JsonSerializer.Deserialize<TAnswer>(body, LocalApiProtocol.Json) ?? throw new InvalidDataException("The hub returned a null response.");
+      return JsonSerializer.Deserialize<TAnswer>(body, json ?? LocalApiProtocol.Json) ?? throw new InvalidDataException("The hub returned a null response.");
    }
 }

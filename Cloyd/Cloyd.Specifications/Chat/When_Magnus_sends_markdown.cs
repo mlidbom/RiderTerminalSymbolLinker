@@ -1,6 +1,9 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Headless;
+using Avalonia.Input;
 using Avalonia.Input.Platform;
+using AvaloniaEdit;
 using Avalonia.Layout;
 using Avalonia.VisualTree;
 using Cloyd.Chat;
@@ -65,6 +68,32 @@ public class When_Magnus_sends_markdown : SpecificationOpeningWindows
             FoundInTheChat.Of("hidden-target", [prompt], 0).Counted.Must().Be("No matches");
          });
          if(chat is ChatOfACodexSession) Render(window, "Magnus-markdown-prompt");
+         var editor = OnTheUIThread(() => chat.InputBox.GetVisualDescendants().OfType<TextEditor>().Single());
+         OnTheUIThread(() =>
+         {
+            editor.Document.Text = "* **Preview this**";
+            editor.Select(4, 7);
+            chat.InputBox.TakeTheKeyboard();
+            window.KeyPress(Key.M, RawInputModifiers.Control, PhysicalKey.M, "m");
+         });
+         WaitUntil(() => chat.InputBox.GetVisualDescendants().OfType<MarkdownTextBlock>().Any(it => it.LayoutText == "Preview this"),
+                   "holding Ctrl+M rendered the draft inside the composer");
+         OnTheUIThread(() =>
+         {
+            window.KeyRelease(Key.LeftCtrl, RawInputModifiers.None, PhysicalKey.ControlLeft, null);
+            editor.Opacity.Must().Be(1.0);
+            window.KeyPress(Key.M, RawInputModifiers.None, PhysicalKey.M, "m");
+            window.KeyTextInput("m");
+            window.KeyRelease(Key.M, RawInputModifiers.None, PhysicalKey.M, "m");
+            editor.IsKeyboardFocusWithin.Must().BeTrue();
+            editor.SelectedText.Must().Be("Preview");
+            editor.Document.Text.Must().Be("* **Preview this**");
+            window.KeyPress(Key.M, RawInputModifiers.Control, PhysicalKey.M, "m");
+            window.KeyRelease(Key.M, RawInputModifiers.Control, PhysicalKey.M, "m");
+            editor.Opacity.Must().Be(1.0);
+            window.KeyTextInput("m");
+            editor.Document.Text.Must().Be("* **m this**");
+         });
          DoneOnTheUIThread(async () =>
          {
             var renderer = Text("Open tabs")!.FindAncestorOfType<MarkdownRenderer>()!;

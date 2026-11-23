@@ -115,10 +115,10 @@
         <DockPanel Background="{DynamicResource TabStripGround}">
           <Border DockPanel.Dock="Top" Padding="12,4" BorderBrush="{DynamicResource GroupDivider}" BorderThickness="0,0,0,1">
             <Grid RowDefinitions="Auto,Auto" ColumnDefinitions="*,Auto" ColumnSpacing="6">
-              <WrapPanel VerticalAlignment="Center">
+              <Grid ColumnDefinitions="Auto,*" VerticalAlignment="Top">
                 <filters:SessionFilterStrip Margin="0,2,8,2"/>
-                <filters:SessionStatusFilterStrip Margin="0,2"/>
-              </WrapPanel>
+                <filters:SessionStatusFilterStrip Grid.Column="1" HorizontalAlignment="Left" Margin="0,2"/>
+              </Grid>
               <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="3" VerticalAlignment="Center">
                 <ToggleButton Content="AG" IsChecked="{Binding EditingFilters, Mode=TwoWay}" Padding="5,2"
                               AutomationProperties.Name="All groups" ToolTip.Tip="All groups · Show group headings even when no sessions match"/>

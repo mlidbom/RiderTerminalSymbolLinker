@@ -309,15 +309,9 @@ abstract class SessionChat : UserControl
 
    MarkdownRenderer RenderMarkdown(string markdown)
    {
-      var text = new ObservableStringBuilder();
-      text.Append(markdown);
-      var renderer = ColoursOfTheChat.Text.AsTheForegroundOf(new MarkdownRenderer { MarkdownBuilder = text });
+      var renderer = ChatMarkdown.Render(markdown);
       renderer.LinkClick += OpenChatLink;
-      renderer.AttachedToVisualTree += (_, _) => ColourTheCode();
-      renderer.ActualThemeVariantChanged += (_, _) => ColourTheCode();
       return renderer;
-
-      void ColourTheCode() => renderer.CodeBlockColorTheme = ColoursOfTheChat.OfCodeIn(renderer.ActualThemeVariant);
    }
 
    async void OpenChatLink(object? sender, LinkClickedEventArgs click)

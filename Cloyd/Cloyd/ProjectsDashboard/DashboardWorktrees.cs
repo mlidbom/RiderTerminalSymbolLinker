@@ -18,6 +18,8 @@ sealed class DashboardWorktrees
    public IEnumerable<GitWorktrees> Repositories => _byFolder.Values.OfType<GitWorktrees>().DistinctBy(it => it.Repository);
    public IReadOnlySet<Project> TrustedProjects { get; private set; } = new HashSet<Project>();
 
+   public void Invalidate() => _readAgain = _readDormantAgain = DateTime.MinValue;
+
    public Task Discover(ProjectWindows windows, IEnumerable<Project> displayedFolders, SavedDashboardArrangement saved, Action refreshed, Action<Exception> failed, CancellationToken cancellation)
    {
       if(!CurrentReading.IsCompleted) return CurrentReading;

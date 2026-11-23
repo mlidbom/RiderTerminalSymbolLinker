@@ -3,11 +3,11 @@ using System.Text;
 
 namespace Cloyd.Projects.Git;
 
-/// <summary>A local, read-only Git command in a checkout. Each argument is passed independently.
+/// <summary>A local Git command in a checkout. Each argument is passed independently.
 /// Disabling optional locks also keeps status from writing the index during dashboard refreshes.</summary>
-sealed record GitRead(int ExitCode, string Output, string Error)
+sealed record GitCommand(int ExitCode, string Output, string Error)
 {
-   public static async Task<GitRead> In(Project folder, CancellationToken cancellation, params string[] arguments)
+   public static async Task<GitCommand> In(Project folder, CancellationToken cancellation, params string[] arguments)
    {
       cancellation.ThrowIfCancellationRequested();
       var start = new ProcessStartInfo("git", ["--no-optional-locks", "-C", folder.Folder, .. arguments])
@@ -27,7 +27,7 @@ sealed record GitRead(int ExitCode, string Output, string Error)
          await Task.WhenAll(output, error);
          throw;
       }
-      return new GitRead(git.ExitCode, await output, await error);
+      return new GitCommand(git.ExitCode, await output, await error);
    }
 
    public string CheckedOutput() => ExitCode == 0 ? Output : throw new InvalidOperationException(Error.TrimEnd());

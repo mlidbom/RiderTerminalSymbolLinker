@@ -6,6 +6,7 @@ using Avalonia.VisualTree;
 using ClaudeTooling.SessionHost.Protocol;
 using Cloyd.ProjectsDashboard;
 using Cloyd.ProjectsDashboard.Filters;
+using Cloyd.Projects.Git;
 using Cloyd.ClaudeCode;
 using Cloyd.Codex;
 using Avalonia.Automation;
@@ -128,7 +129,9 @@ public class When_Magnus_arranges_the_dashboard_tabs : SpecificationOpeningWindo
          .SelectMany(it => it.Children.OfType<ToggleButton>()).Single(it => AutomationProperties.GetName(it) == name);
       void PressSwitch(ProjectsDashboardWindow dashboard, string name)
       {
-         Focus(OnTheUIThread(() => Switch(dashboard, name)));
+         var button = OnTheUIThread(() => Switch(dashboard, name));
+         Focus(OnTheUIThread(() => ((DashboardFilterStrip)button.Parent!).Children.OfType<ToggleButton>().First(it => it.IsVisible)));
+         Focus(button);
          Press(dashboard, Key.Space, PhysicalKey.Space, RawInputModifiers.None);
       }
    }
@@ -166,6 +169,8 @@ public class When_Magnus_arranges_the_dashboard_tabs : SpecificationOpeningWindo
             _dashboard.UpdateLayout();
             var name = kind == IncludedSessions.Pinned ? "Pinned" : "All session memberships";
             var strip = _dashboard.GetVisualDescendants().OfType<SessionFilterStrip>().Single(it => it.DataContext == _linkedGroup);
+            _dashboard.MouseMove(strip.TranslatePoint(new Point(2, strip.Bounds.Height / 2), _dashboard)!.Value);
+            _dashboard.UpdateLayout();
             var button = strip.Children.OfType<ToggleButton>().Single(it => AutomationProperties.GetName(it) == name);
             var centre = button.TranslatePoint(new Point(button.Bounds.Width / 2, button.Bounds.Height / 2), _dashboard)!.Value;
             _dashboard.MouseDown(centre, MouseButton.Left);
@@ -252,7 +257,7 @@ public class When_Magnus_arranges_the_dashboard_tabs : SpecificationOpeningWindo
          _dashboard.MouseUp(at, MouseButton.Right);
          return rows.Single(it => it.DataContext == _emptyGroup).ContextMenu!;
       });
-      var gitExtensions = OnTheUIThread(() => menu.Items.OfType<MenuItem>().Single());
+      var gitExtensions = OnTheUIThread(() => menu.Items.OfType<MenuItem>().Single(it => Equals(it.Header, "Git Extensions")));
       WaitUntil(() => menu.IsOpen && LaidOut(gitExtensions), "right-click showed the Git Extensions menu item",
                 () => $"menu open {menu.IsOpen}, item bounds {gitExtensions.Bounds}", TimeSpan.FromSeconds(4));
       OnTheUIThread(() => gitExtensions.IsSubMenuOpen = true);
@@ -275,6 +280,52 @@ public class When_Magnus_arranges_the_dashboard_tabs : SpecificationOpeningWindo
 
       static bool LaidOut(MenuItem item) =>
          item.IsEffectivelyVisible && TopLevel.GetTopLevel(item) is not null && item.Bounds is { Width: > 0, Height: > 0 };
+   }
+
+   [XF] public async Task removing_an_empty_merged_worktree_unregisters_it_and_keeps_its_branch()
+   {
+      var repository = _alpha.Project;
+      OnTheUIThread(() =>
+      {
+         _emptyGroup.CanRemove.Must().BeTrue();
+         _alphaGroup.Children.OfType<DashboardWorktree>().Single(it => it.StartFolder.Equals(repository)).CanRemove.Must().BeFalse();
+      });
+      var git = await WorktreeRemoval.Inspect(repository, _emptyGroup.StartFolder, default);
+      await git.Remove(default);
+      Directory.Exists(_empty.FullName).Must().BeFalse();
+      (await GitCommand.In(repository, default, "rev-parse", "--verify", "refs/heads/another-branch")).ExitCode.Must().Be(0);
+   }
+
+   [XF] public async Task removal_refuses_an_ignored_checkout_from_another_repository_inside_the_worktree()
+   {
+      var folder = _emptyGroup.StartFolder;
+      File.WriteAllText(Path.Combine(folder.Folder, ".gitignore"), "nested/");
+      (await GitCommand.In(folder, default, "add", ".gitignore")).CheckedOutput();
+      (await GitCommand.In(folder, default, "-c", "user.name=Specification", "-c", "user.email=specification@localhost", "-c", "commit.gpgsign=false",
+                           "commit", "-m", "Ignore nested checkout")).CheckedOutput();
+      var nested = Directory.CreateDirectory(Path.Combine(folder.Folder, "nested"));
+      var other = GitRepositoryOfASpecification.In(nested);
+      other.Write("uncommitted.txt", "This belongs to another project");
+      (await GitStatusReport.Read(folder, default)).ChangedPaths.Must().Be(0);
+      await Xunit.Assert.ThrowsAsync<InvalidOperationException>(() => WorktreeRemoval.Inspect(_alpha.Project, folder, default));
+      File.Exists(Path.Combine(nested.FullName, "uncommitted.txt")).Must().BeTrue();
+   }
+
+   [XF] public async Task removal_checks_for_new_files_and_new_commits_after_the_worktree_was_reviewed()
+   {
+      var git = await WorktreeRemoval.Inspect(_alpha.Project, _emptyGroup.StartFolder, default);
+      File.WriteAllText(Path.Combine(_empty.FullName, "new-file.txt"), "changed after the confirmation");
+      var dirty = await WorktreeRemoval.Inspect(_alpha.Project, _emptyGroup.StartFolder, default);
+      dirty.Status.ChangedPaths.Must().Be(1);
+      await Xunit.Assert.ThrowsAsync<InvalidOperationException>(() => git.Remove(default));
+      Directory.Exists(_empty.FullName).Must().BeTrue();
+      (await GitCommand.In(_emptyGroup.StartFolder, default, "add", "new-file.txt")).CheckedOutput();
+      (await GitCommand.In(_emptyGroup.StartFolder, default, "-c", "user.name=Specification", "-c", "user.email=specification@localhost", "-c", "commit.gpgsign=false",
+                           "commit", "-m", "Work outside the integration branch")).CheckedOutput();
+      var unmerged = await WorktreeRemoval.Inspect(_alpha.Project, _emptyGroup.StartFolder, default);
+      unmerged.Status.Integrated.Must().Be(false);
+      await Xunit.Assert.ThrowsAsync<InvalidOperationException>(() => git.Remove(default));
+      Directory.Exists(_empty.FullName).Must().BeTrue();
    }
 
    [XF] public void both_agents_follow_the_worktree_where_they_run_even_when_their_host_was_started_elsewhere()
@@ -518,6 +569,50 @@ public class When_Magnus_arranges_the_dashboard_tabs : SpecificationOpeningWindo
       WaitUntil(() => _emptyGroup.Sessions.SingleOrDefault()?.Name == "From the empty worktree", "the new Codex session appeared beneath the clicked worktree");
       OnTheUIThread(() => _dashboard.View!.Host.Directory).Must().Be(_empty.FullName);
       OnTheUIThread(() => _dashboard.View!.Host.Project).Must().Be(_alpha.Project);
+   }
+
+   [XF] public void the_project_plus_creates_a_linked_worktree_and_starts_the_named_session_there()
+   {
+      var start = OnTheUIThread(() => _dashboard.GetVisualDescendants().OfType<NewSessionButton>().Single(it => it.DataContext == _alphaGroup));
+      Focus(start);
+      Press(_dashboard, Key.Space, PhysicalKey.Space, RawInputModifiers.None);
+      WaitUntil(() => start.ShowsTheChoiceOfAgentCli, "the project offered Claude and Codex");
+      OnTheUIThread(() => start.Choose(AgentCli.Codex));
+      Type(_dashboard, "Dashboard changes");
+      Press(_dashboard, Key.Enter, PhysicalKey.Enter, RawInputModifiers.None);
+      WaitUntil(() => _alphaGroup.Children.OfType<DashboardWorktree>().Any(it => it.Name == "Dashboard changes" && it.Branch == "Dashboard-changes"
+                      && it.Sessions.Any(session => session.Name == "Dashboard changes")), "the named session appeared in its new worktree");
+      OnTheUIThread(() => _dashboard.View!.Host.Directory).Must().Be(Path.Combine(_alpha.Project.Folder + ".worktrees", "Dashboard changes"));
+   }
+
+   [XF] public void hovering_a_filter_strip_or_tabbing_into_it_reveals_all_its_choices()
+   {
+      var strip = OnTheUIThread(() => _dashboard.GetVisualDescendants().OfType<SessionStatusFilterStrip>().Single());
+      OnTheUIThread(() =>
+      {
+         var layout = (Grid)_dashboard.GetVisualDescendants().OfType<GridSplitter>().Single().Parent!;
+         layout.ColumnDefinitions[0].Width = new GridLength(275);
+         _dashboard.UpdateLayout();
+         var buttons = strip.Children.OfType<ToggleButton>().ToList();
+         var all = buttons.Last();
+         buttons.Where(it => it.IsVisible).Must().SequenceEqual([all]);
+         var pointer = strip.TranslatePoint(new Point(3, 8), _dashboard)!.Value;
+         _dashboard.MouseMove(pointer);
+         buttons.All(it => it.IsVisible).Must().BeTrue();
+         _dashboard.UpdateLayout();
+         _dashboard.MouseMove(pointer);
+         strip.IsPointerOver.Must().BeTrue();
+         var working = buttons.Single(it => AutomationProperties.GetName(it) == "Working");
+         var at = working.TranslatePoint(new Point(6, 8), _dashboard)!.Value;
+         _dashboard.MouseDown(at, MouseButton.Left);
+         _dashboard.MouseUp(at, MouseButton.Left);
+         _dashboard.MouseMove(new Point(1, 95));
+         buttons.Where(it => it.IsVisible).Must().SequenceEqual([working]);
+         _dashboard.KeyPress(Key.Tab, RawInputModifiers.None, PhysicalKey.Tab, null);
+         _dashboard.KeyRelease(Key.Tab, RawInputModifiers.None, PhysicalKey.Tab, null);
+         buttons.Single(it => AutomationProperties.GetName(it) == "Waiting for you").IsKeyboardFocusWithin.Must().BeTrue();
+         buttons.All(it => it.IsVisible).Must().BeTrue();
+      });
    }
 
    [XF] public void the_repository_and_its_empty_worktrees_can_be_reopened_after_the_last_project_tab_is_gone()

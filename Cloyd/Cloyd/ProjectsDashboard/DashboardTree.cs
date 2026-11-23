@@ -84,6 +84,13 @@ sealed class DashboardTree : ObservableObject
    public Task DiscoverWorktrees(Action refreshed, Action<Exception> failed, CancellationToken cancellation) =>
       _worktrees.Discover(_windows, Sessions.Select(it => it.WorkingFolder).OfType<Project>(), Arrangement, refreshed, failed, cancellation);
 
+   public async Task RefreshWorktrees(Action refreshed, Action<Exception> failed, CancellationToken cancellation)
+   {
+      await _worktrees.CurrentReading;
+      _worktrees.Invalidate();
+      await DiscoverWorktrees(refreshed, failed, cancellation);
+   }
+
    /// <summary>A scoped history reading may introduce folders while an earlier Git discovery is underway.
    /// Finish that discovery and include the new folders before taking the heading's membership.</summary>
    public async Task DiscoverHistoryWorktrees(Action refreshed, Action<Exception> failed, CancellationToken windowClosed, CancellationToken pickerClosed)
