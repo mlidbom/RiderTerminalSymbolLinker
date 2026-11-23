@@ -44,17 +44,19 @@ session and virtual desktop in `projects-dashboard.json`.
   box to read the draft in place. Releasing the shortcut or leaving the editor ends the preview.
 - **Worktree context menus** have a Git Extensions submenu. Browse opens its revision graph and Commit
   opens the interactive commit dialog in that worktree's directory.
-  **Remove worktree** uses the hub's `supportsWorktreeSessionRemoval` capability. Opening the menu
-  checks the full worktree even when filters hide its rows. A live host (including a shell-only
-  tab) or any running session, including an idle agent outside Cloyd, disables removal. A saved
-  tab that could be restored is eligible once its host and agent have exited. The hub owns the
-  shared archive and seven-day recoverable deletion. Its apply request names only the reviewed
-  stopped conversations and their operation ID. Cloyd requires a completed receipt covering
-  every target before asking Git to remove the checkout. A partial result leaves the checkout in
-  place. Cloyd checks the registered checkout, revision, nested checkouts and uncommitted paths
-  again after confirmation and immediately before removal. A final preview must find the checkout
-  vacant. The Git command keeps the branch. Cloyd records the confirmed disposition under
-  `worktree-dispositions` before contacting the hub. If a reply is lost, the next removal attempt
+  **Remove worktree…** always opens the review window. Each checkout reports its dirty paths,
+  merge status and remote tip verification. The dialog keeps local branches unless explicitly
+  selected for deletion. Branch deletion compares the reviewed commit with the current ref.
+  **Refresh** re-reads Git and the unfiltered hub inventory, including sessions outside Cloyd.
+  Idle-agent and idle-shell actions use reviewed process identities on hubs advertising
+  `supportsWorktreeOccupantActions`. Working, waiting, unknown and drafted tabs stay in the review.
+  A final removal uses only the stopped-session archive API with an operation ID per checkout.
+  The agent-worktree creation path invokes the machine catalog's attach step for consuming
+  projects and verifies the catalog registration before starting an agent. The dialog inspects
+  both repositories, archives or recoverably deletes their saved conversations, and verifies
+  vacancy before removing the shared rules and then the parent. Other nested repositories block it.
+  Cloyd records the confirmed disposition under
+  `worktree-dispositions` before contacting the hub. If a reply is lost, **Recover previous confirmation**
   replays the same operation ID and identities to recover its receipt.
 - **Branch icons** compare checkout commits against local main (otherwise the available integration branch).
   Green means integrated; purple means commits are still outside it. On the integration branch, green and

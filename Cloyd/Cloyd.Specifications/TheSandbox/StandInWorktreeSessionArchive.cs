@@ -19,14 +19,24 @@ sealed class StandInWorktreeSessionArchive : IAsyncDisposable
    public TheHub Hub { get; }
    public JsonObject? Applied { get; private set; }
    public WorktreeSessionsResult? Result { get; set; }
+   public void ResetApplied() => Applied = null;
    public bool LoseNextReceipt { get; set; }
 
-   public StandInWorktreeSessionArchive(DirectoryInfo folder, WorktreeSessionsPreview preview)
+   public JsonObject? OccupantRequest { get; private set; }
+
+   public StandInWorktreeSessionArchive(DirectoryInfo folder, WorktreeSessionsPreview preview, ReviewedOccupants? occupants = null)
    {
       var builder = WebApplication.CreateEmptyBuilder(new WebApplicationOptions { ContentRootPath = AppContext.BaseDirectory });
       builder.WebHost.UseKestrelCore().ConfigureKestrel(server => server.Listen(IPAddress.Loopback, 0));
       builder.Services.AddRoutingCore();
       _api = builder.Build();
+      _api.MapPost("/worktree-sessions/occupants/review", () => Results.Json(occupants));
+      _api.MapPost("/worktree-sessions/occupants/act", async (HttpContext exchange) =>
+      {
+         OccupantRequest = await exchange.Request.ReadFromJsonAsync<JsonObject>();
+         var targets = OccupantRequest!["targets"]!.Deserialize<OccupantTarget[]>(JsonSerializerOptions.Web)!;
+         return Results.Json(new OccupantActionResults(targets.Select(it => new OccupantActionResult(it, "skipped", "Activity changed after review.")).ToArray()));
+      });
       _api.MapPost("/worktree-sessions/preview", async exchange =>
       {
          var request = await exchange.Request.ReadFromJsonAsync<JsonObject>();
@@ -51,6 +61,7 @@ sealed class StandInWorktreeSessionArchive : IAsyncDisposable
       var announcement = JsonSerializer.SerializeToNode(new WhatTheAnnouncementSays(LocalApiProtocol.Version, new Uri(_api.Urls.Single()).Port, "sandbox", Environment.ProcessId,
                                                                                     DateTime.UtcNow, folder.FullName, null))!.AsObject();
       announcement["supportsWorktreeSessionRemoval"] = true;
+      announcement["supportsWorktreeOccupantActions"] = occupants is not null;
       File.WriteAllText(Path.Combine(folder.FullName, WhatTheAnnouncementSays.FileName), announcement.ToJsonString());
       Hub = TheHub.AnnouncedIn(folder);
    }

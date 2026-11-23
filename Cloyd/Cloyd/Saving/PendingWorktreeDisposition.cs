@@ -14,10 +14,17 @@ sealed class PendingWorktreeDisposition(CloydsFolder folder, Project worktree)
    readonly string _path = Path.Combine(folder.Folder.FullName, "worktree-dispositions",
       Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(worktree.Folder.ToUpperInvariant()))) + ".json");
 
-   public async Task<bool> Reconcile(TheHub hub)
+   public sealed record Confirmation(Project Worktree, Guid Operation, string? Disposition, int Sessions);
+   public Confirmation? AwaitingReceipt => ReadRequest() is {} saved
+      ? new(worktree, saved.Preview.OperationId, saved.Disposition, saved.Preview.Sessions.Length) : null;
+
+   Request? ReadRequest() => new FileWrittenWhole(_path).Text() is {} text
+      ? JsonSerializer.Deserialize<Request>(text) ?? throw new InvalidDataException("Cloyd could not read the pending worktree disposition.") : null;
+
+   public async Task<bool> Reconcile(TheHub hub, Guid? expectedOperation = null)
    {
-      if(new FileWrittenWhole(_path).Text() is not {} saved) return false;
-      var request = JsonSerializer.Deserialize<Request>(saved) ?? throw new InvalidDataException("Cloyd could not read the pending worktree disposition.");
+      if(ReadRequest() is not {} request) return false;
+      if(expectedOperation is not null && expectedOperation != request.Preview.OperationId) throw new InvalidOperationException("The pending confirmation changed. Refresh and review it again.");
       if(request.Preview.HasOpenTabsOrRunningSessions)
       {
          // An older confirmation could include closing a host. Retain that record and ask for a fresh preview.

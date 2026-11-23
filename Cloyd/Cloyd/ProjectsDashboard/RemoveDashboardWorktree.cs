@@ -1,53 +1,98 @@
-using Avalonia.Controls;
 using Cloyd.Hub;
 using Cloyd.Hub.Worktrees;
 using Cloyd.Projects;
 using Cloyd.Projects.Git;
 using Cloyd.Saving;
+using Cloyd.Sessions;
 
 namespace Cloyd.ProjectsDashboard;
 
-/// <summary>Coordinates Magnus's Git and conversation decisions for one linked checkout.
-/// The hub handles the stopped conversations before Git removes their checkout.</summary>
-sealed class RemoveDashboardWorktree(Window owner, TheHub hub, CloydsFolder cloydFolder, Action<WorktreeRemoval> showChanges)
+/// <summary>Reviews Git and sessions before removing either checkout. A confirmed session disposition
+/// must have a complete receipt before Git can remove the shared rules or the project.</summary>
+sealed class RemoveDashboardWorktree(TheHub hub, CloydsFolder cloydFolder, Project project, Project worktree, SharedRulesCatalog? catalog = null,
+                                     SessionsOfCloyd? sessions = null, Func<Project, IEnumerable<WorktreeOccupant>>? dashboardOccupants = null)
 {
-   public async Task Run(Project repository, Project folder, WorktreeSessionsPreview sessions, CancellationToken cancellation)
+   public Project Worktree => worktree;
+   public Task<WorktreeRemovalPlan> ReadGit(CancellationToken cancellation) => WorktreeRemovalPlan.Read(project, worktree, cancellation, catalog);
+
+   public async Task<WorktreeRemovalReview> ReviewSessions(WorktreeRemovalPlan git, CancellationToken cancellation)
    {
-      sessions.RequireReadyFor(folder);
-      var git = await WorktreeRemoval.Inspect(repository, folder, cancellation);
-      if(git.Status.ChangedPaths > 0) { showChanges(git); return; }
-      var pending = new PendingWorktreeDisposition(cloydFolder, folder);
-      if(await pending.Reconcile(hub))
+      var source = await hub.ForOneGeneration(cancellation);
+      var inventories = await Task.WhenAll(git.Checkouts.Select(async checkout =>
       {
-         sessions = await hub.PreviewWorktreeSessions(folder, cancellation);
-         sessions.RequireReadyFor(folder);
+         var inventory = await source.PreviewWorktreeSessions(checkout.Checkout.Root, cancellation);
+         inventory.RequireIdentityOf(checkout.Checkout.Root);
+         return inventory;
+      }));
+      var occupants = await Task.WhenAll(inventories.Select(async inventory => WorktreeOccupants.From(inventory,
+         inventory.HasOpenTabsOrRunningSessions ? await source.ReviewWorktreeOccupants(new Project(inventory.WorktreePath), cancellation) : null,
+         dashboardOccupants?.Invoke(new Project(inventory.WorktreePath)))));
+      var pending = git.Checkouts.Select(it => new PendingWorktreeDisposition(cloydFolder, it.Checkout.Root).AwaitingReceipt)
+                                 .OfType<PendingWorktreeDisposition.Confirmation>().ToArray();
+      return new(source, git, inventories, occupants, pending);
+   }
+
+   public async Task<string?> Recover(PendingWorktreeDisposition.Confirmation previous)
+   {
+      await new PendingWorktreeDisposition(cloydFolder, previous.Worktree).Reconcile(hub, previous.Operation);
+      return "The previous confirmation was reconciled. Review the remaining worktree contents.";
+   }
+
+   public async Task Remove(WorktreeRemovalReview reviewed, IReadOnlySet<Project> deleteBranches, bool deleteConversations, CancellationToken cancellation)
+   {
+      if(sessions?.BeginRemovingWorktree(worktree) == false) throw new InvalidOperationException("Another removal is already in progress.");
+      try { await RemoveReviewed(reviewed, deleteBranches, deleteConversations, cancellation); }
+      finally { sessions?.FinishRemovingWorktree(worktree); }
+   }
+
+   async Task RemoveReviewed(WorktreeRemovalReview reviewed, IReadOnlySet<Project> deleteBranches, bool deleteConversations, CancellationToken cancellation)
+   {
+      if(!reviewed.CanRemove) throw new InvalidOperationException("Close live sessions and resolve Git changes before removal.");
+      await RequireReviewedGit();
+      // Check both inventories before changing either. Apply uses the operation ID from the displayed review.
+      var current = await ReviewSessions(reviewed.Git, cancellation);
+      if(!current.CanRemove) throw new InvalidOperationException("A session or shell now uses the worktree. Review its occupants again.");
+      foreach(var before in reviewed.Inventories)
+      {
+         var root = new Project(before.WorktreePath);
+         var after = current.Inventories.Single(it => new Project(it.WorktreePath).Equals(root));
+         after.RequireReadyFor(root);
+         if(!before.Sessions.ToHashSet().SetEquals(after.Sessions))
+            throw new InvalidOperationException("The worktree's sessions changed. Refresh and review them again.");
       }
-      if(git.Status.Integrated != true)
+      var processed = 0;
+      try
       {
-         var warning = $"{git.Status.Explanation}. Remove the worktree at {folder}?";
-         warning += git.Checkout.Branch is {} branch ? $" The branch {branch} will remain." : $" Its detached commit is {git.Commit}.";
-         if(await WorktreeRemovalDialog.Warn(owner, warning) != WorktreeRemovalDialog.Choice.Continue) return;
+         foreach(var inventory in reviewed.Inventories)
+         {
+            cancellation.ThrowIfCancellationRequested();
+            var folder = new Project(inventory.WorktreePath);
+            var pending = new PendingWorktreeDisposition(cloydFolder, folder);
+            if(pending.AwaitingReceipt is not null) throw new InvalidOperationException("Recover the previously confirmed session disposition first.");
+            var result = await pending.Apply(hub, inventory, inventory.Empty ? null : deleteConversations ? "recoverableDelete" : "archive");
+            processed += result.Results.Length;
+         }
+         await RequireReviewedGit();
+         await reviewed.Git.Remove(deleteBranches, RequireVacant, cancellation);
       }
-      var choice = sessions.Empty ? WorktreeRemovalDialog.Choice.Continue : await WorktreeRemovalDialog.AskAboutSessions(owner, sessions.DescribeRemoval());
-      if(choice == WorktreeRemovalDialog.Choice.Cancel) return;
-      var checkedGit = await WorktreeRemoval.Inspect(repository, folder, cancellation);
-      if(checkedGit.Status.ChangedPaths > 0) { showChanges(checkedGit); return; }
-      if(checkedGit != git) throw new InvalidOperationException("The checkout changed while the dialog was open. Review it again.");
-      var disposition = choice switch { WorktreeRemovalDialog.Choice.Archive => "archive", WorktreeRemovalDialog.Choice.Delete => "recoverableDelete", _ => null };
-      cancellation.ThrowIfCancellationRequested();
-      var result = await pending.Apply(hub, sessions, disposition);
-      try { await git.Remove(cancellation, RequireStillVacant); }
-      catch(Exception failure) when(!cancellation.IsCancellationRequested)
+      catch(Exception failure) when(processed > 0)
       {
-         if(Directory.Exists(folder.Folder) && (await GitStatusReport.Read(folder, cancellation)).ChangedPaths > 0) showChanges(git);
-         throw new InvalidOperationException($"Git could not finish removing {folder}. The hub processed {result.Results.Length} saved conversations. {failure.Message}", failure);
+         throw new InvalidOperationException($"{processed} saved conversations processed. {failure.Message}", failure);
       }
 
-      async Task RequireStillVacant()
+      async Task RequireReviewedGit()
       {
-         var remaining = await hub.PreviewWorktreeSessions(folder, cancellation);
-         remaining.RequireReadyFor(folder);
-         if(!remaining.Empty) throw new InvalidOperationException("A session or shell now uses this worktree. Review it again.");
+         if(await ReadGit(cancellation) != reviewed.Git) throw new InvalidOperationException("Git state changed. Refresh and review it again.");
+      }
+      async Task RequireVacant()
+      {
+         foreach(var checkout in reviewed.Git.Checkouts.Where(it => Directory.Exists(it.Checkout.Root.Folder)))
+         {
+            var remaining = await hub.PreviewWorktreeSessions(checkout.Checkout.Root, cancellation);
+            remaining.RequireReadyFor(checkout.Checkout.Root);
+            if(!remaining.Empty || dashboardOccupants?.Invoke(checkout.Checkout.Root).Any() == true)
+               throw new InvalidOperationException($"New sessions were found in {checkout.Checkout.Root}. Review them before removal.");
+         }
       }
    }
 }

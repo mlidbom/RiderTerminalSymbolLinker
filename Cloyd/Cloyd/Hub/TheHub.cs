@@ -38,7 +38,7 @@ sealed partial class TheHub
    readonly HttpClient _http;
    readonly DirectoryInfo _folderOfTheAnnouncement;
    readonly bool _isThePublishedHub;
-   readonly AnnouncementOfTheHub? _oneHubForThisLaunch;
+   readonly AnnouncementOfTheHub? _fixedGeneration;
 
    TheHub(DirectoryInfo folderOfTheAnnouncement, bool isThePublishedHub)
    {
@@ -47,17 +47,17 @@ sealed partial class TheHub
       _isThePublishedHub = isThePublishedHub;
    }
 
-   TheHub(TheHub source, AnnouncementOfTheHub oneHubForThisLaunch)
+   TheHub(TheHub source, AnnouncementOfTheHub fixedGeneration)
    {
       _http = source._http;
       _folderOfTheAnnouncement = source._folderOfTheAnnouncement;
       _isThePublishedHub = source._isThePublishedHub;
-      _oneHubForThisLaunch = oneHubForThisLaunch;
+      _fixedGeneration = fixedGeneration;
    }
 
-   /// <summary>For a peer's persistent launch, submit each command to one generation of the hub just once.
-   /// Losing a reply can leave a live host or CLI. A retry finds it through the launch receipt.</summary>
-   public async Task<TheHub> ForOnePeerLaunch(CancellationToken cancellation)
+   /// <summary>Submit each command to the same generation of the hub just once. A lost reply to a peer launch
+   /// or a worktree occupant action can mean that its effects already took place.</summary>
+   public async Task<TheHub> ForOneGeneration(CancellationToken cancellation)
    {
       var announcement = await TheAnnouncement(new TimeToAnswer(_folderOfTheAnnouncement), cancellation);
       RequireSupportedProtocol(announcement);
@@ -86,7 +86,7 @@ sealed partial class TheHub
 
    /// <summary>The agent CLIs whose sessions the hub starts and lists, as its announcement says: Claude Code first.</summary>
    public async Task<IReadOnlyList<AgentCli>> AgentClisItServes(CancellationToken cancellation = default) =>
-      (_oneHubForThisLaunch ?? await TheAnnouncement(new TimeToAnswer(_folderOfTheAnnouncement), cancellation)).AgentClisItServes;
+      (_fixedGeneration ?? await TheAnnouncement(new TimeToAnswer(_folderOfTheAnnouncement), cancellation)).AgentClisItServes;
 
    static void RequireSupportedProtocol(AnnouncementOfTheHub announcement)
    {
@@ -110,7 +110,7 @@ sealed partial class TheHub
    {
       var body = new SessionHostToStartInTheRequest(shell.CommandLine, directory, Columns: null, Rows: null, new Dictionary<string, string>(shell.Environment), label);
       var answer = await Send(Request, cancellation);
-      if(_oneHubForThisLaunch is null && answer.StatusCode == HttpStatusCode.InternalServerError)
+      if(_fixedGeneration is null && answer.StatusCode == HttpStatusCode.InternalServerError)
       {
          answer.Dispose();
          answer = await Send(Request, cancellation);
@@ -295,7 +295,7 @@ sealed partial class TheHub
    /// while the hub announced doesn't answer, as at a publish, for <see cref="HowLongANewHubMayTakeToAnswer"/>.
    /// </summary>
    async Task<HttpResponseMessage> Send(Func<AnnouncementOfTheHub, HttpRequestMessage> request, CancellationToken cancellation) =>
-      _oneHubForThisLaunch is {} fixedHub
+      _fixedGeneration is {} fixedHub
          ? await SendOnce(fixedHub, request, HttpCompletionOption.ResponseContentRead, cancellation)
          : (await SendToTheAnnouncedHub(request, cancellation, HttpCompletionOption.ResponseContentRead)).Response;
 

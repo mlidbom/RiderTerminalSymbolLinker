@@ -18,11 +18,16 @@ All notable changes to Cloyd are documented here. The format follows
 - **The + on a Git project creates a worktree and starts a session in it.** Enter one name for the
   checkout and the session, and choose Claude or Codex. The new branch starts at the local integration
   branch, or at HEAD when there is none. The + on an existing worktree starts a session there.
-- **Remove a linked worktree from its dashboard menu with a hub that supports the shared session archive.**
-  Close all live session tabs, including shell tabs, and stop any agents running in the worktree
-  outside Cloyd. The disabled menu item tells you what is still open. For saved conversations,
-  choose Archive, Delete with seven days of recovery, or Cancel. Uncommitted changes open Git
-  Extensions. Unmerged commits require confirmation. Git keeps the branch.
+- **Review a worktree before removing it.** Right-click **Remove worktree…** for Git status, open
+  tabs, running agents and saved conversations. Each checkout has its own optional local branch
+  deletion and inline warning. Green means merged, yellow means unmerged with a verified copy on
+  origin, and red means Cloyd cannot verify a remote copy of the unmerged work. A dirty checkout
+  offers Git Extensions. Confirmed idle agents and idle shell tabs have separate actions on hubs
+  that support them. Archive keeps saved conversations indefinitely, and Delete allows seven days
+  for recovery.
+- **Manage shared rules alongside the project worktree.** Creating an agent worktree attaches its
+  managed `.claude-shared` before starting the agent. Removal reviews both checkouts and removes
+  the shared rules first. An unrelated nested Git checkout blocks the operation.
 - **Launching Cloyd from the Start menu opens Projects Dashboard.** Running the executable without
   arguments also brings an existing dashboard forward. Right-click a project heading and choose
   **Open project** to open or activate its project window.

@@ -11,19 +11,6 @@ sealed class DashboardWorktree(GitWorktree checkout) : DashboardGroup(KeyFor(che
    public static string KeyFor(Project root) => $"worktree:{root.Folder}";
    public override string Name => _checkout.Name;
    public string? Branch => _checkout.Branch;
-   public bool CanRemove => RemovalBlocker is null;
-   public string? RemovalBlocker { get => field; private set => SetProperty(ref field, value); } = "Checking this worktree.";
-
-   public void UpdateRemovalAvailability()
-   {
-      if(_checkout.IsMain) RemovalBlocker = "This is the repository's main checkout.";
-      else if(_checkout.Locked) RemovalBlocker = "Git has locked this worktree.";
-      else
-      {
-         var open = Sessions.Where(it => it.HasHost || it.Running is not null).Select(it => it.Name).ToList();
-         RemovalBlocker = open.Count == 0 ? null : $"Close the open tabs or running sessions in this worktree ({string.Join(", ", open)}).";
-      }
-   }
    public override string Description => Status is {} status ? $"{_checkout.Description} · {status.Description}" : _checkout.Description;
    public override Project StartFolder => _checkout.Root;
    public WorktreeStatus? Status

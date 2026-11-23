@@ -4,7 +4,7 @@ namespace Cloyd.Projects.Git;
 
 /// <summary>Whether the worktree's commits have been integrated, and how many paths have uncommitted
 /// changes. A missing comparison leaves <see cref="Integrated"/> unknown while preserving the change count.</summary>
-sealed record WorktreeStatus(bool? Integrated, int ChangedPaths, string Explanation, string Arrows = "")
+sealed record WorktreeStatus(bool? Integrated, int ChangedPaths, string Explanation, string Arrows = "", int? CommitsOutsideIntegration = null)
 {
    public string Description => ChangedPaths == 0 ? Explanation : $"{Explanation} · {ChangedPaths} changed {(ChangedPaths == 1 ? "path" : "paths")}";
 
@@ -23,7 +23,7 @@ sealed record WorktreeStatus(bool? Integrated, int ChangedPaths, string Explanat
       if(comparison.ExitCode != 0) return new(null, status.ChangedPaths, $"Couldn't compare with {target.Name}: {comparison.Error.TrimEnd()}");
       var outside = int.Parse(comparison.Output, CultureInfo.InvariantCulture);
       return new(outside == 0, status.ChangedPaths,
-         outside == 0 ? $"Merged into {target.Name}" : $"{outside} {(outside == 1 ? "commit" : "commits")} outside {target.Name}");
+         outside == 0 ? $"Merged into {target.Name}" : $"{outside} {(outside == 1 ? "commit" : "commits")} outside {target.Name}", CommitsOutsideIntegration: outside);
    }
 
    static WorktreeStatus ComparedWithUpstream(GitStatusReport status, GitIntegrationBranch target)

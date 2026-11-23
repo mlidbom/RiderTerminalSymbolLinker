@@ -17,7 +17,7 @@ sealed partial class ProjectWindow
       deadline.Token.ThrowIfCancellationRequested();
       var request = receipt.Request;
       var session = request.Session;
-      var launchHub = await _hub.ForOnePeerLaunch(deadline.Token);
+      var launchHub = await _hub.ForOneGeneration(deadline.Token);
       SessionTab tab;
       if(receipt.HostWasRequested)
          tab = await RecoverHost();

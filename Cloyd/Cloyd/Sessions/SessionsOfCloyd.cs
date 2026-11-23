@@ -97,13 +97,19 @@ sealed class SessionsOfCloyd(TheHub hub, CloydsFolder folder, ShellOfNewSessions
       try
       {
          await Hub.End(id, CancellationToken.None);
-         Known(id)?.HostEnded("the session was ended");
-         Folder.SavedProjectWindows.Forget(id);
-         ++_inventoryRevision;
-         Hosts = Hosts.Where(it => it.Id != id).ToArray();
-         Changed?.Invoke();
+         HostWasClosed(id);
       }
       finally { _ending.Remove(id); }
+   }
+
+   /// <summary>Forget a tab after the hub confirms its host has closed, including through a worktree review.</summary>
+   public void HostWasClosed(SessionHostId id)
+   {
+      Known(id)?.HostEnded("the session was ended");
+      Folder.SavedProjectWindows.Forget(id);
+      ++_inventoryRevision;
+      Hosts = Hosts.Where(it => it.Id != id).ToArray();
+      Changed?.Invoke();
    }
 
    /// <summary>Reads the application’s copy first and imports older project-window drafts on first use.</summary>
@@ -128,6 +134,12 @@ sealed class SessionsOfCloyd(TheHub hub, CloydsFolder folder, ShellOfNewSessions
    }
 
    public bool BeginRemovingWorktree(Project folder) => _worktreesBeingRemoved.Add(folder);
+   public bool HasUnsentDraft(SessionHostId host)
+   {
+      if(_sessions.TryGetValue(host, out var session)) return session.ChatState.ClaudeCodeDraft.Count > 0 || session.ChatState.CodexDrafts is { Count: > 0 };
+      var saved = Hosts.FirstOrDefault(it => it.Id == host) is {} knownHost ? Saved(knownHost) : _saved.Read(host);
+      return saved is { Draft.Count: > 0 } or { CodexDrafts.Count: > 0 };
+   }
    public void FinishRemovingWorktree(Project folder) => _worktreesBeingRemoved.Remove(folder);
 
    void RequireAvailableWorktree(string directory)

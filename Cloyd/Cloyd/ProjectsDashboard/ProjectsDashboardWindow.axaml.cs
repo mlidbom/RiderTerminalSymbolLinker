@@ -126,8 +126,7 @@ sealed partial class ProjectsDashboardWindow : Window
 
    ContextMenu? MenuFor(object? row) => row switch
    {
-      DashboardWorktree worktree => new WorktreeContextMenu(worktree, Tell, token => Sessions.Hub.PreviewWorktreeSessions(worktree.StartFolder, token),
-         preview => _ = ReportFailure(() => RemoveWorktree(worktree, preview))),
+      DashboardWorktree worktree => new WorktreeContextMenu(worktree, Tell, () => _ = ReportFailure(() => RemoveWorktree(worktree))),
       DashboardProject { Project: {} project } => ProjectMenu(project),
       _ => null
    };
