@@ -23,6 +23,7 @@ public class When_claude_sessions_starts_with_a_project_open_and_no_cloyd_runnin
       public readonly string ProjectFolder;
       public readonly IReadOnlyList<string> ProjectsCloydShows;
       public readonly string Title;
+      public readonly string WhatCloydsLogSays;
 
       public Story()
       {
@@ -31,11 +32,16 @@ public class When_claude_sessions_starts_with_a_project_open_and_no_cloyd_runnin
          ide.StartClaudeSessionsAgainWithNoCloydRunning();
          ProjectsCloydShows = ide.ProjectsCloydShows;
          Title = ide.CloydsWindows.Single()["title"]!.GetValue<string>();
+         WhatCloydsLogSays = ide.WhatCloydsLogSays;
       }
    }
 
    [XF] public void cloyd_shows_the_projects_window() => story.ProjectsCloydShows.Must().SequenceEqual([story.ProjectFolder]);
    [XF] public void titled_after_the_project() => story.Title.Must().Be($"Cloyd: {Path.GetFileName(story.ProjectFolder)}");
+
+   /// <summary>So that, while Cloyd's Projects Dashboard is open, Cloyd leaves the window closed: Cloyd's specifications cover that.</summary>
+   [XF] public void cloyd_is_told_the_IDE_opened_the_project() =>
+      story.WhatCloydsLogSays.Must().Contain($"Opened the window of {story.ProjectFolder}, as an IDE opened the project");
 }
 
 /// <summary>
@@ -50,6 +56,7 @@ public class When_the_user_asks_the_ide_to_show_the_project_in_cloyd_with_its_wi
    {
       public readonly string ProjectFolder;
       public readonly IReadOnlyList<string> ProjectsCloydShows;
+      public readonly string WhatCloydsLogSays;
 
       public Story()
       {
@@ -57,8 +64,13 @@ public class When_the_user_asks_the_ide_to_show_the_project_in_cloyd_with_its_wi
          ProjectFolder = ide.ProjectFolder;
          ide.ShowTheProjectInCloydFromTheIdeWithNoCloydRunning();
          ProjectsCloydShows = ide.ProjectsCloydShows;
+         WhatCloydsLogSays = ide.WhatCloydsLogSays;
       }
    }
 
    [XF] public void cloyd_shows_the_projects_window() => story.ProjectsCloydShows.Must().SequenceEqual([story.ProjectFolder]);
+
+   /// <summary>So that Cloyd opens the window even while its Projects Dashboard is open: Cloyd's specifications cover that.</summary>
+   [XF] public void cloyd_is_told_the_user_asked() =>
+      story.WhatCloydsLogSays.Must().Contain($"Opened the window of {story.ProjectFolder}, as Magnus asked from Claude Sessions in his IDE");
 }

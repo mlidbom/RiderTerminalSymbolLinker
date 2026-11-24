@@ -17,6 +17,10 @@ All notable changes to Claude Sessions are documented here. The format follows
   shown. It now records them as the IDE starts closing, while they still show.
 
 ### Changed
+- **While Cloyd's Projects Dashboard is open, opening a project opens no Cloyd window.** Claude Sessions now tells
+  Cloyd why it asks for the project's window: because the project opened, or because you chose Show the Project in
+  Cloyd. While the dashboard is open, Cloyd shows the project there and leaves its window closed. Show the Project in
+  Cloyd still opens it. A Cloyd from before 2026-11-24 opens the window as before.
 - **The sessions show in Cloyd, beside the IDE.** As a project opens, Claude Sessions has Cloyd show the project's
   window: Cloyd is an application of its own, with a window for each project, whose tabs each show a Claude Code
   session in its terminal. The sessions the tool window showed until now run on in their session hosts, and Cloyd shows

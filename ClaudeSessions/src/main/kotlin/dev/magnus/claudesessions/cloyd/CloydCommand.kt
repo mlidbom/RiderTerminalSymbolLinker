@@ -7,26 +7,27 @@ import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes
 
 /**
- * `Cloyd.exe --project <folder>`, the command that hands a project to the Cloyd application, which shows the project's
- * window: brought forward when it's open, else opened. The command starts the application when none runs, outside the
+ * `Cloyd.exe --project <folder> --because <why>`, the command that hands a project to the Cloyd application, which shows
+ * the project's window: brought forward when it's open, else opened, unless Cloyd leaves it closed for why it's asked
+ * ([WhyTheWindowIsAskedFor]). The command starts the application when none runs, outside the
  * IDE's job, so that it outlives the IDE, and exits once the window shows: in a fraction of a second when the application
  * runs, and in about a second when the command starts it.
  */
 class CloydCommand(private val cloyd: CloydsFolder) {
     /**
-     * Has the Cloyd application show the window of the project in [projectFolder], and returns what came of it. The
+     * Has the Cloyd application show the window of the project in [projectFolder], for [why], and returns what came of it. The
      * window comes in front of the IDE's when the IDE is the application in front, as it is when the user opens the
      * project: the command lets the Cloyd application bring it there.
      *
      * Its output is read from a file, not a pipe, so that a command that hangs can't keep this waiting past [HOW_LONG_IT_MAY_TAKE].
      */
-    fun showTheWindowOf(projectFolder: Path): CloydCommandOutcome {
+    fun showTheWindowOf(projectFolder: Path, why: WhyTheWindowIsAskedFor): CloydCommandOutcome {
         val cloydExe = cloyd.cloydExe
         if (!Files.exists(cloydExe)) return CloydCommandOutcome.NotInstalled(cloydExe)
 
         val output = Files.createTempFile("cloyd-command-", ".txt")
         try {
-            val command = ProcessBuilder(cloydExe.toString(), "--project", projectFolder.toString())
+            val command = ProcessBuilder(cloydExe.toString(), "--project", projectFolder.toString(), "--because", why.inTheRequest)
                 .redirectErrorStream(true)
                 .redirectOutput(output.toFile())
                 .start()

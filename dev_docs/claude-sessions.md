@@ -33,10 +33,15 @@ Its packages, below `dev.magnus.claudesessions`, which holds what it tells the u
 
 - **`ShowTheProjectInCloyd`,** a project activity, has Cloyd show the project's window (`ProjectWindowInCloyd`) as each
   project opens, and again as the plugin reloads, which runs the startup again: it runs `Cloyd.exe --project <the
-  project's folder>` (`CloydCommand`). It logs what came of it to `idea.log`; when Cloyd isn't installed, the command
-  fails, or it doesn't end within 2 minutes, a notification says why.
+  project's folder> --because ideOpenedTheProject` (`CloydCommand`). It logs what came of it to `idea.log`; when Cloyd
+  isn't installed, the command fails, or it doesn't end within 2 minutes, a notification says why.
+- **Why it asks** (`WhyTheWindowIsAskedFor`, since 2026-11-24): `--because` tells Cloyd, whose log, `cloyd.log` in
+  Cloyd's folder, says why each window opened. While Cloyd's Projects Dashboard is open, Cloyd leaves the window of a
+  project an IDE opened closed, as the dashboard shows the project (Magnus, 2026-11-24: "If it is open please do not go
+  opening any other windows automatically"). A Cloyd from before then ignores `--because`.
 - **Tools > Show the Project in Cloyd, Ctrl+Alt+Shift+Y** (`ShowTheProjectInCloydAction`, since 2026-11-20): the same,
-  on the user's ask, as the way from the IDE to the project's window once it's behind others or closed. A window on
+  on the user's ask, `--because magnusAsked`, as the way from the IDE to the project's window once it's behind others
+  or closed, which opens even while the dashboard is open. A window on
   another virtual desktop stays there, as Cloyd's `--project` leaves it. Specified in the sandbox through the
   observation channel's `POST /actions/perform`, which performs an action as the user would.
 - **Where Cloyd is:** `bin\Cloyd.exe` in Cloyd's folder (`CloydsFolder`): `%LOCALAPPDATA%\Cloyd`, or the folder

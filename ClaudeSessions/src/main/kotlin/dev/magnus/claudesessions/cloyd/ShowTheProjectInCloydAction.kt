@@ -18,6 +18,6 @@ class ShowTheProjectInCloydAction : DumbAwareAction() {
 
     override fun actionPerformed(event: AnActionEvent) {
         val project = event.project ?: return
-        ApplicationManager.getApplication().executeOnPooledThread { ProjectWindowInCloyd(project).show() }
+        ApplicationManager.getApplication().executeOnPooledThread { ProjectWindowInCloyd(project).show(WhyTheWindowIsAskedFor.THE_USER_ASKED) }
     }
 }

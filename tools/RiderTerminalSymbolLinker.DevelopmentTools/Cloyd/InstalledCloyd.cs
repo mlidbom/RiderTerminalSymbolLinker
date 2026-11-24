@@ -33,6 +33,18 @@ public sealed class InstalledCloyd(string folder)
 
    string CloydExe => Path.Combine(Bin, "Cloyd.exe");
 
+   /// <summary>
+   ///   What the Cloyd application says in its log, <c>cloyd.log</c> in <see cref="Folder"/>: why it started and stopped, and
+   ///   why it opened or closed each project's window. Empty while it has said nothing, as a build from before 2026-11-24.
+   /// </summary>
+   public string WhatItsLogSays()
+   {
+      var log = Path.Combine(Folder, "cloyd.log");
+      if(!File.Exists(log)) return "";
+      using var reading = new StreamReader(new FileStream(log, FileMode.Open, FileAccess.Read, FileShare.ReadWrite));
+      return reading.ReadToEnd();
+   }
+
    /// <summary>Whether a build of Cloyd is in <see cref="Bin"/>.</summary>
    internal bool IsInstalled => File.Exists(CloydExe);
 
