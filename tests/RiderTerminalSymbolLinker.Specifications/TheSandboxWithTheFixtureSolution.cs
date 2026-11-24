@@ -36,9 +36,9 @@ public sealed class TheSandboxWithTheFixtureSolution : IDisposable
          if(!_sandbox.IsRunning) _sandbox.Start();
          WaitUntilThePluginHasIndexedTheSolution();
       }
-      catch // xUnit doesn't dispose a fixture whose constructor failed, so the sandbox is stopped here, and the failure reported.
+      catch(Exception failure) // xUnit doesn't dispose a fixture whose constructor failed, so the sandbox is stopped here, and the failure reported.
       {
-         Dispose();
+         StopTheSandboxAfter(failure);
          throw;
       }
    }
@@ -49,6 +49,23 @@ public sealed class TheSandboxWithTheFixtureSolution : IDisposable
    /// </summary>
    static McpBuild TheMcpBuildToRun() =>
       Environment.GetEnvironmentVariable("SANDBOX_MCP_BUILD") is {} build ? Enum.Parse<McpBuild>(build, ignoreCase: true) : McpBuild.Everyday;
+
+   /// <summary>
+   ///   Stops the sandbox after <paramref name="failure"/> to start it. A failure to stop it too, as when its hub never
+   ///   started, is thrown together with <paramref name="failure"/>: thrown alone, it replaced the failure that mattered in
+   ///   every fact's message (2026-11-24).
+   /// </summary>
+   void StopTheSandboxAfter(Exception failure)
+   {
+      try
+      {
+         Dispose();
+      }
+      catch(Exception stopping)
+      {
+         throw new AggregateException("The sandbox failed to start, and then to stop.", failure, stopping);
+      }
+   }
 
    public void Dispose()
    {

@@ -52,8 +52,11 @@ sealed class GradleSandbox : IPluginBuilds
                           RepositoryRoot.Folder,
                           new Dictionary<string, string> { ["JAVA_HOME"] = TheRepositorysJdk() });
 
-   /// <summary>The JDK 21 the build needs, which the repository keeps under <c>.tooling/jdk</c>, outside git.</summary>
+   /// <summary>
+   ///   The JDK 21 the build needs, which the main checkout keeps under <c>.tooling/jdk</c>, outside git: a worktree, such
+   ///   as a Codex helper's, has none of its own, so the tools there use the main checkout's.
+   /// </summary>
    static string TheRepositorysJdk() =>
-      Directory.GetDirectories(Path.Combine(RepositoryRoot.Folder, ".tooling", "jdk"), "jdk-21*").SingleOrDefault()
-   ?? throw new InvalidOperationException("No JDK 21 under .tooling/jdk: the build needs one there.");
+      Directory.GetDirectories(Path.Combine(RepositoryRoot.MainCheckoutFolder, ".tooling", "jdk"), "jdk-21*").SingleOrDefault()
+   ?? throw new InvalidOperationException($"No JDK 21 under {Path.Combine(RepositoryRoot.MainCheckoutFolder, ".tooling", "jdk")}: the build needs one there.");
 }
