@@ -272,7 +272,7 @@ public sealed class SandboxRider
          WriteTheFoldersFile();
          WriteTheJvmOptionsFile();
          var process = Launch(solution);
-         File.WriteAllText(ProcessFile, $"{process.Id};{process.StartTime.Ticks}");
+         Record(process);
       } else if(solution is not null)
       {
          Launch(solution); // A second launch hands the solution to the running sandbox and exits.
@@ -425,8 +425,9 @@ public sealed class SandboxRider
       WaitUntil(() => Process.GetProcesses().All(it => it.Id != before), HowLongStoppingMayTake, $"the sandbox Rider, process {before}, to exit as it restarts");
       Process? restarted = null;
       WaitUntil(() => (restarted = TheRiderThatAnnouncedClaudeSessionsLocalApi(startedAfter: askedAbout)) is not null, HowLongStartingMayTake, "the restarted sandbox Rider to announce Claude Sessions' local API");
-      File.WriteAllText(ProcessFile, $"{restarted!.Id};{restarted.StartTime.Ticks}");
-      WaitUntil(() => FramesOf(restarted).Count > 0, HowLongStartingMayTake, "the restarted sandbox Rider to show a window");
+      var announced = restarted!;
+      Record(announced);
+      WaitUntil(() => FramesOf(announced).Count > 0, HowLongStartingMayTake, "the restarted sandbox Rider to show a window");
       WaitUntil(() => TheMcpServerHasIndexed(solution), HowLongStartingMayTake, $"the MCP server on port {McpPort} to answer with {solution} loaded and indexed");
       PlaceWindows();
    }
@@ -440,10 +441,21 @@ public sealed class SandboxRider
       !Directory.Exists(LocalApiAnnouncementsFolder)
          ? null
          : Directory.GetFiles(LocalApiAnnouncementsFolder, "*.json")
-                    .Select(it => int.TryParse(Path.GetFileNameWithoutExtension(it), out var id) ? id : (int?)null)
-                    .OfType<int>()
-                    .Select(id => Process.GetProcesses().FirstOrDefault(it => it.Id == id))
-                    .FirstOrDefault(it => it is { HasExited: false } && it.ProcessName.StartsWith("rider", StringComparison.OrdinalIgnoreCase) && it.StartTime > startedAfter);
+                    .Select(TheRunningRiderThatWrote)
+                    .FirstOrDefault(it => it is not null && it.StartTime > startedAfter);
+
+   /// <summary>
+   ///   The running Rider that wrote <paramref name="announcement"/>, which names it by its process id, or null: when
+   ///   that process has exited, or is another, which started after the announcement was written, as Windows reuses
+   ///   process ids. Such another could be one of Magnus's Riders, which the tools must never take for the sandbox's.
+   /// </summary>
+   static Process? TheRunningRiderThatWrote(string announcement) =>
+      int.TryParse(Path.GetFileNameWithoutExtension(announcement), out var id)
+   && Process.GetProcesses().FirstOrDefault(it => it.Id == id) is { HasExited: false } process
+   && process.ProcessName.StartsWith("rider", StringComparison.OrdinalIgnoreCase)
+   && process.StartTime <= File.GetLastWriteTime(announcement)
+         ? process
+         : null;
 
    /// <summary>
    ///   Kills the sandbox Rider, as a crash ends it: nothing of it saves anything as it goes. <see cref="ItsCloyd"/> runs
@@ -665,14 +677,35 @@ public sealed class SandboxRider
    /// </summary>
    void WriteTheJvmOptionsFile() => File.WriteAllLines(JvmOptionsFile, ["-Xmx2048m"]);
 
-   /// <summary>The sandbox's frontend process, which owns its windows, unless it has exited.</summary>
+   /// <summary>
+   ///   The sandbox's frontend process, which owns its windows, unless it has exited: the one the tools recorded as they
+   ///   started it or followed its restart, or else the Rider that announced Claude Sessions' local API in the sandbox,
+   ///   which is then recorded.
+   /// </summary>
+   /// <remarks>
+   ///   A restart the tools didn't follow, such as a <c>POST /restart</c> asked by hand, leaves the recorded process
+   ///   gone and the sandbox running as another: <c>sandbox stop</c> then said it had stopped the sandbox, and left it
+   ///   holding its 4.6 GB (2026-11-24).
+   /// </remarks>
    Process? RunningProcess()
+   {
+      if(TheRecordedProcess() is {} recorded) return recorded;
+      if(TheRiderThatAnnouncedClaudeSessionsLocalApi(startedAfter: DateTime.MinValue) is not {} announced) return null;
+      Record(announced);
+      return announced;
+   }
+
+   /// <summary>The process <see cref="ProcessFile"/> names, unless it has exited.</summary>
+   Process? TheRecordedProcess()
    {
       if(!File.Exists(ProcessFile)) return null;
       var recorded = File.ReadAllText(ProcessFile).Split(';');
       var process = Process.GetProcesses().FirstOrDefault(it => it.Id == int.Parse(recorded[0]));
       return process is not null && process.StartTime.Ticks == long.Parse(recorded[1]) ? process : null;
    }
+
+   /// <summary>Records <paramref name="process"/> in <see cref="ProcessFile"/> as the sandbox's, by its id and its start, as Windows reuses ids.</summary>
+   void Record(Process process) => File.WriteAllText(ProcessFile, $"{process.Id};{process.StartTime.Ticks}");
 
    /// <summary>The sandbox's windows apart from its splash screen.</summary>
    static IReadOnlyList<TopLevelWindow> FramesOf(Process process) =>
