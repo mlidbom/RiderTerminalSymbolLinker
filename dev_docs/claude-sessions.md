@@ -91,6 +91,14 @@ and the hub is to ask it there. The contract, agreed with tooling-owner on 2026-
   (`DesktopsThroughARestart`). Through Windows' documented `IVirtualDesktopManager` (`VirtualDesktops`), over JNA's COM,
   on a thread of its own in the multithreaded apartment: it moves only the calling process's own windows, which the
   IDE's are, so the plugin does it rather than the hub. A desktop gone since is skipped.
+- **Rider keeps each window's place through a restart itself,** so Claude Sessions keeps only its desktop. Checked in
+  the sandbox on 2026-11-24, when Magnus asked for snapped, maximized and stretched windows to come back as they were:
+  maximized came back maximized, and stretched to full height came back at the stretched rectangle, not the one from
+  before. Rider records the frame's actual rectangle, and whether it's maximized (`FrameInfoHelper`, in
+  `recentSolutions.xml`), and Magnus's own file has half-screen snaps recorded the same way. What it can't give back
+  is Windows' snap itself: the window comes back as an ordinary one at the snapped rectangle, so dragging it off the
+  edge keeps that size. The sandbox's window was stretched by posting it `WM_NCLBUTTONDBLCLK` on `HTTOP`, as a
+  double-click on its top edge sends, with no keyboard, mouse or focus; Windows has no message for a half-screen snap.
 - **A token, and the `Host`:** a request that changes something, as `POST /restart` does, carries the announcement's
   token, `Authorization: Bearer <token>`, new at each start of the IDE: 401 without it. What only reads needs none. Every request must name `127.0.0.1:<port>` or `localhost:<port>` as its `Host`, else 403: a web
   page can't reach the API through a name of its own that resolves to the loopback address.
