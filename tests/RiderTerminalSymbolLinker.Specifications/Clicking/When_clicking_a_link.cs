@@ -36,6 +36,37 @@ public class When_clicking_a_link(TheSandboxWithTheFixtureSolution sandbox)
       [XF] public void the_caret_is_at_the_start_of_the_parameter_that_declares_the_property() => _outcome.CaretColumn.Must().Be(29);
    }
 
+   /// <summary>
+   ///   ReSharper lists the parts of a partial type with the one edited last first, and the MCP's <c>go_to_definition</c>
+   ///   gave that part until it gave the one in the file named after the type, its main declaration.
+   /// </summary>
+   public class to_a_type_declared_in_parts_whose_other_part_was_edited_last : When_clicking_a_link
+   {
+      const string TheOtherPartWithAMemberAdded = """
+         namespace Geometry.Shapes;
+
+         public sealed partial class Palette
+         {
+           public string Mix(string first, string second) => $"{first}+{second}";
+
+           public string Blend(string first, string second) => Mix(first, second);
+         }
+
+         """;
+
+      readonly ClickOutcome _outcome;
+
+      public to_a_type_declared_in_parts_whose_other_part_was_edited_last(TheSandboxWithTheFixtureSolution sandbox) : base(sandbox)
+      {
+         sandbox.Edit("Geometry/Shapes/Palette.Mixing.cs", TheOtherPartWithAMemberAdded, "Geometry.Shapes.Palette.Blend");
+         _outcome = sandbox.Click("the Palette is wrong", "Palette");
+      }
+
+      [XF] public void it_opens_the_part_in_the_file_named_after_the_type() => _outcome.OpenedFile.Must().Be("Geometry/Shapes/Palette.cs");
+      [XF] public void the_caret_is_on_that_parts_declaration() => _outcome.CaretLine.Must().Be(4);
+      [XF] public void the_caret_is_at_the_start_of_the_types_name() => _outcome.CaretColumn.Must().Be(29);
+   }
+
    public class to_a_partial_path_with_a_line(TheSandboxWithTheFixtureSolution sandbox) : When_clicking_a_link(sandbox)
    {
       readonly ClickOutcome _outcome = sandbox.Click("see Shapes/Circle.cs:10", "Shapes/Circle.cs:10");

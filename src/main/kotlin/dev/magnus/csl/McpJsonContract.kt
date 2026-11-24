@@ -15,7 +15,8 @@ internal class DeclarationsAnswer(val declarations: List<Declaration>)
 
 /**
  * One declaration. A compiled symbol has no [file] and no [line]. A member with no source of its own, such as a
- * positional record's property, is where it is written: the parameter in the record's header.
+ * positional record's property, is where it is written: the parameter in the record's header. A type declared in
+ * parts is at the part in the file named after it, where there is one.
  */
 internal class Declaration(
     val kind: String,
