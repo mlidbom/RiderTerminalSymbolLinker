@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using ClaudeTooling.Hub.LocalApi.Contract.Sandboxes;
@@ -54,7 +55,7 @@ public sealed class SandboxRider
    static readonly TimeSpan HowLongStartingMayTake = TimeSpan.FromMinutes(5);
    static readonly TimeSpan HowLongStoppingMayTake = TimeSpan.FromMinutes(2);
 
-   static readonly HttpClient HealthClient = new() { Timeout = TimeSpan.FromSeconds(5) };
+   static readonly HttpClient McpServerClient = new() { Timeout = TimeSpan.FromSeconds(5) };
 
    readonly RiderInstallation _rider;
    readonly GradleSandbox _plugins;
@@ -298,6 +299,13 @@ public sealed class SandboxRider
                 $"the sandbox's Cloyd, in {ItsCloyd.Folder}, to show the window of {projectFolder}: Claude Sessions runs its Cloyd.exe --project as the project opens, and logs what came of it to the sandbox's idea.log");
       PlaceWindows();
    }
+
+   /// <summary>
+   ///   Waits until the MCP server on <see cref="McpPort"/> finds a declaration of <paramref name="qualifiedName"/>, such
+   ///   as one that an edit of the open solution's files has just added: the server takes such an edit in within seconds.
+   /// </summary>
+   public void WaitUntilItsMcpDeclares(string qualifiedName) =>
+      WaitUntil(() => TheMcpServerDeclares(qualifiedName), TimeSpan.FromSeconds(30), $"the MCP server on port {McpPort} to find a declaration of {qualifiedName}");
 
    /// <summary>Waits until <see cref="ItsCloyd"/> shows the window of every project open in the sandbox Rider, and places them.</summary>
    void WaitUntilItsCloydShowsTheProjects()
@@ -685,12 +693,33 @@ public sealed class SandboxRider
    {
       try
       {
-         return HealthClient.GetStringAsync($"http://127.0.0.1:{McpPort}/health").GetAwaiter().GetResult();
+         return McpServerClient.GetStringAsync($"http://127.0.0.1:{McpPort}/health").GetAwaiter().GetResult();
       }
       catch(HttpRequestException exception) when(exception.HttpRequestError == HttpRequestError.ConnectionError)
       {
          return null;
       }
+   }
+
+   /// <summary>Whether the MCP server's <c>go_to_definition</c> finds a declaration of <paramref name="qualifiedName"/>.</summary>
+   static bool TheMcpServerDeclares(string qualifiedName)
+   {
+      var request = new JsonObject
+      {
+         ["jsonrpc"] = "2.0",
+         ["id"] = 1,
+         ["method"] = "tools/call",
+         ["params"] = new JsonObject
+         {
+            ["name"] = "go_to_definition",
+            ["arguments"] = new JsonObject { ["symbolName"] = qualifiedName, ["format"] = "json" }
+         }
+      };
+      using var response = McpServerClient.PostAsync($"http://127.0.0.1:{McpPort}/", new StringContent(request.ToJsonString(), Encoding.UTF8, "application/json"))
+                                          .GetAwaiter().GetResult();
+      var envelope = JsonNode.Parse(response.Content.ReadAsStringAsync().GetAwaiter().GetResult())!;
+      var answer = JsonNode.Parse(envelope["result"]!["content"]![0]!["text"]!.GetValue<string>())!;
+      return answer["declarations"]!.AsArray().Count > 0;
    }
 
    static void WaitUntil(Func<bool> condition, TimeSpan timeout, string whatItWaitsFor)

@@ -82,6 +82,19 @@ public sealed class TheSandboxWithTheFixtureSolution : IDisposable
    public IReadOnlyList<(string Text, string Kind)> LinksIn(string line) =>
       [.. _sandbox.SymbolLinkerObservation.Links(line)["links"]!.AsArray().Select(it => (it!["text"]!.GetValue<string>(), it["kind"]!.GetValue<string>()))];
 
+   /// <summary>
+   ///   Edits <paramref name="file"/>, a path in the fixture solution, in the sandbox's copy of it, as a user saving an edit
+   ///   does: writes <paramref name="content"/> to it unless it holds that already, and returns once the MCP finds
+   ///   <paramref name="symbolTheContentDeclares"/>, so the edit has been taken in. The copy keeps the edit while the
+   ///   sandbox runs.
+   /// </summary>
+   public void Edit(string file, string content, string symbolTheContentDeclares)
+   {
+      var path = Path.Combine(FixtureFolder, file);
+      if(File.ReadAllText(path) != content) File.WriteAllText(path, content);
+      _sandbox.WaitUntilItsMcpDeclares(symbolTheContentDeclares);
+   }
+
    string FixtureFolder => Path.GetDirectoryName(_sandbox.FixtureSolution)!;
 
    /// <summary>
