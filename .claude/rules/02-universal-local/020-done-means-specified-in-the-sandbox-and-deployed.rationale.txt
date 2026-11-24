@@ -14,9 +14,12 @@ the sandbox, the reload was triggered by asking Rider to look at its plugins fol
 channel, which his Rider doesn't run. If deploys don't reload there, look at whether switching windows makes Rider
 look at the plugins folder, before changing the rule.
 
-## The go-ahead for a deploy that takes a restart
+## No go-ahead for a deploy that takes a restart
 
 On 2026-11-18 (Opus 5.5), the session history picker was deployed to all three IDEs unannounced. It registered a new
 action and a new dependency, so each IDE needed a restart, and switching to an IDE to restart it first reloaded the new
-classes with the old registrations. Magnus then asked to be warned and asked first. The dry run exists so that the
-question can be put before anything lands in his IDEs, not after.
+classes with the old registrations. Magnus then asked to be warned and asked first. Once restarts of the IDEs, the hub
+and Cloyd lost him nothing, he withdrew that (2026-11-24): "We spent all this effort to make sure that I lose nothing
+from a restart specifically so that we would **not** need block on my approval every time", and "Unless you have good
+reason to believe that something will break for me. Just deploy and restart." The user-level rule
+`deploy-and-restart-the-tooling-without-asking.md` says the same for every project.
