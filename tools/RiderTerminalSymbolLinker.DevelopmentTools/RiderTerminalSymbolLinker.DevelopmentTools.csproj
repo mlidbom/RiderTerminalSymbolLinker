@@ -21,6 +21,7 @@
     <Compile Include="$(USERPROFILE)\.claude\src\ClaudeTooling.Hub.LocalApi.Contract\Sandboxes\SandboxHubStarted.cs" Link="HubLocalApiContract\Sandboxes\SandboxHubStarted.cs" />
     <!-- The hub's announcement, and how to read it: see HubsLocalApi. -->
     <Compile Include="$(USERPROFILE)\.claude\src\ClaudeTooling.Hub.LocalApi.Contract\WhatTheAnnouncementSays.cs" Link="HubLocalApiContract\WhatTheAnnouncementSays.cs" />
+    <Compile Include="$(USERPROFILE)\.claude\src\ClaudeTooling.Hub.LocalApi.Contract\FileTheHubWritesWhole.cs" Link="HubLocalApiContract\FileTheHubWritesWhole.cs" />
   </ItemGroup>
 
 </Project>
