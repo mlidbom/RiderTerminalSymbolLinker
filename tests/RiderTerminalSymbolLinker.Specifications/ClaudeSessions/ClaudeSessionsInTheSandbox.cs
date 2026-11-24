@@ -40,10 +40,10 @@ public sealed class ClaudeSessionsInTheSandbox
    /// <summary>The windows the sandbox's Cloyd application shows, each with its project's folder and its title: none when none runs.</summary>
    public IReadOnlyList<JsonNode> CloydsWindows => [.. (_sandbox.ItsCloyd.Windows() ?? []).OfType<JsonNode>()];
 
-   /// <summary>The folders of the projects whose windows the sandbox's Cloyd shows, in order: none when no application runs.</summary>
    /// <summary>What the sandbox's Cloyd says in its log, <c>cloyd.log</c> in its folder, of why each window opened: empty while it has said nothing.</summary>
    public string WhatCloydsLogSays => _sandbox.ItsCloyd.WhatItsLogSays();
 
+   /// <summary>The folders of the projects whose windows the sandbox's Cloyd shows, in order: none when no application runs.</summary>
    public IReadOnlyList<string> ProjectsCloydShows => [.. _sandbox.ItsCloyd.ProjectsItShows().Order(StringComparer.OrdinalIgnoreCase)];
 
    /// <summary>
