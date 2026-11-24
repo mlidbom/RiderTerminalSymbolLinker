@@ -4,6 +4,13 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project aims to follow
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.12]
+
+### Changed
+- **A click on a method with overloads lists every overload,** in the order they're declared, to choose which to
+  open, as a click on any other ambiguous name does. Before, it opened one of them, whichever ReSharper listed first.
+  This comes with the .NET Analysis&Refactoring MCP's release after 0.15.1; with earlier ones a click still opens one.
+
 ## [0.2.11]
 
 ### Changed
@@ -205,6 +212,7 @@ First public release.
   in the background.
 - Multi-solution support: each call targets the correct open solution.
 
+[0.2.12]: https://github.com/mlidbom/RiderTerminalSymbolLinker/compare/v0.2.11...HEAD
 [0.2.11]: https://github.com/mlidbom/RiderTerminalSymbolLinker/compare/v0.2.10...v0.2.11
 [0.2.10]: https://github.com/mlidbom/RiderTerminalSymbolLinker/compare/v0.2.9...v0.2.10
 [0.2.9]: https://github.com/mlidbom/RiderTerminalSymbolLinker/compare/v0.2.8...v0.2.9

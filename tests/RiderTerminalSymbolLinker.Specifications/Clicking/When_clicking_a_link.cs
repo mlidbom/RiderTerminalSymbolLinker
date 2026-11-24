@@ -115,13 +115,10 @@ public class When_clicking_a_link(TheSandboxWithTheFixtureSolution sandbox)
    /// </summary>
    public class to_a_method_with_overloads(TheSandboxWithTheFixtureSolution sandbox) : When_clicking_a_link(sandbox), IDisposable
    {
-      const string UntilRoyderGivesEveryOverload =
-         "Waits for Royder's go_to_definition to give every overload of a name, in source order, which optimize-royder is making (2026-11-24). Until then it gives one, and the click opens it.";
-
       readonly ClickOutcome _outcome = sandbox.Click("Circle.ScaledBy() is wrong", "Circle.ScaledBy");
 
-      [XF(Skip = UntilRoyderGivesEveryOverload)] public void it_shows_a_picker_of_the_overloads() => _outcome.PickerTitle.Must().Be("Symbols matching \"Circle.ScaledBy\"");
-      [XF(Skip = UntilRoyderGivesEveryOverload)] public void the_picker_has_a_row_for_each_overload_in_the_order_they_are_declared() =>
+      [XF] public void it_shows_a_picker_of_the_overloads() => _outcome.PickerTitle.Must().Be("Symbols matching \"Circle.ScaledBy\"");
+      [XF] public void the_picker_has_a_row_for_each_overload_in_the_order_they_are_declared() =>
          _outcome.PickerRows.Must().SequenceEqual(["method Geometry.Shapes.Circle.ScaledBy  —  Circle.cs:10", "method Geometry.Shapes.Circle.ScaledBy  —  Circle.cs:13"]);
 
       public void Dispose() => Sandbox.ClosePicker();
