@@ -109,6 +109,24 @@ public class When_clicking_a_link(TheSandboxWithTheFixtureSolution sandbox)
       }
    }
 
+   /// <summary>
+   ///   The terminal's text doesn't say which overload it means, so a click lists them all, in the order they're declared.
+   ///   Magnus, 2026-11-24: "If a symbol is ambiguous, showing a list is IMO the correct thing to do."
+   /// </summary>
+   public class to_a_method_with_overloads(TheSandboxWithTheFixtureSolution sandbox) : When_clicking_a_link(sandbox), IDisposable
+   {
+      const string UntilRoyderGivesEveryOverload =
+         "Waits for Royder's go_to_definition to give every overload of a name, in source order, which optimize-royder is making (2026-11-24). Until then it gives one, and the click opens it.";
+
+      readonly ClickOutcome _outcome = sandbox.Click("Circle.ScaledBy() is wrong", "Circle.ScaledBy");
+
+      [XF(Skip = UntilRoyderGivesEveryOverload)] public void it_shows_a_picker_of_the_overloads() => _outcome.PickerTitle.Must().Be("Symbols matching \"Circle.ScaledBy\"");
+      [XF(Skip = UntilRoyderGivesEveryOverload)] public void the_picker_has_a_row_for_each_overload_in_the_order_they_are_declared() =>
+         _outcome.PickerRows.Must().SequenceEqual(["method Geometry.Shapes.Circle.ScaledBy  —  Circle.cs:10", "method Geometry.Shapes.Circle.ScaledBy  —  Circle.cs:13"]);
+
+      public void Dispose() => Sandbox.ClosePicker();
+   }
+
    public class to_a_file_name_that_two_files_share(TheSandboxWithTheFixtureSolution sandbox) : When_clicking_a_link(sandbox), IDisposable
    {
       readonly ClickOutcome _outcome = sandbox.Click("see Bounds.cs", "Bounds.cs");
