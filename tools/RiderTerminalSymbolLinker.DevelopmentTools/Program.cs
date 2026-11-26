@@ -42,6 +42,8 @@ static class Program
                                                       rows, found nothing, or fell back to Search Everywhere
                           sandbox picker choose <row> Chooses a row of the picker the last click showed, as Enter does
                           sandbox picker close        Closes that picker
+                          sandbox picker picture <png-file>
+                                                      Paints that picker, as it shows, into a PNG file, and leaves it open
 
                         What Claude Sessions has Cloyd do in the sandbox:
 
@@ -126,6 +128,9 @@ static class Program
             break;
          case ["sandbox", "picker", "close"]:
             Console.WriteLine(ObservationChannel.Indent(sandbox.SymbolLinkerObservation.ClosePicker()));
+            break;
+         case ["sandbox", "picker", "picture", var pngFile]:
+            Console.WriteLine(ObservationChannel.Indent(sandbox.SymbolLinkerObservation.PicturePicker(pngFile)));
             break;
          case ["sandbox", "cloyd"]:
             foreach(var line in sandbox.WhatItsCloydShows()) Console.WriteLine(line);

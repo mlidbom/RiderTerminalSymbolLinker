@@ -28,6 +28,8 @@ import dev.magnus.csl.SymbolHyperlinkInfo
 import dev.magnus.csl.SymbolIndex
 import dev.magnus.csl.SymbolLinkFilterProvider
 import java.awt.Point
+import java.awt.image.BufferedImage
+import java.io.File
 import java.net.InetAddress
 import java.net.InetSocketAddress
 import java.net.URLDecoder
@@ -37,6 +39,7 @@ import java.util.concurrent.CompletableFuture
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.TimeoutException
 import java.util.concurrent.atomic.AtomicReference
+import javax.imageio.ImageIO
 
 /**
  * A development-only HTTP server through which the development tools see what the plugin does in the sandbox Rider:
@@ -52,6 +55,7 @@ import java.util.concurrent.atomic.AtomicReference
  *    clicked is clicked at [CLICK_POINT] in the project's window, and the answer says where that is on the screen.
  *  - `POST /picker/choose?project=&row=` — chooses a row of the picker the last click showed, as Enter does.
  *  - `POST /picker/close` — closes that picker.
+ *  - `POST /picker/picture?file=` — paints that picker, as it shows, into the PNG file `file`, and leaves it open.
  *  - `POST /editors/close-all?project=` — closes every editor, so that a click opens its file afresh.
  *  - `POST /plugins/refresh` — has Rider look at its plugins folder again, so that with `idea.auto.reload.plugins`
  *    it reloads a plugin whose files changed, this one included. Nothing else makes Rider look there, but activating
@@ -84,6 +88,7 @@ class ObservationChannel : Disposable {
             }
             createContext("/picker/choose") { exchange -> answer(exchange) { choose(projectOf(exchange), query(exchange, "row")!!.toInt()) } }
             createContext("/picker/close") { exchange -> answer(exchange) { closePicker() } }
+            createContext("/picker/picture") { exchange -> answer(exchange) { pictureOfThePicker(File(query(exchange, "file")!!)) } }
             createContext("/plugins/refresh") { exchange -> answer(exchange) { refreshThePluginsFolder() } }
             createContext("/editors/close-all") { exchange -> answer(exchange) { closeEveryEditor(projectOf(exchange)) } }
             start()
@@ -157,6 +162,14 @@ class ObservationChannel : Disposable {
         shownPicker = null
         ApplicationManager.getApplication().invokeAndWait { picker.close() }
         return mapOf("outcome" to "closed")
+    }
+
+    private fun pictureOfThePicker(file: File): Map<String, Any?> {
+        val picker = shownPicker ?: return mapOf("outcome" to "noPickerShown")
+        var picture: BufferedImage? = null
+        ApplicationManager.getApplication().invokeAndWait { picture = picker.picture() }
+        ImageIO.write(picture!!, "png", file)
+        return mapOf("wrote" to file.path, "width" to picture!!.width, "height" to picture!!.height)
     }
 
     /** Runs [action] on the EDT, as the terminal runs a click, and waits for the [LinkClickOutcome] it reports. */

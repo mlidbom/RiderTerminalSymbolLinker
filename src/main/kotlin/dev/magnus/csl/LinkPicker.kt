@@ -13,7 +13,9 @@ import java.awt.Color
 import java.awt.Toolkit
 import java.awt.event.MouseAdapter
 import java.awt.event.MouseEvent
+import java.awt.image.BufferedImage
 import javax.swing.BorderFactory
+import javax.swing.JComponent
 import javax.swing.JList
 import javax.swing.ListSelectionModel
 
@@ -104,9 +106,18 @@ object LinkPicker {
                     open(items[row], true)
                 },
                 close = { popup.cancel() },
+                picture = { pictureOf(popup.content) },
             ),
         )
     }
+
+    /** [content] as it shows, painted into a picture of its size. */
+    private fun pictureOf(content: JComponent): BufferedImage =
+        BufferedImage(content.width, content.height, BufferedImage.TYPE_INT_ARGB).also { picture ->
+            val graphics = picture.createGraphics()
+            content.paint(graphics)
+            graphics.dispose()
+        }
 
     /** A note above the rows, set off as IntelliJ sets off an information banner, so that it is read first. */
     private fun viewOf(note: String): JBLabel =

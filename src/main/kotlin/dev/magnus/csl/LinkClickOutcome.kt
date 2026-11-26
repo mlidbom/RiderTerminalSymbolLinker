@@ -1,6 +1,7 @@
 package dev.magnus.csl
 
 import java.awt.Point
+import java.awt.image.BufferedImage
 
 /**
  * What a click on a terminal link did: opened a file, showed the [LinkPicker], found nothing, or fell back to
@@ -14,7 +15,7 @@ sealed interface LinkClickOutcome {
     /**
      * Showed the [LinkPicker] titled [title], with [note] above its rows, one row per candidate, its top left corner at
      * [location] on the screen. [choose] opens a row's candidate and closes the picker, as Enter does; [close] closes it
-     * without opening anything.
+     * without opening anything. [picture] paints the picker as it shows into a picture, on the EDT.
      */
     class PickerShown(
         val title: String,
@@ -23,6 +24,7 @@ sealed interface LinkClickOutcome {
         val rows: List<String>,
         val choose: (row: Int) -> Unit,
         val close: () -> Unit,
+        val picture: () -> BufferedImage,
     ) : LinkClickOutcome
 
     /** Told the user, with [message], that the link's target doesn't exist. */

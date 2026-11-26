@@ -25,6 +25,12 @@ public sealed class SymbolLinkerObservationChannel(int port) : ObservationChanne
    /// <summary>Closes the picker the last click showed.</summary>
    public JsonNode ClosePicker() => Post("picker/close", null, new { });
 
+   /// <summary>
+   ///   Paints the picker the last click showed, as it shows, into the PNG file <paramref name="pngFile"/>, and leaves it
+   ///   open: a picture of it wherever the sandbox's window is, on another virtual desktop too.
+   /// </summary>
+   public JsonNode PicturePicker(string pngFile) => Post("picker/picture", null, new { }, $"file={Uri.EscapeDataString(Path.GetFullPath(pngFile))}");
+
    /// <summary>Closes every editor, so that a click opens its file afresh.</summary>
    public JsonNode CloseEveryEditor(string? project = null) => Post("editors/close-all", project, new { });
 }
