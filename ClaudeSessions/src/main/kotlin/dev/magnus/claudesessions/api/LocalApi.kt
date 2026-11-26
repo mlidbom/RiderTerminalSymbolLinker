@@ -10,6 +10,7 @@ import com.intellij.openapi.application.ex.ApplicationManagerEx
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
 import com.intellij.openapi.diagnostic.thisLogger
+import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.fileEditor.OpenFileDescriptor
 import com.intellij.openapi.project.ProjectManager
 import com.intellij.openapi.vfs.LocalFileSystem
@@ -20,6 +21,7 @@ import dev.magnus.claudesessions.windows.ProjectWindow
 import java.net.InetAddress
 import java.nio.file.Path
 import java.net.InetSocketAddress
+import java.net.URLDecoder
 import java.security.SecureRandom
 import java.util.HexFormat
 import java.util.concurrent.ExecutorService
@@ -43,11 +45,15 @@ import java.util.concurrent.Executors
  *    applies a patch ([RestartRunningACommand]): the development tools put a build of a plugin in so, which a running
  *    IDE couldn't take.
  *  - `POST /files/open` with `{"project": <the project's folder>, "file": <a file's full path>, "line": <from 1, or left
- *    out>, "column": <from 1, or left out>}`, and the announcement's token: opens the file in an editor of that
- *    project's window, at the line and column, with the IDE's focus in it, as a click on a link in Cloyd's chat asks.
+ *    out>, "column": <from 1, or left out>, "focus": <false to open it in the background, or left out>}`, and the
+ *    announcement's token: opens the file in an editor of that project's window, at the line and column, with the IDE's
+ *    focus in it unless `focus` is false, as a click on a link in Cloyd's chat asks, a Ctrl+click in its picker in the
+ *    background.
  *    The file may be outside the project, as a worktree's is. It answers 200 with `{"window": <the window's native
  *    handle>}`, which the asker brings forward itself: the IDE may not take the foreground from it. 404 with
  *    `{"error": <why>}` when no window of the IDE shows the project, or no file is at the path.
+ *  - `GET /files/opened?project=<the project's folder>`: the full paths of the files open in the editors of that
+ *    project's window, `{"files": [...]}`, which Cloyd's picker marks as open. 404 when no window shows the project.
  *
  * Any process on the machine can reach a loopback port, so a request that changes something, as `POST /restart` does,
  * must carry the announcement's token, `Authorization: Bearer <token>`, new at each start of the IDE; it's answered 401
@@ -69,6 +75,7 @@ class LocalApi : Disposable {
             createContext("/windows") { exchange -> ifItsHostIsThisApi(exchange, ::answerWithTheWindows) }
             createContext("/restart") { exchange -> ifItsHostIsThisApi(exchange, ::restart) }
             createContext("/files/open") { exchange -> ifItsHostIsThisApi(exchange, ::openAFile) }
+            createContext("/files/opened") { exchange -> ifItsHostIsThisApi(exchange, ::answerWithTheFilesOpen) }
             start()
         }
 
@@ -120,6 +127,7 @@ class LocalApi : Disposable {
                 val path = request.get("file").asString
                 val line = request.numberOrNullOf("line")
                 val column = request.numberOrNullOf("column")
+                val focus = request.get("focus")?.takeUnless { it.isJsonNull }?.asBoolean ?: true
                 onTheEdt {
                     val project = ProjectManager.getInstance().openProjects.firstOrNull { it.basePath?.let(Path::of) == folder }
                     val window = project?.let(ProjectWindow::of)
@@ -128,7 +136,7 @@ class LocalApi : Disposable {
                         project == null || window == null -> 404 to mapOf("error" to "No window of the IDE shows the project $folder.")
                         file == null -> 404 to mapOf("error" to "No file is at $path.")
                         else -> {
-                            (if (line == null) OpenFileDescriptor(project, file) else OpenFileDescriptor(project, file, line - 1, (column ?: 1) - 1)).navigate(true)
+                            (if (line == null) OpenFileDescriptor(project, file) else OpenFileDescriptor(project, file, line - 1, (column ?: 1) - 1)).navigate(focus)
                             200 to mapOf("window" to window.handle.value)
                         }
                     }
@@ -136,6 +144,25 @@ class LocalApi : Disposable {
             }
         }
     }
+
+    /** The files open in the editors of a project's window: see the API's description. */
+    private fun answerWithTheFilesOpen(exchange: HttpExchange) = reply(exchange) {
+        val folder = queryOf(exchange)["project"]?.let(Path::of)
+        when {
+            exchange.requestMethod != "GET" -> 405 to mapOf("error" to "GET it")
+            folder == null -> 400 to mapOf("error" to "Name the project's folder: ?project=<its folder>")
+            else -> onTheEdt {
+                val project = ProjectManager.getInstance().openProjects.firstOrNull { it.basePath?.let(Path::of) == folder }
+                if (project == null || ProjectWindow.of(project) == null) 404 to mapOf("error" to "No window of the IDE shows the project $folder.")
+                else 200 to mapOf("files" to FileEditorManager.getInstance(project).openFiles.map { Path.of(it.path).toString() })
+            }
+        }
+    }
+
+    /** The parameters of [exchange]'s query, each by its name, decoded. */
+    private fun queryOf(exchange: HttpExchange): Map<String, String> =
+        exchange.requestURI.rawQuery.orEmpty().split('&').filter { '=' in it }
+            .associate { URLDecoder.decode(it.substringBefore('='), Charsets.UTF_8) to URLDecoder.decode(it.substringAfter('='), Charsets.UTF_8) }
 
     private fun JsonObject.numberOrNullOf(name: String): Int? = get(name)?.takeUnless { it.isJsonNull }?.asInt
 

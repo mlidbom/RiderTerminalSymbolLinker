@@ -96,8 +96,12 @@ and the hub is to ask it there. The contract, agreed with tooling-owner on 2026-
   project's window, `OpenFileDescriptor(...).navigate(true)`, and answers 200 with `{"window": <its HWND>}`, which Cloyd
   brings forward itself: Cloyd is in front at the click, and the IDE may not take the foreground from it. 404 with
   `{"error"}` when no window of the IDE shows the project, or no file is at the path. A file outside the project, such
-  as a worktree's, opens as a file outside it. Specified in the sandbox (`When_a_tool_asks_the_ide_to_open_a_file`), the
-  observation channel's `GET /state` telling each project's selected editor and its caret.
+  as a worktree's, opens as a file outside it. `"focus": false` opens it with no focus asked, as a Ctrl+click in
+  Cloyd's picker does. Specified in the sandbox (`When_a_tool_asks_the_ide_to_open_a_file`), the observation channel's
+  `GET /state` telling each project's selected editor and its caret.
+- **`GET /files/opened?project=<the project's folder>`,** for Cloyd's picker of where a link leads, which marks the
+  files open in the IDE as the symbol linker's picker does: the full paths of the files open in that project window's
+  editors, `{"files": [...]}`, with no token, as it changes nothing; 404 when no window shows the project.
 - **Each project window goes back to its virtual desktop after every restart** (Magnus: "Every restart please :)"):
   `RecordTheWindowsDesktopsAsTheIdeExits` records each one's desktop as the IDE exits, and
   `PutTheWindowBackOnItsDesktop` moves it back once its project has opened and its window shows
