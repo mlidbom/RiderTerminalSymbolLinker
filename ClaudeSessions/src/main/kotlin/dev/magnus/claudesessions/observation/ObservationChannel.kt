@@ -11,9 +11,12 @@ import com.intellij.openapi.actionSystem.AnActionResult
 import com.intellij.openapi.actionSystem.ex.ActionUtil
 import com.intellij.openapi.actionSystem.impl.SimpleDataContext
 import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.application.ModalityState
 import com.intellij.openapi.application.PathManager
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
+import com.intellij.openapi.fileEditor.FileEditorManager
+import com.intellij.openapi.project.Project
 import com.intellij.openapi.project.ProjectManager
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.vfs.VfsUtil
@@ -32,7 +35,9 @@ import java.util.concurrent.Executors
  *
  * Every endpoint answers JSON:
  *  - `GET /state` — when this build of the plugin started, `startedAt`, the projects open, each with its name and
- *    folder, and the windows it put back on their virtual desktops as their projects opened, `windowsPutBackOnTheirDesktops`.
+ *    folder and its selected editor, `selectedEditor`: the file it shows, and the line and column of its caret, from 1,
+ *    or null when it has none; and the windows it put back on their virtual desktops as their projects opened,
+ *    `windowsPutBackOnTheirDesktops`.
  *  - `POST /plugins/refresh` — has the IDE look at its plugins folder again, so that with `idea.auto.reload.plugins` it
  *    reloads a plugin whose files changed, this one included. `/state`'s `startedAt` then tells when the new build's
  *    channel started.
@@ -69,9 +74,20 @@ class ObservationChannel : Disposable {
 
     private fun state(): Map<String, Any?> = mapOf(
         "startedAt" to startedAt,
-        "projects" to ProjectManager.getInstance().openProjects.map { mapOf("name" to it.name, "basePath" to it.basePath) },
+        "projects" to ProjectManager.getInstance().openProjects.map { mapOf("name" to it.name, "basePath" to it.basePath, "selectedEditor" to selectedEditorOf(it)) },
         "windowsPutBackOnTheirDesktops" to DesktopsThroughARestart.windowsPutBackOnTheirDesktops,
     )
+
+    /** The file [project]'s selected editor shows, and where its caret is, as `GET /state` tells it: null when it has none. */
+    private fun selectedEditorOf(project: Project): Map<String, Any?>? {
+        var selected: Map<String, Any?>? = null
+        ApplicationManager.getApplication().invokeAndWait({
+            val editor = FileEditorManager.getInstance(project).selectedTextEditor ?: return@invokeAndWait
+            val caret = editor.caretModel.logicalPosition
+            selected = mapOf("file" to editor.virtualFile?.path, "caretLine" to caret.line + 1, "caretColumn" to caret.column + 1)
+        }, ModalityState.any())
+        return selected
+    }
 
     private fun refreshThePluginsFolder(): Map<String, Any?> {
         val folder = LocalFileSystem.getInstance().refreshAndFindFileByPath(PathManager.getPluginsPath())

@@ -7,6 +7,10 @@ All notable changes to Claude Sessions are documented here. The format follows
 ## [0.2.0]
 
 ### Added
+- **A click on a link to code in Cloyd's chat opens it in the IDE.** Cloyd asks the IDE that shows the project to open
+  the file, at the line and column the link names or where the symbol is declared, in an editor of that project's
+  window, with the focus in it. Cloyd then brings the window forward. A file outside the project, such as a worktree's,
+  opens too.
 - **Tools > Show the Project in Cloyd, Ctrl+Alt+Shift+Y.** It brings the project's window in Cloyd forward, or opens it
   when you closed it, as opening the project does. A Cloyd window on another virtual desktop stays there, as it does when
   the project opens. Pressed again in Cloyd's window, the same keys open Cloyd's session history picker.

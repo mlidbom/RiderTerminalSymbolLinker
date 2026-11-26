@@ -90,6 +90,14 @@ and the hub is to ask it there. The contract, agreed with tooling-owner on 2026-
   The new announcement comes once the first project has opened. Rider restarts its launcher without the arguments it
   started with (`Restarter.restartOnWindows`), and reopens every solution it had open, each in its window, as "Reopen
   projects on startup" is on by default: a specification checks it with three.
+- **`POST /files/open`,** for a click on a link to code in Cloyd's chat (`~/.claude/dev_docs/cloyd/cloyd-as-a-dotnet-application.md`,
+  "Clickable file paths and C# symbols"), agreed with Magnus's plan of 2026-11-26: `{"project", "file", "line",
+  "column"}`, the line and column from 1 and either left out, with the token. It opens the file in an editor of that
+  project's window, `OpenFileDescriptor(...).navigate(true)`, and answers 200 with `{"window": <its HWND>}`, which Cloyd
+  brings forward itself: Cloyd is in front at the click, and the IDE may not take the foreground from it. 404 with
+  `{"error"}` when no window of the IDE shows the project, or no file is at the path. A file outside the project, such
+  as a worktree's, opens as a file outside it. Specified in the sandbox (`When_a_tool_asks_the_ide_to_open_a_file`), the
+  observation channel's `GET /state` telling each project's selected editor and its caret.
 - **Each project window goes back to its virtual desktop after every restart** (Magnus: "Every restart please :)"):
   `RecordTheWindowsDesktopsAsTheIdeExits` records each one's desktop as the IDE exits, and
   `PutTheWindowBackOnItsDesktop` moves it back once its project has opened and its window shows

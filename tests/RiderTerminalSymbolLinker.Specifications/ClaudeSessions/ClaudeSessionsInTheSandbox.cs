@@ -34,6 +34,22 @@ public sealed class ClaudeSessionsInTheSandbox
    /// </summary>
    public IReadOnlyList<JsonNode> WindowsPutBackOnTheirDesktops => [.. _sandbox.ClaudeSessionsObservation.State()["windowsPutBackOnTheirDesktops"]!.AsArray().OfType<JsonNode>()];
 
+   /// <summary>
+   ///   The file the fixture solution's selected editor shows, by its path within the solution's folder, such as
+   ///   <c>Geometry/Shapes/Circle.cs</c>, and the line and column of its caret, from 1: null when it has no editor open.
+   /// </summary>
+   public (string File, int CaretLine, int CaretColumn)? SelectedEditor
+   {
+      get
+      {
+         var fixture = _sandbox.ClaudeSessionsObservation.State()["projects"]!.AsArray()
+                               .Single(it => Path.GetFullPath(it!["basePath"]!.GetValue<string>()) == ProjectFolder)!;
+         return fixture["selectedEditor"] is {} editor
+                   ? (Path.GetRelativePath(ProjectFolder, editor["file"]!.GetValue<string>()).Replace('\\', '/'), editor["caretLine"]!.GetValue<int>(), editor["caretColumn"]!.GetValue<int>())
+                   : null;
+      }
+   }
+
    /// <summary>The process the sandbox's Cloyd application runs as: null when none runs.</summary>
    public int? CloydsApplication => _sandbox.ItsCloyd.TheApplication()?.Id;
 

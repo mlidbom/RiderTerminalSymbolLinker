@@ -10,11 +10,15 @@ import com.intellij.openapi.application.ex.ApplicationManagerEx
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
 import com.intellij.openapi.diagnostic.thisLogger
+import com.intellij.openapi.fileEditor.OpenFileDescriptor
+import com.intellij.openapi.project.ProjectManager
+import com.intellij.openapi.vfs.LocalFileSystem
 import com.sun.net.httpserver.HttpExchange
 import com.sun.net.httpserver.HttpServer
 import dev.magnus.claudesessions.windows.DesktopsThroughARestart
 import dev.magnus.claudesessions.windows.ProjectWindow
 import java.net.InetAddress
+import java.nio.file.Path
 import java.net.InetSocketAddress
 import java.security.SecureRandom
 import java.util.HexFormat
@@ -38,6 +42,12 @@ import java.util.concurrent.Executors
  *    `beforeItStartsAgain` runs once the IDE has exited, and the IDE starts again once it has ended, as the IDE's updater
  *    applies a patch ([RestartRunningACommand]): the development tools put a build of a plugin in so, which a running
  *    IDE couldn't take.
+ *  - `POST /files/open` with `{"project": <the project's folder>, "file": <a file's full path>, "line": <from 1, or left
+ *    out>, "column": <from 1, or left out>}`, and the announcement's token: opens the file in an editor of that
+ *    project's window, at the line and column, with the IDE's focus in it, as a click on a link in Cloyd's chat asks.
+ *    The file may be outside the project, as a worktree's is. It answers 200 with `{"window": <the window's native
+ *    handle>}`, which the asker brings forward itself: the IDE may not take the foreground from it. 404 with
+ *    `{"error": <why>}` when no window of the IDE shows the project, or no file is at the path.
  *
  * Any process on the machine can reach a loopback port, so a request that changes something, as `POST /restart` does,
  * must carry the announcement's token, `Authorization: Bearer <token>`, new at each start of the IDE; it's answered 401
@@ -58,6 +68,7 @@ class LocalApi : Disposable {
             executor = Executors.newCachedThreadPool()
             createContext("/windows") { exchange -> ifItsHostIsThisApi(exchange, ::answerWithTheWindows) }
             createContext("/restart") { exchange -> ifItsHostIsThisApi(exchange, ::restart) }
+            createContext("/files/open") { exchange -> ifItsHostIsThisApi(exchange, ::openAFile) }
             start()
         }
 
@@ -97,6 +108,36 @@ class LocalApi : Disposable {
         }
         beforeItStartsAgain?.let { command -> ApplicationManager.getApplication().invokeLater({ restartTheIde(command) }, ModalityState.nonModal()) }
     }
+
+    /** Opens a file in an editor of a project's window: see the API's description. */
+    private fun openAFile(exchange: HttpExchange) = reply(exchange) {
+        when {
+            exchange.requestMethod != "POST" -> 405 to mapOf("error" to "POST it")
+            !carriesTheToken(exchange) -> 401 to mapOf("error" to "Opening a file must carry the token of the IDE's announcement, as Authorization: Bearer <token>.")
+            else -> {
+                val request = JsonParser.parseString(exchange.requestBody.readAllBytes().decodeToString()).asJsonObject
+                val folder = Path.of(request.get("project").asString)
+                val path = request.get("file").asString
+                val line = request.numberOrNullOf("line")
+                val column = request.numberOrNullOf("column")
+                onTheEdt {
+                    val project = ProjectManager.getInstance().openProjects.firstOrNull { it.basePath?.let(Path::of) == folder }
+                    val window = project?.let(ProjectWindow::of)
+                    val file = LocalFileSystem.getInstance().refreshAndFindFileByPath(path.replace('\\', '/'))
+                    when {
+                        project == null || window == null -> 404 to mapOf("error" to "No window of the IDE shows the project $folder.")
+                        file == null -> 404 to mapOf("error" to "No file is at $path.")
+                        else -> {
+                            (if (line == null) OpenFileDescriptor(project, file) else OpenFileDescriptor(project, file, line - 1, (column ?: 1) - 1)).navigate(true)
+                            200 to mapOf("window" to window.handle.value)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private fun JsonObject.numberOrNullOf(name: String): Int? = get(name)?.takeUnless { it.isJsonNull }?.asInt
 
     /**
      * Has the IDE restart itself, as after a plugin's update, running the command [beforeItStartsAgain] between the IDE's
