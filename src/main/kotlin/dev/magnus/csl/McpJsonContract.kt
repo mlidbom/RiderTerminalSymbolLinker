@@ -14,7 +14,9 @@ internal class SolutionsAnswer(val solutions: List<SolutionInfo>)
 internal class DeclarationsAnswer(val declarations: List<Declaration>)
 
 /**
- * One declaration. A compiled symbol has no [file] and no [line]. A member with no source of its own, such as a
+ * One declaration. A compiled symbol has no [file] and no [line]. A declaration a source generator wrote has no [file]
+ * either, since Rider holds the generated file in memory: its [line] and [column] are in that file, which the MCP names
+ * by its generator and hint name, two fields the plugin doesn't read. A member with no source of its own, such as a
  * positional record's property, is where it is written: the parameter in the record's header. A type declared in
  * parts is at the part in the file named after it, where there is one.
  */

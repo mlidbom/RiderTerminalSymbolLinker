@@ -50,9 +50,11 @@ The tools the plugin uses:
   extension block is a member of its own kind, whose members count as the declaring class's.
 - **`go_to_definition`** resolves a click exactly: every declaration of the name, with its file, line and column. One
   opens, several show the picker. A member with no source of its own, such as a positional record's property, is where
-  it's written, and a compiled symbol has no file, so the plugin leaves it out. A type declared in parts is at the part
-  in the file named after it, where there is one, since the MCP's change of 2026-11-24. Before that change it was at
-  the part ReSharper lists first, which is the part edited last.
+  it's written. A compiled symbol has no file, nor, since the MCP's change of 2026-11-26, has a declaration a source
+  generator wrote, which Rider holds in memory: the plugin leaves both out, so a click on a name only generated code
+  declares says that nothing was found. A type declared in parts is at the part in the file named after it, where
+  there is one, since the MCP's change of 2026-11-24. Before that change it was at the part ReSharper lists first,
+  which is the part edited last.
 - **`search_symbol`** matches substrings and stops at 50 results, so short common names drown: not for exact
   resolution.
 
