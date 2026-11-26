@@ -62,8 +62,8 @@ class DotNetAnalysisAndRefactoringMcpTest {
 
         assertEquals(
             listOf(
-                SymbolHit("record", "Geometry.Layout.Bounds", """C:\Fixture\Layout\Bounds.cs""", 4, 15),
-                SymbolHit("record", "Geometry.Shapes.Bounds", """C:\Fixture\Shapes\Bounds.cs""", 4, 15),
+                SymbolHit("record", QualifiedName("Geometry.Layout.Bounds"), """C:\Fixture\Layout\Bounds.cs""", 4, 15),
+                SymbolHit("record", QualifiedName("Geometry.Shapes.Bounds"), """C:\Fixture\Shapes\Bounds.cs""", 4, 15),
             ),
             hits,
         )

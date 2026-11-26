@@ -37,12 +37,28 @@ internal class NamespaceListing(
     val childNamespaces: List<String>,
     val types: List<TypeListing>,
     val error: String?,
-)
+) {
+    /** Whether it is the global namespace, which has no name to write. */
+    val isGlobal: Boolean get() = name == GLOBAL
 
-/** A type, with its [members] when they were asked for, and the types nested in it. [name] is its bare C# identifier. */
+    companion object {
+        /** The global namespace's name, as `browse_namespace` names it. */
+        const val GLOBAL = ""
+    }
+}
+
+/**
+ * A type, with its [members] when they were asked for, and the types nested in it. [name] is its bare C# identifier,
+ * [qualifiedName] that after its namespace's and the types' it is nested in. [file], [line] and [column] are where its
+ * name is declared, as a [Declaration]'s are: no [file] for a type a source generator wrote.
+ */
 internal class TypeListing(
     val kind: String,
     val name: String,
+    val qualifiedName: String,
+    val file: String?,
+    val line: Int?,
+    val column: Int?,
     val members: List<MemberListing>?,
     val nestedTypes: List<TypeListing>?,
 )

@@ -1,6 +1,6 @@
 package dev.magnus.csl
 
-import com.intellij.execution.filters.HyperlinkInfo
+import com.intellij.execution.filters.HyperlinkInfoBase
 import com.intellij.notification.NotificationGroupManager
 import com.intellij.notification.NotificationType
 import com.intellij.openapi.fileEditor.FileDocumentManager
@@ -8,12 +8,13 @@ import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.fileEditor.OpenFileDescriptor
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.LocalFileSystem
+import com.intellij.ui.awt.RelativePoint
 
 /**
  * On click, resolve a file reference to the actual solution file(s) and open it. Resolution mirrors the
  * symbol side ([SymbolHyperlinkInfo]):
  *  - one matching file   -> open it
- *  - several             -> a picker of candidate paths (the same [LinkPicker] symbols use)
+ *  - several             -> a picker of candidate paths at the click (the same [LinkPicker] symbols use)
  *  - none                -> brief "no file" notice (only if the index went stale after the link was drawn)
  *
  * [SolutionFileNames.resolve] already returns only files whose path the reference is a true suffix of, so
@@ -30,14 +31,14 @@ class FileHyperlinkInfo(
     private val startLine: Int?,
     private val endLine: Int?,
     private val column: Int?,
-) : HyperlinkInfo {
+) : HyperlinkInfoBase() {
 
-    override fun navigate(project: Project) {
+    override fun navigate(project: Project, hyperlinkLocationPoint: RelativePoint?) {
         val candidates = SolutionFileNames.getInstance(project).resolve(path)
         when {
             candidates.isEmpty() -> notifyNoFile(project)
             candidates.size == 1 -> open(project, candidates.first())
-            else -> showPicker(project, candidates)
+            else -> showPicker(project, candidates, hyperlinkLocationPoint)
         }
     }
 
@@ -64,9 +65,9 @@ class FileHyperlinkInfo(
         editor.caretModel.moveToOffset(from)
     }
 
-    private fun showPicker(project: Project, paths: List<String>) =
+    private fun showPicker(project: Project, paths: List<String>, clickedAt: RelativePoint?) =
         LinkPicker.show(
-            project, "Files named \"$fileName\"", paths, { label(project, it) },
+            project, "Files named \"$fileName\"", note = null, paths, { label(project, it) }, clickedAt,
             // Evaluated live (per paint) so a Ctrl-click open inside the picker marks the file at once.
             isEmphasized = { OpenFiles.normalize(it) in OpenFiles.paths(project) },
         ) { p, focus -> open(project, p, focus) }

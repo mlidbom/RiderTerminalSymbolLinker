@@ -9,12 +9,6 @@ import com.intellij.openapi.progress.ProgressIndicator
 import com.intellij.util.io.HttpRequests
 
 /**
- * A declaration a link can open: [qualifiedName] as C# writes it, in [file] at [line] and [column], both 1-based.
- * [kind] is the C# keyword for what it declares, such as `class` or `method`.
- */
-data class SymbolHit(val kind: String, val qualifiedName: String, val file: String, val line: Int, val column: Int)
-
-/**
  * One loaded solution from `list_solutions`. The value to pass back as `solutionName` is [routingKey], not
  * [name]: the server keys `solutionName` on a match that includes the bare name, so when several loaded
  * solutions share a [name] it resolves to whichever same-named solution it picks first. Two git worktrees of
@@ -48,9 +42,6 @@ object DotNetAnalysisAndRefactoringMcp {
     /** How many namespaces one call lists while the namespaces are found, before their types are read. */
     private const val NAMESPACES_PER_CALL = 50
 
-    /** The global namespace, as `browse_namespace` names it. */
-    private const val GLOBAL_NAMESPACE = ""
-
     // ---- Solution discovery ----------------------------------------------------------------
 
     /**
@@ -73,15 +64,23 @@ object DotNetAnalysisAndRefactoringMcp {
 
     internal fun declarationsIn(answer: JsonObject): List<SymbolHit> =
         gson.fromJson(answer, DeclarationsAnswer::class.java).declarations.mapNotNull { declaration ->
-            declaration.file?.let { SymbolHit(declaration.kind, declaration.qualifiedName, it, declaration.line!!, declaration.column!!) }
+            declaration.file?.let { SymbolHit(declaration.kind, QualifiedName(declaration.qualifiedName), it, declaration.line!!, declaration.column!!) }
         }
+
+    /**
+     * The types in each of [namespaces] and under them, as [TypesOfNamespaces.inAndUnder] orders them: what a click on a
+     * link to a namespace lists. Types a source generator wrote are left out: Rider holds them in memory, with no file
+     * to open. `null` = the MCP is unreachable or couldn't answer.
+     */
+    fun typesInAndUnder(namespaces: List<QualifiedName>, solutionName: String?): List<SymbolHit>? =
+        listingsOf(namespaces.map { it.text }, solutionName, checkCanceled = {})?.let { TypesOfNamespaces(it).inAndUnder(namespaces) }
 
     // ---- Startup enumeration ---------------------------------------------------------------
 
     /**
-     * The names of every type in the solution and of their members, nested types included, as [SymbolNamesGatherer]
-     * gathers them. First the namespaces are found, a batch of them per call; then each namespace's types are listed
-     * with their members, one namespace per call, which the progress bar counts.
+     * The names of every type in the solution, of their members and of the namespaces they are in, nested types
+     * included, as [DeclaredNamesGatherer] gathers them. First the namespaces are found, a batch of them per call; then
+     * each namespace's types are listed with their members, one namespace per call, which the progress bar counts.
      *
      * Sequential by design: the ReSharper backend serializes analysis, so fanning calls out across threads measured
      * ~1.2x at best — not worth the nondeterminism — and one namespace per call keeps each call short, so that other
@@ -91,7 +90,7 @@ object DotNetAnalysisAndRefactoringMcp {
      * `null` means "no usable index right now": the MCP was unreachable, or answered an error, as it does while the
      * solution is still loading. Callers must not cache or display it (see [SymbolIndexLoader]'s retry).
      */
-    fun enumerateSymbolNames(indicator: ProgressIndicator, solutionName: String): SymbolNames? {
+    fun enumerateDeclaredNames(indicator: ProgressIndicator, solutionName: String): DeclaredNames? {
         val started = System.nanoTime()
         indicator.isIndeterminate = true // How many namespaces there are is known only once they're all found.
         indicator.text = "Terminal Symbol Linker:Finding namespaces…"
@@ -100,34 +99,41 @@ object DotNetAnalysisAndRefactoringMcp {
         indicator.text = "Terminal Symbol Linker:Loading types and members…"
         indicator.isIndeterminate = false
         indicator.fraction = 0.0
-        val gatherer = SymbolNamesGatherer()
+        val gatherer = DeclaredNamesGatherer()
         for ((index, namespace) in namespaces.withIndex()) {
             indicator.checkCanceled()
             val listing = browse(listOf(namespace), includeMembers = true, solutionName)?.single() ?: return null
             listing.error?.let { LOG.info("CSL: namespace '$namespace' not listed: $it") }
-            listing.types.forEach(gatherer::add)
+            gatherer.add(listing)
             indicator.fraction = (index + 1).toDouble() / namespaces.size
         }
-        val symbols = gatherer.gathered()
-        LOG.info("CSL symbol index: ${symbols.short.size} names, ${symbols.combined.size} combined, from ${namespaces.size} namespaces in ${(System.nanoTime() - started) / 1_000_000} ms")
-        return symbols
+        val declared = gatherer.gathered()
+        LOG.info("CSL symbol index: ${declared.typesAndMembers.size} types and members, ${declared.namespaces.size} namespaces with types or around them, from ${namespaces.size} namespaces in ${(System.nanoTime() - started) / 1_000_000} ms")
+        return declared
     }
 
     /** The qualified names of every namespace in the solution, the global one first. */
-    private fun allNamespaces(indicator: ProgressIndicator, solutionName: String): List<String>? {
-        val found = ArrayList<String>()
-        val pending = ArrayDeque(listOf(GLOBAL_NAMESPACE))
+    private fun allNamespaces(indicator: ProgressIndicator, solutionName: String): List<String>? =
+        listingsOf(listOf(NamespaceListing.GLOBAL), solutionName, indicator::checkCanceled)?.map { it.name }
+
+    /**
+     * The listings of [namespaces] and of every namespace under them, with their types and not their members, those
+     * nearest first: a batch of namespaces to a call, one level down at a time. [checkCanceled] runs before each call.
+     */
+    private fun listingsOf(namespaces: List<String>, solutionName: String?, checkCanceled: () -> Unit): List<NamespaceListing>? {
+        val found = ArrayList<NamespaceListing>()
+        val pending = ArrayDeque(namespaces)
         while (pending.isNotEmpty()) {
-            indicator.checkCanceled()
+            checkCanceled()
             val batch = List(minOf(NAMESPACES_PER_CALL, pending.size)) { pending.removeFirst() }
-            found += batch
             val listings = browse(batch, includeMembers = false, solutionName) ?: return null
+            found += listings
             listings.forEach { pending += it.childNamespaces }
         }
         return found
     }
 
-    private fun browse(namespaces: List<String>, includeMembers: Boolean, solutionName: String): List<NamespaceListing>? {
+    private fun browse(namespaces: List<String>, includeMembers: Boolean, solutionName: String?): List<NamespaceListing>? {
         val arguments = inJsonForm().apply {
             add("namespaceNames", JsonArray().apply { namespaces.forEach(::add) })
             addProperty("includeMembers", includeMembers)

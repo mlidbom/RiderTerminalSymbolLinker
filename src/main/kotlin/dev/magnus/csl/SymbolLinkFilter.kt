@@ -4,11 +4,10 @@ import com.intellij.execution.filters.Filter
 import com.intellij.openapi.project.Project
 
 /**
- * Linkifies identifier-shaped tokens in console output, but only those that name a real C# symbol in
- * the [SymbolIndex] — the index, not the shape, is the authority (see [SymbolReferences]). A lone token
- * links if it's a known short name; a dotted `Type.Member` access links as one combined symbol if that
- * pair exists. Until the index is loaded the filter does nothing. Resolution on click is exact (see
- * [SymbolHyperlinkInfo]).
+ * Links the names in console output that the [SymbolIndex] knows, as [SymbolReferences] carves them: a type or member,
+ * by its name or the end of its qualified name, and a namespace, by its name or the end of it from two words on. Until
+ * the index is loaded the filter does nothing. A click resolves the name exactly: see [SymbolHyperlinkInfo] and
+ * [NamespaceHyperlinkInfo].
  *
  * Tokens that fall inside a file path or URL are skipped: Rider's terminal already turns those into
  * native links, so re-linkifying a path segment (e.g. "SymbolIndex" in ".../csl/SymbolIndex.kt") would
@@ -21,18 +20,17 @@ class SymbolLinkFilter(private val project: Project) : Filter {
         if (!index.isReady) return null
         val lineStart = entireLength - line.length
         val pathRanges = PathSpans.find(line)
-        val items = SymbolReferences.find(
-            line,
-            isExcluded = { span -> pathRanges.any { span overlaps it } },
-            isKnown = { index.contains(it) },
-            isCombined = { index.containsCombined(it) },
-        ).map { ref ->
-            Filter.ResultItem(
-                lineStart + ref.range.first,
-                lineStart + ref.range.last + 1,
-                SymbolHyperlinkInfo(ref.name),
-            )
-        }
+        val items = SymbolReferences.find(line, isExcluded = { span -> pathRanges.any { span overlaps it } }, index.declared)
+            .map { reference ->
+                Filter.ResultItem(
+                    lineStart + reference.range.first,
+                    lineStart + reference.range.last + 1,
+                    when (reference) {
+                        is SymbolReference.ToATypeOrMember -> SymbolHyperlinkInfo(reference.name)
+                        is SymbolReference.ToANamespace -> NamespaceHyperlinkInfo(reference.name)
+                    },
+                )
+            }
         return if (items.isEmpty()) null else Filter.Result(items)
     }
 

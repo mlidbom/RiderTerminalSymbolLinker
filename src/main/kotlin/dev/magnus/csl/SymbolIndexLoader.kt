@@ -57,9 +57,9 @@ object SymbolIndexLoader {
                 override fun run(indicator: ProgressIndicator) {
                     indicator.text = "Indexing .NET symbols — terminal links activate when this finishes"
                     val loadingNotice = if (announce == Announce.COLD_START) showLoadingNotice(project) else null
-                    val symbols = enumerate(project, indicator, waitForReady)
+                    val declared = enumerate(project, indicator, waitForReady)
                     loadingNotice?.expire()
-                    if (symbols == null) {
+                    if (declared == null) {
                         when (announce) {
                             Announce.COLD_START -> notify(project, "Couldn't load .NET symbols for terminal links — the .NET Analysis&Refactoring MCP is unreachable or still loading the solution. Terminal links stay inactive; use “Refresh Terminal Links” in the terminal menu to retry.", NotificationType.WARNING)
                             Announce.REFRESH_RESULT -> notify(project, "Couldn't refresh .NET symbol links — the .NET Analysis&Refactoring MCP is unreachable or still loading the solution. Try again shortly.", NotificationType.WARNING)
@@ -67,12 +67,12 @@ object SymbolIndexLoader {
                         }
                         return
                     }
-                    SymbolIndex.getInstance(project).set(symbols)
-                    SymbolIndexCache.save(project, symbols)
+                    SymbolIndex.getInstance(project).set(declared)
+                    SymbolIndexCache.save(project, declared)
                     TerminalLinks.rehighlightExistingOutput()
                     when (announce) {
-                        Announce.COLD_START -> notify(project, "Terminal links are active — ${symbols.short.size} .NET symbols indexed. Symbol names in terminal output are now clickable.", NotificationType.INFORMATION)
-                        Announce.REFRESH_RESULT -> notify(project, "Symbol links refreshed: ${symbols.short.size} symbols.", NotificationType.INFORMATION)
+                        Announce.COLD_START -> notify(project, "Terminal links are active — ${declared.typesAndMembers.size} .NET types and members indexed. Symbol names in terminal output are now clickable.", NotificationType.INFORMATION)
+                        Announce.REFRESH_RESULT -> notify(project, "Symbol links refreshed: ${declared.typesAndMembers.size} types and members.", NotificationType.INFORMATION)
                         Announce.SILENT -> {}
                     }
                 }
@@ -86,13 +86,13 @@ object SymbolIndexLoader {
      * is what we retry through; requiring a resolved `solutionName` first avoids enumerating the wrong
      * open solution while `list_solutions` is still warming up.
      */
-    private fun enumerate(project: Project, indicator: ProgressIndicator, waitForReady: Boolean): SymbolNames? {
+    private fun enumerate(project: Project, indicator: ProgressIndicator, waitForReady: Boolean): DeclaredNames? {
         var attempt = 0
         while (true) {
             indicator.checkCanceled()
             val solutionName = McpSolution.getInstance(project).name()
-            val symbols = solutionName?.let { DotNetAnalysisAndRefactoringMcp.enumerateSymbolNames(indicator, it) }
-            if (symbols != null) return symbols
+            val declared = solutionName?.let { DotNetAnalysisAndRefactoringMcp.enumerateDeclaredNames(indicator, it) }
+            if (declared != null) return declared
             if (!waitForReady || ++attempt >= MAX_STARTUP_ATTEMPTS) return null
             indicator.text = "Waiting for ReSharper to finish loading the solution… (terminal links activate once it does)"
             repeat((RETRY_INTERVAL_MS / 250).toInt()) {

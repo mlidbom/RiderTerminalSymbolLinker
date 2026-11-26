@@ -15,7 +15,10 @@ namespace RiderTerminalSymbolLinker.Specifications;
 /// <param name="CaretColumn">The column the selected editor's caret is in after the click, 1-based, for <c>opened</c>.</param>
 /// <param name="SelectedLines">The first and last lines the selected editor's selection covers, if it has one.</param>
 /// <param name="PickerTitle">The picker's title, for <c>picker</c>.</param>
+/// <param name="PickerNote">What the picker says above its rows, if anything, for <c>picker</c>.</param>
 /// <param name="PickerRows">The picker's rows, for <c>picker</c>.</param>
+/// <param name="PickerLocation">Where on the screen the picker's top left corner is, for <c>picker</c>.</param>
+/// <param name="ClickedAt">Where on the screen the link was clicked, for a link the terminal tells where.</param>
 public sealed record ClickOutcome(
    string Outcome,
    string? OpenedFile,
@@ -23,7 +26,10 @@ public sealed record ClickOutcome(
    int? CaretColumn,
    IReadOnlyList<int>? SelectedLines,
    string? PickerTitle,
-   IReadOnlyList<string>? PickerRows)
+   string? PickerNote,
+   IReadOnlyList<string>? PickerRows,
+   (int X, int Y)? PickerLocation,
+   (int X, int Y)? ClickedAt)
 {
    internal static ClickOutcome From(JsonNode answer, string fixtureFolder)
    {
@@ -35,6 +41,11 @@ public sealed record ClickOutcome(
          editor?["caretColumn"]?.GetValue<int>(),
          editor?["selectedLines"]?.AsArray().Select(it => it!.GetValue<int>()).ToList(),
          answer["title"]?.GetValue<string>(),
-         answer["rows"]?.AsArray().Select(it => it!.GetValue<string>()).ToList());
+         answer["note"]?.GetValue<string>(),
+         answer["rows"]?.AsArray().Select(it => it!.GetValue<string>()).ToList(),
+         PointIn(answer["location"]),
+         PointIn(answer["clickedAt"]));
    }
+
+   static (int X, int Y)? PointIn(JsonNode? point) => point is null ? null : (point["x"]!.GetValue<int>(), point["y"]!.GetValue<int>());
 }

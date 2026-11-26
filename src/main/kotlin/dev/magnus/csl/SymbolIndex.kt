@@ -5,51 +5,23 @@ import com.intellij.openapi.components.service
 import com.intellij.openapi.project.Project
 
 /**
- * The two link gates the index serves, built together from one enumeration:
- *  - [short]    — every symbol short name (types + members, single identifiers, no dots). Gates lone
- *                 tokens like `SymbolIndex`.
- *  - [combined] — every `SimpleType.Member` pair that actually exists (e.g. `ApplicationWindow.ForceToFront`).
- *                 Gates a dotted access so it links as one symbol instead of two adjacent tokens.
- *
- * The two are disjoint by construction: a [short] name is a single identifier and never contains a dot,
- * a [combined] name always does — the [SymbolIndexCache] relies on this to store both in one flat file.
- */
-data class SymbolNames(val short: Set<String>, val combined: Set<String>)
-
-/**
- * Project-scoped authority on what links in terminal output, built once at startup from the ReSharper
- * MCP (see [SymbolIndexStartup]). A lone token links only if it [contains] a real short name; a dotted
- * `Type.Member` access links as one symbol only if it [containsCombined] a real member-of-type pair.
- * Until [isReady] (still loading, or MCP down) the filter underlines nothing — we don't touch the
- * terminal before the index exists.
+ * Project-scoped authority on what links in terminal output: the solution's [DeclaredNames], built at startup from the
+ * .NET Analysis&Refactoring MCP (see [SymbolIndexStartup]), which [SymbolReferences] carves a line's links by. Until
+ * [isReady] (still loading, or the MCP down) the filter underlines nothing: the terminal isn't touched before the index
+ * exists.
  */
 @Service(Service.Level.PROJECT)
 class SymbolIndex {
     @Volatile
-    private var short: Set<String> = emptySet()
-
-    @Volatile
-    private var combined: Set<String> = emptySet()
+    var declared: DeclaredNames = DeclaredNames.NONE
+        private set
 
     @Volatile
     var isReady: Boolean = false
         private set
 
-    /** Whether [name] is a known short name (a single identifier — type or member). */
-    fun contains(name: String): Boolean = short.contains(name)
-
-    /** Whether [name] is a known `SimpleType.Member` combined identifier (a dotted access that exists). */
-    fun containsCombined(name: String): Boolean = combined.contains(name)
-
-    /** How many short names it knows. */
-    val shortNameCount: Int get() = short.size
-
-    /** How many `SimpleType.Member` combined names it knows. */
-    val combinedNameCount: Int get() = combined.size
-
-    fun set(symbols: SymbolNames) {
-        short = symbols.short
-        combined = symbols.combined
+    fun set(declared: DeclaredNames) {
+        this.declared = declared
         isReady = true
     }
 

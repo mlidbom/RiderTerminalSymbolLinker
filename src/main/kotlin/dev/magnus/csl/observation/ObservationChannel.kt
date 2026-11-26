@@ -3,6 +3,7 @@ package dev.magnus.csl.observation
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
 import com.intellij.execution.filters.HyperlinkInfo
+import com.intellij.execution.filters.HyperlinkInfoBase
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.PathManager
@@ -14,15 +15,19 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.project.ProjectManager
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.vfs.VfsUtil
+import com.intellij.openapi.wm.WindowManager
+import com.intellij.ui.awt.RelativePoint
 import com.sun.net.httpserver.HttpExchange
 import com.sun.net.httpserver.HttpServer
 import dev.magnus.csl.FileHyperlinkInfo
 import dev.magnus.csl.LinkClickOutcome
 import dev.magnus.csl.LinkClickOutcomes
+import dev.magnus.csl.NamespaceHyperlinkInfo
 import dev.magnus.csl.SolutionFileNames
 import dev.magnus.csl.SymbolHyperlinkInfo
 import dev.magnus.csl.SymbolIndex
 import dev.magnus.csl.SymbolLinkFilterProvider
+import java.awt.Point
 import java.net.InetAddress
 import java.net.InetSocketAddress
 import java.net.URLDecoder
@@ -31,6 +36,7 @@ import java.util.concurrent.Executors
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.TimeoutException
+import java.util.concurrent.atomic.AtomicReference
 
 /**
  * A development-only HTTP server through which the development tools see what the plugin does in the sandbox Rider:
@@ -42,7 +48,8 @@ import java.util.concurrent.TimeoutException
  *  - `GET /state` — each open project's [SymbolIndex] and [SolutionFileNames]: ready, and how much they hold.
  *  - `POST /links?project=` with `{"line": …}` — the links the plugin's filters make in the line.
  *  - `POST /click?project=` with `{"line": …, "link": …}` — clicks the link whose text is `link`, and answers with
- *    the [LinkClickOutcome], and for an opened file, where the editor is.
+ *    the [LinkClickOutcome], and for an opened file, where the editor is. A link the terminal tells where it was
+ *    clicked is clicked at [CLICK_POINT] in the project's window, and the answer says where that is on the screen.
  *  - `POST /picker/choose?project=&row=` — chooses a row of the picker the last click showed, as Enter does.
  *  - `POST /picker/close` — closes that picker.
  *  - `POST /editors/close-all?project=` — closes every editor, so that a click opens its file afresh.
@@ -112,7 +119,7 @@ class ObservationChannel : Disposable {
             mapOf(
                 "name" to project.name,
                 "basePath" to project.basePath,
-                "symbolIndex" to mapOf("ready" to symbols.isReady, "shortNames" to symbols.shortNameCount, "combinedNames" to symbols.combinedNameCount),
+                "symbolIndex" to mapOf("ready" to symbols.isReady, "typesAndMembers" to symbols.declared.typesAndMembers.size, "namespaces" to symbols.declared.namespaces.size),
                 "fileIndex" to mapOf("ready" to files.isReady, "files" to files.fileCount),
             )
         },
@@ -125,7 +132,18 @@ class ObservationChannel : Disposable {
         val links = TerminalLine(project, line).links
         val link = links.firstOrNull { it.text == linkText }
             ?: return mapOf("outcome" to "noSuchLink", "links" to links.map { it.description })
-        return outcomeOf(project) { link.hyperlinkInfo.navigate(project) }
+        val clickedAt = AtomicReference<Point?>()
+        val outcome = outcomeOf(project) {
+            when (val hyperlinkInfo = link.hyperlinkInfo) {
+                is HyperlinkInfoBase -> {
+                    val where = RelativePoint(WindowManager.getInstance().getFrame(project)!!.rootPane, Point(CLICK_POINT))
+                    clickedAt.set(where.screenPoint)
+                    hyperlinkInfo.navigate(project, where)
+                }
+                else -> hyperlinkInfo.navigate(project)
+            }
+        }
+        return outcome + ("clickedAt" to clickedAt.get()?.let(::described))
     }
 
     private fun choose(project: Project, row: Int): Map<String, Any?> {
@@ -166,11 +184,13 @@ class ObservationChannel : Disposable {
         )
         is LinkClickOutcome.PickerShown -> {
             shownPicker = outcome
-            mapOf("outcome" to "picker", "title" to outcome.title, "rows" to outcome.rows)
+            mapOf("outcome" to "picker", "title" to outcome.title, "note" to outcome.note, "location" to described(outcome.location), "rows" to outcome.rows)
         }
         is LinkClickOutcome.NothingFound -> mapOf("outcome" to "nothingFound", "message" to outcome.message)
         is LinkClickOutcome.FellBackToSearchEverywhere -> mapOf("outcome" to "searchEverywhere", "token" to outcome.token)
     }
+
+    private fun described(point: Point): Map<String, Int> = mapOf("x" to point.x, "y" to point.y)
 
     private inline fun <reified T> request(exchange: HttpExchange): T =
         gson.fromJson(exchange.requestBody.readAllBytes().toString(Charsets.UTF_8), T::class.java)
@@ -213,6 +233,9 @@ class ObservationChannel : Disposable {
 
         private const val CLICK_TIMEOUT_SECONDS = 20L
 
+        /** Where in the project's window a link is clicked: away from its edges, so that a picker opened there fits. */
+        private val CLICK_POINT = Point(200, 150)
+
         fun getInstance(): ObservationChannel = service()
     }
 }
@@ -232,6 +255,7 @@ private class TerminalLine(project: Project, private val line: String) {
                 "start" to start,
                 "kind" to when (hyperlinkInfo) {
                     is SymbolHyperlinkInfo -> "symbol"
+                    is NamespaceHyperlinkInfo -> "namespace"
                     is FileHyperlinkInfo -> "file"
                     else -> hyperlinkInfo.javaClass.name
                 },

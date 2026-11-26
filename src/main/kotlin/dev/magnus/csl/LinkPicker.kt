@@ -5,11 +5,15 @@ import com.intellij.openapi.ui.popup.PopupChooserBuilder
 import com.intellij.ui.ColoredListCellRenderer
 import com.intellij.ui.JBColor
 import com.intellij.ui.SimpleTextAttributes
+import com.intellij.ui.awt.RelativePoint
+import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.JBList
+import com.intellij.util.ui.JBUI
 import java.awt.Color
 import java.awt.Toolkit
 import java.awt.event.MouseAdapter
 import java.awt.event.MouseEvent
+import javax.swing.BorderFactory
 import javax.swing.JList
 import javax.swing.ListSelectionModel
 
@@ -28,6 +32,11 @@ import javax.swing.ListSelectionModel
  * replaces the tint. [isEmphasized] is evaluated on every paint, and a Ctrl-click background open
  * repaints the list — so opening a candidate from the picker immediately marks it open.
  *
+ * It opens at the click, where Magnus looks, as he asked (2026-11-26): centred in the window, it showed far from the
+ * link. A note, such as that the link was to a namespace, shows above the rows.
+ *
+ * @param note what it says above the rows, or `null` for nothing.
+ * @param clickedAt where the link was clicked, or `null` when that isn't known, for a picker centred in the window.
  * @param open invoked with the chosen item and whether to request focus (false = background open).
  */
 object LinkPicker {
@@ -37,8 +46,10 @@ object LinkPicker {
     fun <T> show(
         project: Project,
         title: String,
+        note: String?,
         items: List<T>,
         label: (T) -> String,
+        clickedAt: RelativePoint?,
         isEmphasized: (T) -> Boolean = { false },
         open: (item: T, requestFocus: Boolean) -> Unit,
     ) {
@@ -55,7 +66,9 @@ object LinkPicker {
             }
         })
 
-        val popup = PopupChooserBuilder(list)
+        val builder = PopupChooserBuilder(list)
+        note?.let { builder.setNorthComponent(viewOf(it)) }
+        val popup = builder
             .setTitle(title)
             .setRenderer(
                 object : ColoredListCellRenderer<T>() {
@@ -79,10 +92,12 @@ object LinkPicker {
             .setNamerForFiltering { label(it) }
             .setFilterAlwaysVisible(true)
             .createPopup()
-        popup.showCenteredInCurrentWindow(project)
+        if (clickedAt == null) popup.showCenteredInCurrentWindow(project) else popup.show(clickedAt)
         LinkClickOutcomes.report(
             LinkClickOutcome.PickerShown(
                 title,
+                note,
+                popup.locationOnScreen,
                 items.map(label),
                 choose = { row ->
                     popup.cancel()
@@ -92,4 +107,13 @@ object LinkPicker {
             ),
         )
     }
+
+    /** A note above the rows, set off as IntelliJ sets off an information banner, so that it is read first. */
+    private fun viewOf(note: String): JBLabel =
+        JBLabel(note).apply {
+            font = JBUI.Fonts.label().asBold()
+            isOpaque = true
+            background = JBUI.CurrentTheme.Banner.INFO_BACKGROUND
+            border = BorderFactory.createCompoundBorder(JBUI.Borders.customLineBottom(JBUI.CurrentTheme.Banner.INFO_BORDER_COLOR), JBUI.Borders.empty(6, 8))
+        }
 }

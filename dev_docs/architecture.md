@@ -12,9 +12,12 @@ It only reads what the terminal prints. It never touches the Agent SDK, `claude 
 The plugin registers a `com.intellij.consoleFilterProvider` (`SymbolLinkFilterProvider`), the stable extension point
 that the reworked terminal honours. It gives two filters:
 
-- **`SymbolLinkFilter`** links a token only if the `SymbolIndex` knows it: the index, not the token's shape, decides.
-  A lone token links if it's a known short name; a dotted `Type.Member` links as one symbol if that pair exists
-  (`SymbolReferences`). Tokens inside a path or URL are skipped (`PathSpans`), so a path segment isn't relinked.
+- **`SymbolLinkFilter`** links a name only if the `SymbolIndex` knows it: the index, not the name's shape, decides.
+  It holds the qualified names of the solution's types and members, and of the namespaces their types are in and
+  around them (`DeclaredNames`). Words joined by dots link as one symbol as far as they are the end of a qualified
+  name, from each word the most words that are; two words or more that end a namespace's name link as the namespace;
+  a word alone links from two letters (`SymbolReferences`). Names inside a path or URL are skipped (`PathSpans`), so
+  a path segment isn't relinked. Cloyd's chat links names the same way, and its specifications list the same cases.
 - **`FileLinkFilter`** links a path whose every segment lines up with the end of a real solution file's path
   (`SolutionFileIndex`), with an optional `:line` or `:start-end`. Its links are underlined from the moment they're
   printed, unlike the terminal's own.
@@ -46,8 +49,9 @@ The tools the plugin uses:
   `uniquePathSegment` as `solutionName`, because two open solutions can share a name, as two worktrees of one repository
   do.
 - **`browse_namespace`** finds every namespace, 50 to a call, and then lists each namespace's types with their
-  members, one namespace to a call, nested types included. `SymbolNamesGatherer` turns them into the index. A C# 14
-  extension block is a member of its own kind, whose members count as the declaring class's.
+  members, one namespace to a call, nested types included. `DeclaredNamesGatherer` turns them into the index. A C# 14
+  extension block is a member of its own kind, whose members count as the declaring class's. A click on a namespace
+  lists it and the namespaces under it again, live, without members, for its types' files (`TypesOfNamespaces`).
 - **`go_to_definition`** resolves a click exactly: every declaration of the name, with its file, line and column. One
   opens, several show the picker. A member with no source of its own, such as a positional record's property, is where
   it's written. A compiled symbol has no file, nor, since the MCP's change of 2026-11-26, has a declaration a source
@@ -71,7 +75,9 @@ behind the plugin's.
   recomputes its filters and rescans the visible output whenever the `consoleFilterProvider` extension point changes, so
   `TerminalLinks` registers and at once unregisters a provider that does nothing.
 - **Clicks resolve live** through `go_to_definition`, whatever the index holds: one location opens, several show the
-  `LinkPicker`, none notifies, and an unreachable server falls back to Search Everywhere.
+  `LinkPicker`, none notifies, and an unreachable server falls back to Search Everywhere. A namespace's click always
+  shows the picker. The links are `HyperlinkInfoBase`s, which the terminal tells where they were clicked, so the
+  picker opens there.
 - **"Refresh Terminal Links"** in the terminal's context menu rebuilds both indexes.
 
 ## The plugin.xml traps

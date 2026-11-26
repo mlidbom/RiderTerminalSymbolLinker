@@ -1,98 +1,45 @@
 package dev.magnus.csl
 
-import com.intellij.execution.filters.HyperlinkInfo
-import com.intellij.ide.actions.searcheverywhere.SearchEverywhereManager
-import com.intellij.notification.NotificationGroupManager
-import com.intellij.notification.NotificationType
-import com.intellij.openapi.actionSystem.ActionUiKind
-import com.intellij.openapi.actionSystem.AnActionEvent
-import com.intellij.openapi.actionSystem.impl.SimpleDataContext
-import com.intellij.openapi.application.ApplicationManager
-import com.intellij.openapi.fileEditor.OpenFileDescriptor
 import com.intellij.openapi.project.Project
-import com.intellij.openapi.vfs.LocalFileSystem
+import com.intellij.ui.awt.RelativePoint
 
 /**
- * On click, resolve [token] to its declaration(s) via the .NET Analysis&Refactoring MCP (exact by name):
- *  - one declaration  -> jump straight to its file:line
- *  - several          -> small picker of qualified locations
- *  - none             -> brief "no symbol" notice
- *  - MCP unreachable   -> fall back to Search Everywhere (so a click is never a dead end)
+ * A link to a type or member, by [name] as the terminal's text writes it: its name, or the end of its qualified name,
+ * such as `Circle.Area` or `Geometry.Shapes.Circle.Area`. A click asks the .NET Analysis&Refactoring MCP for its
+ * declarations, exactly by that name:
+ *  - one declaration: opens it, with the caret on its name;
+ *  - several: a picker of them, at the click, such as a method's overloads, or two types of one name;
+ *  - none: a brief notice;
+ *  - MCP unreachable: Search Everywhere, see [HyperlinkInfoResolvedByTheMcp].
  *
- * In the picker, a plain click (or Enter) opens the hit and closes the list, as usual. A
- * Ctrl-click (Cmd-click on macOS) instead opens the hit in the background and leaves the list
- * open, so several candidate declarations can be opened in turn before dismissing it.
+ * In the picker, a plain click (or Enter) opens the declaration and closes the list, as usual. A Ctrl-click (Cmd-click
+ * on macOS) instead opens it in the background and leaves the list open, so several can be opened in turn.
  */
-class SymbolHyperlinkInfo(private val token: String) : HyperlinkInfo {
-
-    override fun navigate(project: Project) {
-        ApplicationManager.getApplication().executeOnPooledThread {
-            val solutionName = McpSolution.getInstance(project).name()
-            val hits = resolve(solutionName)
-            ApplicationManager.getApplication().invokeLater {
-                when {
-                    hits == null -> fallbackToSearchEverywhere(project)
-                    hits.size == 1 -> openHit(project, hits.first())
-                    hits.size > 1 -> showPicker(project, hits)
-                    else -> notifyNoSymbol(project)
-                }
-            }
-        }
-    }
+class SymbolHyperlinkInfo(name: String) : HyperlinkInfoResolvedByTheMcp(name) {
 
     /**
-     * Resolve [token] by name. For a combined `Type.Member` token, try the qualified name first; if the
-     * backend can't resolve that form (empty, not unreachable) fall back to the bare member name — the
-     * same hits a click on the member alone would have produced, just now under one combined link.
-     * `null` (MCP unreachable) is propagated unchanged so the caller can fall back to Search Everywhere.
+     * The declarations [name] names. For a dotted name the MCP gives none of, those of the name's last word whose
+     * qualified names end with all of [name]: no more than the MCP should have given.
      */
-    private fun resolve(solutionName: String?): List<SymbolHit>? {
-        val hits = DotNetAnalysisAndRefactoringMcp.goToDefinition(token, solutionName)
-        if (hits != null && hits.isEmpty() && '.' in token) {
-            return DotNetAnalysisAndRefactoringMcp.goToDefinition(token.substringAfterLast('.'), solutionName)
+    override fun resolve(project: Project, solutionName: String?): List<SymbolHit>? {
+        val declarations = DotNetAnalysisAndRefactoringMcp.goToDefinition(name, solutionName)
+        if (declarations != null && declarations.isEmpty() && '.' in name) {
+            //bug: the MCP's go_to_definition finds no member of a C# 14 extension block by the name of the class that
+            //   declares the block, such as CircleExtensions.Diameter, though that is the end of its qualified name
+            //   (told royder-agent-rep, 2026-11-26). Once it does, this second call can go.
+            return DotNetAnalysisAndRefactoringMcp.goToDefinition(name.substringAfterLast('.'), solutionName)
+                ?.filter { it.qualifiedName.endsWith(name) }
         }
-        return hits
+        return declarations
     }
 
-    /** [requestFocus] false opens the editor in the background, leaving focus where it is (the picker). */
-    private fun openHit(project: Project, hit: SymbolHit, requestFocus: Boolean = true) {
-        val file = LocalFileSystem.getInstance().findFileByPath(hit.file.replace('\\', '/'))
-        if (file != null) {
-            OpenFileDescriptor(project, file, hit.line - 1, hit.column - 1).navigate(requestFocus)
-            LinkClickOutcomes.report(LinkClickOutcome.Opened(hit.file, hit.line))
-        } else {
-            notifyNoSymbol(project)
+    override fun leadTo(project: Project, declarations: List<SymbolHit>, clickedAt: RelativePoint?) {
+        when (declarations.size) {
+            0 -> tellNothingFound(project)
+            1 -> open(project, declarations.single())
+            else -> showPicker(project, "Symbols matching \"$name\"", note = null, declarations, clickedAt)
         }
     }
 
-    private fun showPicker(project: Project, hits: List<SymbolHit>) =
-        LinkPicker.show(
-            project, "Symbols matching \"$token\"", hits, ::pickerLabel,
-            // Evaluated live (per paint) so a Ctrl-click open inside the picker marks the file at once.
-            isEmphasized = { OpenFiles.normalize(it.file) in OpenFiles.paths(project) },
-        ) { hit, requestFocus -> openHit(project, hit, requestFocus) }
-
-    private fun pickerLabel(hit: SymbolHit): String =
-        "${hit.kind} ${hit.qualifiedName}  —  ${hit.file.substringAfterLast('\\')}:${hit.line}"
-
-    private fun fallbackToSearchEverywhere(project: Project) {
-        val dataContext = SimpleDataContext.getProjectContext(project)
-        val event = AnActionEvent.createEvent(dataContext, null, "RiderTerminalSymbolLinker", ActionUiKind.NONE, null)
-        val searchEverywhere = SearchEverywhereManager.getInstance(project)
-        try {
-            searchEverywhere.show("SymbolSearchEverywhereContributor", token, event)
-        } catch (_: Throwable) {
-            searchEverywhere.show("SearchEverywhereContributor.All", token, event)
-        }
-        LinkClickOutcomes.report(LinkClickOutcome.FellBackToSearchEverywhere(token))
-    }
-
-    private fun notifyNoSymbol(project: Project) {
-        val message = "No symbol \"$token\" found"
-        NotificationGroupManager.getInstance()
-            .getNotificationGroup("RiderTerminalSymbolLinker")
-            .createNotification(message, NotificationType.INFORMATION)
-            .notify(project)
-        LinkClickOutcomes.report(LinkClickOutcome.NothingFound(message))
-    }
+    override val nothingFoundMessage: String get() = "No symbol \"$name\" found"
 }

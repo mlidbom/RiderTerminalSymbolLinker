@@ -6,7 +6,23 @@ All notable changes to this project are documented here. The format follows
 
 ## [0.2.12]
 
+### Added
+- **Qualified names link as one symbol.** Words joined by dots link as one as far as they are the end of a type's or
+  member's qualified name: `Geometry.Shapes.Circle.Area`, `Shapes.Circle` and `Circle.Area` each link as one, and a
+  click opens what all of it names, so `Layout.Bounds` opens the `Bounds` in `Layout`, where `Bounds` alone shows a
+  picker. Words before it that are no part of the name, as `Foo.Bar` in `Foo.Bar.Circle.Area`, are left out of the
+  link. Before, only a type's name and its member's linked as one, and the other words each on its own, so a click on
+  a namespace's last word showed every type of that name.
+- **Namespaces link.** Two words or more that are a namespace's name, or the end of it, link as the namespace, such as
+  `Geometry.Shapes`; one word alone doesn't, as it is a word of prose more often than a namespace. A click shows a
+  picker of the types in it and in the namespaces under it, its own first, nested types included, with a note above
+  them that a namespace was clicked.
+
 ### Changed
+- **Names of two letters link,** such as `Id`. Before, a name linked on its own from three letters. A single letter
+  links only after its type's name, as in `Point.X`.
+- **A picker opens where the link was clicked,** for symbols and files alike. Before, it opened centred in the window,
+  far from the link.
 - **A click on a method with overloads lists every overload,** in the order they're declared, to choose which to
   open, as a click on any other ambiguous name does. Before, it opened one of them, whichever ReSharper listed first.
   This comes with the .NET Analysis&Refactoring MCP's release after 0.15.1; with earlier ones a click still opens one.
