@@ -12,8 +12,8 @@ package dev.magnus.csl
  * on its own from [SHORTEST_WORD_THAT_LINKS_ON_ITS_OWN] letters: a name such as `Id` links, as a false link costs Magnus
  * nothing and a missing one does (2026-11-26); a single letter is a loop's counter more often than a name.
  *
- * Spans the caller marks as excluded, a file path or URL Rider already links, are skipped, so that a symbol link never
- * overwrites a working file link.
+ * Names inside a file path or URL ([PathSpans]) are skipped: Rider already links those, and a symbol link would
+ * overwrite a working file link.
  */
 object SymbolReferences {
 
@@ -22,11 +22,16 @@ object SymbolReferences {
 
     private const val SHORTEST_WORD_THAT_LINKS_ON_ITS_OWN = 2
 
-    fun find(line: String, isExcluded: (IntRange) -> Boolean, declared: DeclaredNames): List<SymbolReference> =
-        wordsJoinedByDots.findAll(line)
+    fun find(line: String, declared: DeclaredNames): List<SymbolReference> {
+        val pathsAndUrls = PathSpans.find(line)
+        return wordsJoinedByDots.findAll(line)
             .flatMap { WordsJoinedByDots(it, declared).references() }
-            .filterNot { isExcluded(it.range) }
+            .filterNot { reference -> pathsAndUrls.any { reference.range overlaps it } }
             .toList()
+    }
+
+    /** Whether the two inclusive ranges share an offset. */
+    private infix fun IntRange.overlaps(other: IntRange): Boolean = first <= other.last && other.first <= last
 
     /** One run of words joined by dots in a line, such as `Foo.Bar.Circle.Area`, and the references it holds. */
     private class WordsJoinedByDots(run: MatchResult, private val declared: DeclaredNames) {

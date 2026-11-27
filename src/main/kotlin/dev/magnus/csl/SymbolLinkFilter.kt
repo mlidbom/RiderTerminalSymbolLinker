@@ -9,9 +9,9 @@ import com.intellij.openapi.project.Project
  * the index is loaded the filter does nothing. A click resolves the name exactly: see [SymbolHyperlinkInfo] and
  * [NamespaceHyperlinkInfo].
  *
- * Tokens that fall inside a file path or URL are skipped: Rider's terminal already turns those into
- * native links, so re-linkifying a path segment (e.g. "SymbolIndex" in ".../csl/SymbolIndex.kt") would
- * replace a working file link with a symbol link. See [PathSpans].
+ * Names inside a file path or URL are skipped: Rider's terminal already turns those into native links, so
+ * re-linkifying a path segment (e.g. "SymbolIndex" in ".../csl/SymbolIndex.kt") would replace a working file link
+ * with a symbol link. See [PathSpans].
  */
 class SymbolLinkFilter(private val project: Project) : Filter {
 
@@ -19,8 +19,7 @@ class SymbolLinkFilter(private val project: Project) : Filter {
         val index = SymbolIndex.getInstance(project)
         if (!index.isReady) return null
         val lineStart = entireLength - line.length
-        val pathRanges = PathSpans.find(line)
-        val items = SymbolReferences.find(line, isExcluded = { span -> pathRanges.any { span overlaps it } }, index.declared)
+        val items = SymbolReferences.find(line, index.declared)
             .map { reference ->
                 Filter.ResultItem(
                     lineStart + reference.range.first,
@@ -33,8 +32,4 @@ class SymbolLinkFilter(private val project: Project) : Filter {
             }
         return if (items.isEmpty()) null else Filter.Result(items)
     }
-
-    /** Inclusive-range intersection: do these two ranges share at least one offset? */
-    private infix fun IntRange.overlaps(other: IntRange): Boolean =
-        first <= other.last && other.first <= last
 }

@@ -27,8 +27,7 @@ class SymbolReferencesTest {
         QualifiedNames(listOf("Ui", "Ui.Windows", "Ui.Windows.Native", "Ui.Windows.Native.Interop").map(::QualifiedName)),
     )
 
-    private fun find(line: String, excluded: IntRange? = null): List<SymbolReference> =
-        SymbolReferences.find(line, isExcluded = { span -> excluded != null && span.first <= excluded.last && excluded.first <= span.last }, declared)
+    private fun find(line: String): List<SymbolReference> = SymbolReferences.find(line, declared)
 
     private fun typeOrMember(range: IntRange, name: String) = SymbolReference.ToATypeOrMember(range, name)
 
@@ -93,6 +92,5 @@ class SymbolReferencesTest {
     fun `prose names no symbol`() = assertEquals(emptyList<SymbolReference>(), find("just some prose here"))
 
     @Test
-    fun `a span the caller excludes, a path or URL Rider already links, is skipped`() =
-        assertEquals(emptyList<SymbolReference>(), find("ApplicationWindow.ForceToFront", excluded = 0..29))
+    fun `a name in a path is part of the path`() = assertEquals(emptyList<SymbolReference>(), find("src/ApplicationWindow.cs"))
 }

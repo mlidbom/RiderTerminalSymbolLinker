@@ -2,8 +2,8 @@ package dev.magnus.csl
 
 /**
  * The spans of a console line that Rider's native terminal — and the plugin's own [FileLinkFilter] —
- * already turn into file or URL links. [SymbolLinkFilter] consults these so it never overwrites a working
- * file link with a symbol link (re-linkifying "SymbolIndex" inside ".../csl/SymbolIndex.kt" would replace
+ * already turn into file or URL links. [SymbolReferences] skips the names inside these, so a symbol link never
+ * overwrites a working file link with a symbol link (re-linkifying "SymbolIndex" inside ".../csl/SymbolIndex.kt" would replace
  * the file link with a worse one).
  *
  * A separator-containing run is treated as a path/URL only when it carries a real path signal: a
