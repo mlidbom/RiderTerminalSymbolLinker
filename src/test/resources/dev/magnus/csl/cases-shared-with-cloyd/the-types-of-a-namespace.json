@@ -1,0 +1,59 @@
+{
+  "about": [
+    "Which namespaces a name names, and which types a link to one leads to: the namespace's own first, then those of the namespaces under it, nested types included and members not, as Magnus agreed (2026-11-26).",
+    "Cloyd's chat and the .NET Terminal Symbol Linker link names alike, and both are checked against these cases: Cloyd by Finding_the_types_of_a_namespace, the symbol linker by TypesOfNamespacesTest.",
+    "This file is the original, in ~/.claude at src/Cloyd.Specifications/Links/CasesSharedWithTheSymbolLinker. The symbol linker keeps a copy in its test resources, and its tests fail while the copy differs from it.",
+    "declarations: what each namespace declares, each type with its members' names and the types nested in it. A namespace without a name is the global one.",
+    "typesANameLeadsTo: each case's name, as a text writes it, and the qualified names of the types a link to the namespaces it names leads to, in order.",
+    "namesOfNamespaces: each case's names, as a text writes them, and whether each names a namespace."
+  ],
+  "declarations": [
+    {
+      "name": "Shop.Orders",
+      "types": [
+        { "kind": "class", "name": "Order", "members": ["Place"], "nestedTypes": [{ "kind": "class", "name": "Line", "members": ["Count"] }] },
+        { "kind": "enum", "name": "Status" }
+      ]
+    },
+    {
+      "name": "Shop.Orders.Shipping",
+      "types": [{ "kind": "class", "name": "Parcel" }]
+    },
+    {
+      "name": "Shop.Billing",
+      "types": [{ "kind": "class", "name": "Invoice" }]
+    },
+    {
+      "types": [{ "kind": "class", "name": "InTheGlobalNamespace" }]
+    }
+  ],
+  "typesANameLeadsTo": [
+    {
+      "case": "a namespace has its own types first, then those of the namespaces under it, and not their members",
+      "name": "Shop.Orders",
+      "types": ["Shop.Orders.Order", "Shop.Orders.Order.Line", "Shop.Orders.Status", "Shop.Orders.Shipping.Parcel"]
+    },
+    {
+      "case": "a namespace with no types of its own has those of the namespaces under it",
+      "name": "Shop",
+      "types": ["Shop.Billing.Invoice", "Shop.Orders.Order", "Shop.Orders.Order.Line", "Shop.Orders.Shipping.Parcel", "Shop.Orders.Status"]
+    },
+    {
+      "case": "the end of a namespace's name leads to its types",
+      "name": "Orders.Shipping",
+      "types": ["Shop.Orders.Shipping.Parcel"]
+    }
+  ],
+  "namesOfNamespaces": [
+    {
+      "case": "a namespace's name and each of its ends name it",
+      "names": ["Shop", "Shop.Orders", "Orders", "Orders.Shipping", "Shop.Orders.Shipping"],
+      "nameANamespace": true
+    },
+    {
+      "case": "part of a name in it, a name left out, or a type after it name none",
+      "names": ["rders.Shipping", "Shop.Shipping", "Shipping.Parcel"],
+      "nameANamespace": false
+    }
+  ]
+}

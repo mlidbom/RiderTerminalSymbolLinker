@@ -17,7 +17,11 @@ that the reworked terminal honours. It gives two filters:
   around them (`DeclaredNames`). Words joined by dots link as one symbol as far as they are the end of a qualified
   name, from each word the most words that are; two words or more that end a namespace's name link as the namespace;
   a word alone links from two letters (`SymbolReferences`). Names inside a path or URL are skipped (`PathSpans`), so
-  a path segment isn't relinked. Cloyd's chat links names the same way, and its specifications list the same cases.
+  a path segment isn't relinked. Cloyd's chat links names the same way, and its specifications and the unit tests share
+  their cases: JSON files whose original is Cloyd's, in `~/.claude` at
+  `src/Cloyd.Specifications/Links/CasesSharedWithTheSymbolLinker`. `src/test/resources/dev/magnus/csl/cases-shared-with-cloyd`
+  holds a copy, and `CasesSharedWithCloydTest` fails while it differs, where Cloyd's checkout is. A case is changed in
+  Cloyd's, by the tooling owner's leave, and copied here.
 - **`FileLinkFilter`** links a path whose every segment lines up with the end of a real solution file's path
   (`SolutionFileIndex`), with an optional `:line` or `:start-end`. Its links are underlined from the moment they're
   printed, unlike the terminal's own.

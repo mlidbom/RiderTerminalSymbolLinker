@@ -1,0 +1,117 @@
+{
+  "about": [
+    "How a line of text names the C# symbols it links to: words that name a type or member, words joined by dots that are the end of a symbol's qualified name as one symbol, and two words or more that are the end of a namespace's name as one namespace.",
+    "Cloyd's chat and the .NET Terminal Symbol Linker link names alike, and both are checked against these cases: Cloyd by Finding_the_symbols_a_line_names, the symbol linker by SymbolReferencesTest.",
+    "This file is the original, in ~/.claude at src/Cloyd.Specifications/Links/CasesSharedWithTheSymbolLinker. The symbol linker keeps a copy in its test resources, and its tests fail while the copy differs from it.",
+    "declarations: what each namespace declares, each type with its members' names and the types nested in it. A namespace without a name is the global one.",
+    "cases: each case's line, and the links it has, in order: each to a type or member, or to a namespace, covering its name from start, the line's first character being at 0."
+  ],
+  "declarations": [
+    {
+      "name": "Ui.Windows",
+      "types": [
+        { "kind": "class", "name": "ApplicationWindow", "members": ["ForceToFront"], "nestedTypes": [{ "kind": "class", "name": "Frame", "members": ["Width"] }] },
+        { "kind": "class", "name": "NativeWindow", "members": ["ForceToFront"] },
+        { "kind": "class", "name": "Logger" },
+        { "kind": "class", "name": "LogEntry", "members": ["Info", "Id"] },
+        { "kind": "record", "name": "Point", "members": ["X", "Y"] }
+      ]
+    },
+    {
+      "name": "Ui.Windows.Native.Interop",
+      "types": [{ "kind": "class", "name": "Handle" }]
+    }
+  ],
+  "cases": [
+    {
+      "case": "a type's member links as one symbol",
+      "line": "call ApplicationWindow.ForceToFront() now",
+      "links": [{ "to": "typeOrMember", "start": 5, "name": "ApplicationWindow.ForceToFront" }]
+    },
+    {
+      "case": "a member qualified by its namespace links as one symbol",
+      "line": "Ui.Windows.ApplicationWindow.ForceToFront",
+      "links": [{ "to": "typeOrMember", "start": 0, "name": "Ui.Windows.ApplicationWindow.ForceToFront" }]
+    },
+    {
+      "case": "a type qualified by part of its namespace links as one symbol",
+      "line": "see Windows.Logger",
+      "links": [{ "to": "typeOrMember", "start": 4, "name": "Windows.Logger" }]
+    },
+    {
+      "case": "a nested type's member links as one symbol",
+      "line": "ApplicationWindow.Frame.Width",
+      "links": [{ "to": "typeOrMember", "start": 0, "name": "ApplicationWindow.Frame.Width" }]
+    },
+    {
+      "case": "two names joined by a dot that are no type's member link each on its own",
+      "line": "Logger.Info",
+      "links": [{ "to": "typeOrMember", "start": 0, "name": "Logger" }, { "to": "typeOrMember", "start": 7, "name": "Info" }]
+    },
+    {
+      "case": "names before a type that are not its namespaces are left out of the link",
+      "line": "Foo.Bar.ApplicationWindow.ForceToFront",
+      "links": [{ "to": "typeOrMember", "start": 8, "name": "ApplicationWindow.ForceToFront" }]
+    },
+    {
+      "case": "a type with a member it doesn't have links as the type alone",
+      "line": "ApplicationWindow.Unknown",
+      "links": [{ "to": "typeOrMember", "start": 0, "name": "ApplicationWindow" }]
+    },
+    {
+      "case": "a type's name links",
+      "line": "see ApplicationWindow here",
+      "links": [{ "to": "typeOrMember", "start": 4, "name": "ApplicationWindow" }]
+    },
+    {
+      "case": "a name of two letters links on its own",
+      "line": "the Id field",
+      "links": [{ "to": "typeOrMember", "start": 4, "name": "Id" }]
+    },
+    {
+      "case": "a name of one letter doesn't link on its own",
+      "line": "the X field",
+      "links": []
+    },
+    {
+      "case": "a name of one letter links after its type's name",
+      "line": "Point.X",
+      "links": [{ "to": "typeOrMember", "start": 0, "name": "Point.X" }]
+    },
+    {
+      "case": "a namespace's name links as one namespace",
+      "line": "in Ui.Windows here",
+      "links": [{ "to": "namespace", "start": 3, "name": "Ui.Windows" }]
+    },
+    {
+      "case": "the end of a namespace's name links as the namespace",
+      "line": "Native.Interop",
+      "links": [{ "to": "namespace", "start": 0, "name": "Native.Interop" }]
+    },
+    {
+      "case": "a namespace with no types of its own links",
+      "line": "Ui.Windows.Native",
+      "links": [{ "to": "namespace", "start": 0, "name": "Ui.Windows.Native" }]
+    },
+    {
+      "case": "one name of a namespace alone doesn't link",
+      "line": "the Windows here",
+      "links": []
+    },
+    {
+      "case": "names of a namespace that leave out one between them don't link",
+      "line": "Ui.Native",
+      "links": []
+    },
+    {
+      "case": "prose names no symbol",
+      "line": "just some prose here",
+      "links": []
+    },
+    {
+      "case": "a name in a path is part of the path",
+      "line": "src/ApplicationWindow.cs",
+      "links": []
+    }
+  ]
+}
