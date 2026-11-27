@@ -18,17 +18,6 @@ helpers, in checkouts of their own"). Remove an entry once its work is merged. N
 ## Waiting for Compze
 
 None now.
-
-## Waiting to be passed on to Royder
-
-- **`go_to_definition` misses an extension block's member by its declaring class's name** (found 2026-11-26): on the
-  fixture solution, `symbolName: "CircleExtensions.Diameter"` with `format: "json"` answers no declarations, though
-  `Diameter` alone gives `Geometry.Shapes.CircleExtensions.Diameter`, which the written name ends. The linker works
-  around it in `SymbolHyperlinkInfo.resolve`, at a `bug:` comment. Tell royder-agent-rep (in `C:\Dev\resharper-mcp`),
-  together with what the linker now reads of `browse_namespace`'s types for its CLAUDE.md list: `qualifiedName`,
-  `file`, `line`, `column` and `nestedTypes`. It couldn't be reached on 2026-11-26: the hub didn't answer, and
-  `ListAgents` didn't list it. Once Royder resolves such a name, remove the second call there.
-
 ## Deferred by the tooling owner
 
 From the unanswered lists of ended sessions, decided on 2026-11-24 and kept here until a session works on what they
