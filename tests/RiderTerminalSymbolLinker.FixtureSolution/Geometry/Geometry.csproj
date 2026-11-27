@@ -7,4 +7,9 @@
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
 
+  <!-- Built from tests/RiderTerminalSymbolLinker.FixtureSourceGenerator, and put here in each copy of the solution. -->
+  <ItemGroup>
+    <Analyzer Include="..\SourceGenerators\RiderTerminalSymbolLinker.FixtureSourceGenerator.dll" />
+  </ItemGroup>
+
 </Project>

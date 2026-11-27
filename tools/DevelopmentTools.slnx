@@ -1,4 +1,5 @@
 <Solution>
   <Project Path="RiderTerminalSymbolLinker.DevelopmentTools/RiderTerminalSymbolLinker.DevelopmentTools.csproj" />
   <Project Path="../tests/RiderTerminalSymbolLinker.Specifications/RiderTerminalSymbolLinker.Specifications.csproj" />
+  <Project Path="../tests/RiderTerminalSymbolLinker.FixtureSourceGenerator/RiderTerminalSymbolLinker.FixtureSourceGenerator.csproj" />
 </Solution>

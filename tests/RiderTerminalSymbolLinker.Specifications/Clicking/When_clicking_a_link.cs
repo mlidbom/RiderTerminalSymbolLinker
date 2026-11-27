@@ -175,6 +175,7 @@ public class When_clicking_a_link(TheSandboxWithTheFixtureSolution sandbox)
             "class Geometry.Shapes.Drawing  —  Drawing.cs:4",
             "record Geometry.Shapes.Drawing.Stroke  —  Drawing.cs:6",
             "class Geometry.Shapes.Palette  —  Palette.cs:4",
+            "class Geometry.Shapes.Swatch  —  Swatch.cs:7",
             "class Geometry.Shapes.Rendering.Brush  —  Brush.cs:7"
          ]);
 
@@ -186,7 +187,7 @@ public class When_clicking_a_link(TheSandboxWithTheFixtureSolution sandbox)
       {
          readonly ClickOutcome _chosen;
 
-         public and_choosing_the_row_of_a_type_in_a_namespace_under_it(TheSandboxWithTheFixtureSolution sandbox) : base(sandbox) => _chosen = sandbox.ChoosePickerRow(6);
+         public and_choosing_the_row_of_a_type_in_a_namespace_under_it(TheSandboxWithTheFixtureSolution sandbox) : base(sandbox) => _chosen = sandbox.ChoosePickerRow(7);
 
          [XF] public void it_opens_the_file_of_that_type() => _chosen.OpenedFile.Must().Be("Geometry/Shapes/Rendering/Brush.cs");
          [XF] public void the_caret_is_on_the_types_declaration() => _chosen.CaretLine.Must().Be(7);

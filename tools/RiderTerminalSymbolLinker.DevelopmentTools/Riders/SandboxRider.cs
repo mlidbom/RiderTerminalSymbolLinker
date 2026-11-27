@@ -518,9 +518,7 @@ public sealed class SandboxRider
    /// </summary>
    void CopyTheFixtureSolution()
    {
-      var copy = Path.GetDirectoryName(FixtureSolution)!;
-      if(Directory.Exists(copy)) DeleteWithItsReadOnlyFiles(copy);
-      CopyFolder(RepositoryRoot.FixtureSolutionFolder, copy);
+      CopyTheFixtureSolutionTo(Path.GetDirectoryName(FixtureSolution)!);
       File.WriteAllText(FixtureCopiedFromFile, TheFixtureSolutionsFingerprint());
    }
 
@@ -532,8 +530,7 @@ public sealed class SandboxRider
    public string AnotherCopyOfTheFixtureSolution(string name)
    {
       var copy = Path.Combine(SolutionsFolder, name);
-      if(Directory.Exists(copy)) DeleteWithItsReadOnlyFiles(copy);
-      CopyFolder(RepositoryRoot.FixtureSolutionFolder, copy);
+      CopyTheFixtureSolutionTo(copy);
       return Path.Combine(copy, RepositoryRoot.FixtureSolutionName + ".slnx");
    }
 
@@ -558,6 +555,21 @@ public sealed class SandboxRider
    /// <summary>The launchers <see cref="OpenAlso"/> started, which may still run.</summary>
    readonly List<Process> _launchersOfOtherSolutions = [];
 
+   /// <summary>
+   ///   Copies the fixture solution to <paramref name="copy"/>, replacing what is there, with its source generator's DLL
+   ///   in the copy's <c>SourceGenerators</c> folder, which its Geometry project names as an analyzer.
+   /// </summary>
+   static void CopyTheFixtureSolutionTo(string copy)
+   {
+      if(Directory.Exists(copy)) DeleteWithItsReadOnlyFiles(copy);
+      CopyFolder(RepositoryRoot.FixtureSolutionFolder, copy);
+      var generators = Directory.CreateDirectory(Path.Combine(copy, "SourceGenerators")).FullName;
+      File.Copy(TheFixtureSourceGenerator, Path.Combine(generators, Path.GetFileName(TheFixtureSourceGenerator)));
+   }
+
+   /// <summary>The fixture solution's source generator, built with these tools, which reference it for this.</summary>
+   static string TheFixtureSourceGenerator => Path.Combine(AppContext.BaseDirectory, "RiderTerminalSymbolLinker.FixtureSourceGenerator.dll");
+
    static void DeleteWithItsReadOnlyFiles(string folder)
    {
       foreach(var file in new DirectoryInfo(folder).EnumerateFiles("*", new EnumerationOptions { RecurseSubdirectories = true, AttributesToSkip = 0 }))
@@ -575,15 +587,15 @@ public sealed class SandboxRider
 
    /// <summary>
    ///   Each file of the fixture solution in the repository, with its size and time, apart from what builds put in
-   ///   <c>bin</c> and <c>obj</c>: it changes when the fixture does.
+   ///   <c>bin</c> and <c>obj</c>, and its source generator's DLL: it changes when the fixture does.
    /// </summary>
    static string TheFixtureSolutionsFingerprint() =>
       string.Join(Environment.NewLine,
                   Directory.GetFiles(RepositoryRoot.FixtureSolutionFolder, "*", SearchOption.AllDirectories)
-                           .Select(it => Path.GetRelativePath(RepositoryRoot.FixtureSolutionFolder, it))
-                           .Where(it => !it.Split(Path.DirectorySeparatorChar).Any(segment => segment is "bin" or "obj"))
+                           .Where(it => !Path.GetRelativePath(RepositoryRoot.FixtureSolutionFolder, it).Split(Path.DirectorySeparatorChar).Any(segment => segment is "bin" or "obj"))
                            .Order(StringComparer.OrdinalIgnoreCase)
-                           .Select(it => $"{it} {new FileInfo(Path.Combine(RepositoryRoot.FixtureSolutionFolder, it)).Length} {File.GetLastWriteTimeUtc(Path.Combine(RepositoryRoot.FixtureSolutionFolder, it)).Ticks}"));
+                           .Append(TheFixtureSourceGenerator)
+                           .Select(it => $"{Path.GetRelativePath(RepositoryRoot.FixtureSolutionFolder, it)} {new FileInfo(it).Length} {File.GetLastWriteTimeUtc(it).Ticks}"));
 
    /// <remarks>
    ///   Through the shell, so Rider gets none of this process's handles. Started directly, it inherited the console
