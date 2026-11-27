@@ -53,21 +53,20 @@ object DotNetAnalysisAndRefactoringMcp {
 
     /**
      * The declarations of the symbol named [name], a bare name or the end of a qualified one, such as `Circle.Area`.
-     * One opens at once, several show a picker. Compiled symbols are left out: they have no source to open.
+     * One opens at once, several show a picker. Compiled symbols are left out: they have no source to open. A
+     * declaration a source generator wrote is in the file it generated, which Rider holds in memory ([GeneratedFile]).
      * `null` = the MCP is unreachable or couldn't answer; empty = no such symbol.
      */
     fun goToDefinition(name: String, solutionName: String?): List<SymbolHit>? =
         callTool("go_to_definition", inJsonForm().apply { addProperty("symbolName", name) }, solutionName)?.let(::declarationsIn)
 
     internal fun declarationsIn(answer: JsonObject): List<SymbolHit> =
-        gson.fromJson(answer, DeclarationsAnswer::class.java).declarations.mapNotNull { declaration ->
-            declaration.file?.let { SymbolHit(declaration.kind, QualifiedName(declaration.qualifiedName), it, declaration.line!!, declaration.column!!) }
-        }
+        gson.fromJson(answer, DeclarationsAnswer::class.java).declarations.mapNotNull { it.toSymbolHit() }
 
     /**
      * The types in each of [namespaces] and under them, as [TypesOfNamespaces.inAndUnder] orders them: what a click on a
-     * link to a namespace lists. Types a source generator wrote are left out: Rider holds them in memory, with no file
-     * to open. `null` = the MCP is unreachable or couldn't answer.
+     * link to a namespace lists, those a source generator wrote included. `null` = the MCP is unreachable or couldn't
+     * answer.
      */
     fun typesInAndUnder(namespaces: List<QualifiedName>, solutionName: String?): List<SymbolHit>? =
         listingsOf(namespaces.map { it.text }, solutionName, checkCanceled = {})?.let { TypesOfNamespaces(it).inAndUnder(namespaces) }

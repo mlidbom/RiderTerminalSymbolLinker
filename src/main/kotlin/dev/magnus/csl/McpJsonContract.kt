@@ -17,19 +17,37 @@ internal class ServedSolution(val path: String)
 internal class DeclarationsAnswer(val declarations: List<Declaration>)
 
 /**
- * One declaration. A compiled symbol has no [file] and no [line]. A declaration a source generator wrote has no [file]
- * either, since Rider holds the generated file in memory: its [line] and [column] are in that file, which the MCP names
- * by its generator and hint name, two fields the plugin doesn't read. A member with no source of its own, such as a
- * positional record's property, is where it is written: the parameter in the record's header. A type declared in
- * parts is at the part in the file named after it, where there is one.
+ * Where the MCP says a symbol is declared, in a [Declaration] or a [TypeListing]. A compiled symbol has no [file] and no
+ * [line]. A declaration a source generator wrote has no [file] either, since Rider holds the generated file in memory:
+ * its [line] and [column] are in that file, which [generator], the generator's full type name, wrote and named
+ * [hintName]. A member with no source of its own, such as a positional record's property, is where it is written: the
+ * parameter in the record's header. A type declared in parts is at the part in the file named after it, where there is
+ * one.
  */
+internal interface DeclaredSymbol {
+    val kind: String
+    val qualifiedName: String
+    val file: String?
+    val generator: String?
+    val hintName: String?
+    val line: Int?
+    val column: Int?
+
+    /** The [SymbolHit] a link opens, or null for a compiled symbol, which has no source to open. */
+    fun toSymbolHit(): SymbolHit? =
+        SourceFile.of(file, generator, hintName)?.let { SymbolHit(kind, QualifiedName(qualifiedName), it, line!!, column!!) }
+}
+
+/** One declaration of the name `go_to_definition` was asked for. */
 internal class Declaration(
-    val kind: String,
-    val qualifiedName: String,
-    val file: String?,
-    val line: Int?,
-    val column: Int?,
-)
+    override val kind: String,
+    override val qualifiedName: String,
+    override val file: String?,
+    override val generator: String?,
+    override val hintName: String?,
+    override val line: Int?,
+    override val column: Int?,
+) : DeclaredSymbol
 
 /** `browse_namespace`: one entry for each namespace asked for, in the order asked. */
 internal class NamespacesAnswer(val namespaces: List<NamespaceListing>)
@@ -52,19 +70,20 @@ internal class NamespaceListing(
 
 /**
  * A type, with its [members] when they were asked for, and the types nested in it. [name] is its bare C# identifier,
- * [qualifiedName] that after its namespace's and the types' it is nested in. [file], [line] and [column] are where its
- * name is declared, as a [Declaration]'s are: no [file] for a type a source generator wrote.
+ * [qualifiedName] that after its namespace's and the types' it is nested in.
  */
 internal class TypeListing(
-    val kind: String,
+    override val kind: String,
     val name: String,
-    val qualifiedName: String,
-    val file: String?,
-    val line: Int?,
-    val column: Int?,
+    override val qualifiedName: String,
+    override val file: String?,
+    override val generator: String?,
+    override val hintName: String?,
+    override val line: Int?,
+    override val column: Int?,
     val members: List<MemberListing>?,
     val nestedTypes: List<TypeListing>?,
-)
+) : DeclaredSymbol
 
 /**
  * A member a type declares. [kind] is a C# keyword where there is one: `method`, `property`, `field` (constants and

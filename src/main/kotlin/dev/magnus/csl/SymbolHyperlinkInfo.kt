@@ -24,7 +24,7 @@ class SymbolHyperlinkInfo(name: String) : HyperlinkInfoResolvedByTheMcp(name) {
     override fun leadTo(project: Project, declarations: List<SymbolHit>, clickedAt: RelativePoint?) {
         when (declarations.size) {
             0 -> tellNothingFound(project)
-            1 -> open(project, declarations.single())
+            1 -> declarations.single().open(project, requestFocus = true)
             else -> showPicker(project, "Symbols matching \"$name\"", note = null, declarations, clickedAt)
         }
     }

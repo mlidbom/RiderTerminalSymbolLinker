@@ -1,8 +1,6 @@
 package dev.magnus.csl
 
 import com.intellij.execution.filters.HyperlinkInfoBase
-import com.intellij.notification.NotificationGroupManager
-import com.intellij.notification.NotificationType
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.fileEditor.OpenFileDescriptor
@@ -79,12 +77,5 @@ class FileHyperlinkInfo(
         return if (normalized.startsWith("$base/")) normalized.removePrefix("$base/") else filePath
     }
 
-    private fun notifyNoFile(project: Project) {
-        val message = "No file \"$fileName\" found"
-        NotificationGroupManager.getInstance()
-            .getNotificationGroup("RiderTerminalSymbolLinker")
-            .createNotification(message, NotificationType.INFORMATION)
-            .notify(project)
-        LinkClickOutcomes.report(LinkClickOutcome.NothingFound(message))
-    }
+    private fun notifyNoFile(project: Project) = LinkNotices.tellNothingFound(project, "No file \"$fileName\" found")
 }

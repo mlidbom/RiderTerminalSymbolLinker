@@ -18,7 +18,7 @@ class DotNetAnalysisAndRefactoringMcpTest {
     }
 
     @Test
-    fun `every declaration with source is a hit, and a compiled one is left out`() {
+    fun `every declaration with source is a hit, in a file on disk or one a source generator wrote, and a compiled one is left out`() {
         val hits = DotNetAnalysisAndRefactoringMcp.declarationsIn(
             json(
                 """
@@ -26,6 +26,7 @@ class DotNetAnalysisAndRefactoringMcpTest {
                   "declarations": [
                     { "kind": "record", "name": "Bounds", "qualifiedName": "Geometry.Layout.Bounds", "file": "C:\\Fixture\\Layout\\Bounds.cs", "line": 4, "column": 15 },
                     { "kind": "record", "name": "Bounds", "qualifiedName": "Geometry.Shapes.Bounds", "file": "C:\\Fixture\\Shapes\\Bounds.cs", "line": 4, "column": 15 },
+                    { "kind": "class", "name": "Bounds", "qualifiedName": "Geometry.Generated.Bounds", "file": null, "line": 6, "column": 14, "generator": "Geometry.Generators.BoundsGenerator", "hintName": "Bounds.g.cs" },
                     { "kind": "struct", "name": "Bounds", "qualifiedName": "Some.Library.Bounds", "file": null, "line": null, "column": null, "assembly": "Some.Library.dll" }
                   ]
                 }
@@ -35,8 +36,9 @@ class DotNetAnalysisAndRefactoringMcpTest {
 
         assertEquals(
             listOf(
-                SymbolHit("record", QualifiedName("Geometry.Layout.Bounds"), """C:\Fixture\Layout\Bounds.cs""", 4, 15),
-                SymbolHit("record", QualifiedName("Geometry.Shapes.Bounds"), """C:\Fixture\Shapes\Bounds.cs""", 4, 15),
+                SymbolHit("record", QualifiedName("Geometry.Layout.Bounds"), FileOnDisk("""C:\Fixture\Layout\Bounds.cs"""), 4, 15),
+                SymbolHit("record", QualifiedName("Geometry.Shapes.Bounds"), FileOnDisk("""C:\Fixture\Shapes\Bounds.cs"""), 4, 15),
+                SymbolHit("class", QualifiedName("Geometry.Generated.Bounds"), GeneratedFile("Geometry.Generators.BoundsGenerator", "Bounds.g.cs"), 6, 14),
             ),
             hits,
         )

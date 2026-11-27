@@ -7,8 +7,8 @@ namespace RiderTerminalSymbolLinker.Specifications;
 ///   given by their path within it, such as <c>Geometry/Shapes/Circle.cs</c>.
 /// </summary>
 /// <param name="Outcome">
-///   <c>opened</c>, <c>picker</c>, <c>nothingFound</c>, <c>searchEverywhere</c>, or, when the line had no such link,
-///   <c>noSuchLink</c>.
+///   <c>opened</c>, <c>picker</c>, <c>nothingFound</c>, <c>notOpened</c>, <c>searchEverywhere</c>, or, when the line had no
+///   such link, <c>noSuchLink</c>.
 /// </param>
 /// <param name="OpenedFile">The file the selected editor shows after the click, for <c>opened</c>.</param>
 /// <param name="CaretLine">The line the selected editor's caret is on after the click, 1-based, for <c>opened</c>.</param>

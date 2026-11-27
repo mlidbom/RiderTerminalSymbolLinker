@@ -175,6 +175,7 @@ public class When_clicking_a_link(TheSandboxWithTheFixtureSolution sandbox)
             "class Geometry.Shapes.Drawing  —  Drawing.cs:4",
             "record Geometry.Shapes.Drawing.Stroke  —  Drawing.cs:6",
             "class Geometry.Shapes.Palette  —  Palette.cs:4",
+            "class Geometry.Shapes.Ruler  —  Ruler.g.cs:4",
             "class Geometry.Shapes.Swatch  —  Swatch.cs:7",
             "class Geometry.Shapes.Rendering.Brush  —  Brush.cs:7"
          ]);
@@ -187,7 +188,7 @@ public class When_clicking_a_link(TheSandboxWithTheFixtureSolution sandbox)
       {
          readonly ClickOutcome _chosen;
 
-         public and_choosing_the_row_of_a_type_in_a_namespace_under_it(TheSandboxWithTheFixtureSolution sandbox) : base(sandbox) => _chosen = sandbox.ChoosePickerRow(7);
+         public and_choosing_the_row_of_a_type_in_a_namespace_under_it(TheSandboxWithTheFixtureSolution sandbox) : base(sandbox) => _chosen = sandbox.ChoosePickerRow(8);
 
          [XF] public void it_opens_the_file_of_that_type() => _chosen.OpenedFile.Must().Be("Geometry/Shapes/Rendering/Brush.cs");
          [XF] public void the_caret_is_on_the_types_declaration() => _chosen.CaretLine.Must().Be(7);
@@ -195,6 +196,42 @@ public class When_clicking_a_link(TheSandboxWithTheFixtureSolution sandbox)
 
          public override void Dispose() {} // Choosing a row closed the picker.
       }
+
+      public class and_choosing_the_row_of_a_type_a_source_generator_wrote : to_a_namespace
+      {
+         readonly ClickOutcome _chosen;
+
+         public and_choosing_the_row_of_a_type_a_source_generator_wrote(TheSandboxWithTheFixtureSolution sandbox) : base(sandbox) => _chosen = sandbox.ChoosePickerRow(6);
+
+         [XF] public void it_opens_the_file_the_generator_wrote() => Path.GetFileName(_chosen.OpenedFile).Must().Be("Ruler.g.cs");
+         [XF] public void the_caret_is_on_the_types_declaration() => _chosen.CaretLine.Must().Be(4);
+         [XF] public void the_caret_is_at_the_start_of_the_types_name() => _chosen.CaretColumn.Must().Be(21);
+
+         public override void Dispose() {} // Choosing a row closed the picker.
+      }
+   }
+
+   /// <summary>
+   ///   Code a source generator wrote opens in the file it generated, which Rider holds in memory, as Rider's own Ctrl+click
+   ///   opens it (Magnus, 2026-11-27).
+   /// </summary>
+   public class to_a_type_only_a_source_generator_declares(TheSandboxWithTheFixtureSolution sandbox) : When_clicking_a_link(sandbox)
+   {
+      readonly ClickOutcome _outcome = sandbox.Click("Ruler measures it", "Ruler");
+
+      [XF] public void it_opens_the_file_the_generator_wrote() => Path.GetFileName(_outcome.OpenedFile).Must().Be("Ruler.g.cs");
+      [XF] public void the_caret_is_on_the_types_declaration() => _outcome.CaretLine.Must().Be(4);
+      [XF] public void the_caret_is_at_the_start_of_the_types_name() => _outcome.CaretColumn.Must().Be(21);
+   }
+
+   public class to_a_member_a_source_generator_declares_in_its_part_of_a_type_declared_in_parts(TheSandboxWithTheFixtureSolution sandbox)
+      : When_clicking_a_link(sandbox)
+   {
+      readonly ClickOutcome _outcome = sandbox.Click("Swatch.Shade() is wrong", "Swatch.Shade");
+
+      [XF] public void it_opens_the_file_the_generator_wrote() => Path.GetFileName(_outcome.OpenedFile).Must().Be("Swatch.g.cs");
+      [XF] public void the_caret_is_on_the_members_declaration() => _outcome.CaretLine.Must().Be(6);
+      [XF] public void the_caret_is_at_the_start_of_the_members_name() => _outcome.CaretColumn.Must().Be(15);
    }
 
    public class to_a_file_name_that_two_files_share(TheSandboxWithTheFixtureSolution sandbox) : When_clicking_a_link(sandbox), IDisposable

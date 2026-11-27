@@ -20,7 +20,11 @@ class TypesOfNamespacesTest {
                 type("enum", "Shop.Orders.Status"),
             ),
             listing("Shop.Orders.Shipping", emptyList(), type("class", "Shop.Orders.Shipping.Parcel")),
-            listing("Shop.Billing", emptyList(), type("class", "Shop.Billing.Invoice"), type("class", "Shop.Billing.Generated", file = null)),
+            listing(
+                "Shop.Billing", emptyList(),
+                type("class", "Shop.Billing.Invoice"),
+                type("class", "Shop.Billing.Receipt", file = null, generatedAs = "Receipt.g.cs"),
+            ),
         ),
     )
 
@@ -31,19 +35,26 @@ class TypesOfNamespacesTest {
         assertEquals(listOf("Shop.Orders.Order", "Shop.Orders.Order.Line", "Shop.Orders.Status", "Shop.Orders.Shipping.Parcel"), typesIn("Shop.Orders"))
 
     @Test
-    fun `a namespace with no types of its own has those of the namespaces under it, a source generator's left out`() =
+    fun `a namespace with no types of its own has those of the namespaces under it, a source generator's included`() =
         assertEquals(
-            listOf("Shop.Billing.Invoice", "Shop.Orders.Order", "Shop.Orders.Order.Line", "Shop.Orders.Shipping.Parcel", "Shop.Orders.Status"),
+            listOf("Shop.Billing.Invoice", "Shop.Billing.Receipt", "Shop.Orders.Order", "Shop.Orders.Order.Line", "Shop.Orders.Shipping.Parcel", "Shop.Orders.Status"),
             typesIn("Shop"),
         )
 
     @Test
     fun `several namespaces have their types each in turn, by their names`() =
-        assertEquals(listOf("Shop.Billing.Invoice", "Shop.Orders.Shipping.Parcel"), typesIn("Shop.Orders.Shipping", "Shop.Billing"))
+        assertEquals(listOf("Shop.Billing.Invoice", "Shop.Billing.Receipt", "Shop.Orders.Shipping.Parcel"), typesIn("Shop.Orders.Shipping", "Shop.Billing"))
 
     private fun listing(name: String, childNamespaces: List<String>, vararg types: String): NamespaceListing =
         Gson().fromJson("""{ "name": "$name", "childNamespaces": [${childNamespaces.joinToString { "\"$it\"" }}], "types": [${types.joinToString()}] }""", NamespaceListing::class.java)
 
-    private fun type(kind: String, qualifiedName: String, vararg nestedTypes: String, file: String? = """C:\\Shop\\${qualifiedName.substringAfterLast('.')}.cs"""): String =
-        """{ "kind": "$kind", "name": "${qualifiedName.substringAfterLast('.')}", "qualifiedName": "$qualifiedName", ${file?.let { "\"file\": \"$it\", \"line\": 3, \"column\": 14," } ?: ""} "nestedTypes": [${nestedTypes.joinToString()}] }"""
+    /** A type's listing, in [file], or, when [generatedAs] names it, in the file a source generator wrote under that name. */
+    private fun type(
+        kind: String,
+        qualifiedName: String,
+        vararg nestedTypes: String,
+        file: String? = """C:\\Shop\\${qualifiedName.substringAfterLast('.')}.cs""",
+        generatedAs: String? = null,
+    ): String =
+        """{ "kind": "$kind", "name": "${qualifiedName.substringAfterLast('.')}", "qualifiedName": "$qualifiedName", ${file?.let { "\"file\": \"$it\"," } ?: ""} ${generatedAs?.let { "\"generator\": \"Shop.Generators.ShopGenerator\", \"hintName\": \"$it\"," } ?: ""} "line": 3, "column": 14, "nestedTypes": [${nestedTypes.joinToString()}] }"""
 }

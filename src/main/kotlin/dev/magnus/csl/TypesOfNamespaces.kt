@@ -3,11 +3,11 @@ package dev.magnus.csl
 /**
  * The types the .NET Analysis&Refactoring MCP lists in some namespaces, by the namespace each is declared in, as a click
  * on a link to a namespace lists them ([inAndUnder]). A nested type is in the namespace of the type it's nested in.
- * Types with no file are left out: a source generator wrote them, and Rider holds them in memory.
+ * A type a source generator wrote is in the file it generated ([GeneratedFile]).
  */
 internal class TypesOfNamespaces(listings: List<NamespaceListing>) {
     private val byTheirNamespaces: Map<QualifiedName, List<SymbolHit>> =
-        listings.associate { QualifiedName(it.name) to it.types.flatMap(::itAndTheTypesNestedIn).mapNotNull(::hitOf) }
+        listings.associate { QualifiedName(it.name) to it.types.flatMap(::itAndTheTypesNestedIn).mapNotNull(TypeListing::toSymbolHit) }
 
     /**
      * The types in each of [namespaces], nested types included and not their members: the namespace's own first, then
@@ -23,7 +23,4 @@ internal class TypesOfNamespaces(listings: List<NamespaceListing>) {
 
     private fun itAndTheTypesNestedIn(type: TypeListing): List<TypeListing> =
         listOf(type) + type.nestedTypes.orEmpty().flatMap(::itAndTheTypesNestedIn)
-
-    private fun hitOf(type: TypeListing): SymbolHit? =
-        type.file?.let { SymbolHit(type.kind, QualifiedName(type.qualifiedName), it, type.line!!, type.column!!) }
 }

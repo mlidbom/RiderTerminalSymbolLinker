@@ -6,6 +6,15 @@ All notable changes to this project are documented here. The format follows
 
 ## [0.2.13]
 
+### Added
+- **Code a source generator wrote opens.** A click on a type or member that only generated code declares opens the
+  file the generator wrote, as Rider's own Ctrl+click does, with the caret on its name: `Ruler.g.cs` for a `Ruler` a
+  generator writes, or the generated part of a partial class for a member declared there. A click on a namespace lists
+  the generated types too, by the generated file's name, such as `Ruler.g.cs:4`. Before, a click on such a name said
+  that nothing was found, and the namespace's picker left them out. In the first seconds after a solution opens,
+  before Rider has run the generator, the click says so, and the next one opens it. This needs the .NET
+  Analysis&Refactoring MCP's release after 0.15.1; with earlier ones, such a name opens nothing, as before.
+
 ### Fixed
 - **Symbols link in a solution that shares its folder with others,** as Compze's twenty solutions do. The plugin now
   names its solution to the .NET Analysis&Refactoring MCP by its solution file. Before, it took the first solution the

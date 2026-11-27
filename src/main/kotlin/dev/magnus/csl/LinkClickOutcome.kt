@@ -30,6 +30,9 @@ sealed interface LinkClickOutcome {
     /** Told the user, with [message], that the link's target doesn't exist. */
     data class NothingFound(val message: String) : LinkClickOutcome
 
+    /** Told the user, with [message], why the link's target couldn't be opened. */
+    data class NotOpened(val message: String) : LinkClickOutcome
+
     /** The MCP server couldn't be reached, so it opened Search Everywhere for [token]. */
     data class FellBackToSearchEverywhere(val token: String) : LinkClickOutcome
 }
