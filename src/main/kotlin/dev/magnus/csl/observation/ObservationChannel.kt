@@ -16,6 +16,11 @@ import com.intellij.openapi.project.ProjectManager
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.vfs.VfsUtil
 import com.intellij.openapi.wm.WindowManager
+import com.intellij.platform.backend.workspace.WorkspaceModel
+import com.intellij.platform.backend.workspace.virtualFile
+import com.jetbrains.rider.model.RdSourceGeneratorFileDescriptor
+import com.jetbrains.rider.projectView.workspace.ProjectModelEntity
+import com.jetbrains.rider.projectView.views.navigateToFileViaBackend
 import com.intellij.ui.awt.RelativePoint
 import com.sun.net.httpserver.HttpExchange
 import com.sun.net.httpserver.HttpServer
@@ -91,6 +96,10 @@ class ObservationChannel : Disposable {
             createContext("/picker/picture") { exchange -> answer(exchange) { pictureOfThePicker(File(query(exchange, "file")!!)) } }
             createContext("/plugins/refresh") { exchange -> answer(exchange) { refreshThePluginsFolder() } }
             createContext("/editors/close-all") { exchange -> answer(exchange) { closeEveryEditor(projectOf(exchange)) } }
+            createContext("/explore/generated-files") { exchange -> answer(exchange) { generatedFiles(projectOf(exchange)) } }
+            createContext("/explore/open-generated") { exchange ->
+                answer(exchange) { openGenerated(projectOf(exchange), query(exchange, "generator")!!, query(exchange, "hintName")!!) }
+            }
             start()
         }
 
@@ -98,6 +107,49 @@ class ObservationChannel : Disposable {
         server?.stop(0)
         (server?.executor as ExecutorService?)?.shutdown()
         LinkClickOutcomes.observer = null
+    }
+
+    //wip: an exploration, for whether a click can open a file a source generator wrote (Magnus's choice, 2026-11-27):
+    //   what Rider's project model holds of each such file. Goes once the click is built on what it shows.
+    private fun generatedFiles(project: Project): Map<String, Any?> {
+        val entities = WorkspaceModel.getInstance(project).currentSnapshot.entities(ProjectModelEntity::class.java)
+            .filter { it.descriptor is RdSourceGeneratorFileDescriptor }
+            .toList()
+        return mapOf("generatedFiles" to entities.map { entity ->
+            val virtualFile = entity.url?.virtualFile
+            mapOf(
+                "name" to entity.name,
+                "descriptor" to entity.descriptor.toString(),
+                "url" to entity.url?.url,
+                "alternativeUrls" to entity.alternativeUrls.map { it.url },
+                "virtualFile" to virtualFile?.let { mapOf("path" to it.path, "fileSystem" to it.fileSystem.protocol, "class" to it.javaClass.name, "length" to it.length, "isWritable" to it.isWritable) },
+                "parent" to entity.parentEntity?.name,
+            )
+        })
+    }
+
+    //wip: the same exploration: opens the generated file as Solution Explorer does, and tells what editor opened.
+    private fun openGenerated(project: Project, generator: String, hintName: String): Map<String, Any?> {
+        val entity = WorkspaceModel.getInstance(project).currentSnapshot.entities(ProjectModelEntity::class.java)
+            .firstOrNull { it.descriptor is RdSourceGeneratorFileDescriptor && it.name == hintName && it.parentEntity?.name == generator }
+            ?: return mapOf("outcome" to "noSuchGeneratedFile")
+        ApplicationManager.getApplication().invokeAndWait { entity.navigateToFileViaBackend(project) }
+        Thread.sleep(3_000)
+        var editor: Map<String, Any?>? = null
+        ApplicationManager.getApplication().invokeAndWait {
+            editor = FileEditorManager.getInstance(project).selectedTextEditor?.let { selected ->
+                val file = FileDocumentManager.getInstance().getFile(selected.document)
+                mapOf(
+                    "path" to file?.path,
+                    "fileSystem" to file?.fileSystem?.protocol,
+                    "class" to file?.javaClass?.name,
+                    "firstLine" to selected.document.text.lineSequence().firstOrNull(),
+                    "lineCount" to selected.document.lineCount,
+                    "caretLine" to selected.caretModel.logicalPosition.line + 1,
+                )
+            }
+        }
+        return mapOf("outcome" to "navigated", "selectedEditor" to editor)
     }
 
     private fun closeEveryEditor(project: Project): Map<String, Any?> {
@@ -166,10 +218,11 @@ class ObservationChannel : Disposable {
 
     private fun pictureOfThePicker(file: File): Map<String, Any?> {
         val picker = shownPicker ?: return mapOf("outcome" to "noPickerShown")
-        var picture: BufferedImage? = null
-        ApplicationManager.getApplication().invokeAndWait { picture = picker.picture() }
-        ImageIO.write(picture!!, "png", file)
-        return mapOf("wrote" to file.path, "width" to picture!!.width, "height" to picture!!.height)
+        var painted: BufferedImage? = null
+        ApplicationManager.getApplication().invokeAndWait { painted = picker.picture() }
+        val picture = painted!!
+        ImageIO.write(picture, "png", file)
+        return mapOf("wrote" to file.path, "width" to picture.width, "height" to picture.height)
     }
 
     /** Runs [action] on the EDT, as the terminal runs a click, and waits for the [LinkClickOutcome] it reports. */
