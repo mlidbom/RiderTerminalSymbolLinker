@@ -34,7 +34,7 @@ public sealed class TheSandboxWithTheFixtureSolution : IDisposable
       {
          _sandbox.Install(TheMcpBuildToRun());
          if(!_sandbox.IsRunning) _sandbox.Start();
-         WaitUntilThePluginHasIndexedTheSolution();
+         WaitUntilTheSolutionIsReady();
       }
       catch(Exception failure) // xUnit doesn't dispose a fixture whose constructor failed, so the sandbox is stopped here, and the failure reported.
       {
@@ -81,10 +81,12 @@ public sealed class TheSandboxWithTheFixtureSolution : IDisposable
 
    /// <summary>
    ///   Clicks the link whose text is <paramref name="link"/> in <paramref name="line"/> of terminal output, with no editor
-   ///   open, so that the click opens its file afresh, as for a file the user hasn't opened.
+   ///   open, so that the click opens its file afresh, as for a file the user hasn't opened. It waits first until the solution
+   ///   is ready, as the run's start does: Claude Sessions' specifications restart the sandbox Rider.
    /// </summary>
    public ClickOutcome Click(string line, string link)
    {
+      WaitUntilTheSolutionIsReady();
       _sandbox.SymbolLinkerObservation.CloseEveryEditor();
       return ClickOutcome.From(_sandbox.SymbolLinkerObservation.Click(line, link), FixtureFolder);
    }
@@ -115,16 +117,17 @@ public sealed class TheSandboxWithTheFixtureSolution : IDisposable
    string FixtureFolder => Path.GetDirectoryName(_sandbox.FixtureSolution)!;
 
    /// <summary>
-   ///   Waits until the symbol linker has indexed the fixture solution. Its observation channel may not listen yet when
-   ///   the sandbox has started, which waits for the MCP server only: a refused connection is waited out too.
+   ///   Waits until the symbol linker has indexed the fixture solution, and Rider knows where each file the fixture's source
+   ///   generator wrote is, which it learns seconds after the solution opens. Its observation channel may not listen yet
+   ///   when the sandbox has started, which waits for the MCP server only: a refused connection is waited out too.
    /// </summary>
-   void WaitUntilThePluginHasIndexedTheSolution()
+   void WaitUntilTheSolutionIsReady()
    {
       var deadline = DateTime.UtcNow + HowLongIndexingMayTake;
       JsonNode? state;
-      while(!BothIndexesAreReady(state = StateOrNullWhileNotListening()))
+      while(!IsReady(state = StateOrNullWhileNotListening()))
       {
-         if(DateTime.UtcNow > deadline) throw new TimeoutException($"The plugin's indexes of the fixture solution weren't ready after {HowLongIndexingMayTake}: {state?.ToJsonString() ?? "its observation channel didn't listen"}");
+         if(DateTime.UtcNow > deadline) throw new TimeoutException($"The fixture solution wasn't ready after {HowLongIndexingMayTake}: {state?.ToJsonString() ?? "the plugin's observation channel didn't listen"}");
          Thread.Sleep(500);
       }
 
@@ -140,7 +143,10 @@ public sealed class TheSandboxWithTheFixtureSolution : IDisposable
          }
       }
 
-      static bool BothIndexesAreReady(JsonNode? state) =>
-         state?["projects"]!.AsArray().Any(it => it!["symbolIndex"]!["ready"]!.GetValue<bool>() && it["fileIndex"]!["ready"]!.GetValue<bool>()) == true;
+      static bool IsReady(JsonNode? state) =>
+         state?["projects"]!.AsArray().Any(it => it!["symbolIndex"]!["ready"]!.GetValue<bool>() && it["fileIndex"]!["ready"]!.GetValue<bool>() && EveryGeneratedFileIsLocated(it)) == true;
+
+      static bool EveryGeneratedFileIsLocated(JsonNode project) =>
+         project["generatedFiles"]!["listed"]!.GetValue<int>() is var listed and > 0 && project["generatedFiles"]!["located"]!.GetValue<int>() == listed;
    }
 }

@@ -20,6 +20,7 @@ import com.intellij.ui.awt.RelativePoint
 import com.sun.net.httpserver.HttpExchange
 import com.sun.net.httpserver.HttpServer
 import dev.magnus.csl.FileHyperlinkInfo
+import dev.magnus.csl.GeneratedFile
 import dev.magnus.csl.LinkClickOutcome
 import dev.magnus.csl.LinkClickOutcomes
 import dev.magnus.csl.NamespaceHyperlinkInfo
@@ -121,11 +122,13 @@ class ObservationChannel : Disposable {
         "projects" to ProjectManager.getInstance().openProjects.map { project ->
             val symbols = SymbolIndex.getInstance(project)
             val files = SolutionFileNames.getInstance(project)
+            val generatedFiles = GeneratedFile.entriesIn(project).toList()
             mapOf(
                 "name" to project.name,
                 "basePath" to project.basePath,
                 "symbolIndex" to mapOf("ready" to symbols.isReady, "typesAndMembers" to symbols.declared.typesAndMembers.size, "namespaces" to symbols.declared.namespaces.size),
                 "fileIndex" to mapOf("ready" to files.isReady, "files" to files.fileCount),
+                "generatedFiles" to mapOf("listed" to generatedFiles.size, "located" to generatedFiles.count { it.url != null }),
             )
         },
     )
