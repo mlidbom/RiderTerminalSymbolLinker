@@ -17,7 +17,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.14.0" PrivateAssets="all" />
+    <!-- 4.0, the Roslyn the development tools already use: a newer one conflicts with it there. -->
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.0.1" PrivateAssets="all" />
   </ItemGroup>
 
 </Project>
