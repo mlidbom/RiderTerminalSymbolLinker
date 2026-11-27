@@ -17,21 +17,9 @@ import com.intellij.ui.awt.RelativePoint
  */
 class SymbolHyperlinkInfo(name: String) : HyperlinkInfoResolvedByTheMcp(name) {
 
-    /**
-     * The declarations [name] names. For a dotted name the MCP gives none of, those of the name's last word whose
-     * qualified names end with all of [name]: no more than the MCP should have given.
-     */
-    override fun resolve(project: Project, solutionName: String?): List<SymbolHit>? {
-        val declarations = DotNetAnalysisAndRefactoringMcp.goToDefinition(name, solutionName)
-        if (declarations != null && declarations.isEmpty() && '.' in name) {
-            //bug: the MCP's go_to_definition finds no member of a C# 14 extension block by the name of the class that
-            //   declares the block, such as CircleExtensions.Diameter, though that is the end of its qualified name
-            //   (told royder-agent-rep, 2026-11-26). Once it does, this second call can go.
-            return DotNetAnalysisAndRefactoringMcp.goToDefinition(name.substringAfterLast('.'), solutionName)
-                ?.filter { it.qualifiedName.endsWith(name) }
-        }
-        return declarations
-    }
+    /** The declarations [name] names: those whose qualified names end with it. */
+    override fun resolve(project: Project, solutionName: String?): List<SymbolHit>? =
+        DotNetAnalysisAndRefactoringMcp.goToDefinition(name, solutionName)
 
     override fun leadTo(project: Project, declarations: List<SymbolHit>, clickedAt: RelativePoint?) {
         when (declarations.size) {

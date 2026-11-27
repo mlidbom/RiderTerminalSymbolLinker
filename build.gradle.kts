@@ -34,6 +34,9 @@ dependencies {
         zipSigner()
         // Provides the Terminal.ReworkedTerminalContextMenu group our refresh action attaches to.
         bundledPlugin("org.jetbrains.plugins.terminal")
+        // Rider's frontend for .NET: the project's own solution file (project.solutionFile), which names the solution to
+        // the .NET Analysis&Refactoring MCP, and its project model.
+        bundledModule("intellij.rider.rdclient.dotnet")
         // The .NET Analysis&Refactoring MCP we declare a hard <depends> on in plugin.xml. Pulled from the
         // Marketplace so the sandbox/verifier can resolve the dependency; it is NOT bundled into our distribution.
         plugin("dev.magnus.dotnet-analysis-and-refactoring-mcp", "0.15.0")

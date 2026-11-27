@@ -45,9 +45,13 @@ plugin takes as no answer, and logs. A solution still loading answers an error.
 
 The tools the plugin uses:
 
-- **`list_solutions`** maps the Rider project to its solution (`McpSolution`). Every other call passes that solution's
-  `uniquePathSegment` as `solutionName`, because two open solutions can share a name, as two worktrees of one repository
-  do.
+- **Every call names the solution** by the absolute path of the solution file Rider has open, as `solutionName`
+  (`McpSolution`). The MCP matches it by its full path, so the call reaches this very solution in this Rider's backend,
+  whatever other solutions share its name or its folder, as two worktrees of one repository do, or Compze's twenty. The
+  plugin calls only once the MCP's `GET /health` lists the path: asked before, seconds after the solution opens, the MCP
+  would open it again in a Rider of its own. A project with no solution file, such as Rider's home project, makes no
+  calls. Until 2026-11-27 the plugin mapped its project through `list_solutions`, by the solution's folder, which
+  picked a wrong one in a folder of several.
 - **`browse_namespace`** finds every namespace, 50 to a call, and then lists each namespace's types with their
   members, one namespace to a call, nested types included. `DeclaredNamesGatherer` turns them into the index. A C# 14
   extension block is a member of its own kind, whose members count as the declaring class's. A click on a namespace

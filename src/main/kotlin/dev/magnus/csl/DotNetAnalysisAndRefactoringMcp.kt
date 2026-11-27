@@ -7,19 +7,7 @@ import com.google.gson.JsonParser
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.progress.ProgressIndicator
 import com.intellij.util.io.HttpRequests
-
-/**
- * One loaded solution from `list_solutions`. The value to pass back as `solutionName` is [routingKey], not
- * [name]: the server keys `solutionName` on a match that includes the bare name, so when several loaded
- * solutions share a [name] it resolves to whichever same-named solution it picks first. Two git worktrees of
- * the same repo are exactly this case — both name their solution e.g. "Vantage" — and only the server's
- * `uniquePathSegment` ("Vantage-wt-1" vs "Vantage") routes to the intended one. [uniquePathSegment] is `null`
- * when the server leaves it out, and [routingKey] then falls back to the [name].
- */
-data class SolutionInfo(val name: String, val path: String, val uniquePathSegment: String? = null) {
-    /** The `solutionName` value that routes to exactly this solution, even when [name] collides. */
-    val routingKey: String get() = uniquePathSegment ?: name
-}
+import java.io.File
 
 /**
  * Client for the .NET Analysis&Refactoring MCP, the plugin this one depends on, whose server runs inside Rider's
@@ -42,15 +30,24 @@ object DotNetAnalysisAndRefactoringMcp {
     /** How many namespaces one call lists while the namespaces are found, before their types are read. */
     private const val NAMESPACES_PER_CALL = 50
 
-    // ---- Solution discovery ----------------------------------------------------------------
+    // ---- The solutions it serves -----------------------------------------------------------
 
     /**
-     * Every solution currently loaded in the MCP. Used to map a Rider project to the `solutionName`
-     * the other tools need when more than one solution is open. `null` if the MCP is unreachable.
+     * Whether the MCP serves [solutionFile] now: its `GET /health` lists it, as it does once Rider's backend has
+     * registered the solution. False when the MCP is unreachable.
      */
-    fun listSolutions(): List<SolutionInfo>? = callTool("list_solutions", JsonObject(), null)?.let(::solutionsIn)
+    fun serves(solutionFile: File): Boolean {
+        val health = try {
+            HttpRequests.request("${URL}health").accept("application/json").readString()
+        } catch (e: Throwable) {
+            LOG.warn(".NET Analysis&Refactoring MCP unreachable at $URL (health): ${e.message}")
+            return false
+        }
+        return healthServes(health, solutionFile)
+    }
 
-    internal fun solutionsIn(answer: JsonObject): List<SolutionInfo> = gson.fromJson(answer, SolutionsAnswer::class.java).solutions
+    internal fun healthServes(health: String, solutionFile: File): Boolean =
+        gson.fromJson(health, HealthAnswer::class.java).solutions.any { File(it.path) == solutionFile }
 
     // ---- Click-time resolution (exact by name) ---------------------------------------------
 

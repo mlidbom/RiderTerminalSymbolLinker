@@ -4,6 +4,15 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project aims to follow
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.13]
+
+### Fixed
+- **Symbols link in a solution that shares its folder with others,** as Compze's twenty solutions do. The plugin now
+  names its solution to the .NET Analysis&Refactoring MCP by its solution file. Before, it took the first solution the
+  MCP listed in the project's folder, which could be another than the one Rider has open.
+- **A project with no solution, such as Rider's home project, makes no calls to the MCP.** Before, it asked for its
+  symbols every 8 seconds for several minutes, and logged a warning each time.
+
 ## [0.2.12]
 
 ### Added
@@ -228,6 +237,7 @@ First public release.
   in the background.
 - Multi-solution support: each call targets the correct open solution.
 
+[0.2.13]: https://github.com/mlidbom/RiderTerminalSymbolLinker/compare/v0.2.12...HEAD
 [0.2.12]: https://github.com/mlidbom/RiderTerminalSymbolLinker/compare/v0.2.11...v0.2.12
 [0.2.11]: https://github.com/mlidbom/RiderTerminalSymbolLinker/compare/v0.2.10...v0.2.11
 [0.2.10]: https://github.com/mlidbom/RiderTerminalSymbolLinker/compare/v0.2.9...v0.2.10

@@ -36,8 +36,11 @@ object SymbolIndexLoader {
      * then build fresh in the background — retrying until ReSharper can answer, because a large
      * solution often isn't loaded yet when this runs. With no cache, links can't work until the build
      * finishes, so we announce that visibly ([Announce.COLD_START]); with a cache we refresh silently.
+     *
+     * A project with no solution file, such as Rider's home project, has no symbols to load: see [McpSolution].
      */
     fun loadAndRefresh(project: Project) {
+        if (!McpSolution.getInstance(project).exists) return
         val cached = SymbolIndexCache.load(project)
         if (cached != null) {
             SymbolIndex.getInstance(project).set(cached)
@@ -48,6 +51,7 @@ object SymbolIndexLoader {
     }
 
     fun refresh(project: Project, notifyWhenDone: Boolean) {
+        if (!McpSolution.getInstance(project).exists) return
         build(project, if (notifyWhenDone) Announce.REFRESH_RESULT else Announce.SILENT, waitForReady = false)
     }
 
@@ -83,8 +87,8 @@ object SymbolIndexLoader {
     /**
      * One enumeration attempt, or — when [waitForReady] — retry on the polling interval until the MCP
      * returns a non-empty index or we give up. A `null` result (MCP down, or ReSharper not done loading)
-     * is what we retry through; requiring a resolved `solutionName` first avoids enumerating the wrong
-     * open solution while `list_solutions` is still warming up.
+     * is what we retry through, and so is the seconds after the solution opens, before the MCP serves it
+     * (see [McpSolution]).
      */
     private fun enumerate(project: Project, indicator: ProgressIndicator, waitForReady: Boolean): DeclaredNames? {
         var attempt = 0

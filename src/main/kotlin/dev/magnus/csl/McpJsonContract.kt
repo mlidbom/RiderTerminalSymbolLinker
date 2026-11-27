@@ -7,8 +7,11 @@ package dev.magnus.csl
  * Lines and columns are 1-based.
  */
 
-/** `list_solutions`: every solution the MCP has loaded. */
-internal class SolutionsAnswer(val solutions: List<SolutionInfo>)
+/** `GET /health`, which needs no MCP session: the solutions the MCP serves, by their solution files' paths. */
+internal class HealthAnswer(val solutions: List<ServedSolution>)
+
+/** A solution the MCP serves: [path] is its solution file's absolute path. */
+internal class ServedSolution(val path: String)
 
 /** `go_to_definition`: one declaration when the name is unambiguous, several when it isn't, none when nothing has it. */
 internal class DeclarationsAnswer(val declarations: List<Declaration>)
