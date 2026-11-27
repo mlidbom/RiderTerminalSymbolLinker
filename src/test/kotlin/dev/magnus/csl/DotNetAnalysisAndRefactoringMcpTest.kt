@@ -69,5 +69,24 @@ class DotNetAnalysisAndRefactoringMcpTest {
         )
     }
 
+    @Test
+    fun `a call the MCP refuses, in text flagged as an error, has no answer`() =
+        assertNull(
+            DotNetAnalysisAndRefactoringMcp.toolAnswerIn(
+                "browse_namespace",
+                """{ "jsonrpc": "2.0", "id": 1, "result": { "content": [{ "type": "text", "text": "Solution 'Mavalonia' not found." }], "isError": true } }""",
+            ),
+        )
+
+    @Test
+    fun `a tool's answer is the JSON object in its text`() =
+        assertEquals(
+            json("""{ "declarations": [] }"""),
+            DotNetAnalysisAndRefactoringMcp.toolAnswerIn(
+                "go_to_definition",
+                """{ "jsonrpc": "2.0", "id": 1, "result": { "content": [{ "type": "text", "text": "{ \"declarations\": [] }" }] } }""",
+            ),
+        )
+
     private fun json(text: String) = JsonParser.parseString(text.trimIndent()).asJsonObject
 }

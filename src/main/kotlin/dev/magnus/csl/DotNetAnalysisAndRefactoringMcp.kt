@@ -172,16 +172,24 @@ object DotNetAnalysisAndRefactoringMcp {
         return toolAnswerIn(tool, response)
     }
 
-    /** The JSON object in a JSON-RPC [response]'s `result.content[0].text`: the tool's answer. */
-    private fun toolAnswerIn(tool: String, response: String): JsonObject? {
+    /**
+     * The JSON object in a JSON-RPC [response]'s `result.content[0].text`: the tool's answer. `null`, and logged, when the
+     * MCP refused the call, such as for a `solutionName` it doesn't know, which it says in text with `isError` set.
+     */
+    internal fun toolAnswerIn(tool: String, response: String): JsonObject? {
         val envelope = JsonParser.parseString(response).asJsonObject
         envelope.getAsJsonObject("error")?.let {
             LOG.warn(".NET Analysis&Refactoring MCP refused $tool: $it")
             return null
         }
-        val text = envelope.getAsJsonObject("result").getAsJsonArray("content")[0].asJsonObject["text"].asString
+        val result = envelope.getAsJsonObject("result")
+        val text = result.getAsJsonArray("content")[0].asJsonObject["text"].asString
+        if (result["isError"]?.asBoolean == true) {
+            LOG.warn(".NET Analysis&Refactoring MCP refused $tool: $text")
+            return null
+        }
         if (!text.trimStart().startsWith("{")) {
-            LOG.warn(".NET Analysis&Refactoring MCP answered $tool with text, not JSON: it's older than the version this plugin requires.")
+            LOG.warn(".NET Analysis&Refactoring MCP answered $tool with text, not JSON: it's older than the version this plugin requires. It said: ${text.take(300)}")
             return null
         }
         val answer = JsonParser.parseString(text).asJsonObject
